@@ -147,3 +147,37 @@ export interface RunResult {
   evidence: EvidenceRecord[];
   proof: ProofReceipt;
 }
+
+export type OsaLayerId =
+  | "school"
+  | "dev"
+  | "bank"
+  | "financial"
+  | "cybersecurity"
+  | "army";
+
+export type OsaProductLayer = "ACADEMY" | "BUILDER" | "REGULATED";
+export type LayerAccessMode = "PUBLIC" | "REGULATED";
+export type LayerEntryDecision = "ALLOWED" | "GATED";
+
+export interface LayerProfile {
+  layer_id: OsaLayerId;
+  label: string;
+  product_layer: OsaProductLayer;
+  access_mode: LayerAccessMode;
+  route: string;
+  proof_required: boolean;
+  requirements: string[];
+}
+
+export interface LayerAccessGate {
+  code: "VERIFIED_ORGANIZATION_REQUIRED";
+  requirements: string[];
+  authoritative: true;
+}
+
+export interface LayerEnterResult {
+  decision: LayerEntryDecision;
+  layer: LayerProfile;
+  gate?: LayerAccessGate;
+}

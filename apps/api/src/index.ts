@@ -1,5 +1,6 @@
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
 import { Mission, RunResult, TeamGraph } from "../../../packages/contracts/src";
+import { enterLayer, getLayerProfile, listLayerProfiles } from "../../../packages/access-control/src";
 import { ExecutorRegistry, OsaRuntime } from "../../../packages/runtime/src";
 import { validateTeamGraph } from "../../../packages/team-graph/src";
 
@@ -32,6 +33,24 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean);
+
+      if (method === "GET" && url.pathname === "/layers") {
+        return send(response, 200, listLayerProfiles());
+      }
+
+      if (parts[0] === "layers" && parts.length === 2 && method === "GET") {
+        const layer = getLayerProfile(parts[1]);
+        return layer
+          ? send(response, 200, layer)
+          : send(response, 404, { error: "layer not found" });
+      }
+
+      if (parts[0] === "layers" && parts.length === 3 && parts[2] === "enter" && method === "POST") {
+        const decision = enterLayer(parts[1]);
+        return decision
+          ? send(response, 200, decision)
+          : send(response, 404, { error: "layer not found" });
+      }
 
       if (method === "POST" && url.pathname === "/teams") {
         const graph = await readJson<TeamGraph>(request);

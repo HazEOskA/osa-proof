@@ -28,6 +28,18 @@
       return body;
     }
 
+    listLayers() {
+      return this.request("/layers");
+    }
+
+    getLayer(layerId) {
+      return this.request(`/layers/${encodeURIComponent(layerId)}`);
+    }
+
+    enterLayer(layerId) {
+      return this.request(`/layers/${encodeURIComponent(layerId)}/enter`, { method: "POST" });
+    }
+
     createTeam(teamGraph) {
       return this.request("/teams", { method: "POST", body: JSON.stringify(teamGraph) });
     }
