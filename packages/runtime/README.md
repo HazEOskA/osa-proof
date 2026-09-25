@@ -1,5 +1,5 @@
 # @osa/runtime
 
-Executable mission and Team Graph runtime boundary.
+Mission execution engine for canonical Team Graphs.
 
-Foundation only. No implementation yet.
+Vertical Slice #1 implements executor registration, real two-agent execution, handoff events, evidence emission, and proof finalization.

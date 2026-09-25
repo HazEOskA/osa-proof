@@ -1,0 +1,17 @@
+{
+  "name": "osa-proof",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Proof-first backend for verifiable agentic systems.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/tests/backend.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,7 +1,5 @@
 # @osa/team-graph
 
-Canonical representation of agentic teams.
+Canonical executable representation of agentic teams.
 
-See docs/TEAM_GRAPH_CONTRACT_V1.md.
-
-Foundation only. No implementation yet.
+Vertical Slice #1 implements graph validation and deterministic acyclic linear handoff traversal. See `docs/TEAM_GRAPH_CONTRACT_V1.md`.

@@ -1,5 +1,5 @@
 # @osa/proof-core
 
-APR/proof boundary: claims, evidence, verification, and proof receipts.
+APR proof boundary: deterministic verification of explicit acceptance requirements against runtime evidence, producing machine-readable proof receipts.
 
-Foundation only. No implementation yet.
+`CLAIM != PROOF` is enforced here.

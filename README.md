@@ -4,8 +4,6 @@
 
 OSA Proof is a proof-first platform for building, running, observing, and verifying agentic systems.
 
-The platform is designed around one invariant:
-
 > **CLAIM != PROOF**
 
 An agent run is not complete because a model says it succeeded. Completion requires evidence, verification, and a proof receipt.
@@ -14,34 +12,49 @@ An agent run is not complete because a model says it succeeded. Completion requi
 
 1. **OSA Academy** — visual-first learning for schools, computer clubs, students, and beginners.
 2. **OSA Builder / Core** — the primary product: Team Graph, runtime, tools, models, memory, workflows, observability, APR, proof, and deployment adapters.
-3. **OSA Regulated** — controlled extensions for enterprise and regulated environments. Access to regulated domain packs is gated by verified organizational affiliation and policy.
+3. **OSA Regulated** — controlled extensions for enterprise and regulated environments, enabled only after organizational/affiliation verification and policy approval.
 
-All three layers use the same Builder/Core engine. Academy is a constrained learning surface over Core; Regulated is a hardened policy and governance surface over Core.
+All layers share the same Core. Academy constrains it; Regulated hardens it.
 
-## Canonical architecture
+## Canonical backend
 
 ```text
-Visual / 3D Builder ─┐
-SDK / CLI ───────────┼──> Team Graph ──> Runtime ──> Evidence ──> APR ──> Proof Receipt
-Framework adapters ──┘
+Input Surface
+    -> Team Graph
+    -> Mission
+    -> Runtime
+    -> Event Stream
+    -> Evidence
+    -> APR Verifier
+    -> Proof Receipt
 ```
 
-The **Team Graph** is the canonical representation of an agentic team. The 3D world is a real control surface for that graph, not a decorative simulation.
+The **Team Graph** is the source of truth. A future 3D world is an operational control surface over this graph, not a decorative simulation.
 
-## Current implementation focus
+## Backend Vertical Slice #1
 
-Vertical Slice #1:
+Implemented scope:
 
 ```text
 2 agents
-→ connect
-→ assign mission
-→ execute in the real runtime
-→ collect evidence
-→ verify with APR
-→ VERIFIED or FAILED proof receipt
+-> executable handoff
+-> mission
+-> runtime execution
+-> persisted runtime events
+-> evidence collection
+-> deterministic verification
+-> VERIFIED / FAILED / INCOMPLETE proof receipt
 ```
 
-No landing page, 3D implementation, deployment, billing, school product, or regulated domain pack is part of the foundation slice.
+Minimal HTTP boundary exposes teams, missions, runs, events, evidence, and proof.
 
-See `docs/` for the locked contracts.
+## Local verification
+
+```bash
+npm install
+npm test
+```
+
+The repository intentionally contains no frontend, 3D implementation, deployment, billing, Academy implementation, or Regulated domain pack in this slice.
+
+See `docs/BACKEND_ARCHITECTURE_LOCK_V1.md` and the other contracts under `docs/`.
