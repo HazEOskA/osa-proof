@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OSA Proof — Regulated Access</title>
+<style>
+:root{--bg:#030711;--panel:rgba(10,17,32,.78);--line:rgba(255,255,255,.13);--ink:#eef4ff;--muted:#8e9bb6;--accent:#778cff;--ok:#55e79a}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(circle at 50% 15%,rgba(86,105,255,.18),transparent 30%),linear-gradient(#030711,#050a14);color:var(--ink);font-family:Inter,system-ui,sans-serif}body{min-height:100vh;display:grid;place-items:center;padding:24px}.wrap{width:min(860px,100%);border:1px solid var(--line);border-radius:28px;background:var(--panel);backdrop-filter:blur(18px);box-shadow:0 32px 100px #0008;padding:34px}.brand{font-weight:900;letter-spacing:.16em;text-transform:uppercase}.eyebrow{margin-top:56px;color:var(--muted);letter-spacing:.28em;text-transform:uppercase;font-size:11px}.domain{font-size:clamp(46px,8vw,92px);line-height:.95;margin:14px 0 20px;text-transform:uppercase;letter-spacing:-.03em}.lead{color:var(--muted);font-size:18px;line-height:1.7;max-width:62ch}.gate{margin-top:34px;border:1px solid var(--line);border-radius:20px;padding:22px;background:rgba(255,255,255,.025)}.gate strong{display:block;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--ok);margin-bottom:14px}.steps{display:grid;gap:10px;color:#cbd6eb;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}.step{display:flex;gap:12px}.n{color:var(--accent)}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:12px;border:1px solid var(--line);color:var(--ink);text-decoration:none;background:rgba(255,255,255,.04)}.btn.primary{background:#7387ff;color:#050714;border-color:#8a9bff;font-weight:800}.note{margin-top:24px;color:#66738f;font-size:12px;line-height:1.6}.status{float:right;color:var(--ok);font:11px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}@media(max-width:600px){.wrap{padding:24px}.status{float:none;display:block;margin-top:10px}.domain{font-size:46px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="brand">OSA PROOF <span class="status">regulated boundary</span></div>
+  <div class="eyebrow">Verified organization access required</div>
+  <h1 class="domain" id="domain">REGULATED</h1>
+  <p class="lead">This environment is not self-service. Access is enabled only after organization and affiliation verification, policy acceptance, and administrative approval.</p>
+  <section class="gate">
+    <strong>Access gate</strong>
+    <div class="steps">
+      <div class="step"><span class="n">01</span><span>request access</span></div>
+      <div class="step"><span class="n">02</span><span>verify organization</span></div>
+      <div class="step"><span class="n">03</span><span>verify affiliation / entitlement</span></div>
+      <div class="step"><span class="n">04</span><span>accept required policy / contract</span></div>
+      <div class="step"><span class="n">05</span><span>administrative approval</span></div>
+    </div>
+  </section>
+  <div class="actions"><a class="btn primary" href="../">Back to layers</a></div>
+  <p class="note">No regulated capability is unlocked by this page. Runtime policy enforcement remains authoritative.</p>
+</main>
+<script>
+  const path = location.pathname.split("/").filter(Boolean).at(-1) || "regulated";
+  const domain = {bank:"BANK",financial:"FINANCIAL",cybersecurity:"CYBERSECURITY",army:"ARMY"}[path] || "REGULATED";
+  document.getElementById("domain").textContent = domain;
+  document.title = `OSA Proof — ${domain} Access`;
+</script>
+<script src="../assets/osa-api-client.js"></script>
+</body>
+</html>

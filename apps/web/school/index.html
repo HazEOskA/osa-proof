@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OSA Framework — dowód albo nic</title>
+<meta name="theme-color" content="#0B0B0B" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!--
+  Discovery (audit trail) · V3 — dark graffiti:
+    deliverable : web landing, single self-contained HTML, dark visual layer on V2 skin
+    audience    : mixed — youth/schools, students, devs
+    direction   : nocna ściana — asfalt + kość słoniowa + żółty + czerwień. Litera czytana
+                  jak mural: obrys farby + offset druku, nie zabawkowy spray.
+    palette     : --bg #0C0D0F (asfalt), --surface #15171A (beton), --deep #05070A,
+                  --ink #EFEEE7 (kość), --accent #F5F100, --alert #FF2D2D
+    fonts       : Archivo Black (display: hero, nagłówki, numery, panel dowodu)
+                  + Space Mono (UI, tekst, tagi, terminal) — 2 kroje max
+    deviations  : 1) akcent jako materiał marki (pasek, szablony, wybrany poziom, cennik,
+                     hasło zamykające) — powyżej domyślnego limitu 2 użyć na ekran.
+                  2) offset druku i smuga farby w hero to dekoracyjne gradienty —
+                     służą koncepcji muralu, nie wypełnianiu pustki.
+                  3) czysta czerń i czysta biel zastąpione asfaltem i kością
+                     (craft/color.md, dark theme).
+    v3 changes  : dark tokens, nowy kroj display, obrys + offset w hero, tag ścienny,
+                  smuga farby, ziarno w trybie screen, poprawione kontrasty dla ciemnego tła,
+                  litera nagłówków kart z poprawnym trackingiem.
+    note        : ceny, kolumna Mastra, endpoint formularza i linki kanałów pozostają
+                  jawnie oznaczonymi placeholderami — żadnych wymyślonych danych.
+-->
+<script id="auto-designer-preview-contract" type="application/json">
+{ "artifactRole": "web-landing", "authoringViewport": 1440, "deviceAdaptation": true }
+</script>
+<!-- font-stack: Archivo Black + Space Mono — display jako litera z muru (obrys + offset druku), nie zabawkowy spray -->
+<style>
+/* Czcionka „Most Wasted” — Magique Fonts. Wbudowana w plik (data URI),
+   żeby strona nie zależała od zewnętrznego serwera czcionek.
+   Uwaga: ten krój ma wyłącznie podstawowy Latin — bez ą/ć/ę/ł/ń/ś/ź/ż. */
+@font-face{
+  font-family:'Most Wasted';
+  src:url(data:font/woff;base64,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) format('woff');
+  font-weight:400;
+  font-style:normal;
+  font-display:swap;
+}
+:root{
+  --bg:#0C0D0F;          /* asfalt */
+  --surface:#15171A;     /* beton */
+  --deep:#05070A;        /* sadza / terminal */
+  --ink:#EFEEE7;         /* kość słoniowa */
+  --ink-soft:#BFBCB2;
+  --muted:#96948A;
+  --border:#3A4046;      /* linie konstrukcyjne */
+  --accent:#F5F100;
+  --accent-deep:#D9D600;
+  --alert:#FF2D2D;
+  --bd:2px;
+  --hard:7px;            /* twardy cień brutalistyczny */
+  --shadow:color-mix(in oklab, #EFEEE7 70%, #0C0D0F);
+  --font-display:'Archivo Black', 'Arial Black', Impact, sans-serif;
+  --font-mono:'Space Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-mono);
+  font-size:16px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+img,svg{max-width:100%;display:block}
+a{color:inherit}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.skip{
+  position:absolute;left:-9999px;top:0;background:var(--ink);color:var(--accent);
+  padding:10px 16px;z-index:99
+}
+.skip:focus{left:12px;top:12px}
+
+/* ---------- display type ---------- */
+h1,h2,h3,.display{font-family:var(--font-display);font-weight:400;letter-spacing:-0.02em}
+h1{font-size:clamp(40px,6.4vw,84px);line-height:0.98}
+h2{font-size:clamp(28px,3.6vw,46px);line-height:1.02}
+h3{font-size:clamp(20px,2vw,26px);line-height:1.15;letter-spacing:-0.01em}
+.lede{color:var(--ink-soft);max-width:62ch}
+.mono-label{
+  font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.09em
+}
+.note{font-size:13px;color:var(--muted);letter-spacing:0.01em;max-width:70ch}
+
+/* ---------- structure banner ---------- */
+.structure-bar{
+  background:var(--ink);color:var(--accent);font-size:12px;letter-spacing:0.06em;
+  text-transform:uppercase;padding:8px 0
+}
+.structure-bar .wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.structure-bar b{color:#fff}
+.structure-bar span{color:#D9D6C7;text-transform:none;letter-spacing:0.02em}
+
+/* ---------- nav ---------- */
+.nav{position:sticky;top:0;z-index:40;background:var(--bg);border-bottom:var(--bd) solid var(--border)}
+.nav-in{display:flex;align-items:center;gap:20px;padding:14px 0;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;margin-right:auto}
+.brand .mark{
+  width:34px;height:34px;border:var(--bd) solid var(--border);background:var(--accent);
+  display:grid;place-items:center;font-family:var(--font-display);font-size:19px;line-height:1
+}
+.brand .name{font-family:var(--font-display);font-size:22px;letter-spacing:-0.01em}
+.nav-links{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.nav-links a{
+  text-decoration:none;font-size:13px;color:var(--ink-soft);padding:6px 2px;
+  border-bottom:2px solid transparent;transition:color 120ms ease,border-color 120ms ease
+}
+.nav-links a:hover{color:var(--ink);border-bottom-color:var(--ink)}
+.nav-links a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+
+/* ---------- buttons ---------- */
+.btn{
+  font:inherit;font-size:14px;cursor:pointer;text-decoration:none;display:inline-flex;
+  align-items:center;justify-content:center;gap:8px;min-height:44px;padding:12px 20px;
+  border:var(--bd) solid var(--border);background:var(--bg);color:var(--ink);
+  transition:transform 100ms ease,background 120ms ease,color 120ms ease;
+}
+.btn:hover{background:var(--surface)}
+.btn:active{transform:translate(2px,2px)}
+.btn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.btn[disabled],.btn[aria-disabled="true"]{opacity:0.45;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--accent)}
+.btn-primary:hover{background:#E5E100}
+.btn-dark{background:var(--ink);color:var(--accent)}
+.btn-dark:hover{background:#232323}
+.btn-sm{min-height:38px;padding:8px 14px;font-size:13px}
+
+/* ---------- section chrome (structure pass) ---------- */
+section{padding:64px 0;border-bottom:var(--bd) solid var(--border)}
+section.tint{background:var(--surface)}
+section.dark{background:var(--ink);color:#fff}
+section.dark .lede,section.dark .note{color:#CFCCBD}
+.blk-id{
+  display:inline-flex;align-items:center;gap:10px;background:var(--ink);color:var(--accent);
+  padding:5px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.09em
+}
+.blk-head{display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;margin-bottom:14px}
+.blk-note{
+  font-size:12px;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px;
+  max-width:74ch
+}
+.sec-title{margin:16px 0 10px}
+.sec-grid{display:grid;gap:24px;margin-top:28px}
+
+/* ---------- placeholder blocks ---------- */
+.ph{
+  border:2px dashed #9A9689;background:
+    repeating-linear-gradient(135deg,#EFECE2 0 10px,#F7F5EE 10px 20px);
+  padding:22px;display:flex;flex-direction:column;gap:8px;justify-content:center;
+  min-height:120px
+}
+.ph .mono-label{color:#6E6C63}
+
+/* ---------- hero ---------- */
+.hero-grid{display:grid;grid-template-columns:1.05fr 0.95fr;gap:40px;align-items:start}
+.hero h1{margin-bottom:18px}
+.hero .lede{font-size:17px;margin-bottom:28px}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+
+/* claim vs verify panel */
+.verdict{border:var(--bd) solid var(--border)}
+.verdict-head{
+  display:flex;border-bottom:var(--bd) solid var(--border);font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:0.09em
+}
+.verdict-head>span{flex:1;padding:10px 14px}
+.verdict-head>span:first-child{background:var(--alert);color:var(--ink);border-right:var(--bd) solid var(--border)}
+.verdict-head>span:last-child{background:var(--accent);color:var(--ink)}
+.verdict-body{display:grid;grid-template-columns:1fr 1fr}
+.verdict-body>div{padding:16px 14px}
+.verdict-body>div:first-child{border-right:var(--bd) solid var(--border);background:var(--surface)}
+.verdict-body ul{list-style:none;display:grid;gap:10px}
+.verdict-body li{font-size:14px}
+.strike{position:relative;display:inline-block;color:var(--ink-soft)}
+.strike::after{
+  content:'';position:absolute;left:-4%;right:-4%;top:52%;height:4px;background:var(--alert);
+  transform:rotate(-1.6deg)
+}
+.stamp{
+  display:inline-block;border:2px solid var(--border);background:var(--accent);color:var(--ink);
+  padding:4px 9px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+  transform:rotate(-1.2deg)
+}
+.verdict-foot{
+  border-top:var(--bd) solid var(--border);padding:10px 14px;font-size:13px;
+  background:var(--bg);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap
+}
+
+/* ---------- proof ladder ---------- */
+.ladder{display:grid;grid-template-columns:1fr 1.15fr;gap:0;border:var(--bd) solid var(--border);margin-top:28px}
+.ladder-tabs{border-right:var(--bd) solid var(--border);display:flex;flex-direction:column}
+.rung{
+  font:inherit;text-align:left;cursor:pointer;background:var(--bg);border:0;
+  border-bottom:var(--bd) solid var(--border);padding:16px 18px;display:flex;gap:14px;align-items:baseline;
+  transition:background 120ms ease
+}
+.rung:last-child{border-bottom:0}
+.rung:hover{background:var(--surface)}
+.rung[aria-selected="true"]{background:var(--accent)}
+.rung:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+.rung .lvl{font-family:var(--font-display);font-size:26px;line-height:1;min-width:34px}
+.rung .rung-txt{display:flex;flex-direction:column;gap:2px}
+.rung .rung-name{font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase}
+.rung .rung-desc{font-size:13px;color:var(--ink-soft)}
+.rung[aria-selected="true"] .rung-desc{color:#2A2A22}
+.panel{padding:24px 22px;display:flex;flex-direction:column;gap:14px;background:var(--bg)}
+.panel h3{font-size:24px}
+.panel .meaning{font-size:15px;color:var(--ink-soft);max-width:56ch}
+.evidence{border:var(--bd) solid var(--border);background:var(--surface)}
+.evidence-head{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;
+  padding:8px 12px;border-bottom:var(--bd) solid var(--border);background:var(--ink);color:var(--accent)
+}
+.evidence pre{padding:14px 12px;font-size:13px;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.tag-row{display:flex;gap:8px;flex-wrap:wrap}
+.tag{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+  border:2px solid var(--border);padding:3px 8px
+}
+.tag.warn{background:var(--alert);color:var(--ink)}
+.tag.ok{background:var(--accent);color:var(--ink)}
+
+/* ---------- vs table ---------- */
+.table-wrap{overflow-x:auto;border:var(--bd) solid var(--border);margin-top:28px}
+table{border-collapse:collapse;width:100%;min-width:680px;font-size:14px}
+th,td{text-align:left;padding:13px 16px;border-bottom:1px solid #D8D5C8;vertical-align:top}
+thead th{background:var(--ink);color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:0.09em}
+tbody th{font-weight:700;width:26%}
+tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
+tbody tr:nth-child(even) td,tbody tr:nth-child(even) th{background:var(--surface)}
+.chip-todo{
+  display:inline-block;border:2px solid var(--border);background:var(--alert);color:var(--ink);
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;padding:2px 6px;
+  margin-left:6px;white-space:nowrap
+}
+
+/* ---------- cards ---------- */
+.cards{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:20px;margin-top:28px}
+.card{border:var(--bd) solid var(--border);padding:20px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.card .num{font-family:var(--font-display);font-size:30px;line-height:1}
+.card p{font-size:14px;color:var(--ink-soft)}
+.card ul{list-style:none;display:grid;gap:6px;font-size:14px}
+.card li::before{content:'— ';color:var(--muted)}
+
+/* ---------- code + tabs ---------- */
+.code-grid{display:grid;grid-template-columns:0.85fr 1.15fr;gap:28px;align-items:start}
+.steps{list-style:none;display:grid;gap:14px;margin-top:8px}
+.steps li{border:var(--bd) solid var(--border);padding:14px;background:var(--bg)}
+.steps .mono-label{display:block;margin-bottom:6px}
+.steps code{display:inline-block;background:var(--ink);color:var(--accent);padding:6px 10px;font-size:13px;margin-top:4px}
+.steps .note{margin-top:8px}
+.tabs{display:flex;gap:0;border:var(--bd) solid var(--border);border-bottom:0}
+.tab{
+  font:inherit;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);
+  border:0;border-right:var(--bd) solid var(--border);padding:10px 16px;min-height:42px;
+  transition:background 120ms ease
+}
+.tab:last-child{border-right:0}
+.tab[aria-selected="true"]{background:var(--accent)}
+.tab:hover{background:#E9E6DA}
+.tab[aria-selected="true"]:hover{background:var(--accent)}
+.tab:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+.code{border:var(--bd) solid var(--border);background:var(--ink);color:#EDEAE0}
+.code pre{padding:16px;font-size:13px;overflow-x:auto}
+.code .cmt{color:#8E8B7F}
+.code .kw{color:var(--accent)}
+.code-foot{
+  border-top:1px solid #333;padding:9px 14px;font-size:12px;color:#B9B6A9;
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap
+}
+
+/* ---------- pricing ---------- */
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:28px}
+.tier{border:var(--bd) solid var(--border);padding:22px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
+.tier.featured{border-width:4px;background:var(--surface)}
+.tier .tier-name{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.09em}
+.tier .price{font-family:var(--font-display);font-size:40px;line-height:1}
+.tier .price small{font-family:var(--font-mono);font-size:13px;color:var(--muted);letter-spacing:0}
+.tier ul{list-style:none;display:grid;gap:8px;font-size:14px;margin-bottom:8px}
+.tier li::before{content:'— ';color:var(--muted)}
+.tier .btn{margin-top:auto}
+.badge{
+  align-self:flex-start;background:var(--accent);border:2px solid var(--border);
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:3px 8px
+}
+
+/* ---------- closing ---------- */
+.closing{background:var(--ink);color:#fff;text-align:center}
+.closing h2{color:var(--accent);font-size:clamp(38px,6vw,80px)}
+.closing .lede{margin:16px auto 28px;color:#CFCCBD;max-width:52ch}
+.closing .btn-primary{border-color:var(--accent)}
+
+/* ---------- footer ---------- */
+footer{background:var(--bg);padding:40px 0 56px}
+.foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:24px}
+.foot-grid h4{font-size:12px;text-transform:uppercase;letter-spacing:0.09em;margin-bottom:10px}
+.foot-grid ul{list-style:none;display:grid;gap:6px;font-size:14px;color:var(--ink-soft)}
+.foot-grid a{text-decoration:none;border-bottom:1px solid transparent}
+.foot-grid a:hover{border-bottom-color:var(--ink)}
+.foot-bottom{
+  margin-top:28px;padding-top:16px;border-top:var(--bd) solid var(--border);
+  display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)
+}
+
+/* ---------- responsive ---------- */
+@media (max-width:1000px){
+  .hero-grid,.code-grid,.ladder{grid-template-columns:1fr}
+  .ladder-tabs{border-right:0;border-bottom:var(--bd) solid var(--border)}
+  .cards{grid-template-columns:1fr 1fr}
+  .tiers{grid-template-columns:1fr}
+  .foot-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:660px){
+  section{padding:44px 0}
+  .cards{grid-template-columns:1fr}
+  .verdict-body{grid-template-columns:1fr}
+  .verdict-body>div:first-child{border-right:0;border-bottom:var(--bd) solid var(--border)}
+  .foot-grid{grid-template-columns:1fr}
+  .nav-links{gap:12px}
+}
+
+/* ---------- motion (medium, respect reduced-motion) ---------- */
+@media (prefers-reduced-motion:no-preference){
+  .reveal{opacity:0;transform:translateY(10px);animation:in 420ms cubic-bezier(0.2,0,0,1) forwards}
+  .reveal:nth-child(2){animation-delay:70ms}
+  .reveal:nth-child(3){animation-delay:140ms}
+  @keyframes in{to{opacity:1;transform:none}}
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SKIN · „Spray brutal" — warstwa wizualna (V2)
+   Nadbudowa nad warstwą strukturalną. Kolejność czytania:
+   struktura (układ) → skóra (farba, faktura, ruch).
+   ══════════════════════════════════════════════════════════════════ */
+
+/* --- papier + ziarno ksero --- */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0.05;
+  mix-blend-mode:multiply;background-size:170px 170px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='170' height='170' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")
+}
+@media print{body::before{display:none}}
+
+/* --- typografia ról: 2 kroje, 3 role --- */
+h1{
+  letter-spacing:-0.025em;max-width:19ch;transform:rotate(-0.6deg);
+  text-shadow:4px 4px 0 rgba(245,241,0,.55), -3px -3px 0 rgba(255,45,45,.16)
+}
+h2{text-shadow:3px 3px 0 rgba(245,241,0,.45)}
+h3{font-family:var(--font-mono);font-weight:700;font-size:16px;letter-spacing:0.02em;text-transform:uppercase}
+#panel-title{
+  font-family:var(--font-display);font-size:clamp(26px,3.2vw,42px);letter-spacing:-0.01em;
+  text-transform:none;text-shadow:none
+}
+
+/* --- kapanie farby pod nagłówkiem --- */
+.drips{display:flex;gap:15px;align-items:flex-start;height:26px;margin:-4px 0 24px;padding-left:4px}
+.drips i{display:block;width:7px;background:var(--accent);border-radius:0 0 5px 5px}
+.drips i:nth-child(1){height:24px}
+.drips i:nth-child(2){height:11px}
+.drips i:nth-child(3){height:19px}
+.drips i:nth-child(4){height:8px}
+.drips i:nth-child(5){height:14px}
+
+/* --- szablony numerów sekcji (stencil) --- */
+section{position:relative;overflow:hidden}
+.wrap{position:relative;z-index:1}
+.stencil{
+  position:absolute;top:10px;right:-8px;z-index:0;line-height:0.78;
+  font-family:var(--font-display);font-size:clamp(96px,15vw,210px);
+  color:transparent;-webkit-text-stroke:2px rgba(11,11,11,.13);
+  pointer-events:none;user-select:none
+}
+.closing .stencil,.dark .stencil{-webkit-text-stroke:2px rgba(245,241,0,.26)}
+
+/* --- pasek-ticker --- */
+.structure-bar{background:var(--ink);padding:0;overflow:hidden;border-bottom:var(--bd) solid var(--border)}
+.ticker-track{
+  display:block;white-space:nowrap;padding:11px 0;color:var(--accent);
+  font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;
+  transform:rotate(-0.9deg) scale(1.04)
+}
+.ticker-band{border-top:var(--bd) solid var(--border);border-bottom:var(--bd) solid var(--border)}
+
+/* --- przyciski: fizyka wciśnięcia --- */
+.btn{
+  box-shadow:4px 4px 0 var(--ink);
+  transition:transform 90ms ease, box-shadow 90ms ease, background 120ms ease
+}
+.btn:hover:not([disabled]){transform:translate(-1px,-1px);box-shadow:6px 6px 0 var(--ink)}
+.btn:active:not([disabled]){transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.btn[disabled]:hover,.btn[aria-disabled="true"]:hover{transform:none;box-shadow:4px 4px 0 var(--ink)}
+.btn-sm{box-shadow:3px 3px 0 var(--ink)}
+.btn-sm:hover:not([disabled]){transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.btn-primary{background:var(--accent)}
+.btn-primary:hover:not([disabled]){background:var(--accent-deep)}
+.btn-dark{background:var(--ink);color:var(--accent);box-shadow:4px 4px 0 var(--accent)}
+.btn-dark:hover:not([disabled]){box-shadow:6px 6px 0 var(--accent)}
+.btn-dark:active:not([disabled]){box-shadow:1px 1px 0 var(--accent)}
+
+/* --- hero: panel wyroku + taśma --- */
+.verdict{position:relative;background:var(--bg);box-shadow:var(--hard) var(--hard) 0 var(--ink);transform:rotate(-0.7deg)}
+.verdict-head>span:first-child{color:var(--bg)}
+.strike::after{height:5px;border-radius:2px}
+.stamp{box-shadow:3px 3px 0 rgba(11,11,11,.55)}
+.tape{
+  position:absolute;top:-14px;right:26px;width:118px;height:26px;z-index:2;
+  background:rgba(245,241,0,.78);transform:rotate(3.2deg);
+  border-left:1px dashed rgba(11,11,11,.35);border-right:1px dashed rgba(11,11,11,.35);
+  box-shadow:0 1px 0 rgba(11,11,11,.12)
+}
+
+/* --- drabina dowodów --- */
+.ladder{background:var(--bg);box-shadow:var(--hard) var(--hard) 0 var(--ink)}
+.ladder-tabs{position:relative}
+.ladder-rail{position:absolute;left:0;top:0;bottom:0;width:6px;background:rgba(11,11,11,.10);z-index:1}
+.ladder-rail span{display:block;width:100%;height:0;background:var(--accent);transition:height 220ms cubic-bezier(0.2,0,0,1)}
+.rung{padding-left:22px}
+.rung .lvl{color:transparent;-webkit-text-stroke:2px var(--ink);font-size:30px}
+.rung[aria-selected="true"]{box-shadow:inset 0 0 0 0 transparent}
+.panel.swap{animation:panelIn 180ms cubic-bezier(0.2,0,0,1)}
+@keyframes panelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.panel.swap{animation:none}.ladder-rail span{transition:none}}
+
+/* --- kod: okno terminala --- */
+.code{box-shadow:var(--hard) var(--hard) 0 var(--accent);border-color:var(--border)}
+.term-bar{
+  display:flex;align-items:center;gap:7px;padding:9px 12px;
+  background:#141414;border-bottom:2px solid #2A2A2A
+}
+.term-bar .dot{width:10px;height:10px;border:2px solid #55534C;display:block}
+.term-bar .dot:nth-child(2){background:var(--accent);border-color:var(--ink)}
+.term-bar .dot:nth-child(3){background:var(--alert);border-color:var(--ink)}
+.term-bar .term-name{margin-left:auto;font-size:12px;color:#B9B6A9;letter-spacing:0.06em;text-transform:uppercase}
+.tab[aria-selected="true"]{background:var(--accent);transform:translateY(-2px);box-shadow:2px 0 0 rgba(11,11,11,.0)}
+.tab:hover{background:color-mix(in oklab, var(--accent) 16%, #fff)}
+.steps li{box-shadow:5px 5px 0 var(--surface)}
+
+/* --- bloki treści --- */
+.card,.tier,.table-wrap{box-shadow:var(--hard) var(--hard) 0 var(--ink);background:var(--bg)}
+.card,.tier{transition:transform 140ms cubic-bezier(0.2,0,0,1), box-shadow 140ms ease}
+@media (prefers-reduced-motion:no-preference){
+  .card:hover,.tier:hover{transform:translate(-3px,-3px);box-shadow:10px 10px 0 var(--ink)}
+}
+.card .num{font-size:42px;-webkit-text-stroke:2px var(--ink)}
+.blk-id{box-shadow:3px 3px 0 rgba(11,11,11,.28);transform:rotate(-1deg)}
+.blk-note{border-left-width:4px}
+tbody tr:hover td,tbody tr:hover th{background:color-mix(in oklab, var(--accent) 18%, #fff)}
+.chip-todo{box-shadow:2px 2px 0 rgba(11,11,11,.4);transform:rotate(-1.4deg)}
+
+/* --- cennik --- */
+.tier.featured{
+  background:var(--accent);border-width:4px;transform:rotate(-0.5deg);
+  box-shadow:9px 9px 0 var(--ink)
+}
+.tier.featured .note,.tier.featured .price small{color:#26261F}
+.tier.featured li::before{color:#26261F}
+.tier.featured .btn{background:var(--ink);color:var(--accent);box-shadow:4px 4px 0 #fff}
+.tier.featured .btn:hover:not([disabled]){background:#242424;box-shadow:6px 6px 0 #fff}
+.badge{box-shadow:2px 2px 0 var(--ink);transform:rotate(-2deg)}
+
+/* --- sekcja zamykająca --- */
+.closing h2{position:relative;z-index:1;text-shadow:6px 6px 0 rgba(0,0,0,.55)}
+.splat{position:absolute;z-index:0;pointer-events:none;color:var(--accent)}
+.splat .red{fill:var(--alert)}
+.splat.a{top:-40px;left:-60px;width:min(46vw,520px);opacity:.92}
+.splat.b{bottom:-70px;right:-40px;width:min(30vw,300px);opacity:.75;color:var(--alert)}
+
+/* --- stopka --- */
+footer{border-top:4px solid var(--border)}
+.foot-grid a:hover{background:color-mix(in oklab, var(--accent) 35%, #fff);border-bottom-color:var(--ink)}
+
+/* --- mini-formularz (tryb szkolny) --- */
+.mini-form{
+  display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-top:22px;
+  border:2px dashed #9A9689;padding:18px;
+  background:color-mix(in oklab, var(--accent) 9%, #fff)
+}
+.field{display:flex;flex-direction:column;gap:6px;min-width:min(280px,100%)}
+.field label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
+.field input{
+  font:inherit;font-size:14px;padding:11px 12px;min-height:44px;
+  border:2px solid var(--border);background:#fff;color:var(--ink)
+}
+.field input:focus-visible{outline:3px solid var(--ink);outline-offset:1px;background:color-mix(in oklab, var(--accent) 22%, #fff)}
+.mini-form .hint{flex:1 1 100%;font-size:12px;color:var(--muted);max-width:78ch}
+
+/* --- skóra: adaptacje mobilne --- */
+@media (max-width:660px){
+  h1{transform:none;text-shadow:3px 3px 0 rgba(245,241,0,.55)}
+  .drips{gap:11px;height:20px}
+  .stencil{font-size:104px;right:-4px}
+  .verdict,.tier.featured{transform:none}
+  .card,.tier,.table-wrap,.ladder{box-shadow:4px 4px 0 var(--ink)}
+  .code{box-shadow:4px 4px 0 var(--accent)}
+  .splat.a{width:78vw;top:-20px;left:-30px}
+  .splat.b{display:none}
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SKIN V3 · dark graffiti — nocna ściana
+   Nadpisuje SKIN V2: nowe tokeny (ciemne), litera jak mural,
+   poprawione kontrasty dla ciemnego tła, ostrzejsze krawędzie.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* --- 1. powierzchnie i linie --- */
+section{border-bottom-color:var(--border)}
+.structure-bar{background:var(--accent);border-bottom:2px solid var(--deep)}
+.ticker-track{color:#0B0B0B}
+.ticker-band{background:var(--deep);border-color:var(--border)}
+.ticker-band .ticker-track{color:var(--accent)}
+.nav{background:color-mix(in oklab, var(--bg) 86%, transparent);backdrop-filter:blur(10px) saturate(140%)}
+.nav-links a{font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-soft);background-image:linear-gradient(var(--accent),var(--accent));background-size:0% 3px;background-repeat:no-repeat;background-position:0 100%;transition:background-size 160ms cubic-bezier(0.2,0,0,1),color 120ms ease}
+.nav-links a:hover{color:var(--ink);background-size:100% 3px;border-bottom-color:transparent}
+section.tint::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.55;
+  background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 1px, transparent 1px 8px)
+}
+.stencil{-webkit-text-stroke-color:rgba(239,238,231,.10)}
+/* --- 2. litera --- */
+h1{
+  font-size:clamp(42px,7vw,96px);line-height:0.94;letter-spacing:-0.028em;max-width:17ch;
+  transform:rotate(-0.5deg);color:#EFEEE7;-webkit-text-stroke:2px var(--deep);
+  text-shadow:6px 6px 0 var(--alert)
+}
+h2{color:#EFEEE7;letter-spacing:-0.02em;text-shadow:5px 5px 0 rgba(245,241,0,.85)}
+h3{color:var(--ink);letter-spacing:0.06em}
+.tag-line{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;
+  color:var(--accent);border-bottom:3px solid var(--accent);padding-bottom:4px;margin-bottom:20px;
+  transform:rotate(-0.8deg)
+}
+/* --- 3. hero: smuga farby --- */
+.hero-grid{position:relative}
+.hero-grid>*{position:relative;z-index:1}
+.hero-grid::before{
+  content:"";position:absolute;z-index:0;left:-10%;top:30%;width:124%;height:18px;
+  transform:rotate(-4deg);pointer-events:none;filter:blur(.5px);
+  background:linear-gradient(90deg, transparent, rgba(245,241,0,.20) 18%, rgba(245,241,0,.20) 78%, transparent)
+}
+/* --- 4. bloki na ciemnym --- */
+.card,.tier,.table-wrap{background:var(--surface)}
+.verdict{background:var(--surface)}
+.ladder{background:var(--surface)}
+.verdict-body>div:first-child{background:#101215}
+.card,.tier,.table-wrap,.verdict,.ladder{border-color:var(--ink);box-shadow:var(--hard) var(--hard) 0 var(--shadow)}
+.steps li{background:var(--deep);border-color:var(--ink)}
+.blk-id{background:var(--accent);color:#0B0B0B;box-shadow:3px 3px 0 var(--deep)}
+.badge{background:var(--accent);color:#0B0B0B;box-shadow:2px 2px 0 var(--deep)}
+.stamp{background:var(--accent);color:#0B0B0B;box-shadow:3px 3px 0 var(--deep)}
+.tag.ok{background:var(--accent);color:#0B0B0B}
+.tag.warn{background:var(--alert);color:#0B0B0B}
+.chip-todo{background:var(--alert);color:#0B0B0B;box-shadow:2px 2px 0 var(--deep)}
+.skip{background:var(--accent);color:#0B0B0B}
+.brand .mark{background:var(--accent);color:#0B0B0B;border-color:var(--deep);box-shadow:3px 3px 0 var(--deep)}
+/* --- 5. przyciski --- */
+.btn{background:transparent;border-color:var(--ink);color:var(--ink);box-shadow:4px 4px 0 var(--shadow)}
+.btn:hover:not([disabled]){background:rgba(239,238,231,.08);box-shadow:6px 6px 0 var(--shadow)}
+.btn:active:not([disabled]){box-shadow:1px 1px 0 var(--shadow)}
+.btn-primary{background:var(--accent);color:#0B0B0B;border-color:var(--deep);box-shadow:4px 4px 0 var(--ink)}
+.btn-primary:hover:not([disabled]){background:var(--accent-deep);box-shadow:6px 6px 0 var(--ink)}
+.btn-primary:active:not([disabled]){box-shadow:1px 1px 0 var(--ink)}
+.btn-dark{background:var(--ink);color:#0B0B0B;border-color:var(--deep);box-shadow:4px 4px 0 var(--accent)}
+.btn-dark:hover:not([disabled]){background:#F7F6F0;box-shadow:6px 6px 0 var(--accent)}
+.btn-dark:active:not([disabled]){box-shadow:1px 1px 0 var(--accent)}
+.btn-primary:focus-visible,.tab[aria-selected="true"]:focus-visible,.rung[aria-selected="true"]:focus-visible{outline-color:var(--deep)}
+/* --- 6. drabina --- */
+.rung{background:var(--surface);color:var(--ink);border-bottom-color:var(--border)}
+.rung:hover{background:#1B1E22}
+.rung[aria-selected="true"]{background:var(--accent);color:#0B0B0B}
+.rung[aria-selected="true"] .rung-name{color:#0B0B0B}
+.rung[aria-selected="true"] .rung-desc{color:#2A2A22}
+.rung[aria-selected="true"] .lvl{-webkit-text-stroke-color:#0B0B0B}
+.ladder-rail{background:rgba(239,238,231,.10)}
+.evidence{background:#0F1114}
+.evidence-head{background:var(--accent);color:#0B0B0B;border-bottom-color:var(--border)}
+.evidence pre{color:#EDEAE0}
+/* --- 7. tabela --- */
+.table-wrap thead th{background:var(--accent);color:#0B0B0B}
+.table-wrap th,.table-wrap td{border-bottom-color:var(--border)}
+.table-wrap tbody tr:nth-child(even) td,.table-wrap tbody tr:nth-child(even) th{background:#141719}
+.table-wrap tbody tr:hover td,.table-wrap tbody tr:hover th{background:color-mix(in oklab, var(--accent) 16%, #0C0D0F)}
+/* --- 8. kod --- */
+.code{background:var(--deep);color:#EDEAE0;border-color:var(--border);box-shadow:var(--hard) var(--hard) 0 var(--accent)}
+.term-bar{background:#0F1114;border-bottom-color:#23262A}
+.steps code{background:var(--deep);color:var(--accent)}
+.tab{background:#141719;color:var(--ink);border-right-color:var(--border)}
+.tab:hover{background:#1B1E22}
+.tab[aria-selected="true"]{background:var(--accent);color:#0B0B0B}
+/* --- 9. cennik --- */
+.tier.featured{background:var(--accent);color:#0B0B0B;box-shadow:9px 9px 0 var(--shadow)}
+.tier.featured .note,.tier.featured .price small,.tier.featured li::before,.tier.featured .tier-name{color:#26261F}
+.tier.featured .btn{background:var(--deep);color:var(--accent);border-color:var(--deep);box-shadow:4px 4px 0 #0B0B0B}
+.tier.featured .btn:hover:not([disabled]){background:#111318;box-shadow:6px 6px 0 #0B0B0B}
+/* --- 10. hero-panel wyroku --- */
+.verdict-head>span:first-child{background:var(--alert);color:#0B0B0B;border-right-color:var(--ink)}
+.verdict-head>span:last-child{background:var(--accent);color:#0B0B0B}
+.verdict-body>div:first-child{border-right-color:var(--ink)}
+.verdict-foot{background:var(--bg);border-top-color:var(--ink)}
+.strike{color:var(--ink-soft)}
+/* --- 11. zamykająca + stopka --- */
+.closing{background:var(--deep)}
+.closing h2{color:var(--accent);text-shadow:6px 6px 0 rgba(0,0,0,.6)}
+footer{border-top-color:var(--border)}
+.foot-grid a:hover{background:color-mix(in oklab, var(--accent) 26%, #0C0D0F)}
+.foot-grid a:focus-visible,.foot-grid a:hover{border-bottom-color:var(--accent)}
+/* --- 12. formularz szkolny --- */
+.mini-form{background:color-mix(in oklab, var(--accent) 8%, #0C0D0F);border-color:#5A574C}
+.field input{background:var(--deep);border-color:var(--ink);color:var(--ink)}
+.field input::placeholder{color:#7E7C72}
+.field input:focus-visible{outline-color:var(--accent);background:var(--deep)}
+.mini-form .hint{color:var(--muted)}
+/* --- 13. ziarno na ciemnym --- */
+body::before{mix-blend-mode:screen;opacity:.055}
+/* --- 14. adaptacje mobilne --- */
+@media (max-width:660px){
+  h1{transform:none;text-shadow:4px 4px 0 var(--alert)}
+  h2{text-shadow:3px 3px 0 rgba(245,241,0,.85)}
+  .hero-grid::before{display:none}
+  .card,.tier,.table-wrap,.verdict,.ladder{box-shadow:4px 4px 0 var(--shadow)}
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SKIN V4 · ręka pisarza — czcionka „Most Wasted” (Magique Fonts)
+   Krój ma tylko podstawowy Latin (brak ą/ć/ę/ł/ń/ś/ź/ż, jest ó).
+   Dlatego prowadzi wyłącznie elementy bez polskich diakrytyków:
+   numery sekcji, tag ścienny, znak marki, nazwy poziomów dowodu,
+   nazwy plików w terminalu i wielkie tagi na murze.
+   Polskie zdania zostają w Archivo Black — inaczej ogonki wypadałyby
+   do innego kroju i łamały literę w połowie słowa.
+   ══════════════════════════════════════════════════════════════════ */
+:root{--font-tag:'Most Wasted','Archivo Black','Arial Black',Impact,sans-serif}
+
+/* --- numer sekcji: wyblakły ślad farby, nie kontur --- */
+.stencil{
+  font-family:var(--font-tag);-webkit-text-stroke:0;
+  color:rgba(239,238,231,.13);font-size:clamp(130px,21vw,320px);
+  letter-spacing:0;line-height:0.72;top:0;right:-10px
+}
+.closing .stencil,.dark .stencil{-webkit-text-stroke:0;color:rgba(245,241,0,.19)}
+
+/* --- tag ścienny i znak marki --- */
+.tag-line{
+  font-family:var(--font-tag);font-size:16px;font-weight:400;letter-spacing:0.03em;
+  transform:rotate(-1.6deg);border-bottom:0;padding-bottom:0
+}
+.brand .mark{
+  width:40px;height:40px;font-family:var(--font-tag);font-size:22px;letter-spacing:0
+}
+.brand .name{font-family:var(--font-tag);font-weight:400;font-size:26px;letter-spacing:0.01em}
+
+/* --- nazwy poziomów dowodu: jak ktoś podpisał je na murze --- */
+.rung .lvl{
+  font-family:var(--font-tag);-webkit-text-stroke:0;color:var(--accent);font-size:41px
+}
+.rung[aria-selected="true"] .lvl{color:var(--deep)}
+.rung .rung-name{
+  font-family:var(--font-tag);font-weight:400;font-size:17px;
+  text-transform:none;letter-spacing:0.01em
+}
+.rung[aria-selected="true"] .rung-name{color:#0B0B0B}
+
+/* --- terminal --- */
+.term-name{font-family:var(--font-tag);text-transform:none;letter-spacing:0.02em;font-size:15px}
+
+/* --- wielkie tagi na murze (tło sekcji) --- */
+.wall{
+  position:absolute;z-index:0;pointer-events:none;user-select:none;
+  font-family:var(--font-tag);line-height:0.75;letter-spacing:0;
+  color:rgba(239,238,231,.09)
+}
+.hero .wall{left:-3%;top:4%;font-size:clamp(150px,25vw,400px);transform:rotate(-7deg)}
+.closing .wall{left:-2%;bottom:-6%;font-size:clamp(120px,20vw,300px);transform:rotate(-5deg);color:rgba(245,241,0,.15)}
+@media (max-width:900px){
+  .hero .wall{font-size:clamp(120px,40vw,260px);top:0;left:-6%}
+  .closing .wall{font-size:clamp(100px,34vw,220px);bottom:-4%}
+}
+@media (prefers-reduced-motion:reduce){
+  .wall{transform:none}
+}
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Przejdź do treści</a>
+
+<div class="structure-bar" aria-hidden="true">
+  <span class="ticker-track">Dowód albo nic / Proof or it didn't happen / 4 poziomy dowodu / 120 kart operacyjnych / tryb godmode / Dowód albo nic / Proof or it didn't happen / 4 poziomy dowodu / 120 kart operacyjnych / tryb godmode / Dowód albo nic / Proof or it didn't happen / 4 poziomy dowodu / 120 kart operacyjnych / tryb godmode /</span>
+</div>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top">
+      <span class="mark" aria-hidden="true">OSA</span>
+      <span class="name">OSA Framework</span>
+    </a>
+    <nav class="nav-links" aria-label="Nawigacja główna">
+      <a href="#dowod" data-pl="Dowód" data-en="Proof">Dowód</a>
+      <a href="#mastra" data-pl="Kontra Mastra" data-en="vs Mastra">Kontra Mastra</a>
+      <a href="#start" data-pl="Start" data-en="Quickstart">Start</a>
+      <a href="#szkola" data-pl="Szkoła" data-en="Schools">Szkoła</a>
+      <a href="#cennik" data-pl="Cennik" data-en="Pricing">Cennik</a>
+      <a href="#spolecznosc" data-pl="Społeczność" data-en="Community">Społeczność</a>
+    </nav>
+    <button class="btn btn-sm" id="langToggle" type="button" aria-pressed="false" aria-label="Przełącz język na angielski">
+      <span data-pl="PL / EN" data-en="EN / PL">PL / EN</span>
+    </button>
+    <a class="btn btn-sm btn-primary" href="#start" data-pl="Zainstaluj" data-en="Install">Zainstaluj</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ═══ 01 · HERO ═══ -->
+  <section class="hero" id="top" data-od-id="hero">
+    <span class="stencil" aria-hidden="true">01</span>
+    <span class="wall" aria-hidden="true">OSA</span>
+    <div class="wrap">
+      <div class="blk-head">
+        <span class="blk-id">01 / Hero</span>
+        <p class="blk-note" data-pl="Blok decyzyjny: w 5 sekund pokazać różnicę między „twierdzę” i „udowodniłem”. Obok copy siedzi panel Claimed vs Verified — to jest zapowiedź całego produktu." data-en="Decision block: show the gap between &quot;I claim&quot; and &quot;I proved it&quot; within 5 seconds. The Claimed vs Verified panel sits next to the copy — it previews the whole product.">Blok decyzyjny: w 5 sekund pokazać różnicę między „twierdzę” i „udowodniłem”. Obok copy siedzi panel Claimed vs Verified — to jest zapowiedź całego produktu.</p>
+      </div>
+
+      <div class="hero-grid">
+        <div class="reveal">
+          <span class="tag-line" aria-hidden="true">OSA // DOWÓD ALBO NIC</span>
+          <h1 data-pl="Twój agent mówi, że działa. OSA mówi: udowodnij." data-en="Your agent says it works. OSA says: prove it.">Twój agent mówi, że działa. OSA mówi: udowodnij.</h1>
+          <div class="drips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <p class="lede" data-pl="OSA to kontrakt plus warstwa dowodowa dla agentów. Koniec z „powinno działać”. Cztery poziomy dowodu, 120 kart operacyjnych i tryb godmode, kiedy robota jest ostra." data-en="OSA is a contract plus a proof layer for agents. No more &quot;should work&quot;. Four proof levels, 120 operational cards, and godmode for when the job gets sharp.">OSA to kontrakt plus warstwa dowodowa dla agentów. Koniec z „powinno działać”. Cztery poziomy dowodu, 120 kart operacyjnych i tryb godmode, kiedy robota jest ostra.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#start" data-pl="Zainstaluj OSA" data-en="Install OSA">Zainstaluj OSA</a>
+            <a class="btn" href="#dowod" data-pl="Zobacz drabinę dowodów" data-en="See the proof ladder">Zobacz drabinę dowodów</a>
+          </div>
+        </div>
+
+        <div class="reveal">
+          <div class="verdict" data-od-id="hero-verdict">
+            <span class="tape" aria-hidden="true"></span>
+            <div class="verdict-head">
+              <span data-pl="Claimed — to, co słyszysz" data-en="Claimed — what you hear">Claimed — to, co słyszysz</span>
+              <span data-pl="Verified — to, co zostaje" data-en="Verified — what stays">Verified — to, co zostaje</span>
+            </div>
+            <div class="verdict-body">
+              <div>
+                <ul>
+                  <li><span class="strike" data-pl="„działa”" data-en="&quot;it works&quot;">„działa”</span></li>
+                  <li><span class="strike" data-pl="„build przeszedł”" data-en="&quot;build passed&quot;">„build przeszedł”</span></li>
+                  <li><span class="strike" data-pl="„gotowe”" data-en="&quot;done&quot;">„gotowe”</span></li>
+                  <li><span class="strike" data-pl="„przetestowane”" data-en="&quot;tested&quot;">„przetestowane”</span></li>
+                </ul>
+              </div>
+              <div>
+                <ul>
+                  <li><span class="stamp" data-pl="npm test → exit 0" data-en="npm test → exit 0">npm test → exit 0</span></li>
+                  <li><span class="stamp" data-pl="plik istnieje w repo" data-en="file exists in repo">plik istnieje w repo</span></li>
+                  <li><span class="stamp" data-pl="git diff = lista plików" data-en="git diff = file list">git diff = lista plików</span></li>
+                  <li><span class="stamp" data-pl="czyste środowisko, powtórzone" data-en="clean env, replayed">czyste środowisko, powtórzone</span></li>
+                </ul>
+              </div>
+            </div>
+            <div class="verdict-foot">
+              <span class="mono-label" data-pl="Dowód albo nic" data-en="Proof or it didn't happen">Dowód albo nic</span>
+              <span class="mono-label" data-pl="4 poziomy · 1 kontrakt" data-en="4 levels · 1 contract">4 poziomy · 1 kontrakt</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 02 · DRABINA DOWODÓW ═══ -->
+  <section class="tint" id="dowod" data-od-id="proof-ladder">
+    <span class="stencil" aria-hidden="true">02</span>
+    <div class="wrap">
+      <div class="blk-head">
+        <span class="blk-id">02 / Drabina dowodów</span>
+        <p class="blk-note" data-pl="Serce produktu. Cztery poziomy dowodu — klikasz poziom i widzisz, co dokładnie trzeba wkleić, żeby na niego wejść. Interakcja: przełączanie poziomów." data-en="The heart of the product. Four proof levels — click one and see exactly what you must paste to reach it. Interaction: level switching.">Serce produktu. Cztery poziomy dowodu — klikasz poziom i widzisz, co dokładnie trzeba wkleić, żeby na niego wejść. Interakcja: przełączanie poziomów.</p>
+      </div>
+
+      <h2 class="sec-title" data-pl="Cztery poziomy. Zero wymówek." data-en="Four levels. Zero excuses.">Cztery poziomy. Zero wymówek.</h2>
+      <p class="lede" data-pl="Poziom dowodu rośnie tylko wtedy, gdy pojawia się artefakt. Nigdy za dobre słowo." data-en="The proof level only rises when an artifact appears. Never for a good word.">Poziom dowodu rośnie tylko wtedy, gdy pojawia się artefakt. Nigdy za dobre słowo.</p>
+
+      <div class="ladder" data-od-id="ladder-widget">
+        <div class="ladder-tabs" role="tablist" aria-label="Poziomy dowodu">
+          <div class="ladder-rail" aria-hidden="true"><span id="rail-fill"></span></div>
+          <button class="rung" role="tab" id="rung-1" aria-controls="ladder-panel" aria-selected="true" data-idx="0">
+            <span class="lvl">01</span>
+            <span class="rung-txt">
+              <span class="rung-name">Claimed</span>
+              <span class="rung-desc" data-pl="Powiedziałem, że działa." data-en="I said it works.">Powiedziałem, że działa.</span>
+            </span>
+          </button>
+          <button class="rung" role="tab" id="rung-2" aria-controls="ladder-panel" aria-selected="false" data-idx="1" tabindex="-1">
+            <span class="lvl">02</span>
+            <span class="rung-txt">
+              <span class="rung-name">Artifact present</span>
+              <span class="rung-desc" data-pl="Plik albo artefakt istnieje." data-en="The file or artifact exists.">Plik albo artefakt istnieje.</span>
+            </span>
+          </button>
+          <button class="rung" role="tab" id="rung-3" aria-controls="ladder-panel" aria-selected="false" data-idx="2" tabindex="-1">
+            <span class="lvl">03</span>
+            <span class="rung-txt">
+              <span class="rung-name">Mechanically verified</span>
+              <span class="rung-desc" data-pl="Komenda przeszła, exit 0." data-en="The command passed, exit 0.">Komenda przeszła, exit 0.</span>
+            </span>
+          </button>
+          <button class="rung" role="tab" id="rung-4" aria-controls="ladder-panel" aria-selected="false" data-idx="3" tabindex="-1">
+            <span class="lvl">04</span>
+            <span class="rung-txt">
+              <span class="rung-name">Independently verified</span>
+              <span class="rung-desc" data-pl="Czyste środowisko, powtórzone." data-en="Clean environment, replayed.">Czyste środowisko, powtórzone.</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="panel" id="ladder-panel" role="tabpanel" aria-labelledby="rung-1" tabindex="0">
+          <h3 id="panel-title">Claimed</h3>
+          <p class="meaning" id="panel-meaning"></p>
+          <div class="evidence">
+            <div class="evidence-head" id="panel-evidence-head"></div>
+            <pre id="panel-evidence"></pre>
+          </div>
+          <div class="tag-row">
+            <span class="tag warn" id="panel-risk"></span>
+            <span class="tag ok" id="panel-gain"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 03 · KONTRA MASTRA ═══ -->
+  <section id="mastra" data-od-id="vs-mastra">
+    <span class="stencil" aria-hidden="true">03</span>
+    <div class="wrap">
+      <div class="blk-head">
+        <span class="blk-id">03 / Kontra Mastra</span>
+        <p class="blk-note" data-pl="Porównanie dla devów, którzy znają Mastrę. Komórki bez pewnego źródła są oznaczone jako do potwierdzenia — nie wstawiamy liczb znikąd." data-en="A comparison for devs who know Mastra. Cells without a verified source are flagged as to-confirm — we don't invent numbers.">Porównanie dla devów, którzy znają Mastrę. Komórki bez pewnego źródła są oznaczone jako do potwierdzenia — nie wstawiamy liczb znikąd.</p>
+      </div>
+
+      <h2 class="sec-title" data-pl="Mastra buduje agentów. My budujemy agentów, którym wierzysz." data-en="Mastra builds agents. We build agents you can believe.">Mastra buduje agentów. My budujemy agentów, którym wierzysz.</h2>
+
+      <div class="table-wrap">
+        <table>
+          <caption class="note" style="text-align:left;padding:10px 16px;" data-pl="Kolumna OSA opisuje ten framework. Kolumna Mastra zawiera wyłącznie ogólnodostępne informacje — przed publikacją zweryfikuj każdy wiersz." data-en="The OSA column describes this framework. The Mastra column holds public, unverified information — verify every row before publishing.">Kolumna OSA opisuje ten framework. Kolumna Mastra zawiera wyłącznie ogólnodostępne informacje — przed publikacją zweryfikuj każdy wiersz.</caption>
+          <thead>
+            <tr>
+              <th scope="col" data-pl="Wymiar" data-en="Dimension">Wymiar</th>
+              <th scope="col">OSA</th>
+              <th scope="col">Mastra <span class="chip-todo" data-pl="sprawdź" data-en="verify">sprawdź</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" data-pl="Główny cel" data-en="Main job">Główny cel</th>
+              <td data-pl="Kontrakt inżynierski plus dowód w każdym kroku" data-en="Engineering contract plus proof at every step">Kontrakt inżynierski plus dowód w każdym kroku</td>
+              <td data-pl="Framework do budowania agentów (TypeScript)" data-en="Framework for building agents (TypeScript)">Framework do budowania agentów (TypeScript)</td>
+            </tr>
+            <tr>
+              <th scope="row" data-pl="Warstwa dowodowa" data-en="Proof layer">Warstwa dowodowa</th>
+              <td data-pl="Wbudowana, 4 poziomy, bez awansu bez artefaktu" data-en="Built in, 4 levels, no level-up without an artifact">Wbudowana, 4 poziomy, bez awansu bez artefaktu</td>
+              <td><span class="chip-todo" data-pl="do potwierdzenia" data-en="to confirm">do potwierdzenia</span></td>
+            </tr>
+            <tr>
+              <th scope="row" data-pl="Anti-drift" data-en="Anti-drift">Anti-drift</th>
+              <td data-pl="Twardy kontrakt pilnujący zakresu i plików" data-en="A hard contract guarding scope and files">Twardy kontrakt pilnujący zakresu i plików</td>
+              <td><span class="chip-todo" data-pl="do potwierdzenia" data-en="to confirm">do potwierdzenia</span></td>
+            </tr>
+            <tr>
+              <th scope="row" data-pl="Karty operacyjne" data-en="Operational cards">Karty operacyjne</th>
+              <td data-pl="120 kart z całego IT, wybieranych po jednej na zadanie" data-en="120 cards across IT, one picked per task">120 kart z całego IT, wybieranych po jednej na zadanie</td>
+              <td><span class="chip-todo" data-pl="brak odpowiednika" data-en="no equivalent">brak odpowiednika</span></td>
+            </tr>
+            <tr>
+              <th scope="row" data-pl="Język" data-en="Language">Język</th>
+              <td data-pl="Polski i angielski od pierwszego dnia" data-en="Polish and English from day one">Polski i angielski od pierwszego dnia</td>
+              <td><span class="chip-todo" data-pl="do potwierdzenia" data-en="to confirm">do potwierdzenia</span></td>
+            </tr>
+            <tr>
+              <th scope="row" data-pl="Cena" data-en="Price">Cena</th>
+              <td><span class="chip-todo" data-pl="do ustalenia" data-en="to be set">do ustalenia</span></td>
+              <td><span class="chip-todo" data-pl="sprawdź cennik" data-en="check pricing">sprawdź cennik</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 04 · QUICKSTART + KOD ═══ -->
+  <section class="tint" id="start" data-od-id="quickstart">
+    <span class="stencil" aria-hidden="true">04</span>
+    <div class="wrap">
+      <div class="blk-head">
+        <span class="blk-id">04 / Quickstart i kod</span>
+        <p class="blk-note" data-pl="Trzy komendy do pierwszego dowodu, obok przełączane zakładki z kodem. Snippety pokazują kształt kontraktu — nie udają gotowego pakietu." data-en="Three commands to your first proof, next to switchable code tabs. The snippets show the contract shape — they don't pretend to be a shipped package.">Trzy komendy do pierwszego dowodu, obok przełączane zakładki z kodem. Snippety pokazują kształt kontraktu — nie udają gotowego pakietu.</p>
+      </div>
+
+      <h2 class="sec-title" data-pl="Od zera do dowodu w trzech komendach." data-en="Zero to proof in three commands.">Od zera do dowodu w trzech komendach.</h2>
+
+      <div class="code-grid">
+        <ol class="steps">
+          <li>
+            <span class="mono-label" data-pl="Krok 1 — instalacja" data-en="Step 1 — install">Krok 1 — instalacja</span>
+            <code>npm i -D osa-godmode</code>
+          </li>
+          <li>
+            <span class="mono-label" data-pl="Krok 2 — kontrakt" data-en="Step 2 — contract">Krok 2 — kontrakt</span>
+            <code>npx osa init</code>
+            <p class="note" data-pl="Tworzy plik kontraktu w repo: zakres, zakazy i reguły dowodu." data-en="Creates the contract file in your repo: scope, bans and proof rules.">Tworzy plik kontraktu w repo: zakres, zakazy i reguły dowodu.</p>
+          </li>
+          <li>
+            <span class="mono-label" data-pl="Krok 3 — dowód" data-en="Step 3 — proof">Krok 3 — dowód</span>
+            <code>npx osa verify</code>
+            <p class="note" data-pl="Podnosi poziom dowodu w zadaniu i blokuje „gotowe” bez artefaktu." data-en="Raises the task's proof level and blocks &quot;done&quot; without an artifact.">Podnosi poziom dowodu w zadaniu i blokuje „gotowe” bez artefaktu.</p>
+          </li>
+        </ol>
+
+        <div>
+          <div class="tabs" role="tablist" aria-label="Przykład kodu">
+            <button class="tab" role="tab" id="tab-ts" aria-controls="code-panel" aria-selected="true" data-lang="ts">TypeScript</button>
+            <button class="tab" role="tab" id="tab-py" aria-controls="code-panel" aria-selected="false" tabindex="-1" data-lang="py">Python</button>
+            <button class="tab" role="tab" id="tab-ci" aria-controls="code-panel" aria-selected="false" tabindex="-1" data-lang="ci">CI gate</button>
+          </div>
+          <div class="code" id="code-panel" role="tabpanel" aria-labelledby="tab-ts" tabindex="0">
+            <div class="term-bar" aria-hidden="true">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="term-name">OSA shell</span>
+            </div>
+            <pre id="code-body"></pre>
+            <div class="code-foot">
+              <span data-pl="Szkic API — kształt kontraktu, nie finalny pakiet." data-en="API sketch — the contract shape, not the shipped package.">Szkic API — kształt kontraktu, nie finalny pakiet.</span>
+              <span id="code-file">task.ts</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 05 · TRYB SZKOLNY ═══ -->
+  <section id="szkola" data-od-id="school">
+    <span class="stencil" aria-hidden="true">05</span>
+    <div class="wrap">
+      <div class="blk-head">
+        <span class="blk-id">05 / Tryb szkolny</span>
+        <p class="blk-note" data-pl="Blok dla szkół i kół: trzy konkretne wejścia (warsztat, koło, licencja) plus jedno CTA. Karty mają różną szerokość, żeby nie były trójką identycznych klocków." data-en="The schools block: three concrete entries (workshop, club, licence) plus one CTA. Cards have different widths so they aren't three identical tiles.">Blok dla szkół i kół: trzy konkretne wejścia (warsztat, koło, licencja) plus jedno CTA. Karty mają różną szerokość, żeby nie były trójką identycznych klocków.</p>
+      </div>
+
+      <h2 class="sec-title" data-pl="Szkoła, w której nie da się ściemnić." data-en="A school where you can't bluff.">Szkoła, w której nie da się ściemnić.</h2>
+
+      <div class="cards">
+        <div class="card">
+          <span class="num">01</span>
+          <h3 data-pl="Warsztat 90 minut" data-en="90-minute workshop">Warsztat 90 minut</h3>
+          <p data-pl="Uczniowie dostają repo z błędem, kontrakt i zadanie: podnieś dowód do trzeciego poziomu. Bez wykładu, od razu w kodzie." data-en="Students get a broken repo, a contract and one task: raise the proof to level three. No lecture, straight into code.">Uczniowie dostają repo z błędem, kontrakt i zadanie: podnieś dowód do trzeciego poziomu. Bez wykładu, od razu w kodzie.</p>
+          <ul>
+            <li data-pl="Materiały dla prowadzącego" data-en="Facilitator materials">Materiały dla prowadzącego</li>
+            <li data-pl="Scenariusz 1 lekcji albo 2 spotkań" data-en="Script for 1 lesson or 2 sessions">Scenariusz 1 lekcji albo 2 spotkań</li>
+          </ul>
+        </div>
+        <div class="card">
+          <span class="num">02</span>
+          <h3 data-pl="Koło OSA" data-en="OSA club">Koło OSA</h3>
+          <p data-pl="Cotygodniowe zadanie, ranking poziomów dowodu, opiekun z ramienia szkoły." data-en="A weekly task, a proof-level leaderboard, a teacher as guardian.">Cotygodniowe zadanie, ranking poziomów dowodu, opiekun z ramienia szkoły.</p>
+        </div>
+        <div class="card">
+          <span class="num">03</span>
+          <h3 data-pl="Licencja dla szkoły" data-en="School licence">Licencja dla szkoły</h3>
+          <p data-pl="Pełne karty, scenariusze lekcji i prawo do materiałów na zajęciach." data-en="Full card set, lesson scripts and the right to use materials in class.">Pełne karty, scenariusze lekcji i prawo do materiałów na zajęciach.</p>
+        </div>
+      </div>
+
+      <form class="mini-form" id="school-form" novalidate>
+        <div class="field">
+          <label for="school-mail" data-pl="E-mail szkoły" data-en="School e-mail">E-mail szkoły</label>
+          <input id="school-mail" type="email" name="email" autocomplete="email"
+                 placeholder="sekretariat@twojaszkola.edu.pl"
+                 aria-describedby="school-hint">
+        </div>
+        <button class="btn btn-dark" type="submit" disabled aria-disabled="true"
+                data-pl="Zgłoś szkołę" data-en="Nominate school">Zgłoś szkołę</button>
+        <p class="hint" id="school-hint" data-pl="Formularz nie jest jeszcze podłączony do serwera, dlatego wysyłka jest wyłączona. Widać docelowy układ pola i przycisku. Albo napisz: [adres do podpięcia]." data-en="The form is not wired to a server yet, so submission is off. This shows the intended field and button. Or write to: [address to be wired up].">Formularz nie jest jeszcze podłączony do serwera, dlatego wysyłka jest wyłączona. Widać docelowy układ pola i przycisku. Albo napisz: [adres do podpięcia].</p>
+      </form>
+    </div>
+  </section>

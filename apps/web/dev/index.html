@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OSA Framework — warstwowy runtime dla agentów AI. Nie wierz agentom. Weryfikuj. APR, LLM Layer, God Layer, rejestracja, builder.">
+  <title>OSA Framework — nie wierz agentom. weryfikuj.</title>
+
+  <!-- V3 "HALO" · spatial depth + glassmorphism 2.0 + blueprint annotations · inspired by premium dev-tool marketing (not affiliated) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Bricolage+Grotesque:wght@300..800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+
+  <style>
+    @property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
+    :root {
+      --bg: #06070C;
+      --bg-2: #090B12;
+      --glass: rgba(255,255,255,0.035);
+      --glass-2: rgba(255,255,255,0.06);
+      --line: rgba(255,255,255,0.08);
+      --line-strong: rgba(255,255,255,0.16);
+      --ink: #F4F6FB;
+      --ink-2: #A3ACBE;
+      --ink-3: #5F6878;
+      --ink-4: #3E4554;
+      --amber: #FFB800;
+      --amber-hi: #FFCE4D;
+      --cyan: #5FE8D6;
+      --green: #3FDE8B;
+      --red: #FF5C6A;
+      --violet: #A78BFA;
+      --serif: 'Instrument Serif', Georgia, serif;
+      --grot: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --e-out: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--grot); background: var(--bg); color: var(--ink);
+      font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    ::selection { background: var(--amber); color: #06070C; }
+    a { color: inherit; text-decoration: none; }
+    :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 2px; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+    .mono { font-family: var(--mono); }
+
+    /* ══════ progress bar ══════ */
+    #progress { position: fixed; top: 0; left: 0; height: 2px; width: 0%; z-index: 100;
+      background: linear-gradient(90deg, var(--amber), var(--cyan)); box-shadow: 0 0 12px rgba(255,184,0,0.6); }
+
+    /* ══════ aurora atmosphere ══════ */
+    .aurora { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    .blob { position: absolute; border-radius: 50%; filter: blur(110px); opacity: 0.55; will-change: transform; }
+    .blob-1 { width: 62vw; height: 62vw; left: -18vw; top: -24vw; background: radial-gradient(circle, rgba(255,184,0,0.16), transparent 65%); animation: drift1 26s ease-in-out infinite alternate; }
+    .blob-2 { width: 50vw; height: 50vw; right: -16vw; top: -8vw; background: radial-gradient(circle, rgba(95,232,214,0.11), transparent 65%); animation: drift2 32s ease-in-out infinite alternate; }
+    .blob-3 { width: 70vw; height: 46vw; left: 8vw; bottom: -30vw; background: radial-gradient(circle, rgba(167,139,250,0.10), transparent 65%); animation: drift3 38s ease-in-out infinite alternate; }
+    @keyframes drift1 { to { transform: translate(9vw, 7vw) scale(1.12); } }
+    @keyframes drift2 { to { transform: translate(-7vw, 10vw) scale(0.92); } }
+    @keyframes drift3 { to { transform: translate(-10vw, -6vw) scale(1.08); } }
+    .grain { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.05; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"); }
+    main, header, footer { position: relative; z-index: 2; }
+
+    /* ══════ blueprint helpers ══════ */
+    .fig { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-4); }
+    .fig b { color: var(--amber); font-weight: 500; }
+    .corner { position: relative; }
+    .corner::before, .corner::after { content: ''; position: absolute; width: 14px; height: 14px; pointer-events: none; }
+    .corner::before { top: 0; left: 0; border-top: 1px solid var(--line-strong); border-left: 1px solid var(--line-strong); }
+    .corner::after { bottom: 0; right: 0; border-bottom: 1px solid var(--line-strong); border-right: 1px solid var(--line-strong); }
+    .blueprint-bg {
+      background-image:
+        linear-gradient(rgba(255,255,255,0.032) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.032) 1px, transparent 1px);
+      background-size: 52px 52px;
+      -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 30%, transparent 75%);
+      mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 30%, transparent 75%);
+    }
+
+    /* ══════ nav (glass pill) ══════ */
+    .topnav { position: sticky; top: 18px; z-index: 50; margin-top: 18px; }
+    .navpill { display: flex; align-items: center; justify-content: space-between; height: 58px; padding: 0 10px 0 22px;
+      border-radius: 16px; border: 1px solid var(--line-strong);
+      background: rgba(10,12,20,0.55); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 18px 50px -20px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06); }
+    .brand { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.08em; }
+    nav { display: flex; align-items: center; gap: 28px; }
+    nav .nlink { font-size: 13.5px; font-weight: 500; color: var(--ink-2); transition: color 140ms ease; }
+    nav .nlink:hover { color: var(--ink); }
+
+    /* ══════ buttons ══════ */
+    .btn { position: relative; display: inline-flex; align-items: center; gap: 9px; font: 500 14px/1 var(--grot);
+      letter-spacing: 0.01em; cursor: pointer; padding: 13px 22px; border-radius: 10px; border: 1px solid transparent;
+      transition: transform 140ms var(--e-out), background 140ms ease, border-color 140ms ease, box-shadow 140ms ease; }
+    .btn:active { transform: translateY(1px) scale(0.99); }
+    .btn-primary { background: var(--amber); color: #0B0A05; box-shadow: 0 0 0 1px rgba(255,184,0,0.35), 0 12px 38px -10px rgba(255,184,0,0.55); }
+    .btn-primary:hover { background: var(--amber-hi); transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(255,184,0,0.5), 0 18px 48px -10px rgba(255,184,0,0.6); }
+    .btn-glass { background: var(--glass); border-color: var(--line-strong); color: var(--ink); backdrop-filter: blur(8px); }
+    .btn-glass:hover { background: var(--glass-2); border-color: rgba(255,255,255,0.28); transform: translateY(-1px); }
+    .btn-link { color: var(--cyan); font-weight: 500; padding: 13px 2px; }
+    .btn-link .arr { display: inline-block; transition: transform 160ms var(--e-out); }
+    .btn-link:hover .arr { transform: translateX(4px); }
+    .btn-sm { padding: 10px 16px; font-size: 13px; border-radius: 9px; }
+
+    /* ══════ reveal ══════ */
+    .rv { opacity: 0; transform: translateY(28px); }
+    .rv.in { opacity: 1; transform: none; transition: opacity 750ms var(--e-out), transform 750ms var(--e-out); }
+    .rv.in.d1 { transition-delay: 100ms; } .rv.in.d2 { transition-delay: 200ms; } .rv.in.d3 { transition-delay: 300ms; }
+
+    /* ══════ hero ══════ */
+    .hero { padding: 96px 0 60px; position: relative; }
+    .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+    .spotlight { position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      background: radial-gradient(560px circle at var(--mx, 70%) var(--my, 20%), rgba(255,184,0,0.055), transparent 65%); }
+    .pill { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 11px;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); border: 1px solid var(--line-strong);
+      border-radius: 100px; padding: 8px 16px; margin-bottom: 30px; background: var(--glass); backdrop-filter: blur(6px); }
+    .pill b { color: var(--green); font-weight: 500; }
+    .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: breathe 2.6s ease-in-out infinite; }
+    @keyframes breathe { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .hero h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(54px, 6.8vw, 100px);
+      line-height: 0.97; letter-spacing: -0.015em; margin-bottom: 28px; }
+    .hero h1 .it { font-style: italic; color: var(--amber); }
+    .hero .lede { font-size: 18px; line-height: 1.7; color: var(--ink-2); max-width: 54ch; margin-bottom: 38px; }
+    .hero .lede b { color: var(--ink); font-weight: 600; }
+    .hero-actions { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .hero-foot { margin-top: 44px; display: flex; gap: 26px; font-family: var(--mono); font-size: 11px;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); flex-wrap: wrap; }
+    .hero-foot span::before { content: '—'; margin-right: 8px; color: var(--amber); }
+
+    /* ══════ floating 3D layer stack ══════ */
+    .stage { position: relative; height: 560px; perspective: 1600px; z-index: 1; }
+    .stack3d { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateX(52deg) rotateZ(-38deg) translateZ(-40px); }
+    .lcard { position: absolute; left: 50%; top: 50%; width: 340px; height: 210px; margin: -105px 0 0 -170px;
+      border-radius: 16px; padding: 20px 22px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.075), rgba(255,255,255,0.02));
+      border: 1px solid var(--line-strong);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      box-shadow: 0 30px 60px -30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.09);
+      transform-style: preserve-3d;
+      animation: float 7s ease-in-out infinite;
+      transition: box-shadow 200ms ease; }
+    .lcard:hover { box-shadow: 0 40px 80px -30px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,184,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12); }
+    .lcard .lid { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; color: var(--amber); }
+    .lcard h4 { font-family: var(--grot); font-size: 17px; font-weight: 600; margin: 8px 0 6px; letter-spacing: -0.01em; }
+    .lcard p { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+    .lcard .ldot { position: absolute; top: 18px; right: 18px; width: 8px; height: 8px; border-radius: 50%; }
+    .lcard::after { content: ''; position: absolute; inset: 0; border-radius: 16px;
+      background: linear-gradient(120deg, rgba(255,255,255,0.05), transparent 30%); pointer-events: none; }
+    .l0 { transform: translate3d(0, 0, 0px); }
+    .l1 { transform: translate3d(56px, 44px, 84px); animation-delay: .5s; }
+    .l2 { transform: translate3d(112px, 88px, 168px); animation-delay: 1s; }
+    .l3 { transform: translate3d(168px, 132px, 252px); animation-delay: 1.5s; }
+    .l4 { transform: translate3d(224px, 176px, 336px); animation-delay: 2s; }
+    @keyframes float { 0%,100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+    .stage .axis { position: absolute; font-family: var(--mono); font-size: 10px; color: var(--ink-4); letter-spacing: 0.14em; }
+    .stage .fig-tag { position: absolute; top: 6px; left: 0; }
+    .stage .fig-xy { position: absolute; bottom: 4px; right: 0; text-align: right; line-height: 1.8; }
+    .stage .tick { position: absolute; background: var(--line-strong); }
+    .stage .tick.h { width: 34px; height: 1px; } .stage .tick.v { width: 1px; height: 34px; }
+
+    /* ══════ marquee ══════ */
+    .marquee { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 20px 0; overflow: hidden; background: rgba(255,255,255,0.014); position: relative; }
+    .marquee::before, .marquee::after { content: ''; position: absolute; top: 0; bottom: 0; width: 180px; z-index: 2; }
+    .marquee::before { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+    .marquee::after { right: 0; background: linear-gradient(270deg, var(--bg), transparent); }
+    .mq-track { display: flex; gap: 60px; width: max-content; animation: mq 34s linear infinite; }
+    .mq-item { display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+    .mq-item i { width: 6px; height: 6px; border-radius: 50%; }
+    @keyframes mq { to { transform: translateX(-50%); } }
+
+    /* ══════ sections ══════ */
+    section.blk { padding: 112px 0; position: relative; }
+    .blk-head { display: grid; grid-template-columns: 1fr auto; gap: 44px; align-items: end; margin-bottom: 60px; }
+    .kicker { display: flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 20px; }
+    .kicker::before { content: ''; width: 28px; height: 1px; background: var(--amber); }
+    .blk-head h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(36px, 4.4vw, 60px); line-height: 1.03; letter-spacing: -0.01em; }
+    .blk-head h2 .it { font-style: italic; color: var(--amber); }
+    .blk-head p { color: var(--ink-2); font-size: 16px; max-width: 42ch; line-height: 1.7; }
+
+    /* ══════ layers (blueprint rows) ══════ */
+    .stack { border-top: 1px solid var(--line); }
+    .layer { display: grid; grid-template-columns: 150px 1fr auto; gap: 40px; padding: 38px 0; border-bottom: 1px solid var(--line); position: relative; transition: background 160ms ease, padding 160ms var(--e-out); }
+    .layer::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: linear-gradient(180deg, var(--amber), rgba(255,184,0,0.2)); transform: scaleY(0); transform-origin: top; transition: transform 280ms var(--e-out); }
+    .layer:hover { background: rgba(255,255,255,0.02); padding-left: 20px; }
+    .layer:hover::after { transform: scaleY(1); }
+    .layer-id { font-family: var(--mono); font-size: 13px; letter-spacing: 0.1em; color: var(--amber); padding-top: 5px; }
+    .layer-id small { display: block; color: var(--ink-4); font-size: 10px; margin-top: 7px; letter-spacing: 0.16em; text-transform: uppercase; }
+    .layer h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 10px; }
+    .layer p { color: var(--ink-2); font-size: 15px; max-width: 80ch; }
+    .layer .flow { margin-top: 14px; font-family: var(--mono); font-size: 11px; color: var(--ink-4); letter-spacing: 0.02em; }
+    .layer .flow b { color: var(--ink-3); font-weight: 500; }
+    .tag { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 6px 12px; border-radius: 5px; white-space: nowrap; align-self: start; margin-top: 5px; }
+    .tag-rec { color: var(--cyan); background: rgba(95,232,214,0.09); border: 1px solid rgba(95,232,214,0.3); }
+    .tag-prop { color: var(--ink-3); background: var(--glass); border: 1px solid var(--line-strong); }
+    .tag-gate { color: var(--amber); background: rgba(255,184,0,0.08); border: 1px solid rgba(255,184,0,0.32); }
+    .tag-build { color: var(--violet); background: rgba(167,139,250,0.09); border: 1px solid rgba(167,139,250,0.3); }
+
+    /* ══════ bento proof ══════ */
+    .bento { display: grid; grid-template-columns: repeat(6, 1fr); grid-auto-rows: minmax(120px, auto); gap: 16px; }
+    .bcell { position: relative; border-radius: 18px; padding: 26px;
+      background: linear-gradient(180deg, var(--glass), rgba(255,255,255,0.012));
+      border: 1px solid var(--line-strong);
+      box-shadow: 0 24px 60px -34px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.05);
+      overflow: hidden; }
+    .bcell .blabel { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 14px; }
+    .b-term { grid-column: span 4; grid-row: span 2; }
+    .b-merkle { grid-column: span 2; grid-row: span 2; display: flex; flex-direction: column; }
+    .b-v1 { grid-column: span 2; } .b-v2 { grid-column: span 2; } .b-v3 { grid-column: span 2; }
+    .b-auth { grid-column: span 3; } .b-tamper { grid-column: span 3; }
+
+    .vvalue { font-family: var(--mono); font-size: clamp(18px, 1.8vw, 24px); font-weight: 700; letter-spacing: -0.01em; }
+    .vnote { font-family: var(--mono); font-size: 11px; color: var(--ink-4); margin-top: 8px; }
+    .b-v1 .vvalue { color: var(--amber); } .b-v2 .vvalue { color: var(--cyan); } .b-v3 .vvalue { color: var(--green); }
+
+    .term-bar { display: flex; align-items: center; gap: 8px; padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .term-dot { width: 11px; height: 11px; border-radius: 50%; }
+    .term-dot:nth-child(1) { background: #FF5F57; } .term-dot:nth-child(2) { background: #FEBC2E; } .term-dot:nth-child(3) { background: #28C840; }
+    .term-title { margin-left: 10px; font-family: var(--mono); font-size: 11px; color: var(--ink-4); letter-spacing: 0.06em; }
+    .term-badge { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--green); border: 1px solid rgba(63,222,139,0.3); background: rgba(63,222,139,0.08); padding: 3px 10px; border-radius: 100px; letter-spacing: 0.1em; }
+    .term-body { font-family: var(--mono); font-size: 13px; line-height: 2.0; min-height: 240px; }
+    .tl .ln { display: block; white-space: pre-wrap; word-break: break-all; }
+    .tl .c { color: var(--ink-4); } .tl .p { color: var(--cyan); } .tl .o { color: var(--amber); } .tl .g { color: var(--green); }
+    .caret { display: inline-block; width: 8px; height: 16px; background: var(--amber); vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .merkle svg { width: 100%; height: auto; flex: 1; }
+    .merkle .node { fill: rgba(255,255,255,0.05); stroke: var(--line-strong); }
+    .merkle .node-root { fill: rgba(255,184,0,0.12); stroke: var(--amber); }
+    .merkle .edge { stroke: var(--line-strong); stroke-width: 1.2; }
+    .merkle .lbl { fill: var(--ink-3); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; }
+    .merkle .lbl-root { fill: var(--amber); font-weight: 700; }
+    .merkle .chip { fill: rgba(255,255,255,0.03); stroke: var(--line); }
+
+    .ladder { display: flex; flex-direction: column; gap: 0; margin-top: 4px; }
+    .ladder .step { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-bottom: 1px dashed var(--line); font-family: var(--mono); font-size: 12px; }
+    .ladder .step:last-child { border-bottom: none; }
+    .ladder .n { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+    .ladder .s0 .n { color: var(--ink-3); border: 1px solid var(--line-strong); }
+    .ladder .s1 .n { color: var(--cyan); border: 1px solid rgba(95,232,214,0.4); background: rgba(95,232,214,0.07); }
+    .ladder .s2 .n { color: var(--amber); border: 1px solid rgba(255,184,0,0.4); background: rgba(255,184,0,0.07); }
+    .ladder .s3 .n { color: var(--green); border: 1px solid rgba(63,222,139,0.4); background: rgba(63,222,139,0.07); }
+    .ladder .step span { color: var(--ink-2); }
+    .ladder .step em { font-style: normal; color: var(--ink-4); font-size: 10.5px; margin-left: auto; text-align: right; }
+
+    .tamper-list { list-style: none; }
+    .tamper-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 11px 0; border-bottom: 1px dashed var(--line); font-size: 14px; color: var(--ink-2); }
+    .tamper-list li:last-child { border-bottom: none; }
+    .tamper-list .res { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .res-fail { color: var(--red); } .res-ok { color: var(--green); }
+
+    /* ══════ doctrine + honest ══════ */
+    .doctrine { border-left: 2px solid var(--amber); padding: 8px 0 8px 28px; margin-top: 72px; max-width: 720px; }
+    .doctrine q { display: block; font-family: var(--serif); font-style: italic; font-size: clamp(24px, 2.6vw, 32px); line-height: 1.35; color: var(--ink); }
+    .doctrine .src { display: block; margin-top: 16px; font-family: var(--mono); font-size: 11px; color: var(--ink-4); letter-spacing: 0.12em; text-transform: uppercase; }
+    .honest { margin-top: 44px; display: flex; gap: 16px; align-items: flex-start; max-width: 90ch; color: var(--ink-3); font-size: 13.5px; line-height: 1.75; }
+    .honest .warn { flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: var(--amber); background: rgba(255,184,0,0.08); border: 1px solid rgba(255,184,0,0.25); }
+
+    /* ══════ tiers ══════ */
+    .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+    .tier { position: relative; border-radius: 20px; padding: 32px 30px; display: flex; flex-direction: column;
+      background: linear-gradient(180deg, var(--glass), rgba(255,255,255,0.01));
+      border: 1px solid var(--line-strong);
+      box-shadow: 0 30px 70px -40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05); }
+    .tier.featured { border-color: transparent; }
+    .tier.featured::before { content: ''; position: absolute; inset: -1px; border-radius: 21px; padding: 1.5px;
+      background: conic-gradient(from var(--ang), transparent 0deg, rgba(255,184,0,0.9) 40deg, rgba(255,206,77,0.25) 80deg, transparent 120deg);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      animation: orbit 5.5s linear infinite; pointer-events: none; }
+    @keyframes orbit { to { --ang: 360deg; } }
+    .tier.featured::after { content: ''; position: absolute; inset: 0; border-radius: 20px; pointer-events: none;
+      background: radial-gradient(420px 200px at 50% -10%, rgba(255,184,0,0.09), transparent 70%); }
+    .tier-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; position: relative; z-index: 1; }
+    .tier-name { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-2); }
+    .tier-scope { font-size: 14.5px; color: var(--ink-2); margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--line); line-height: 1.65; position: relative; z-index: 1; }
+    .tier ul { list-style: none; margin-bottom: 28px; flex: 1; position: relative; z-index: 1; }
+    .tier ul li { display: flex; gap: 12px; align-items: baseline; padding: 8px 0; font-size: 14px; color: var(--ink-2); }
+    .tier ul li::before { content: '—'; color: var(--amber); font-family: var(--mono); flex-shrink: 0; }
+    .tier .btn { width: 100%; justify-content: center; position: relative; z-index: 1; }
+    .price-note { font-family: var(--mono); font-size: 10.5px; color: var(--ink-4); margin-top: 15px; letter-spacing: 0.08em; text-align: center; }
+
+    /* ══════ closing ══════ */
+    .closing { position: relative; overflow: hidden; text-align: center; padding: 150px 0; border-top: 1px solid var(--line);
+      background: radial-gradient(900px 500px at 50% 120%, rgba(255,184,0,0.13), transparent 65%), var(--bg); }
+    .closing h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(42px, 5.4vw, 84px); line-height: 1.0; letter-spacing: -0.015em; margin-bottom: 26px; }
+    .closing h2 .it { font-style: italic; color: var(--amber); }
+    .closing p { color: var(--ink-2); max-width: 56ch; margin: 0 auto 36px; font-size: 17px; }
+    .cmdbox { display: inline-block; font-family: var(--mono); font-size: 13px; color: var(--amber); background: rgba(255,184,0,0.06); border: 1px solid rgba(255,184,0,0.28); padding: 14px 22px; border-radius: 12px; margin-bottom: 36px; }
+    .cmdbox b { color: var(--ink); font-weight: 500; }
+
+    /* ══════ footer ══════ */
+    footer { border-top: 1px solid var(--line); padding: 42px 0; }
+    .foot-row { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .foot-row .mono { font-size: 11px; letter-spacing: 0.12em; color: var(--ink-4); text-transform: uppercase; }
+    .foot-links { display: flex; gap: 28px; }
+    .foot-links a { color: var(--ink-3); font-size: 13px; }
+    .foot-links a:hover { color: var(--ink); }
+    .attrib { margin-top: 18px; font-size: 11px; color: var(--ink-4); }
+
+    /* ══════ responsive ══════ */
+    @media (max-width: 1060px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .stage { height: 480px; margin-top: 20px; }
+      .stack3d { transform: rotateX(52deg) rotateZ(-38deg) scale(0.85); }
+      .bento { grid-template-columns: repeat(2, 1fr); }
+      .b-term { grid-column: span 2; } .b-merkle { grid-column: span 2; }
+      .b-v1, .b-v2, .b-v3, .b-auth, .b-tamper { grid-column: span 1; }
+      .b-auth, .b-tamper { grid-column: span 2; }
+    }
+    @media (max-width: 720px) {
+      .wrap { padding: 0 22px; }
+      .hero { padding: 64px 0 40px; }
+      section.blk { padding: 76px 0; }
+      .blk-head { grid-template-columns: 1fr; align-items: start; }
+      .layer { grid-template-columns: 1fr; gap: 12px; padding: 28px 0; }
+      .layer .tag { justify-self: start; }
+      .tiers { grid-template-columns: 1fr; }
+      .bento { grid-template-columns: 1fr; }
+      .b-term, .b-merkle, .b-auth, .b-tamper { grid-column: span 1; }
+      nav .nlink { display: none; }
+      .hero-actions .btn { width: 100%; justify-content: center; }
+      .stack3d { transform: rotateX(52deg) rotateZ(-38deg) scale(0.62); }
+      .stage { height: 380px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+      .rv { opacity: 1; transform: none; }
+      .blob { animation: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="progress" aria-hidden="true"></div>
+<div class="aurora" aria-hidden="true">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ══════ NAV ══════ -->
+<header class="topnav" data-od-id="topnav">
+  <div class="wrap">
+    <div class="navpill">
+      <span class="brand">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="20" height="20" rx="5" stroke="#FFB800" stroke-width="1.6"></rect>
+          <path d="M6 8h10M6 12h10M6 16h6" stroke="#F4F6FB" stroke-width="1.6" stroke-linecap="round"></path>
+        </svg>
+        OSA·FRAMEWORK
+      </span>
+      <nav>
+        <a class="nlink" href="#warstwy">Warstwy</a>
+        <a class="nlink" href="#dowod">Dowód</a>
+        <a class="nlink" href="#wdrozenie">Wdrożenie</a>
+        <a class="nlink" href="#docs">Docs</a>
+        <a href="#start" class="btn btn-glass btn-sm">Uruchom demo</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ══════ HERO ══════ -->
+  <section class="hero" data-od-id="hero">
+    <div class="spotlight" aria-hidden="true"></div>
+    <div class="wrap hero-grid">
+      <div>
+        <span class="pill rv"><span class="dot" aria-hidden="true"></span> runtime <b>live</b> · v0.x · w budowie</span>
+        <h1 class="rv d1">Nie wierz<br>agentom.<br><span class="it">Weryfikuj.</span></h1>
+        <p class="lede rv d2">
+          Stos warstw, który zamienia robotę AI w artefakt z dowodem: runtime wykonania z łańcuchem hashy,
+          LLM jako <b>warstwa propozycji</b>, God Layer nadzoru, rejestracja stanu i builder.
+          Model proponuje. Runtime egzekwuje. Dowód zostaje.
+        </p>
+        <div class="hero-actions rv d3">
+          <a href="#start" class="btn btn-primary">Uruchom fixture demo</a>
+          <a href="#warstwy" class="btn btn-link">Zobacz architekturę <span class="arr">→</span></a>
+        </div>
+        <div class="hero-foot rv d3">
+          <span>offline</span><span>bez klucza API</span><span>deterministyczne</span>
+        </div>
+      </div>
+
+      <div class="stage rv d2" data-od-id="hero-stack">
+        <span class="fig fig-tag"><b>FIG. 01</b> — LAYER STACK · ISO VIEW</span>
+        <span class="tick h" style="top:36px; left:0"></span><span class="tick v" style="top:6px; left:30px"></span>
+        <span class="fig fig-xy">Z+336 · ROT −38°<br>SCALE 1:1</span>
+        <span class="tick h" style="bottom:36px; right:0"></span><span class="tick v" style="bottom:6px; right:30px"></span>
+        <div class="stack3d" aria-label="Trójwymiarowy model stosu pięciu warstw frameworka: builder na szczycie, pod nim rejestracja, God Layer, warstwa propozycji LLM i runtime APR u podstawy.">
+          <div class="lcard l4" style="--c: var(--violet)">
+            <span class="ldot" style="background: var(--violet); box-shadow: 0 0 10px var(--violet)" aria-hidden="true"></span>
+            <span class="lid">L04 · OUTPUT</span>
+            <h4>Builder</h4>
+            <p>Produkcja artefaktów: strony, skille, workflow, integracje — pod kontraktem wykonania.</p>
+          </div>
+          <div class="lcard l3">
+            <span class="ldot" style="background: var(--ink-3)" aria-hidden="true"></span>
+            <span class="lid">L03 · STATE</span>
+            <h4>Rejestracja</h4>
+            <p>Rejestr projektów, locki kontekstu, stan repo, następny konkretny krok.</p>
+          </div>
+          <div class="lcard l2">
+            <span class="ldot" style="background: var(--amber); box-shadow: 0 0 10px var(--amber)" aria-hidden="true"></span>
+            <span class="lid">L02 · OVERSIGHT</span>
+            <h4>God Layer</h4>
+            <p>Bramki zatwierdzeń. Locki researchu i decyzji. Push i deploy tylko z jawnej zgody.</p>
+          </div>
+          <div class="lcard l1">
+            <span class="ldot" style="background: var(--ink-3)" aria-hidden="true"></span>
+            <span class="lid">L01 · PROPOSAL</span>
+            <h4>LLM Layer</h4>
+            <p>Model zwraca wyłącznie propozycję artefaktu. Nigdy nie rozstrzyga o ważności.</p>
+          </div>
+          <div class="lcard l0">
+            <span class="ldot" style="background: var(--cyan); box-shadow: 0 0 10px var(--cyan)" aria-hidden="true"></span>
+            <span class="lid">L00 · EXECUTION</span>
+            <h4>APR Runtime</h4>
+            <p>Manifest → kontrakt → testy → Proof Bundle → niezależny weryfikator.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ MARQUEE ══════ -->
+  <div class="marquee" data-od-id="marquee" aria-hidden="true">
+    <div class="mq-track">
+      <span class="mq-item"><i style="background:var(--cyan)"></i> hash łańcucha zdarzeń</span>
+      <span class="mq-item"><i style="background:var(--amber)"></i> merkle root</span>
+      <span class="mq-item"><i style="background:var(--green)"></i> deterministyczne testy akceptacyjne</span>
+      <span class="mq-item"><i style="background:var(--violet)"></i> proof bundle</span>
+      <span class="mq-item"><i style="background:var(--red)"></i> tamper → FAILED</span>
+      <span class="mq-item"><i style="background:var(--cyan)"></i> append-only evidence</span>
+      <span class="mq-item"><i style="background:var(--amber)"></i> niezależny weryfikator</span>
+      <span class="mq-item"><i style="background:var(--green)"></i> brama god layer</span>
+      <span class="mq-item"><i style="background:var(--cyan)"></i> hash łańcucha zdarzeń</span>
+      <span class="mq-item"><i style="background:var(--amber)"></i> merkle root</span>
+      <span class="mq-item"><i style="background:var(--green)"></i> deterministyczne testy akceptacyjne</span>
+      <span class="mq-item"><i style="background:var(--violet)"></i> proof bundle</span>
+      <span class="mq-item"><i style="background:var(--red)"></i> tamper → FAILED</span>
+      <span class="mq-item"><i style="background:var(--cyan)"></i> append-only evidence</span>
+      <span class="mq-item"><i style="background:var(--amber)"></i> niezależny weryfikator</span>
+      <span class="mq-item"><i style="background:var(--green)"></i> brama god layer</span>
+    </div>
+  </div>
+
+  <!-- ══════ WARSTWY ══════ -->
+  <section class="blk blueprint-bg" id="warstwy" data-od-id="warstwy">
+    <div class="wrap">
+      <div class="blk-head">
+        <div class="rv">
+          <span class="kicker">FIG. 02 — stos warstw</span>
+          <h2>Pięć warstw.<br><span class="it">Jeden</span> kontrakt wykonania.</h2>
+        </div>
+        <p class="rv d1">Każda warstwa ma jedno zadanie i twardą granicę odpowiedzialności. Model proponuje, runtime egzekwuje, God Layer zatwierdza, rejestr pamięta, builder produkuje.</p>
+      </div>
+
+      <div class="stack">
+        <article class="layer rv" data-od-id="layer-apr">
+          <div class="layer-id">L00<small>execution</small></div>
+          <div>
+            <h3>APR — runtime wykonania</h3>
+            <p>Przyjmuje manifest misji, wymusza kontrakt, uruchamia deterministyczne testy akceptacyjne i zapisuje Proof Bundle. Nie ufa logowi aktywności — liczy hashe i łańcuch zdarzeń.</p>
+            <p class="flow"><b>manifest</b> → walidacja → propozycja → egzekwowanie → materializacja → testy → <b>proof bundle</b> → weryfikator</p>
+          </div>
+          <span class="tag tag-rec">recording</span>
+        </article>
+
+        <article class="layer rv" data-od-id="layer-llm">
+          <div class="layer-id">L01<small>proposal</small></div>
+          <div>
+            <h3>LLM Layer — warstwa propozycji</h3>
+            <p>Model zwraca wyłącznie propozycję tekstu artefaktu. Runtime — nie model — decyduje o ścieżkach, typach, liczbie plików i limitach. Model nigdy nie rozstrzyga o ważności kryptograficznej.</p>
+          </div>
+          <span class="tag tag-prop">proposal only</span>
+        </article>
+
+        <article class="layer rv" data-od-id="layer-god">
+          <div class="layer-id">L02<small>oversight</small></div>
+          <div>
+            <h3>God Layer — nadzór i bramki</h3>
+            <p>Zatwierdza plan, zanim cokolwiek się zmieni. Trzyma locki kontekstu, researchu i decyzji oraz rozstrzyga o push i deploy. Nic nie idzie dalej bez jawnej zgody.</p>
+          </div>
+          <span class="tag tag-gate">gated</span>
+        </article>
+
+        <article class="layer rv" data-od-id="layer-registry">
+          <div class="layer-id">L03<small>state</small></div>
+          <div>
+            <h3>Rejestracja — stan, który nie znika</h3>
+            <p>Rejestr projektów, locki kontekstu, stan repo i następny konkretny krok. Sesja może zniknąć — stan i decyzje zostają zapisane.</p>
+          </div>
+          <span class="tag tag-prop">tracked</span>
+        </article>
+
+        <article class="layer rv" data-od-id="layer-builder">
+          <div class="layer-id">L04<small>output</small></div>
+          <div>
+            <h3>Builder — produkcja artefaktów</h3>
+            <p>Buduje strony, skille, workflow i integracje w oparciu o kontrakt wykonania. Reguła warsztatu jest jedna: nie zgaduj — sprawdź albo zapytaj.</p>
+          </div>
+          <span class="tag tag-build">building</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ DOWÓD (bento) ══════ -->
+  <section class="blk" id="dowod" data-od-id="dowod">
+    <div class="wrap">
+      <div class="blk-head">
+        <div class="rv">
+          <span class="kicker">FIG. 03 — dowód, nie deklaracja</span>
+          <h2>Uruchom.<br><span class="it">Powtórz.</span> Sprawdź.</h2>
+        </div>
+        <p class="rv d1">Weryfikator przelicza wszystko od zera i zwraca jeden z trzech stanów. To nie marketing — to wynik uruchomienia.</p>
+      </div>
+
+      <div class="bento">
+        <div class="bcell b-term corner rv" data-od-id="bento-terminal">
+          <div class="term-bar">
+            <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+            <span class="term-title">apr · proof runtime — zsh</span>
+            <span class="term-badge">nominal</span>
+          </div>
+          <div class="term-body tl" id="term" aria-label="Demonstracja komend APR: walidacja misji, wykonanie na providerze fixture, weryfikacja dowodu. Werdykty: PASSED, LOCAL_VERIFIED, UNANCHORED.">
+            <noscript>
+              <span class="ln c"># walidacja manifestu misji</span>
+              <span class="ln"><span class="p">apr</span> mission validate examples/build-week-mission.json</span>
+              <span class="ln c"># wykonanie: provider fixture, offline, bez klucza</span>
+              <span class="ln"><span class="p">apr</span> run examples/build-week-mission.json --provider fixture</span>
+              <span class="ln c"># niezależna weryfikacja dowodu</span>
+              <span class="ln"><span class="p">apr</span> verify .runs/build-week-demo/proof-bundle.json</span>
+              <span class="ln">&nbsp;</span>
+              <span class="ln o">Mission: PASSED</span>
+              <span class="ln o">Proof:&nbsp;&nbsp; LOCAL_VERIFIED</span>
+              <span class="ln g">Anchor:&nbsp; UNANCHORED</span>
+            </noscript>
+          </div>
+        </div>
+
+        <div class="bcell b-merkle corner rv d1" data-od-id="bento-merkle">
+          <div class="blabel">Anatomia dowodu — merkle</div>
+          <div class="merkle" role="img" aria-label="Diagram drzewa Merkle: zdarzenia e0–e3 hashowane w węzły, z których powstaje Merkle root wchodzący do hasha całego bundla. Podmiana jednego bitu daje verify FAILED.">
+            <svg viewBox="0 0 560 340" fill="none" aria-hidden="true">
+              <line class="edge" x1="140" y1="210" x2="140" y2="240"></line>
+              <line class="edge" x1="140" y1="270" x2="140" y2="240"></line>
+              <line class="edge" x1="420" y1="210" x2="420" y2="240"></line>
+              <line class="edge" x1="420" y1="270" x2="420" y2="240"></line>
+              <line class="edge" x1="140" y1="240" x2="252" y2="70"></line>
+              <line class="edge" x1="420" y1="240" x2="308" y2="70"></line>
+              <rect class="node node-root" x="196" y="36" width="168" height="34" rx="6"></rect>
+              <text class="lbl lbl-root" x="280" y="57" text-anchor="middle">MERKLE ROOT</text>
+              <rect class="node" x="80" y="240" width="120" height="30" rx="6"></rect>
+              <text class="lbl" x="140" y="259" text-anchor="middle">h(e0·e1)</text>
+              <rect class="node" x="360" y="240" width="120" height="30" rx="6"></rect>
+              <text class="lbl" x="420" y="259" text-anchor="middle">h(e2·e3)</text>
+              <rect class="chip" x="80" y="180" width="120" height="30" rx="6"></rect>
+              <text class="lbl" x="140" y="199" text-anchor="middle">e0 · run start</text>
+              <rect class="chip" x="80" y="270" width="120" height="30" rx="6"></rect>
+              <text class="lbl" x="140" y="289" text-anchor="middle">e1 · artifact</text>
+              <rect class="chip" x="360" y="180" width="120" height="30" rx="6"></rect>
+              <text class="lbl" x="420" y="199" text-anchor="middle">e2 · checks</text>
+              <rect class="chip" x="360" y="270" width="120" height="30" rx="6"></rect>
+              <text class="lbl" x="420" y="289" text-anchor="middle">e3 · bundle</text>
+              <g>
+                <line x1="360" y1="180" x2="480" y2="210" stroke="#FF5C6A" stroke-width="2" stroke-dasharray="5 5" opacity="0.85"></line>
+                <line x1="480" y1="180" x2="360" y2="210" stroke="#FF5C6A" stroke-width="2" stroke-dasharray="5 5" opacity="0.85"></line>
+              </g>
+              <rect x="88" y="312" width="150" height="26" rx="6" fill="rgba(255,92,106,0.08)" stroke="#FF5C6A" stroke-opacity="0.4"></rect>
+              <text x="163" y="329" text-anchor="middle" fill="#FF5C6A" font-family="JetBrains Mono, monospace" font-size="11">verify → FAILED</text>
+              <rect x="322" y="312" width="150" height="26" rx="6" fill="rgba(63,222,139,0.08)" stroke="#3FDE8B" stroke-opacity="0.4"></rect>
+              <text x="397" y="329" text-anchor="middle" fill="#3FDE8B" font-family="JetBrains Mono, monospace" font-size="11">verify → VERIFIED</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="bcell b-v1 rv" data-od-id="verdict-mission">
+          <div class="blabel">Mission</div>
+          <div class="vvalue">PASSED</div>
+          <div class="vnote">testy akceptacyjne: zaliczone</div>
+        </div>
+        <div class="bcell b-v2 rv d1" data-od-id="verdict-proof">
+          <div class="blabel">Proof</div>
+          <div class="vvalue">LOCAL_VERIFIED</div>
+          <div class="vnote">bundle zweryfikowany lokalnie</div>
+        </div>
+        <div class="bcell b-v3 rv d2" data-od-id="verdict-anchor">
+          <div class="blabel">Anchor</div>
+          <div class="vvalue">UNANCHORED</div>
+          <div class="vnote">brak kotwiczenia zewnętrznego</div>
+        </div>
+
+        <div class="bcell b-auth corner rv" data-od-id="bento-authority">
+          <div class="blabel">Drabinia authority — evidence ledger</div>
+          <div class="ladder">
+            <div class="step s0"><span class="n">0</span><span>CLAIMED</span><em>tylko deklaracja</em></div>
+            <div class="step s1"><span class="n">1</span><span>ARTIFACT_PRESENT</span><em>hash outputu</em></div>
+            <div class="step s2"><span class="n">2</span><span>MECHANICALLY_VERIFIED</span><em>nadaje wyłącznie engine</em></div>
+            <div class="step s3"><span class="n">3</span><span>INDEPENDENTLY_VERIFIED</span><em>inna tożsamość + metoda</em></div>
+          </div>
+        </div>
+
+        <div class="bcell b-tamper corner rv d1" data-od-id="bento-tamper">
+          <div class="blabel">Test sabotażu — tamper lab</div>
+          <ul class="tamper-list">
+            <li><span>Podmiana artefaktu</span><span class="res res-fail">FAILED</span></li>
+            <li><span>Podmiana zdarzenia</span><span class="res res-fail">FAILED</span></li>
+            <li><span>Podmiana metadanych krytycznych</span><span class="res res-fail">FAILED</span></li>
+            <li><span>Ponowna weryfikacja oryginału</span><span class="res res-ok">LOCAL_VERIFIED</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="doctrine rv" data-od-id="doctrine">
+        <q>Agent wykonuje pracę. Runtime zapisuje dowód. Weryfikator sprawdza proof. Decyzję podejmuje człowiek.</q>
+        <span class="src">— zasada APR</span>
+      </div>
+
+      <div class="honest rv">
+        <span class="warn" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6v4M8 13h.01M2.5 14h11L8 2 2.5 14z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </span>
+        <p>
+          <strong style="color:var(--ink-2)">Uczciwa granica:</strong> APR to piaskownica i runtime dowodu — nie twierdzenie o sprzętowo potwierdzonym zaufaniu.
+          Ścieżka fixture jest deterministyczna i offline; egzekucja na realnym sandboxie (gVisor / runsc) pozostaje niezweryfikowana.
+          Poprawne etykiety to zawsze <span class="mono" style="color:var(--amber)">LOCAL_VERIFIED</span> i <span class="mono" style="color:var(--amber)">UNANCHORED</span>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ WDROŻENIE ══════ -->
+  <section class="blk" id="wdrozenie" data-od-id="wdrozenie" style="border-top:1px solid var(--line)">
+    <div class="wrap">
+      <div class="blk-head">
+        <div class="rv">
+          <span class="kicker">FIG. 04 — wdrożenie</span>
+          <h2>Trzy zakresy.<br><span class="it">Zero</span> sztucznych liczb.</h2>
+        </div>
+        <p class="rv d1">Zakres opisany tym, co faktycznie dostajesz. Wycena po briefie — bez wymyślonych kwot i metryk.</p>
+      </div>
+
+      <div class="tiers">
+        <div class="tier rv" data-od-id="tier-pilot">
+          <div class="tier-head">
+            <span class="tier-name">Pilot</span>
+            <span class="tag tag-prop">1 projekt</span>
+          </div>
+          <p class="tier-scope">Jeden projekt produkcyjny na fixture runtime. Sprawdzasz, czy dowód działa w twoim procesie.</p>
+          <ul>
+            <li>Runtime wykonania z Proof Bundle</li>
+            <li>Weryfikator + deterministyczne testy akceptacyjne</li>
+            <li>Rejestr jednego projektu</li>
+            <li>Docs i skrypt startowy</li>
+          </ul>
+          <a href="#start" class="btn btn-glass">Zacznij od pilota</a>
+          <p class="price-note">wycena indywidualna · po briefie</p>
+        </div>
+
+        <div class="tier featured rv d1" data-od-id="tier-stack">
+          <div class="tier-head">
+            <span class="tier-name">Stack</span>
+            <span class="tag tag-rec">pełny stos</span>
+          </div>
+          <p class="tier-scope">Wszystkie pięć warstw spięte w jeden kontrakt: od propozycji LLM do artefaktu z dowodem.</p>
+          <ul>
+            <li>APR + LLM Layer + God Layer + Rejestracja + Builder</li>
+            <li>Bramki God Layer dla push i deploy</li>
+            <li>Rejestr wielu projektów i locki kontekstu</li>
+            <li>Integracje z twoim repo i pipeline'em</li>
+            <li>Warsztat builder z regułą „nie zgaduj”</li>
+          </ul>
+          <a href="#start" class="btn btn-primary">Porozmawiajmy o stacku</a>
+          <p class="price-note">wycena indywidualna · zakres po briefie</p>
+        </div>
+
+        <div class="tier rv d2" data-od-id="tier-enterprise">
+          <div class="tier-head">
+            <span class="tier-name">Enterprise</span>
+            <span class="tag tag-gate">custom</span>
+          </div>
+          <p class="tier-scope">Dla zespołów z wymogami audytu, separacji środowisk i prywatnego wdrożenia.</p>
+          <ul>
+            <li>Wdrożenie prywatne / on-prem</li>
+            <li>SSO, audyt, separacja środowisk</li>
+            <li>Klucze zarządzane przez klienta (KMS / HSM)</li>
+            <li>Runbook incydentowy i ścieżka rollbacku</li>
+          </ul>
+          <a href="#start" class="btn btn-glass">Zapytaj o zakres</a>
+          <p class="price-note">[szczegóły i SLA do ustalenia]</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ CLOSING ══════ -->
+  <section class="closing" data-od-id="closing">
+    <div class="wrap">
+      <h2 class="rv">Wystaw dowód,<br><span class="it">nie deklarację</span>.</h2>
+      <p class="rv d1">Ścieżka fixture jest offline, deterministyczna i nie wymaga klucza API. Trzy komendy i widzisz swój pierwszy Proof Bundle.</p>
+      <div class="rv d2"><span class="cmdbox"><b>apr</b> run --provider fixture → <b>apr</b> verify → PASSED / LOCAL_VERIFIED</span></div><br>
+      <a href="#start" class="btn btn-primary rv d3">Uruchom fixture demo</a>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════ FOOTER ══════ -->
+<footer data-od-id="footer">
+  <div class="wrap">
+    <div class="foot-row">
+      <span class="mono">OSA Framework · runtime warstwowy</span>
+      <div class="foot-links">
+        <a href="#docs">Docs</a>
+        <a href="#changelog">Changelog</a>
+        <a href="#status">Status</a>
+        <a href="#prywatnosc">Prywatność</a>
+      </div>
+    </div>
+    <p class="attrib">Styl inspirowany językami wizualnymi narzędzi deweloperskich klasy premium. Nie jest to produkt żadnej z tych firm.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── scroll progress ── */
+  var bar = document.getElementById('progress');
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* ── hero spotlight follows cursor ── */
+  var hero = document.querySelector('.hero');
+  var spot = document.querySelector('.spotlight');
+  if (hero && spot && !prefersReduced) {
+    hero.addEventListener('pointermove', function (e) {
+      var r = hero.getBoundingClientRect();
+      spot.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      spot.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+    }, { passive: true });
+  }
+
+  /* ── reveal choreography ── */
+  var revealEls = document.querySelectorAll('.rv');
+  if (prefersReduced || !('IntersectionObserver' in window)) {
+    revealEls.forEach(function (el) { el.classList.add('in'); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    revealEls.forEach(function (el) { io.observe(el); });
+  }
+
+  /* ── self-typing terminal ── */
+  var term = document.getElementById('term');
+  if (term && !prefersReduced) {
+    var script = [
+      { t: '# walidacja manifestu misji', c: 'c' },
+      { t: 'apr mission validate examples/build-week-mission.json', c: 'p', hl: 'apr' },
+      { t: '# wykonanie: provider fixture, offline, bez klucza', c: 'c' },
+      { t: 'apr run examples/build-week-mission.json --provider fixture', c: 'p', hl: 'apr' },
+      { t: '# niezależna weryfikacja dowodu', c: 'c' },
+      { t: 'apr verify .runs/build-week-demo/proof-bundle.json', c: 'p', hl: 'apr' },
+      { t: '', c: 'c' },
+      { t: 'Mission: PASSED', c: 'o' },
+      { t: 'Proof:   LOCAL_VERIFIED', c: 'o' },
+      { t: 'Anchor:  UNANCHORED', c: 'g' }
+    ];
+    var caret = document.createElement('span');
+    caret.className = 'caret';
+    caret.setAttribute('aria-hidden', 'true');
+
+    function run() {
+      var li = 0, ci = 0, lineEl = null;
+      function step() {
+        if (li >= script.length) {
+          if (caret.parentNode) caret.parentNode.removeChild(caret);
+          setTimeout(function () {
+            term.textContent = '';
+            li = 0; ci = 0; lineEl = null;
+            setTimeout(run, 4200);
+          }, 5200);
+          return;
+        }
+        var item = script[li];
+        if (ci === 0) {
+          lineEl = document.createElement('span');
+          lineEl.className = 'ln ' + item.c;
+          term.appendChild(lineEl);
+          lineEl.appendChild(caret);
+        }
+        if (ci <= item.t.length) {
+          var txt = item.t.slice(0, ci);
+          if (item.hl) {
+            lineEl.innerHTML = '';
+            var b = document.createElement('b');
+            b.style.color = 'var(--cyan)'; b.style.fontWeight = '500';
+            b.textContent = item.hl;
+            var rest = document.createElement('span');
+            rest.textContent = txt.slice(item.hl.length);
+            lineEl.appendChild(b); lineEl.appendChild(rest);
+            lineEl.appendChild(caret);
+          } else {
+            lineEl.textContent = txt;
+            lineEl.appendChild(caret);
+          }
+          ci++;
+          setTimeout(step, (item.c === 'c' ? 14 : 26) + Math.random() * 30);
+        } else {
+          li++; ci = 0;
+          setTimeout(step, item.c === 'c' ? 300 : 460);
+        }
+      }
+      step();
+    }
+    var termStarted = false;
+    var tio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting && !termStarted) { termStarted = true; run(); tio.disconnect(); }
+      });
+    }, { threshold: 0.3 });
+    tio.observe(term);
+  }
+})();
+</script>
+
+
+
+<script src="../assets/osa-api-client.js"></script>\n</body></html>
