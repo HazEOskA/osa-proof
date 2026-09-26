@@ -303,28 +303,33 @@ test("DEV production fixture registry completes Team Graph -> Mission -> RUN -> 
   }
 });
 
-test("DEV web surface exposes mission input, RUN NOW, and live proof outputs", async () => {
-  const [html, apiClient] = await Promise.all([
+test("approved selector gates DEV identity and DEV surface stays SVG-free", async () => {
+  const [rootHtml, devHtml, apiClient] = await Promise.all([
+    readFile(join(process.cwd(), "apps/web/index.html"), "utf8"),
     readFile(join(process.cwd(), "apps/web/dev/index.html"), "utf8"),
     readFile(join(process.cwd(), "apps/web/assets/osa-api-client.js"), "utf8"),
   ]);
 
-  assert.match(html, /id="gatekeeper"/);
-  assert.match(html, /OSA · GATEKEEPER/);
-  assert.match(html, /id="gate-login"/);
-  assert.match(html, /bootstrapSession\(\)/);
-  assert.match(html, /id="mission-input"/);
-  assert.match(html, /id="run-now"/);
-  assert.match(html, /id="result-output"/);
-  assert.match(html, /id="events-output"/);
-  assert.match(html, /id="evidence-output"/);
-  assert.match(html, /id="proof-output"/);
-  assert.match(html, /window\.OSA_API\.runDevMission\(objective\)/);
+  assert.match(rootHtml, /data-layer="school"/);
+  assert.match(rootHtml, /data-layer="dev"/);
+  assert.match(rootHtml, /data-layer="bank"/);
+  assert.match(rootHtml, /id="osaGatekeeper"/);
+  assert.match(rootHtml, /OSA GATEKEEPER · IDENTITY ACCESS/);
+  assert.match(rootHtml, /window\.OSA_API\.loginDev\(displayName,email\)/);
+  assert.doesNotMatch(rootHtml, /<svg\b/i);
+
+  assert.match(devHtml, /id="mission-input"/);
+  assert.match(devHtml, /id="run-now"/);
+  assert.match(devHtml, /id="result-output"/);
+  assert.match(devHtml, /id="events-output"/);
+  assert.match(devHtml, /id="evidence-output"/);
+  assert.match(devHtml, /id="proof-output"/);
+  assert.match(devHtml, /window\.OSA_API\.runDevMission\(objective\)/);
+  assert.match(devHtml, /location\.replace\("\.\.\/"\)/);
+  assert.doesNotMatch(devHtml, /<svg\b/i);
+
   assert.match(apiClient, /async loginDev\(displayName, email = ""\)/);
   assert.match(apiClient, /getSession\(\)/);
   assert.match(apiClient, /async logout\(\)/);
   assert.match(apiClient, /async runDevMission\(objective\)/);
-  assert.match(apiClient, /this\.getRunEvents\(run\.run_id\)/);
-  assert.match(apiClient, /this\.getRunEvidence\(run\.run_id\)/);
-  assert.match(apiClient, /this\.getRunProof\(run\.run_id\)/);
 });

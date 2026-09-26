@@ -106,36 +106,6 @@
     .btn-link:hover .arr { transform: translateX(4px); }
     .btn-sm { padding: 10px 16px; font-size: 13px; border-radius: 9px; }
 
-    /* ══════ OSA Gatekeeper ══════ */
-    .gatekeeper { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; overflow: auto;
-      background: radial-gradient(circle at 24% 45%, rgba(255,184,0,0.10), transparent 30%),
-        radial-gradient(circle at 72% 50%, rgba(95,232,214,0.08), transparent 34%), #05070c;
-      transition: opacity 260ms ease, visibility 260ms ease; }
-    body[data-authenticated="true"] .gatekeeper { opacity: 0; visibility: hidden; pointer-events: none; }
-    .gate-shell { width: min(1180px, calc(100% - 32px)); min-height: 700px; display: grid; grid-template-columns: 1.1fr .9fr;
-      border: 1px solid var(--line-strong); border-radius: 24px; overflow: hidden; background: rgba(8,10,17,.76);
-      box-shadow: 0 50px 120px rgba(0,0,0,.55); backdrop-filter: blur(20px); }
-    .gate-visual { position: relative; display: grid; place-items: center; padding: 60px; overflow: hidden;
-      background: linear-gradient(135deg, rgba(255,184,0,.06), rgba(95,232,214,.025)); }
-    .gate-visual::before,.gate-visual::after { content:""; position:absolute; top:6%; bottom:6%; width:1px;
-      background:linear-gradient(transparent,rgba(255,184,0,.55),rgba(95,232,214,.35),transparent); box-shadow:0 0 24px rgba(255,184,0,.28); }
-    .gate-visual::before{left:13%;transform:skewY(-18deg)} .gate-visual::after{right:13%;transform:skewY(18deg)}
-    .gate-copy{position:absolute;left:44px;top:42px;z-index:2}.gate-copy .eyebrow{font:10px/1 var(--mono);letter-spacing:.18em;color:var(--amber);text-transform:uppercase}
-    .gate-copy h2{font-family:var(--serif);font-weight:400;font-size:clamp(40px,5vw,72px);line-height:.98;margin-top:12px}.gate-copy h2 em{color:var(--amber);font-weight:400}
-    .hooded-osa{width:min(430px,78%);filter:drop-shadow(0 28px 60px rgba(0,0,0,.48))}
-    .gate-form{display:flex;flex-direction:column;justify-content:center;padding:56px;border-left:1px solid var(--line);background:rgba(5,7,12,.74)}
-    .gate-form h3{font-size:28px;margin-bottom:8px}.gate-form>p{color:var(--ink-2);margin-bottom:28px}
-    .auth-provider-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:26px}
-    .auth-provider{border:1px solid var(--line-strong);border-radius:10px;padding:12px;text-align:center;color:var(--ink-3);font:11px/1.2 var(--mono);background:rgba(255,255,255,.025)}
-    .auth-provider small{display:block;margin-top:5px;font-size:8px;color:var(--ink-4)}
-    .auth-field{margin-bottom:14px}.auth-field label{display:block;font-size:12px;color:var(--ink-2);margin-bottom:7px}
-    .auth-field input{width:100%;padding:13px 14px;border-radius:9px;border:1px solid var(--line-strong);background:rgba(0,0,0,.22);color:var(--ink);font:13px var(--mono);outline:none}
-    .auth-field input:focus{border-color:rgba(95,232,214,.55);box-shadow:0 0 0 3px rgba(95,232,214,.07)}
-    .gate-status{min-height:20px;margin:14px 0;color:var(--ink-3);font:11px/1.5 var(--mono)}.gate-status.ok{color:var(--green)}.gate-status.err{color:var(--red)}
-    .session-pill{display:none;align-items:center;gap:9px;border:1px solid var(--line-strong);border-radius:100px;padding:8px 10px 8px 12px;font:10px/1 var(--mono);color:var(--ink-2);background:rgba(255,255,255,.035)}
-    body[data-authenticated="true"] .session-pill{display:inline-flex}.session-pill button{border:0;background:transparent;color:var(--ink-4);cursor:pointer;font:10px var(--mono)}.session-pill button:hover{color:var(--red)}
-    @media (max-width:900px){.gate-shell{grid-template-columns:1fr}.gate-visual{min-height:360px;padding:30px}.gate-form{border-left:0;border-top:1px solid var(--line);padding:30px}.gate-copy{left:28px;top:26px}}
-
     /* ══════ DEV builder runtime ══════ */
     .builder-shell { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
     .builder-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 16px; }
@@ -272,6 +242,7 @@
     .tag-gate { color: var(--amber); background: rgba(255,184,0,0.08); border: 1px solid rgba(255,184,0,0.32); }
     .tag-build { color: var(--violet); background: rgba(167,139,250,0.09); border: 1px solid rgba(167,139,250,0.3); }
 
+    .proof-chain{display:grid;gap:12px;align-content:center;min-height:300px;font-family:var(--mono)}.proof-root{justify-self:center;padding:10px 22px;border:1px solid rgba(255,184,0,.52);border-radius:8px;color:var(--amber);background:rgba(255,184,0,.08);letter-spacing:.1em;font-size:11px}.proof-link{text-align:center;color:var(--ink-4);font-size:10px;letter-spacing:.12em}.proof-pair,.proof-events,.proof-results{display:grid;gap:8px}.proof-pair,.proof-events,.proof-results{grid-template-columns:1fr 1fr}.proof-pair span,.proof-events span,.proof-results span{padding:9px 10px;border:1px solid var(--line);border-radius:7px;text-align:center;color:var(--ink-3);background:rgba(255,255,255,.025);font-size:10px}.proof-results .proof-fail{color:var(--red);border-color:rgba(255,92,106,.28);background:rgba(255,92,106,.06)}.proof-results .proof-ok{color:var(--green);border-color:rgba(63,222,139,.28);background:rgba(63,222,139,.06)}
     /* ══════ bento proof ══════ */
     .bento { display: grid; grid-template-columns: repeat(6, 1fr); grid-auto-rows: minmax(120px, auto); gap: 16px; }
     .bcell { position: relative; border-radius: 18px; padding: 26px;
@@ -409,48 +380,6 @@
 </head>
 <body>
 
-<section class="gatekeeper" id="gatekeeper" aria-label="OSA Gatekeeper">
-  <div class="gate-shell">
-    <div class="gate-visual">
-      <div class="gate-copy">
-        <span class="eyebrow">OSA · GATEKEEPER</span>
-        <h2>Prove who<br>you <em>are.</em></h2>
-      </div>
-      <svg class="hooded-osa" viewBox="0 0 500 560" role="img" aria-label="Stylized OSA gatekeeper in a hood">
-        <defs>
-          <linearGradient id="hood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#202632"/><stop offset=".55" stop-color="#0b0e14"/><stop offset="1" stop-color="#020305"/></linearGradient>
-          <linearGradient id="amberWing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFCE4D"/><stop offset="1" stop-color="#FF8A00"/></linearGradient>
-        </defs>
-        <path d="M250 24C139 24 66 118 70 246c3 83 22 148 55 203l48-43 22 107h110l22-107 48 43c33-55 52-120 55-203C434 118 361 24 250 24Z" fill="url(#hood)" stroke="#384252" stroke-width="3"/>
-        <path d="M250 89c-65 0-118 53-118 118 0 47 27 88 67 107l-22 78 73 39 73-39-22-78c40-19 67-60 67-107 0-65-53-118-118-118Z" fill="#07090d" stroke="#1e2530" stroke-width="3"/>
-        <path d="M152 215c-40 5-72 37-79 82 44-10 78-2 111 24" fill="none" stroke="url(#amberWing)" stroke-width="14" stroke-linecap="round" opacity=".75"/>
-        <path d="M348 215c40 5 72 37 79 82-44-10-78-2-111 24" fill="none" stroke="url(#amberWing)" stroke-width="14" stroke-linecap="round" opacity=".75"/>
-        <ellipse cx="213" cy="218" rx="28" ry="21" fill="#FFB800"/><ellipse cx="287" cy="218" rx="28" ry="21" fill="#FFB800"/>
-        <path d="M205 219h18M277 219h18" stroke="#07090d" stroke-width="7" stroke-linecap="round"/>
-        <path d="M223 270c17 12 37 12 54 0" fill="none" stroke="#5FE8D6" stroke-width="5" stroke-linecap="round"/>
-        <path d="M220 168c-10-27-25-46-45-58M280 168c10-27 25-46 45-58" stroke="#FFB800" stroke-width="6" stroke-linecap="round"/>
-        <path d="M196 319h108l-18 104h-72Z" fill="#FFB800"/><path d="M206 344h88M201 376h98M197 408h106" stroke="#07090d" stroke-width="16"/>
-        <circle cx="250" cy="480" r="24" fill="#0b0e14" stroke="#5FE8D6" stroke-width="3"/><path d="M241 480h18M250 471v18" stroke="#5FE8D6" stroke-width="3" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <div class="gate-form">
-      <span class="kicker">IDENTITY GATE</span>
-      <h3>Enter DEV</h3>
-      <p>Local DEV identity creates a real backend session. External OIDC providers are intentionally not configured yet.</p>
-      <div class="auth-provider-grid" aria-label="Future OIDC providers">
-        <div class="auth-provider">GitHub<small>OIDC · NEXT</small></div>
-        <div class="auth-provider">Google<small>OIDC · NEXT</small></div>
-        <div class="auth-provider">Microsoft<small>OIDC · NEXT</small></div>
-      </div>
-      <div class="auth-field"><label for="gate-name">Display name</label><input id="gate-name" autocomplete="name" placeholder="Your name"></div>
-      <div class="auth-field"><label for="gate-email">Email <span style="color:var(--ink-4)">(optional in local DEV)</span></label><input id="gate-email" type="email" autocomplete="email" placeholder="you@example.com"></div>
-      <button class="btn btn-primary" id="gate-login" type="button">VERIFY IDENTITY → ENTER DEV</button>
-      <div class="gate-status" id="gate-status">SESSION: NOT VERIFIED</div>
-      <span class="builder-note">Local DEV provider only · in-memory session · regulated access remains gated</span>
-    </div>
-  </div>
-</section>
-
 <div id="progress" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true">
   <div class="blob blob-1"></div>
@@ -464,10 +393,7 @@
   <div class="wrap">
     <div class="navpill">
       <span class="brand">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-          <rect x="1" y="1" width="20" height="20" rx="5" stroke="#FFB800" stroke-width="1.6"></rect>
-          <path d="M6 8h10M6 12h10M6 16h6" stroke="#F4F6FB" stroke-width="1.6" stroke-linecap="round"></path>
-        </svg>
+        
         OSA·FRAMEWORK
       </span>
       <nav>
@@ -476,7 +402,6 @@
         <a class="nlink" href="#wdrozenie">Wdrożenie</a>
         <a class="nlink" href="#docs">Docs</a>
         <a href="#start" class="btn btn-glass btn-sm">Uruchom demo</a>
-        <span class="session-pill" id="session-pill"><span id="session-user">DEV USER</span><button id="logout-button" type="button">LOG OUT</button></span>
       </nav>
     </div>
   </div>
@@ -736,36 +661,7 @@
         <div class="bcell b-merkle corner rv d1" data-od-id="bento-merkle">
           <div class="blabel">Anatomia dowodu — merkle</div>
           <div class="merkle" role="img" aria-label="Diagram drzewa Merkle: zdarzenia e0–e3 hashowane w węzły, z których powstaje Merkle root wchodzący do hasha całego bundla. Podmiana jednego bitu daje verify FAILED.">
-            <svg viewBox="0 0 560 340" fill="none" aria-hidden="true">
-              <line class="edge" x1="140" y1="210" x2="140" y2="240"></line>
-              <line class="edge" x1="140" y1="270" x2="140" y2="240"></line>
-              <line class="edge" x1="420" y1="210" x2="420" y2="240"></line>
-              <line class="edge" x1="420" y1="270" x2="420" y2="240"></line>
-              <line class="edge" x1="140" y1="240" x2="252" y2="70"></line>
-              <line class="edge" x1="420" y1="240" x2="308" y2="70"></line>
-              <rect class="node node-root" x="196" y="36" width="168" height="34" rx="6"></rect>
-              <text class="lbl lbl-root" x="280" y="57" text-anchor="middle">MERKLE ROOT</text>
-              <rect class="node" x="80" y="240" width="120" height="30" rx="6"></rect>
-              <text class="lbl" x="140" y="259" text-anchor="middle">h(e0·e1)</text>
-              <rect class="node" x="360" y="240" width="120" height="30" rx="6"></rect>
-              <text class="lbl" x="420" y="259" text-anchor="middle">h(e2·e3)</text>
-              <rect class="chip" x="80" y="180" width="120" height="30" rx="6"></rect>
-              <text class="lbl" x="140" y="199" text-anchor="middle">e0 · run start</text>
-              <rect class="chip" x="80" y="270" width="120" height="30" rx="6"></rect>
-              <text class="lbl" x="140" y="289" text-anchor="middle">e1 · artifact</text>
-              <rect class="chip" x="360" y="180" width="120" height="30" rx="6"></rect>
-              <text class="lbl" x="420" y="199" text-anchor="middle">e2 · checks</text>
-              <rect class="chip" x="360" y="270" width="120" height="30" rx="6"></rect>
-              <text class="lbl" x="420" y="289" text-anchor="middle">e3 · bundle</text>
-              <g>
-                <line x1="360" y1="180" x2="480" y2="210" stroke="#FF5C6A" stroke-width="2" stroke-dasharray="5 5" opacity="0.85"></line>
-                <line x1="480" y1="180" x2="360" y2="210" stroke="#FF5C6A" stroke-width="2" stroke-dasharray="5 5" opacity="0.85"></line>
-              </g>
-              <rect x="88" y="312" width="150" height="26" rx="6" fill="rgba(255,92,106,0.08)" stroke="#FF5C6A" stroke-opacity="0.4"></rect>
-              <text x="163" y="329" text-anchor="middle" fill="#FF5C6A" font-family="JetBrains Mono, monospace" font-size="11">verify → FAILED</text>
-              <rect x="322" y="312" width="150" height="26" rx="6" fill="rgba(63,222,139,0.08)" stroke="#3FDE8B" stroke-opacity="0.4"></rect>
-              <text x="397" y="329" text-anchor="middle" fill="#3FDE8B" font-family="JetBrains Mono, monospace" font-size="11">verify → VERIFIED</text>
-            </svg>
+            <div class="proof-chain" aria-hidden="true"><div class="proof-root">MERKLE ROOT</div><div class="proof-link">↑ hashes ↑</div><div class="proof-pair"><span>h(e0·e1)</span><span>h(e2·e3)</span></div><div class="proof-events"><span>e0 · run start</span><span>e1 · artifact</span><span>e2 · checks</span><span>e3 · bundle</span></div><div class="proof-results"><span class="proof-fail">tamper → FAILED</span><span class="proof-ok">original → VERIFIED</span></div></div>
           </div>
         </div>
 
@@ -812,9 +708,7 @@
       </div>
 
       <div class="honest rv">
-        <span class="warn" aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6v4M8 13h.01M2.5 14h11L8 2 2.5 14z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-        </span>
+        <span class="warn" aria-hidden="true">!</span>
         <p>
           <strong style="color:var(--ink-2)">Uczciwa granica:</strong> APR to piaskownica i runtime dowodu — nie twierdzenie o sprzętowo potwierdzonym zaufaniu.
           Ścieżka fixture jest deterministyczna i offline; egzekucja na realnym sandboxie (gVisor / runsc) pozostaje niezweryfikowana.
@@ -1032,16 +926,12 @@
 
 <script src="../assets/osa-api-client.js"></script>
 <script>
+(function(){"use strict";if(!window.OSA_API.hasSessionToken()){location.replace("../");return}window.OSA_API.getSession().catch(function(){window.OSA_API.setSessionToken("");location.replace("../")})})();
+</script>
+<script>
 (function () {
   "use strict";
 
-  var gatekeeper = document.getElementById("gatekeeper");
-  var gateName = document.getElementById("gate-name");
-  var gateEmail = document.getElementById("gate-email");
-  var gateLogin = document.getElementById("gate-login");
-  var gateStatus = document.getElementById("gate-status");
-  var sessionUser = document.getElementById("session-user");
-  var logoutButton = document.getElementById("logout-button");
   var input = document.getElementById("mission-input");
   var runButton = document.getElementById("run-now");
   var status = document.getElementById("runtime-status");
@@ -1081,67 +971,6 @@
     var noteNode = card.querySelector(".vnote");
     if (valueNode) valueNode.textContent = value;
     if (noteNode) noteNode.textContent = note;
-  }
-
-  function setGateStatus(message, kind) {
-    if (!gateStatus) return;
-    gateStatus.textContent = message;
-    gateStatus.className = "gate-status" + (kind ? " " + kind : "");
-  }
-
-  function lockGate(message) {
-    document.body.removeAttribute("data-authenticated");
-    if (sessionUser) sessionUser.textContent = "DEV USER";
-    setGateStatus(message || "SESSION: NOT VERIFIED", "");
-  }
-
-  async function unlockGate() {
-    var session = await window.OSA_API.getSession();
-    var access = await window.OSA_API.enterLayer("dev");
-    if (!access || access.decision !== "ALLOWED") throw new Error("Gatekeeper denied DEV access");
-    document.body.setAttribute("data-authenticated", "true");
-    if (sessionUser) sessionUser.textContent = session.identity.display_name + " · DEV";
-    setGateStatus("IDENTITY VERIFIED · ACCESS GRANTED", "ok");
-    return session;
-  }
-
-  async function loginLocalDev() {
-    var displayName = gateName ? gateName.value.trim() : "";
-    var email = gateEmail ? gateEmail.value.trim() : "";
-    if (!displayName) {
-      setGateStatus("DISPLAY NAME REQUIRED", "err");
-      if (gateName) gateName.focus();
-      return;
-    }
-    if (gateLogin) gateLogin.disabled = true;
-    setGateStatus("VERIFYING IDENTITY…", "");
-    try {
-      await window.OSA_API.loginDev(displayName, email);
-      await unlockGate();
-    } catch (error) {
-      window.OSA_API.setSessionToken("");
-      lockGate(error && error.message ? error.message : "IDENTITY VERIFICATION FAILED");
-      if (gateStatus) gateStatus.classList.add("err");
-    } finally {
-      if (gateLogin) gateLogin.disabled = false;
-    }
-  }
-
-  async function logoutSession() {
-    try { await window.OSA_API.logout(); }
-    finally { renderIdle(); lockGate("SESSION: REVOKED"); }
-  }
-
-  async function bootstrapSession() {
-    if (!window.OSA_API.hasSessionToken()) {
-      lockGate("SESSION: NOT VERIFIED");
-      return;
-    }
-    try { await unlockGate(); }
-    catch {
-      window.OSA_API.setSessionToken("");
-      lockGate("SESSION EXPIRED · VERIFY AGAIN");
-    }
   }
 
   function renderIdle() {
@@ -1203,10 +1032,6 @@
       setCard(anchorCard, "UNANCHORED", "brak kotwiczenia zewnętrznego");
     } catch (error) {
       console.error("OSA DEV mission failed", error);
-      if (error && error.status === 401) {
-        window.OSA_API.setSessionToken("");
-        lockGate("SESSION EXPIRED · VERIFY AGAIN");
-      }
       var message = error && error.message ? error.message : "unknown error";
       setStatus("ERROR");
       if (verdictNode) verdictNode.textContent = "ERROR";
@@ -1224,11 +1049,6 @@
 
   renderIdle();
   if (runButton) runButton.addEventListener("click", runMission);
-  if (gateLogin) gateLogin.addEventListener("click", loginLocalDev);
-  if (logoutButton) logoutButton.addEventListener("click", logoutSession);
-  if (gateName) gateName.addEventListener("keydown", function (event) { if (event.key === "Enter") loginLocalDev(); });
-  if (gateEmail) gateEmail.addEventListener("keydown", function (event) { if (event.key === "Enter") loginLocalDev(); });
-  bootstrapSession();
 })();
 </script>
 </body></html>

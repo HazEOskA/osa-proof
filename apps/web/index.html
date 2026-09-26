@@ -121,6 +121,18 @@
     white-space: nowrap !important;
     border: 0 !important;
   }
+
+    .osa-gate{position:fixed;inset:0;z-index:100;display:none;place-items:center;padding:28px;background:linear-gradient(90deg,rgba(2,6,14,.18),rgba(2,6,14,.72) 54%,rgba(2,6,14,.92)),radial-gradient(circle at 50% 50%,rgba(103,92,255,.10),transparent 38%);backdrop-filter:blur(4px)}
+    .osa-gate[data-open="true"]{display:grid}
+    .osa-gate-panel{position:relative;width:min(470px,92vw);margin-left:min(42vw,620px);padding:34px 34px 30px;color:#e9f3ff;background:linear-gradient(180deg,rgba(10,20,38,.94),rgba(4,10,20,.96));border:1px solid rgba(127,174,255,.46);border-radius:18px;box-shadow:0 0 0 1px rgba(112,92,255,.14) inset,0 0 38px rgba(63,102,255,.18),0 24px 70px rgba(0,0,0,.58);font-family:Arial,sans-serif}
+    .osa-gate-panel::before,.osa-gate-panel::after{content:"";position:absolute;left:22px;right:22px;height:1px;background:linear-gradient(90deg,transparent,#7265ff,#46d8ff,transparent);opacity:.9}.osa-gate-panel::before{top:0}.osa-gate-panel::after{bottom:0}
+    .osa-gate-kicker{margin:0 0 10px;color:#8aa8d8;font-size:10px;letter-spacing:.34em;text-transform:uppercase}.osa-gate-title{margin:0;color:#f3f7ff;font-size:clamp(30px,4vw,44px);letter-spacing:.05em;line-height:1;text-transform:uppercase}.osa-gate-title strong{color:#8f63ff;font-weight:800}
+    .osa-gate-copy{margin:13px 0 24px;color:#8fa9ca;font-size:13px;line-height:1.6;letter-spacing:.04em}
+    .osa-provider-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}.osa-provider{padding:10px 8px;border:1px solid rgba(117,151,205,.22);border-radius:8px;color:#607897;background:rgba(7,15,29,.56);text-align:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase}.osa-provider span{display:block;margin-top:4px;font-size:8px;color:#43566f}
+    .osa-auth-field{margin:0 0 13px}.osa-auth-field label{display:block;margin-bottom:6px;color:#95acd0;font-size:10px;letter-spacing:.14em;text-transform:uppercase}.osa-auth-field input{width:100%;padding:13px 14px;border:1px solid rgba(120,157,220,.32);border-radius:8px;outline:none;background:rgba(1,7,16,.72);color:#eaf3ff;font:13px/1.2 Arial,sans-serif}.osa-auth-field input:focus{border-color:#7a67ff;box-shadow:0 0 0 3px rgba(115,87,255,.12)}
+    .osa-gate-actions{display:flex;gap:10px;margin-top:20px}.osa-gate-button{flex:1;border:1px solid rgba(126,166,226,.3);border-radius:8px;padding:13px 14px;cursor:pointer;color:#dceaff;background:rgba(11,25,46,.82);font-weight:700;letter-spacing:.08em;text-transform:uppercase}.osa-gate-button.primary{border-color:#7365ff;color:white;background:linear-gradient(90deg,#5546da,#754eff);box-shadow:0 0 24px rgba(112,79,255,.25)}.osa-gate-button:disabled{opacity:.55;cursor:wait}
+    .osa-gate-status{min-height:18px;margin-top:14px;color:#7089aa;font-size:10px;letter-spacing:.09em;text-transform:uppercase}.osa-gate-status.error{color:#ff6c7c}.osa-gate-status.ok{color:#64e4c6}
+    @media(max-width:900px){.osa-gate{align-items:end;padding:16px}.osa-gate-panel{margin-left:0;width:min(620px,100%)}}
 </style>
 </head>
 <body>
@@ -149,63 +161,44 @@
     <p id="selectionStatus" class="sr-only" aria-live="polite"></p>
   </main>
 
+
+  <section class="osa-gate" id="osaGatekeeper" data-open="false" aria-hidden="true">
+    <div class="osa-gate-panel" role="dialog" aria-modal="true" aria-labelledby="osaGateTitle">
+      <p class="osa-gate-kicker">OSA GATEKEEPER · IDENTITY ACCESS</p>
+      <h2 class="osa-gate-title" id="osaGateTitle">ENTER <strong>DEV</strong></h2>
+      <p class="osa-gate-copy">One identity. One session. The same proof boundary behind every world.</p>
+      <div class="osa-provider-row"><div class="osa-provider">GitHub<span>OIDC · NEXT</span></div><div class="osa-provider">Google<span>OIDC · NEXT</span></div><div class="osa-provider">Microsoft<span>OIDC · NEXT</span></div></div>
+      <div class="osa-auth-field"><label for="osaGateName">Display name</label><input id="osaGateName" autocomplete="name" placeholder="Your name"></div>
+      <div class="osa-auth-field"><label for="osaGateEmail">Email · optional in local DEV</label><input id="osaGateEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+      <div class="osa-gate-actions"><button class="osa-gate-button" id="osaGateCancel" type="button">Back</button><button class="osa-gate-button primary" id="osaGateEnter" type="button">Verify → Enter</button></div>
+      <div class="osa-gate-status" id="osaGateStatus">Session not verified</div>
+    </div>
+  </section>
+
 <script src="./assets/osa-api-client.js"></script>
 <script>
 (() => {
-  const params = new URLSearchParams(location.search);
-  if (params.get("debug") === "1") {
-    document.documentElement.classList.add("debug");
-  }
+  const params=new URLSearchParams(location.search);
+  if(params.get("debug")==="1") document.documentElement.classList.add("debug");
+  const status=document.getElementById("selectionStatus");
+  const buttons=[...document.querySelectorAll(".hotspot")];
+  const gate=document.getElementById("osaGatekeeper");
+  const gateName=document.getElementById("osaGateName");
+  const gateEmail=document.getElementById("osaGateEmail");
+  const gateEnter=document.getElementById("osaGateEnter");
+  const gateCancel=document.getElementById("osaGateCancel");
+  const gateStatus=document.getElementById("osaGateStatus");
 
-  const status = document.getElementById("selectionStatus");
-  const buttons = [...document.querySelectorAll(".hotspot")];
-
-  async function enterLayer(button) {
-    if (button.getAttribute("aria-busy") === "true") return;
-
-    const layer = button.dataset.layer;
-    button.setAttribute("aria-busy", "true");
-    status.textContent = "Checking OSA layer access: " + layer;
-
-    try {
-      const decision = await window.OSA_API.enterLayer(layer);
-
-      if (!decision?.layer?.route) {
-        throw new Error("Backend did not return an authoritative layer route");
-      }
-
-      window.dispatchEvent(new CustomEvent("osa-layer-select", {
-        detail: decision
-      }));
-
-      history.replaceState(null, "", "#" + layer);
-      status.textContent = "Layer " + layer + ": " + decision.decision;
-      location.assign(decision.layer.route);
-    } catch (error) {
-      console.error("[OSA layer entry]", error);
-      status.textContent = "Layer access check failed";
-
-      window.dispatchEvent(new CustomEvent("osa-layer-error", {
-        detail: {
-          layer,
-          message: error instanceof Error ? error.message : String(error)
-        }
-      }));
-    } finally {
-      button.removeAttribute("aria-busy");
-    }
-  }
-
-  buttons.forEach((button) => {
-    button.addEventListener("click", () => enterLayer(button));
-  });
-
-  // Keyboard shortcuts 1–6 for QA/demo use.
-  window.addEventListener("keydown", (event) => {
-    if (/^[1-6]$/.test(event.key)) {
-      buttons[Number(event.key) - 1]?.click();
-    }
-  });
+  function setGate(open){gate.dataset.open=open?"true":"false";gate.setAttribute("aria-hidden",open?"false":"true");if(open)setTimeout(()=>gateName.focus(),30)}
+  function setGateStatus(message,kind=""){gateStatus.textContent=message;gateStatus.className="osa-gate-status"+(kind?" "+kind:"")}
+  async function enterAuthorizedDev(){const decision=await window.OSA_API.enterLayer("dev");if(!decision?.layer?.route||decision.decision!=="ALLOWED")throw new Error("DEV access was not authorized by backend");status.textContent="Layer dev: ALLOWED";history.replaceState(null,"","#dev");location.assign(decision.layer.route)}
+  async function openDev(){if(window.OSA_API.hasSessionToken()){try{await window.OSA_API.getSession();await enterAuthorizedDev();return}catch{window.OSA_API.setSessionToken("")}}setGateStatus("Session not verified");setGate(true)}
+  async function loginDev(){const displayName=gateName.value.trim();const email=gateEmail.value.trim();if(!displayName){setGateStatus("Display name required","error");gateName.focus();return}gateEnter.disabled=true;setGateStatus("Verifying identity…");try{await window.OSA_API.loginDev(displayName,email);setGateStatus("Identity verified · access granted","ok");await enterAuthorizedDev()}catch(error){window.OSA_API.setSessionToken("");setGateStatus(error instanceof Error?error.message:String(error),"error")}finally{gateEnter.disabled=false}}
+  async function enterLayer(button){if(button.getAttribute("aria-busy")==="true")return;const layer=button.dataset.layer;if(layer==="dev"){await openDev();return}button.setAttribute("aria-busy","true");status.textContent="Checking OSA layer access: "+layer;try{const decision=await window.OSA_API.enterLayer(layer);if(!decision?.layer?.route)throw new Error("Backend did not return an authoritative layer route");window.dispatchEvent(new CustomEvent("osa-layer-select",{detail:decision}));history.replaceState(null,"","#"+layer);status.textContent="Layer "+layer+": "+decision.decision;location.assign(decision.layer.route)}catch(error){console.error("[OSA layer entry]",error);status.textContent="Layer access check failed"}finally{button.removeAttribute("aria-busy")}}
+  buttons.forEach(button=>button.addEventListener("click",()=>enterLayer(button)));
+  gateEnter.addEventListener("click",loginDev);gateCancel.addEventListener("click",()=>setGate(false));gate.addEventListener("click",event=>{if(event.target===gate)setGate(false)});
+  gateName.addEventListener("keydown",event=>{if(event.key==="Enter")loginDev()});gateEmail.addEventListener("keydown",event=>{if(event.key==="Enter")loginDev()});
+  window.addEventListener("keydown",event=>{if(event.key==="Escape"&&gate.dataset.open==="true"){setGate(false);return}if(/^[1-6]$/.test(event.key)&&gate.dataset.open!=="true")buttons[Number(event.key)-1]?.click()});
 })();
 </script>
 </body>
