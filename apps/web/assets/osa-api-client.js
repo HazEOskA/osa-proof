@@ -4,6 +4,24 @@
   class OsaApiClient {
     constructor(options = {}) {
       this.baseUrl = (options.baseUrl ?? "").replace(/\/$/, "");
+      this.tokenKey = options.tokenKey || "osa.dev.session.token";
+      try {
+        this.sessionToken = global.sessionStorage.getItem(this.tokenKey) || "";
+      } catch {
+        this.sessionToken = "";
+      }
+    }
+
+    setSessionToken(token) {
+      this.sessionToken = token || "";
+      try {
+        if (this.sessionToken) global.sessionStorage.setItem(this.tokenKey, this.sessionToken);
+        else global.sessionStorage.removeItem(this.tokenKey);
+      } catch {}
+    }
+
+    hasSessionToken() {
+      return Boolean(this.sessionToken);
     }
 
     async request(path, options = {}) {
@@ -11,6 +29,7 @@
         ...options,
         headers: {
           "content-type": "application/json",
+          ...(this.sessionToken ? { authorization: `Bearer ${this.sessionToken}` } : {}),
           ...(options.headers || {})
         }
       });
@@ -26,6 +45,31 @@
         throw error;
       }
       return body;
+    }
+
+    listAuthProviders() {
+      return this.request("/auth/providers");
+    }
+
+    async loginDev(displayName, email = "") {
+      const result = await this.request("/auth/dev-login", {
+        method: "POST",
+        body: JSON.stringify({ display_name: displayName, email })
+      });
+      this.setSessionToken(result.session.token);
+      return result;
+    }
+
+    getSession() {
+      return this.request("/session");
+    }
+
+    async logout() {
+      try {
+        if (this.sessionToken) await this.request("/session/logout", { method: "POST" });
+      } finally {
+        this.setSessionToken("");
+      }
     }
 
     listLayers() {
@@ -115,6 +159,11 @@
           }
         ]
       };
+
+      const access = await this.enterLayer("dev");
+      if (!access || access.decision !== "ALLOWED") {
+        throw new Error("DEV access denied by Gatekeeper");
+      }
 
       await this.createTeam(team);
       await this.createMission(mission);

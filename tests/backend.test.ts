@@ -53,6 +53,17 @@ function mission(expected = "built"): Mission {
   };
 }
 
+async function devAuthHeaders(base: string): Promise<Record<string, string>> {
+  const response = await fetch(`${base}/auth/dev-login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ display_name: "Local DEV Test", email: "dev@example.com" }),
+  });
+  assert.equal(response.status, 201);
+  const body = (await response.json()) as { session: { token: string } };
+  return { "content-type": "application/json", authorization: `Bearer ${body.session.token}` };
+}
+
 function registry(): ExecutorRegistry {
   const registry = new ExecutorRegistry();
   registry.register("planner.v1", ({ input }) => ({
@@ -159,9 +170,10 @@ test("minimal HTTP API exposes team, run, events, evidence and proof", async () 
   const base = `http://127.0.0.1:${address.port}`;
 
   try {
+    const authHeaders = await devAuthHeaders(base);
     let response = await fetch(`${base}/teams`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify(graph),
     });
     assert.equal(response.status, 201);
@@ -169,18 +181,18 @@ test("minimal HTTP API exposes team, run, events, evidence and proof", async () 
     const currentMission = mission("built");
     response = await fetch(`${base}/missions`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify(currentMission),
     });
     assert.equal(response.status, 201);
 
-    response = await fetch(`${base}/missions/${currentMission.mission_id}/run`, { method: "POST" });
+    response = await fetch(`${base}/missions/${currentMission.mission_id}/run`, { method: "POST", headers: authHeaders });
     assert.equal(response.status, 201);
     const run = (await response.json()) as { run_id: string; verdict: string };
     assert.equal(run.verdict, "VERIFIED");
 
     for (const suffix of ["", "/events", "/evidence", "/proof"]) {
-      response = await fetch(`${base}/runs/${run.run_id}${suffix}`);
+      response = await fetch(`${base}/runs/${run.run_id}${suffix}`, { headers: authHeaders });
       assert.equal(response.status, 200);
     }
   } finally {
@@ -237,28 +249,29 @@ test("DEV production fixture registry completes Team Graph -> Mission -> RUN -> 
   const base = `http://127.0.0.1:${address.port}`;
 
   try {
+    const authHeaders = await devAuthHeaders(base);
     let response = await fetch(`${base}/teams`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify(devGraph),
     });
     assert.equal(response.status, 201);
 
     response = await fetch(`${base}/missions`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify(devMission),
     });
     assert.equal(response.status, 201);
 
-    response = await fetch(`${base}/missions/${devMission.mission_id}/run`, { method: "POST" });
+    response = await fetch(`${base}/missions/${devMission.mission_id}/run`, { method: "POST", headers: authHeaders });
     assert.equal(response.status, 201);
     const run = (await response.json()) as { run_id: string; verdict: string };
     assert.equal(run.verdict, "VERIFIED");
 
-    const eventsResponse = await fetch(`${base}/runs/${run.run_id}/events`);
-    const evidenceResponse = await fetch(`${base}/runs/${run.run_id}/evidence`);
-    const proofResponse = await fetch(`${base}/runs/${run.run_id}/proof`);
+    const eventsResponse = await fetch(`${base}/runs/${run.run_id}/events`, { headers: authHeaders });
+    const evidenceResponse = await fetch(`${base}/runs/${run.run_id}/evidence`, { headers: authHeaders });
+    const proofResponse = await fetch(`${base}/runs/${run.run_id}/proof`, { headers: authHeaders });
 
     assert.equal(eventsResponse.status, 200);
     assert.equal(evidenceResponse.status, 200);
@@ -276,7 +289,7 @@ test("DEV production fixture registry completes Team Graph -> Mission -> RUN -> 
     assert.equal(proof.verdict, "VERIFIED");
     assert.match(proof.proof_id, /^proof_/);
 
-    const runResponse = await fetch(`${base}/runs/${run.run_id}`);
+    const runResponse = await fetch(`${base}/runs/${run.run_id}`, { headers: authHeaders });
     assert.equal(runResponse.status, 200);
     const storedRun = (await runResponse.json()) as {
       final_output?: { objective?: string; upstream?: { received?: { request?: string } } };
@@ -296,6 +309,10 @@ test("DEV web surface exposes mission input, RUN NOW, and live proof outputs", a
     readFile(join(process.cwd(), "apps/web/assets/osa-api-client.js"), "utf8"),
   ]);
 
+  assert.match(html, /id="gatekeeper"/);
+  assert.match(html, /OSA · GATEKEEPER/);
+  assert.match(html, /id="gate-login"/);
+  assert.match(html, /bootstrapSession\(\)/);
   assert.match(html, /id="mission-input"/);
   assert.match(html, /id="run-now"/);
   assert.match(html, /id="result-output"/);
@@ -303,6 +320,9 @@ test("DEV web surface exposes mission input, RUN NOW, and live proof outputs", a
   assert.match(html, /id="evidence-output"/);
   assert.match(html, /id="proof-output"/);
   assert.match(html, /window\.OSA_API\.runDevMission\(objective\)/);
+  assert.match(apiClient, /async loginDev\(displayName, email = ""\)/);
+  assert.match(apiClient, /getSession\(\)/);
+  assert.match(apiClient, /async logout\(\)/);
   assert.match(apiClient, /async runDevMission\(objective\)/);
   assert.match(apiClient, /this\.getRunEvents\(run\.run_id\)/);
   assert.match(apiClient, /this\.getRunEvidence\(run\.run_id\)/);

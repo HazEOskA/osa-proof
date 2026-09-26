@@ -1,4 +1,5 @@
 import type {
+  Identity,
   LayerEnterResult,
   LayerProfile,
   OsaLayerId,
@@ -25,10 +26,10 @@ const PROFILES: readonly LayerProfile[] = [
     layer_id: "dev",
     label: "DEV",
     product_layer: "BUILDER",
-    access_mode: "PUBLIC",
+    access_mode: "AUTHENTICATED",
     route: "/dev/",
     proof_required: true,
-    requirements: [],
+    requirements: ["authenticated_session"],
   },
   {
     layer_id: "bank",
@@ -85,7 +86,7 @@ export function getLayerProfile(layerId: string): LayerProfile | undefined {
   return profile ? cloneProfile(profile) : undefined;
 }
 
-export function enterLayer(layerId: string): LayerEnterResult | undefined {
+export function enterLayer(layerId: string, identity?: Identity): LayerEnterResult | undefined {
   const profile = getLayerProfile(layerId);
   if (!profile) return undefined;
 
@@ -93,6 +94,25 @@ export function enterLayer(layerId: string): LayerEnterResult | undefined {
     return {
       decision: "ALLOWED",
       layer: profile,
+    };
+  }
+
+  if (profile.access_mode === "AUTHENTICATED") {
+    if (identity?.verified) {
+      return {
+        decision: "ALLOWED",
+        layer: profile,
+      };
+    }
+
+    return {
+      decision: "GATED",
+      layer: profile,
+      gate: {
+        code: "AUTHENTICATED_SESSION_REQUIRED",
+        requirements: ["authenticated_session"],
+        authoritative: true,
+      },
     };
   }
 
