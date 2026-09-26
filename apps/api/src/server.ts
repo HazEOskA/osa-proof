@@ -5,9 +5,10 @@ import { ExecutorRegistry } from "../../../packages/runtime/src";
 export function createDevFixtureRegistry(): ExecutorRegistry {
   const registry = new ExecutorRegistry();
 
-  registry.register("dev.planner.fixture.v1", ({ input }) => ({
+  registry.register("dev.planner.fixture.v1", ({ input, mission }) => ({
     output: {
       plan: "fixture-build",
+      objective: mission.objective,
       received: input,
     },
     evidence: [
@@ -15,15 +16,17 @@ export function createDevFixtureRegistry(): ExecutorRegistry {
         kind: "plan",
         data: {
           status: "ready",
+          objective: mission.objective,
           source: "dev-fixture",
         },
       },
     ],
   }));
 
-  registry.register("dev.builder.fixture.v1", ({ input }) => ({
+  registry.register("dev.builder.fixture.v1", ({ input, mission }) => ({
     output: {
       artifact: "dev-fixture-artifact.txt",
+      objective: mission.objective,
       upstream: input,
     },
     evidence: [
@@ -32,6 +35,7 @@ export function createDevFixtureRegistry(): ExecutorRegistry {
         data: {
           status: "built",
           artifact: "dev-fixture-artifact.txt",
+          objective: mission.objective,
           source: "dev-fixture",
         },
       },

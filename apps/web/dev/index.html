@@ -106,6 +106,48 @@
     .btn-link:hover .arr { transform: translateX(4px); }
     .btn-sm { padding: 10px 16px; font-size: 13px; border-radius: 9px; }
 
+    /* ══════ DEV builder runtime ══════ */
+    .builder-shell { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .builder-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 16px; }
+    .builder-card { border: 1px solid var(--line-strong); border-radius: 18px; padding: 26px;
+      background: linear-gradient(180deg, var(--glass), rgba(255,255,255,0.012));
+      box-shadow: 0 24px 60px -34px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.05); }
+    .builder-topline { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 20px; }
+    .builder-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+    .runtime-status { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; padding: 5px 10px;
+      border-radius: 100px; border: 1px solid var(--line-strong); color: var(--ink-2); background: rgba(255,255,255,0.035); }
+    .runtime-status[data-state="RUNNING"] { color: var(--amber); border-color: rgba(255,184,0,0.4); background: rgba(255,184,0,0.08); }
+    .runtime-status[data-state="VERIFIED"] { color: var(--green); border-color: rgba(63,222,139,0.4); background: rgba(63,222,139,0.08); }
+    .runtime-status[data-state="FAILED"], .runtime-status[data-state="ERROR"] { color: var(--red); border-color: rgba(255,92,106,0.4); background: rgba(255,92,106,0.08); }
+    .runtime-status[data-state="INCOMPLETE"] { color: var(--amber); border-color: rgba(255,184,0,0.4); background: rgba(255,184,0,0.08); }
+    .mission-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+    .mission-input { width: 100%; min-height: 148px; resize: vertical; border: 1px solid var(--line-strong); border-radius: 12px;
+      padding: 16px; background: rgba(0,0,0,0.24); color: var(--ink); font: 14px/1.65 var(--mono); outline: none;
+      transition: border-color 140ms ease, box-shadow 140ms ease; }
+    .mission-input:focus { border-color: rgba(95,232,214,0.55); box-shadow: 0 0 0 3px rgba(95,232,214,0.08); }
+    .mission-input::placeholder { color: var(--ink-4); }
+    .team-graph { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin: 18px 0; }
+    .agent-node { border: 1px solid var(--line-strong); border-radius: 12px; padding: 14px; background: rgba(255,255,255,0.025); }
+    .agent-node b { display: block; font-size: 13px; margin-bottom: 4px; }
+    .agent-node span { display: block; font-family: var(--mono); color: var(--ink-3); font-size: 10px; }
+    .graph-edge { font-family: var(--mono); color: var(--cyan); font-size: 18px; text-align: center; }
+    .builder-action-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .builder-action-row .btn[disabled] { opacity: 0.55; cursor: wait; transform: none; }
+    .builder-note { color: var(--ink-3); font: 11px/1.5 var(--mono); }
+    .run-meta { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 16px; }
+    .run-meta > div { border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; background: rgba(0,0,0,0.14); }
+    .run-meta span { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 5px; }
+    .run-meta b { display: block; font-family: var(--mono); font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .runtime-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+    .runtime-panel { min-height: 280px; }
+    .runtime-output { margin: 0; white-space: pre-wrap; word-break: break-word; overflow: auto; max-height: 380px;
+      color: var(--ink-2); font: 11px/1.65 var(--mono); tab-size: 2; }
+    .runtime-empty { color: var(--ink-4); }
+    @media (max-width: 920px) {
+      .builder-grid, .runtime-grid { grid-template-columns: 1fr; }
+      .run-meta { grid-template-columns: 1fr; }
+    }
+
     /* ══════ reveal ══════ */
     .rv { opacity: 0; transform: translateY(28px); }
     .rv.in { opacity: 1; transform: none; transition: opacity 750ms var(--e-out), transform 750ms var(--e-out); }
@@ -431,6 +473,76 @@
     </div>
   </section>
 
+  <!-- ══════ DEV BUILDER RUNTIME ══════ -->
+  <section class="blk builder-shell blueprint-bg" id="start" data-od-id="dev-builder">
+    <div class="wrap">
+      <div class="blk-head">
+        <div class="rv">
+          <span class="kicker">DEV · LIVE RUNTIME</span>
+          <h2>Wpisz misję.<br><span class="it">Uruchom</span> zespół.</h2>
+        </div>
+        <p class="rv d1">To nie jest statyczny verdict. RUN NOW tworzy Team Graph i Mission w backendzie, wykonuje dwie role, zbiera Events i Evidence, a verdict bierze z ProofReceipt.</p>
+      </div>
+
+      <div class="builder-grid">
+        <div class="builder-card corner rv" data-od-id="mission-composer">
+          <div class="builder-topline">
+            <span class="builder-label">Mission composer</span>
+            <span class="runtime-status" id="runtime-status" data-state="NOT_RUN">NOT_RUN</span>
+          </div>
+
+          <label class="mission-label" for="mission-input">Co ma zrobić zespół?</label>
+          <textarea class="mission-input" id="mission-input" spellcheck="false" placeholder="Np. zaprojektuj proof-first flow dla agenta, który buduje artefakt i musi udowodnić wynik.">Zbuduj zweryfikowany artefakt DEV i zachowaj pełny ślad evidence.</textarea>
+
+          <div class="team-graph" aria-label="Team Graph: planner przekazuje zadanie do buildera">
+            <div class="agent-node">
+              <b>PLANNER</b>
+              <span>dev.planner.fixture.v1</span>
+            </div>
+            <div class="graph-edge" aria-hidden="true">→</div>
+            <div class="agent-node">
+              <b>BUILDER</b>
+              <span>dev.builder.fixture.v1</span>
+            </div>
+          </div>
+
+          <div class="builder-action-row">
+            <button class="btn btn-primary" id="run-now" type="button">RUN NOW</button>
+            <span class="builder-note">deterministic fixture · backend-authoritative verdict · no API key</span>
+          </div>
+        </div>
+
+        <div class="builder-card corner rv d1" data-od-id="run-result">
+          <div class="builder-topline">
+            <span class="builder-label">Run result</span>
+            <span class="builder-note">CLAIM ≠ PROOF</span>
+          </div>
+          <div class="run-meta">
+            <div><span>Mission</span><b id="mission-id">—</b></div>
+            <div><span>Run</span><b id="run-id">—</b></div>
+            <div><span>Verdict</span><b id="run-verdict">NOT_RUN</b></div>
+          </div>
+          <pre class="runtime-output runtime-empty" id="result-output">Run output pojawi się tutaj po wykonaniu misji.</pre>
+        </div>
+      </div>
+
+      <div class="runtime-grid">
+        <div class="builder-card runtime-panel corner rv" data-od-id="run-events">
+          <div class="builder-topline"><span class="builder-label">Events</span><span class="builder-note" id="events-count">0 events</span></div>
+          <pre class="runtime-output runtime-empty" id="events-output">Brak runu.</pre>
+        </div>
+        <div class="builder-card runtime-panel corner rv d1" data-od-id="run-evidence">
+          <div class="builder-topline"><span class="builder-label">Evidence</span><span class="builder-note" id="evidence-count">0 evidence</span></div>
+          <pre class="runtime-output runtime-empty" id="evidence-output">Brak evidence.</pre>
+        </div>
+        <div class="builder-card runtime-panel corner rv d2" data-od-id="run-proof">
+          <div class="builder-topline"><span class="builder-label">ProofReceipt</span><span class="builder-note">verifier output</span></div>
+          <pre class="runtime-output runtime-empty" id="proof-output">Brak proof.</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ══════ MARQUEE ══════ -->
   <div class="marquee" data-od-id="marquee" aria-hidden="true">
     <div class="mq-track">
@@ -586,13 +698,13 @@
 
         <div class="bcell b-v1 rv" data-od-id="verdict-mission">
           <div class="blabel">Mission</div>
-          <div class="vvalue">PASSED</div>
-          <div class="vnote">testy akceptacyjne: zaliczone</div>
+          <div class="vvalue">NOT_RUN</div>
+          <div class="vnote">oczekuje na wykonanie misji</div>
         </div>
         <div class="bcell b-v2 rv d1" data-od-id="verdict-proof">
           <div class="blabel">Proof</div>
-          <div class="vvalue">LOCAL_VERIFIED</div>
-          <div class="vnote">bundle zweryfikowany lokalnie</div>
+          <div class="vvalue">NOT_RUN</div>
+          <div class="vnote">verdict pojawi się z backendowego verifiera</div>
         </div>
         <div class="bcell b-v3 rv d2" data-od-id="verdict-anchor">
           <div class="blabel">Anchor</div>
@@ -850,10 +962,38 @@
 (function () {
   "use strict";
 
+  var input = document.getElementById("mission-input");
+  var runButton = document.getElementById("run-now");
+  var status = document.getElementById("runtime-status");
+  var missionIdNode = document.getElementById("mission-id");
+  var runIdNode = document.getElementById("run-id");
+  var verdictNode = document.getElementById("run-verdict");
+  var resultNode = document.getElementById("result-output");
+  var eventsNode = document.getElementById("events-output");
+  var evidenceNode = document.getElementById("evidence-output");
+  var proofNode = document.getElementById("proof-output");
+  var eventsCount = document.getElementById("events-count");
+  var evidenceCount = document.getElementById("evidence-count");
   var missionCard = document.querySelector('[data-od-id="verdict-mission"]');
   var proofCard = document.querySelector('[data-od-id="verdict-proof"]');
   var anchorCard = document.querySelector('[data-od-id="verdict-anchor"]');
   var running = false;
+
+  function pretty(value) {
+    return JSON.stringify(value, null, 2);
+  }
+
+  function setText(node, value, empty) {
+    if (!node) return;
+    node.textContent = value;
+    node.classList.toggle("runtime-empty", Boolean(empty));
+  }
+
+  function setStatus(value) {
+    if (!status) return;
+    status.textContent = value;
+    status.dataset.state = value;
+  }
 
   function setCard(card, value, note) {
     if (!card) return;
@@ -863,96 +1003,82 @@
     if (noteNode) noteNode.textContent = note;
   }
 
-  setCard(missionCard, "READY", "fixture runtime gotowy do uruchomienia");
-  setCard(proofCard, "NOT_RUN", "oczekuje na wykonanie misji");
-  setCard(anchorCard, "UNANCHORED", "brak kotwiczenia zewnętrznego");
+  function renderIdle() {
+    setStatus("NOT_RUN");
+    if (missionIdNode) missionIdNode.textContent = "—";
+    if (runIdNode) runIdNode.textContent = "—";
+    if (verdictNode) verdictNode.textContent = "NOT_RUN";
+    setText(resultNode, "Run output pojawi się tutaj po wykonaniu misji.", true);
+    setText(eventsNode, "Brak runu.", true);
+    setText(evidenceNode, "Brak evidence.", true);
+    setText(proofNode, "Brak proof.", true);
+    if (eventsCount) eventsCount.textContent = "0 events";
+    if (evidenceCount) evidenceCount.textContent = "0 evidence";
+    setCard(missionCard, "NOT_RUN", "oczekuje na wykonanie misji");
+    setCard(proofCard, "NOT_RUN", "verdict pojawi się z backendowego verifiera");
+    setCard(anchorCard, "UNANCHORED", "brak kotwiczenia zewnętrznego");
+  }
 
-  async function runFixtureDemo(event) {
-    event.preventDefault();
+  async function runMission() {
     if (running) return;
+    var objective = input ? input.value.trim() : "";
+    if (!objective) {
+      setStatus("INPUT_REQUIRED");
+      if (input) input.focus();
+      return;
+    }
+
     running = true;
-
+    if (runButton) runButton.disabled = true;
+    setStatus("RUNNING");
+    if (verdictNode) verdictNode.textContent = "RUNNING";
+    setText(resultNode, "Runtime wykonuje Team Graph…", true);
+    setText(eventsNode, "Zbieranie events…", true);
+    setText(evidenceNode, "Zbieranie evidence…", true);
+    setText(proofNode, "Oczekiwanie na verifier…", true);
     setCard(missionCard, "RUNNING", "Team Graph → Mission → RUN");
-    setCard(proofCard, "VERIFYING", "zbieranie evidence i proof receipt");
-
-    var team = {
-      organization_id: "org_dev_fixture",
-      project_id: "project_dev_live_slice",
-      team_id: "team_dev_fixture",
-      version: "1",
-      agents: [
-        { agent_id: "planner", role: "planner", executor_ref: "dev.planner.fixture.v1" },
-        { agent_id: "builder", role: "builder", executor_ref: "dev.builder.fixture.v1" }
-      ],
-      edges: [
-        {
-          edge_id: "planner_to_builder",
-          from_agent_id: "planner",
-          to_agent_id: "builder",
-          kind: "handoff"
-        }
-      ]
-    };
-
-    var missionId = "mission_dev_fixture_" + Date.now();
-    var mission = {
-      organization_id: team.organization_id,
-      project_id: team.project_id,
-      mission_id: missionId,
-      team_id: team.team_id,
-      team_version: team.version,
-      objective: "build a verified DEV fixture artifact",
-      entry_agent_id: "planner",
-      input: { request: "build fixture artifact" },
-      requirements: [
-        {
-          requirement_id: "artifact_status",
-          type: "evidence_field_equals",
-          evidence_kind: "artifact",
-          agent_id: "builder",
-          field: "status",
-          expected: "built"
-        }
-      ]
-    };
+    setCard(proofCard, "VERIFYING", "zbieranie evidence i ProofReceipt");
 
     try {
-      await window.OSA_API.createTeam(team);
-      await window.OSA_API.createMission(mission);
-      var run = await window.OSA_API.runMission(missionId);
-      var results = await Promise.all([
-        window.OSA_API.getRunEvents(run.run_id),
-        window.OSA_API.getRunEvidence(run.run_id),
-        window.OSA_API.getRunProof(run.run_id)
-      ]);
-      var events = results[0];
-      var evidence = results[1];
-      var proof = results[2];
+      var result = await window.OSA_API.runDevMission(objective);
+      var run = result.run;
+      var proof = result.proof;
 
-      if (run.verdict === "VERIFIED" && proof.verdict === "VERIFIED") {
-        setCard(missionCard, "PASSED", "real run: " + events.length + " events");
-        setCard(proofCard, "LOCAL_VERIFIED", evidence.length + " evidence · " + proof.proof_id);
-      } else {
-        setCard(missionCard, run.verdict, "runtime zakończył misję bez VERIFIED");
-        setCard(proofCard, proof.verdict, proof.proof_id || "proof unavailable");
-      }
+      if (missionIdNode) missionIdNode.textContent = result.mission.mission_id;
+      if (runIdNode) runIdNode.textContent = run.run_id;
+      if (verdictNode) verdictNode.textContent = proof.verdict;
+      if (eventsCount) eventsCount.textContent = result.events.length + " events";
+      if (evidenceCount) evidenceCount.textContent = result.evidence.length + " evidence";
 
-      if (missionCard) missionCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      setText(resultNode, pretty(run.final_output), false);
+      setText(eventsNode, pretty(result.events), false);
+      setText(evidenceNode, pretty(result.evidence), false);
+      setText(proofNode, pretty(proof), false);
+      setStatus(proof.verdict);
+
+      var missionLabel = proof.verdict === "VERIFIED" ? "PASSED" : proof.verdict;
+      setCard(missionCard, missionLabel, "backend run: " + run.run_id);
+      setCard(proofCard, proof.verdict === "VERIFIED" ? "LOCAL_VERIFIED" : proof.verdict, proof.proof_id);
+      setCard(anchorCard, "UNANCHORED", "brak kotwiczenia zewnętrznego");
     } catch (error) {
-      console.error("OSA DEV fixture run failed", error);
+      console.error("OSA DEV mission failed", error);
+      var message = error && error.message ? error.message : "unknown error";
+      setStatus("ERROR");
+      if (verdictNode) verdictNode.textContent = "ERROR";
+      setText(resultNode, message, false);
+      setText(eventsNode, "Run przerwany przed poprawnym odczytem events.", true);
+      setText(evidenceNode, "Brak potwierdzonego evidence.", true);
+      setText(proofNode, "Brak potwierdzonego ProofReceipt.", true);
       setCard(missionCard, "FAILED", "API/runtime error");
-      setCard(proofCard, "NOT_VERIFIED", error && error.message ? error.message : "unknown error");
-      if (missionCard) missionCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      setCard(proofCard, "NOT_VERIFIED", message);
     } finally {
       running = false;
+      if (runButton) runButton.disabled = false;
     }
   }
 
-  document.querySelectorAll('a[href="#start"]').forEach(function (anchor) {
-    if (/Uruchom/i.test(anchor.textContent || "")) {
-      anchor.addEventListener("click", runFixtureDemo);
-    }
-  });
+  renderIdle();
+  if (runButton) runButton.addEventListener("click", runMission);
 })();
 </script>
 </body></html>

@@ -216,9 +216,9 @@ test("DEV production fixture registry completes Team Graph -> Mission -> RUN -> 
     mission_id: "mission_dev_acceptance",
     team_id: devGraph.team_id,
     team_version: devGraph.version,
-    objective: "build a verified DEV fixture artifact",
+    objective: "Build a proof-first DEV artifact from user input",
     entry_agent_id: "planner",
-    input: { request: "build fixture artifact" },
+    input: { request: "Build a proof-first DEV artifact from user input" },
     requirements: [
       {
         requirement_id: "artifact_status",
@@ -269,9 +269,20 @@ test("DEV production fixture registry completes Team Graph -> Mission -> RUN -> 
     const proof = (await proofResponse.json()) as { verdict: string; proof_id: string };
 
     assert.ok(events.some((event) => event.type === "RUN_VERIFIED"));
-    assert.ok(evidence.some((record) => record.kind === "artifact"));
+    const artifactEvidence = evidence.find((record) => record.kind === "artifact") as
+      | { data?: { objective?: string } }
+      | undefined;
+    assert.equal(artifactEvidence?.data?.objective, devMission.objective);
     assert.equal(proof.verdict, "VERIFIED");
     assert.match(proof.proof_id, /^proof_/);
+
+    const runResponse = await fetch(`${base}/runs/${run.run_id}`);
+    assert.equal(runResponse.status, 200);
+    const storedRun = (await runResponse.json()) as {
+      final_output?: { objective?: string; upstream?: { received?: { request?: string } } };
+    };
+    assert.equal(storedRun.final_output?.objective, devMission.objective);
+    assert.equal(storedRun.final_output?.upstream?.received?.request, devMission.objective);
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve()))
@@ -279,3 +290,21 @@ test("DEV production fixture registry completes Team Graph -> Mission -> RUN -> 
   }
 });
 
+test("DEV web surface exposes mission input, RUN NOW, and live proof outputs", async () => {
+  const [html, apiClient] = await Promise.all([
+    readFile(join(process.cwd(), "apps/web/dev/index.html"), "utf8"),
+    readFile(join(process.cwd(), "apps/web/assets/osa-api-client.js"), "utf8"),
+  ]);
+
+  assert.match(html, /id="mission-input"/);
+  assert.match(html, /id="run-now"/);
+  assert.match(html, /id="result-output"/);
+  assert.match(html, /id="events-output"/);
+  assert.match(html, /id="evidence-output"/);
+  assert.match(html, /id="proof-output"/);
+  assert.match(html, /window\.OSA_API\.runDevMission\(objective\)/);
+  assert.match(apiClient, /async runDevMission\(objective\)/);
+  assert.match(apiClient, /this\.getRunEvents\(run\.run_id\)/);
+  assert.match(apiClient, /this\.getRunEvidence\(run\.run_id\)/);
+  assert.match(apiClient, /this\.getRunProof\(run\.run_id\)/);
+});
