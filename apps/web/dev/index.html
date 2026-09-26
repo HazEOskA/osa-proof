@@ -846,4 +846,111 @@
 
 
 <script src="../assets/osa-api-client.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var missionCard = document.querySelector('[data-od-id="verdict-mission"]');
+  var proofCard = document.querySelector('[data-od-id="verdict-proof"]');
+  var anchorCard = document.querySelector('[data-od-id="verdict-anchor"]');
+  var running = false;
+
+  function setCard(card, value, note) {
+    if (!card) return;
+    var valueNode = card.querySelector(".vvalue");
+    var noteNode = card.querySelector(".vnote");
+    if (valueNode) valueNode.textContent = value;
+    if (noteNode) noteNode.textContent = note;
+  }
+
+  setCard(missionCard, "READY", "fixture runtime gotowy do uruchomienia");
+  setCard(proofCard, "NOT_RUN", "oczekuje na wykonanie misji");
+  setCard(anchorCard, "UNANCHORED", "brak kotwiczenia zewnętrznego");
+
+  async function runFixtureDemo(event) {
+    event.preventDefault();
+    if (running) return;
+    running = true;
+
+    setCard(missionCard, "RUNNING", "Team Graph → Mission → RUN");
+    setCard(proofCard, "VERIFYING", "zbieranie evidence i proof receipt");
+
+    var team = {
+      organization_id: "org_dev_fixture",
+      project_id: "project_dev_live_slice",
+      team_id: "team_dev_fixture",
+      version: "1",
+      agents: [
+        { agent_id: "planner", role: "planner", executor_ref: "dev.planner.fixture.v1" },
+        { agent_id: "builder", role: "builder", executor_ref: "dev.builder.fixture.v1" }
+      ],
+      edges: [
+        {
+          edge_id: "planner_to_builder",
+          from_agent_id: "planner",
+          to_agent_id: "builder",
+          kind: "handoff"
+        }
+      ]
+    };
+
+    var missionId = "mission_dev_fixture_" + Date.now();
+    var mission = {
+      organization_id: team.organization_id,
+      project_id: team.project_id,
+      mission_id: missionId,
+      team_id: team.team_id,
+      team_version: team.version,
+      objective: "build a verified DEV fixture artifact",
+      entry_agent_id: "planner",
+      input: { request: "build fixture artifact" },
+      requirements: [
+        {
+          requirement_id: "artifact_status",
+          type: "evidence_field_equals",
+          evidence_kind: "artifact",
+          agent_id: "builder",
+          field: "status",
+          expected: "built"
+        }
+      ]
+    };
+
+    try {
+      await window.OSA_API.createTeam(team);
+      await window.OSA_API.createMission(mission);
+      var run = await window.OSA_API.runMission(missionId);
+      var results = await Promise.all([
+        window.OSA_API.getRunEvents(run.run_id),
+        window.OSA_API.getRunEvidence(run.run_id),
+        window.OSA_API.getRunProof(run.run_id)
+      ]);
+      var events = results[0];
+      var evidence = results[1];
+      var proof = results[2];
+
+      if (run.verdict === "VERIFIED" && proof.verdict === "VERIFIED") {
+        setCard(missionCard, "PASSED", "real run: " + events.length + " events");
+        setCard(proofCard, "LOCAL_VERIFIED", evidence.length + " evidence · " + proof.proof_id);
+      } else {
+        setCard(missionCard, run.verdict, "runtime zakończył misję bez VERIFIED");
+        setCard(proofCard, proof.verdict, proof.proof_id || "proof unavailable");
+      }
+
+      if (missionCard) missionCard.scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch (error) {
+      console.error("OSA DEV fixture run failed", error);
+      setCard(missionCard, "FAILED", "API/runtime error");
+      setCard(proofCard, "NOT_VERIFIED", error && error.message ? error.message : "unknown error");
+      if (missionCard) missionCard.scrollIntoView({ behavior: "smooth", block: "center" });
+    } finally {
+      running = false;
+    }
+  }
+
+  document.querySelectorAll('a[href="#start"]').forEach(function (anchor) {
+    anchor.addEventListener("click", runFixtureDemo);
+  });
+})();
+</script>
 </body></html>

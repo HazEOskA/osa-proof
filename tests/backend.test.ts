@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { AddressInfo } from "node:net";
 import { createApiServer } from "../apps/api/src";
+import { createDevFixtureRegistry } from "../apps/api/src/server";
 import { Mission, TeamGraph } from "../packages/contracts/src";
 import { JsonlEventStore } from "../packages/events/src";
 import { ExecutorRegistry, OsaRuntime } from "../packages/runtime/src";
@@ -188,3 +189,93 @@ test("minimal HTTP API exposes team, run, events, evidence and proof", async () 
     );
   }
 });
+
+test("DEV production fixture registry completes Team Graph -> Mission -> RUN -> Events -> Evidence -> Proof", async () => {
+  const devGraph: TeamGraph = {
+    organization_id: "org_dev_fixture",
+    project_id: "project_dev_live_slice",
+    team_id: "team_dev_fixture",
+    version: "1",
+    agents: [
+      { agent_id: "planner", role: "planner", executor_ref: "dev.planner.fixture.v1" },
+      { agent_id: "builder", role: "builder", executor_ref: "dev.builder.fixture.v1" },
+    ],
+    edges: [
+      {
+        edge_id: "planner_to_builder",
+        from_agent_id: "planner",
+        to_agent_id: "builder",
+        kind: "handoff",
+      },
+    ],
+  };
+
+  const devMission: Mission = {
+    organization_id: devGraph.organization_id,
+    project_id: devGraph.project_id,
+    mission_id: "mission_dev_acceptance",
+    team_id: devGraph.team_id,
+    team_version: devGraph.version,
+    objective: "build a verified DEV fixture artifact",
+    entry_agent_id: "planner",
+    input: { request: "build fixture artifact" },
+    requirements: [
+      {
+        requirement_id: "artifact_status",
+        type: "evidence_field_equals",
+        evidence_kind: "artifact",
+        agent_id: "builder",
+        field: "status",
+        expected: "built",
+      },
+    ],
+  };
+
+  const server = createApiServer(createDevFixtureRegistry());
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address() as AddressInfo;
+  const base = `http://127.0.0.1:${address.port}`;
+
+  try {
+    let response = await fetch(`${base}/teams`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(devGraph),
+    });
+    assert.equal(response.status, 201);
+
+    response = await fetch(`${base}/missions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(devMission),
+    });
+    assert.equal(response.status, 201);
+
+    response = await fetch(`${base}/missions/${devMission.mission_id}/run`, { method: "POST" });
+    assert.equal(response.status, 201);
+    const run = (await response.json()) as { run_id: string; verdict: string };
+    assert.equal(run.verdict, "VERIFIED");
+
+    const eventsResponse = await fetch(`${base}/runs/${run.run_id}/events`);
+    const evidenceResponse = await fetch(`${base}/runs/${run.run_id}/evidence`);
+    const proofResponse = await fetch(`${base}/runs/${run.run_id}/proof`);
+
+    assert.equal(eventsResponse.status, 200);
+    assert.equal(evidenceResponse.status, 200);
+    assert.equal(proofResponse.status, 200);
+
+    const events = (await eventsResponse.json()) as Array<{ type: string }>;
+    const evidence = (await evidenceResponse.json()) as Array<{ kind: string }>;
+    const proof = (await proofResponse.json()) as { verdict: string; proof_id: string };
+
+    assert.ok(events.some((event) => event.type === "RUN_VERIFIED"));
+    assert.ok(evidence.some((record) => record.kind === "artifact"));
+    assert.equal(proof.verdict, "VERIFIED");
+    assert.match(proof.proof_id, /^proof_/);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve()))
+    );
+  }
+});
+
