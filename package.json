@@ -3,13 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "Proof-first backend for verifiable agentic systems.",
-  "engines": {
-    "node": ">=20"
-  },
+  "engines": { "node": ">=20" },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/tests/*.test.js",
-    "start": "node dist/apps/api/src/server.js"
+    "test": "npm run build && node --test dist/tests/*.test.js"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

@@ -3,28 +3,26 @@ import { AddressInfo } from "node:net";
 import test from "node:test";
 import { createApiServer } from "../apps/api/src";
 import { enterLayer, listLayerProfiles } from "../packages/access-control/src";
-import { createLocalDevIdentity } from "../packages/identity/src";
 import { ExecutorRegistry } from "../packages/runtime/src";
 
 const regulated = ["bank", "financial", "cybersecurity", "army"] as const;
 
+type EntryResponse = {
+  decision: string;
+  layer: { route: string };
+  gate?: { authoritative: boolean };
+};
+
 test("layer catalog exposes the six locked product entries", () => {
   const profiles = listLayerProfiles();
-  assert.deepEqual(
-    profiles.map((profile) => profile.layer_id),
-    ["school", "dev", "bank", "financial", "cybersecurity", "army"]
-  );
+  assert.deepEqual(profiles.map((profile) => profile.layer_id), ["school", "dev", "bank", "financial", "cybersecurity", "army"]);
   assert.equal(new Set(profiles.map((profile) => profile.route)).size, 6);
   assert.ok(profiles.every((profile) => profile.proof_required));
 });
 
-test("School is public, Dev requires identity, regulated layers fail closed", () => {
+test("School and Dev are allowed, regulated layers fail closed", () => {
   assert.equal(enterLayer("school")?.decision, "ALLOWED");
-  const devWithoutIdentity = enterLayer("dev");
-  assert.equal(devWithoutIdentity?.decision, "GATED");
-  assert.equal(devWithoutIdentity?.gate?.code, "AUTHENTICATED_SESSION_REQUIRED");
-  const identity = createLocalDevIdentity({ display_name: "Layer Test" });
-  assert.equal(enterLayer("dev", identity)?.decision, "ALLOWED");
+  assert.equal(enterLayer("dev")?.decision, "ALLOWED");
 
   for (const layerId of regulated) {
     const result = enterLayer(layerId);
@@ -52,45 +50,16 @@ test("HTTP layer entry returns backend-authoritative navigation decisions", asyn
 
     response = await fetch(`${base}/layers/school/enter`, { method: "POST" });
     assert.equal(response.status, 200);
-    const schoolEntry = (await response.json()) as {
-      decision: string;
-      layer: { route: string };
-    };
-    assert.equal(schoolEntry.decision, "ALLOWED");
-    assert.equal(schoolEntry.layer.route, "/school/");
-
-    response = await fetch(`${base}/layers/dev/enter`, { method: "POST" });
-    assert.equal(response.status, 401);
-    const devBlocked = (await response.json()) as { gate?: { code?: string } };
-    assert.equal(devBlocked.gate?.code, "AUTHENTICATED_SESSION_REQUIRED");
-
-    response = await fetch(`${base}/auth/dev-login`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ display_name: "HTTP DEV", email: "http-dev@example.com" }),
-    });
-    assert.equal(response.status, 201);
-    const login = (await response.json()) as { session: { token: string } };
-
-    response = await fetch(`${base}/layers/dev/enter`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${login.session.token}` },
-    });
-    assert.equal(response.status, 200);
-    const devEntry = (await response.json()) as { decision: string; layer: { route: string } };
-    assert.equal(devEntry.decision, "ALLOWED");
-    assert.equal(devEntry.layer.route, "/dev/");
+    let entry = (await response.json()) as EntryResponse;
+    assert.equal(entry.decision, "ALLOWED");
+    assert.equal(entry.layer.route, "/school/");
 
     response = await fetch(`${base}/layers/bank/enter`, { method: "POST" });
     assert.equal(response.status, 200);
-    const bankEntry = (await response.json()) as {
-      decision: string;
-      layer: { route: string };
-      gate?: { authoritative: boolean };
-    };
-    assert.equal(bankEntry.decision, "GATED");
-    assert.equal(bankEntry.layer.route, "/bank/");
-    assert.equal(bankEntry.gate?.authoritative, true);
+    entry = (await response.json()) as EntryResponse;
+    assert.equal(entry.decision, "GATED");
+    assert.equal(entry.layer.route, "/bank/");
+    assert.equal(entry.gate?.authoritative, true);
 
     response = await fetch(`${base}/layers/nope/enter`, { method: "POST" });
     assert.equal(response.status, 404);

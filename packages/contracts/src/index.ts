@@ -157,29 +157,7 @@ export type OsaLayerId =
   | "army";
 
 export type OsaProductLayer = "ACADEMY" | "BUILDER" | "REGULATED";
-
-export type IdentityProvider = "local-dev" | "github" | "google" | "microsoft";
-
-export interface Identity {
-  identity_id: string;
-  provider: IdentityProvider;
-  subject: string;
-  display_name: string;
-  email?: string;
-  organization_id?: string;
-  roles: string[];
-  verified: boolean;
-}
-
-export interface SessionRecord {
-  session_id: string;
-  token: string;
-  identity: Identity;
-  created_at: string;
-  expires_at: string;
-}
-
-export type LayerAccessMode = "PUBLIC" | "AUTHENTICATED" | "REGULATED";
+export type LayerAccessMode = "PUBLIC" | "REGULATED";
 export type LayerEntryDecision = "ALLOWED" | "GATED";
 
 export interface LayerProfile {
@@ -193,7 +171,7 @@ export interface LayerProfile {
 }
 
 export interface LayerAccessGate {
-  code: "AUTHENTICATED_SESSION_REQUIRED" | "VERIFIED_ORGANIZATION_REQUIRED";
+  code: "VERIFIED_ORGANIZATION_REQUIRED";
   requirements: string[];
   authoritative: true;
 }
