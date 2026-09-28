@@ -195,6 +195,8 @@ export function createProviderBuilderExecutor(provider: ModelProvider): AgentExe
         objective: mission.objective,
         ...providerRef(response),
       },
+      // Core recomputes the digest from this content and checks it against content_sha256 above.
+      content: artifact.value.content,
     });
 
     return {
