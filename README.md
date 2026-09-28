@@ -64,8 +64,40 @@ HTTP additionally exposes the product-layer catalog and backend-authoritative la
 ## Local verification
 
 ```bash
-npm install
+npm ci
 npm test
 ```
+
+## Execution modes
+
+The API server requires an explicit execution mode. There is no default; a missing or
+unknown value refuses to start.
+
+```bash
+# Deterministic, offline
+OSA_EXECUTION_MODE=fixture npm start
+
+# Real provider-backed execution (Anthropic Messages API)
+OSA_EXECUTION_MODE=provider \
+OSA_PROVIDER=anthropic \
+OSA_MODEL=<model id> \
+ANTHROPIC_API_KEY=<secret> \
+npm start
+```
+
+Optional: `OSA_PROVIDER_BASE_URL`, `OSA_PROVIDER_TIMEOUT_MS` (default 120000),
+`OSA_PROVIDER_MAX_TOKENS` (default 16000).
+
+Team Graphs reference only the stable executor refs `dev.planner.v1` and `dev.builder.v1`;
+the server registers the fixture or provider implementation under them. The provider sits
+behind `ModelProvider` in `packages/adapters`, so the runtime and proof core stay provider-neutral.
+
+Provider evidence is computed by executor code, never copied from model text:
+`provider_call` (status, model, response id, usage, request/response hashes) and
+`artifact` with `status: "built"`, `content_sha256` and `bytes`. `built` means the provider
+call completed, the response parsed and passed the structural contract, and non-empty
+content was hashed. It does not assert quality or semantic correctness.
+
+Opt-in live check: `OSA_LIVE_PROVIDER_TEST=1` plus the provider variables above, then `npm test`.
 
 See `docs/BACKEND_ARCHITECTURE_LOCK_V1.md`, `apps/web/README.md`, and the contracts under `docs/`.

@@ -121,13 +121,13 @@
       if (!request) throw new Error("DEV mission objective is required");
 
       const team = {
-        organization_id: "org_dev_fixture",
+        organization_id: "org_dev",
         project_id: "project_dev_live_slice",
-        team_id: "team_dev_fixture",
+        team_id: "team_dev",
         version: "1",
         agents: [
-          { agent_id: "planner", role: "planner", executor_ref: "dev.planner.fixture.v1" },
-          { agent_id: "builder", role: "builder", executor_ref: "dev.builder.fixture.v1" }
+          { agent_id: "planner", role: "planner", executor_ref: "dev.planner.v1" },
+          { agent_id: "builder", role: "builder", executor_ref: "dev.builder.v1" }
         ],
         edges: [
           {
