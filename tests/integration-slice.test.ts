@@ -230,6 +230,7 @@ test("Native Builder V0.1 is the default BUILD_CODE authority and fails closed w
   const execution = createDevExecution({
     OSA_EXECUTION_MODE: "fixture",
     OSA_BUILDER_MODE: "native",
+    OSA_WORKSPACE_PROVIDER: "missing-provider",
   });
 
   assert.equal(execution.description.builder_mode, "native");
