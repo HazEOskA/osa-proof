@@ -112,14 +112,22 @@ class DockerWorkspaceHandle implements WorkspaceHandle {
   readonly rootDir = "/workspace";
   readonly metadata: Record<string, unknown>;
   private stopped = false;
+  private readonly lifetimeTimer?: NodeJS.Timeout;
 
   constructor(
     readonly id: string,
     private readonly containerName: string,
     private readonly cli: DockerCli,
-    metadata: Record<string, unknown>
+    metadata: Record<string, unknown>,
+    lifetimeMs?: number
   ) {
     this.metadata = metadata;
+    if (lifetimeMs && lifetimeMs > 0) {
+      this.lifetimeTimer = setTimeout(() => {
+        void this.stop().catch(() => undefined);
+      }, lifetimeMs);
+      this.lifetimeTimer.unref();
+    }
   }
 
   async exec(
@@ -187,6 +195,7 @@ class DockerWorkspaceHandle implements WorkspaceHandle {
   async stop(): Promise<void> {
     if (this.stopped) return;
     this.stopped = true;
+    if (this.lifetimeTimer) clearTimeout(this.lifetimeTimer);
 
     const result = await this.cli.run(["rm", "-f", this.containerName]);
     if (result.exitCode !== 0 && !/No such container/i.test(result.stderr)) {
@@ -275,7 +284,9 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
         cpu,
         memory_mb: memoryMb,
         ports: [...ports],
-      }
+        lifetime_ms: request.timeoutMs,
+      },
+      request.timeoutMs
     );
   }
 }
