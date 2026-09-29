@@ -97,6 +97,9 @@ Team Graphs reference only the stable executor refs `dev.planner.v1` and `dev.bu
 the server registers the fixture or provider implementation under them. The provider sits
 behind `ModelProvider` in `packages/adapters`, so the runtime and proof core stay provider-neutral.
 
+Datasets (`packages/datasets`, `/datasets` routes) hold versioned mission examples: every change is a
+new immutable version with sha256 digests, tags pin versions. See `docs/INTELLIGENCE_LAYER_V1.md`.
+
 Provider evidence is computed by executor code, never copied from model text:
 `provider_call` (status, model, response id, usage, request/response hashes) and
 `artifact` with `status: "built"`, `content_sha256` and `bytes`. `built` means the provider

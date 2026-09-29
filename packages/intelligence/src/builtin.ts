@@ -13,6 +13,7 @@ import {
   RetryingProvider,
   SUPPORTED_PROVIDERS,
 } from "../../adapters/src";
+import { DatasetStore, ExampleInput, verifyDatasetVersion } from "../../datasets/src";
 import { IntelligenceRegistry, ModuleImplementation } from "./index";
 
 type Env = Record<string, string | undefined>;
@@ -189,10 +190,59 @@ export const modelMeshModule: ModuleImplementation = {
   ],
 };
 
+function sampleExample(id: string, objective: string): ExampleInput {
+  return {
+    example_id: id,
+    objective,
+    input: { request: objective },
+    requirements: [{ requirement_id: "artifact_status", type: "evidence_field_equals", evidence_kind: "artifact", agent_id: "builder", field: "status", expected: "built" }],
+    expected: { verdict: "VERIFIED" },
+    split: "test",
+  };
+}
+
+export const datasetsModule: ModuleImplementation = {
+  id: "datasets",
+  version: "0.1.0",
+  checks: [
+    {
+      proof_id: "datasets.versioned",
+      run: () => {
+        const store = new DatasetStore(() => new Date("2026-01-01T00:00:00Z"));
+        const v1 = store.create({ dataset_id: "probe", name: "Probe", examples: [sampleExample("a", "first")] });
+        const v2 = store.commit("probe", { upsert: [sampleExample("b", "second")] });
+        const v3 = store.commit("probe", { remove: ["a"] });
+        store.tag("probe", "baseline", 1);
+        const pinned = store.get("probe", "baseline");
+        let noop = false;
+        try { store.commit("probe", { upsert: [sampleExample("b", "second")] }); } catch { noop = true; }
+        const ok = v1.version === 1 && v2.version === 2 && v2.parent_version === 1 && v3.version === 3
+          && pinned.examples.length === 1 && pinned.examples[0].example_id === "a" && pinned.version_sha256 === v1.version_sha256
+          && store.get("probe").examples.map((e) => e.example_id).join() === "b" && noop;
+        return { ok, detail: `v1..v3 immutable; tag 'baseline' pins v1; no-op commit refused: ${noop}` };
+      },
+    },
+    {
+      proof_id: "datasets.content_digests",
+      run: () => {
+        const a = new DatasetStore(() => new Date("2026-01-01T00:00:00Z")).create({ dataset_id: "d", name: "D", examples: [sampleExample("x", "1"), sampleExample("y", "2")] });
+        const b = new DatasetStore(() => new Date("2026-01-01T00:00:00Z")).create({ dataset_id: "d", name: "D", examples: [sampleExample("y", "2"), sampleExample("x", "1")] });
+        const clean = verifyDatasetVersion(a).ok;
+        const tampered = structuredClone(a);
+        (tampered.examples[0] as { objective: string }).objective = "forged";
+        const caught = !verifyDatasetVersion(tampered).ok;
+        const ok = clean && caught && a.examples_root === b.examples_root && a.version_sha256 === b.version_sha256;
+        return { ok, detail: `order-independent root: ${a.examples_root === b.examples_root}; verifies: ${clean}; tamper caught: ${caught}` };
+      },
+    },
+  ],
+};
+
 export function createBuiltinIntelligence(clock?: () => Date): IntelligenceRegistry {
   const registry = new IntelligenceRegistry(clock);
   registry.register(modelsModule);
   registry.register(llmGatewayModule);
   registry.register(modelMeshModule);
+  registry.register(datasetsModule);
   return registry;
 }

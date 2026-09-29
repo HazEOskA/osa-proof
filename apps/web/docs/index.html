@@ -241,7 +241,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
-            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Thirteen JSON routes for layers, teams, missions, runs and intelligence.</p></a>
+            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Twenty JSON routes for layers, teams, missions, runs, intelligence and datasets.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -407,7 +407,7 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
 
     <section id="api" aria-labelledby="h-api">
       <h2 id="h-api">HTTP API</h2>
-      <p>JSON in, JSON out. State is held in memory by the API process. Errors return <code>{"error": "…"}</code> with 400 or 404. <span class="nx">Authentication</span> is not enforced on main.</p>
+      <p>JSON in, JSON out. State is held in memory by the API process. Errors return <code>{"error": "…"}</code> with 400, 404 or 409. <span class="nx">Authentication</span> is not enforced on main.</p>
       <div class="tbl"><table>
         <thead><tr><th>Method</th><th>Path</th><th>Returns</th></tr></thead>
         <tbody>
@@ -424,6 +424,13 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
           <tr><td><span class="m">GET</span></td><td><code>/runs/:id/proof</code></td><td>The sealed proof receipt.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/intelligence</code></td><td>Status reports for the nine Intelligence modules.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/intelligence/:id</code></td><td>One module report with its proofs.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/datasets</code></td><td>Create a dataset; version 1 (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/datasets</code></td><td>Latest version summary per dataset.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/datasets/:id?as_of=</code></td><td>One version by number, tag or latest.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/datasets/:id/versions</code></td><td>Version history with tags.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/datasets/:id/versions</code></td><td>Commit upserts and removals as a new version (201).</td></tr>
+          <tr><td><span class="m">PUT</span></td><td><code>/datasets/:id/tags/:tag</code></td><td>Pin a tag to a version.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/datasets/:id/verify?as_of=</code></td><td>Recompute example and version digests.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code class="nx">/runs</code></td><td class="nx">List and search runs.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code class="nx">/health</code></td><td class="nx">Service health.</td></tr>
         </tbody>

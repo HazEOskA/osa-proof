@@ -98,7 +98,7 @@ test("rule 6: every report is content-addressed", async () => {
   }
 });
 
-test("built-in: Models, LLM Gateway and Model Mesh LIVE on their proofs, the rest SOON", async () => {
+test("built-in: Models, LLM Gateway, Model Mesh and Datasets LIVE on their proofs, the rest SOON", async () => {
   const reports = await createBuiltinIntelligence(CLOCK).reportAll();
   assert.equal(byId(reports, "models").status, "LIVE");
   const gateway = byId(reports, "llm-gateway");
@@ -109,7 +109,9 @@ test("built-in: Models, LLM Gateway and Model Mesh LIVE on their proofs, the res
   const mesh = byId(reports, "model-mesh");
   assert.equal(mesh.status, "LIVE", JSON.stringify(mesh.proofs));
   assert.match(mesh.proofs.find((p) => p.proof_id === "mesh.evidence_per_hop")!.detail, /primary:failed -> backup:ok/);
-  for (const id of ["memory", "knowledge", "context-hub", "datasets", "experiments", "evaluators"]) {
+  const datasets = byId(reports, "datasets");
+  assert.equal(datasets.status, "LIVE", JSON.stringify(datasets.proofs));
+  for (const id of ["memory", "knowledge", "context-hub", "experiments", "evaluators"]) {
     assert.equal(byId(reports, id).status, "SOON", id);
   }
 });

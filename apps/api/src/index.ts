@@ -4,15 +4,18 @@ import { enterLayer, getLayerProfile, listLayerProfiles } from "../../../package
 import { ExecutorRegistry, OsaRuntime } from "../../../packages/runtime/src";
 import { validateTeamGraph } from "../../../packages/team-graph/src";
 import { createBuiltinIntelligence, IntelligenceRegistry } from "../../../packages/intelligence/src";
+import { CommitChanges, DatasetError, DatasetStore, verifyDatasetVersion } from "../../../packages/datasets/src";
 
 export class ApiState {
   readonly teams = new Map<string, TeamGraph>();
   readonly missions = new Map<string, Mission>();
   readonly runs = new Map<string, RunResult>();
   readonly intelligence: IntelligenceRegistry;
+  readonly datasets: DatasetStore;
 
-  constructor(intelligence: IntelligenceRegistry = createBuiltinIntelligence()) {
+  constructor(intelligence: IntelligenceRegistry = createBuiltinIntelligence(), datasets: DatasetStore = new DatasetStore()) {
     this.intelligence = intelligence;
+    this.datasets = datasets;
   }
 
   teamKey(teamId: string, version: string): string {
@@ -63,6 +66,27 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
         return report ? send(response, 200, report) : send(response, 404, { error: "intelligence module not found" });
       }
 
+      if (parts[0] === "datasets") {
+        const asOf = url.searchParams.get("as_of") ?? undefined;
+        if (parts.length === 1 && method === "POST") {
+          const body = await readJson<Parameters<DatasetStore["create"]>[0]>(request);
+          return send(response, 201, state.datasets.create(body));
+        }
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.datasets.list());
+        if (parts.length === 2 && method === "GET") return send(response, 200, state.datasets.get(parts[1], asOf));
+        if (parts.length === 3 && parts[2] === "versions" && method === "GET") return send(response, 200, state.datasets.listVersions(parts[1]));
+        if (parts.length === 3 && parts[2] === "versions" && method === "POST") {
+          return send(response, 201, state.datasets.commit(parts[1], await readJson<CommitChanges>(request)));
+        }
+        if (parts.length === 3 && parts[2] === "verify" && method === "GET") {
+          return send(response, 200, verifyDatasetVersion(state.datasets.get(parts[1], asOf)));
+        }
+        if (parts.length === 4 && parts[2] === "tags" && method === "PUT") {
+          const body = await readJson<{ version: number }>(request);
+          return send(response, 200, state.datasets.tag(parts[1], parts[3], body.version));
+        }
+      }
+
       if (method === "POST" && url.pathname === "/teams") {
         const graph = await readJson<TeamGraph>(request);
         validateTeamGraph(graph);
@@ -105,6 +129,9 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
       return send(response, 404, { error: "not found" });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof DatasetError) {
+        return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });
+      }
       return send(response, 400, { error: message });
     }
   });

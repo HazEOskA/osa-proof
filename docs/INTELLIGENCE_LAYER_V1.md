@@ -48,7 +48,8 @@ GET /intelligence/:id    one report, 404 for unknown ids
 | `models` | LIVE | all three proofs pass |
 | `llm-gateway` | LIVE | routes by `OSA_PROVIDER` to `anthropic` or `openai`; bounded retries pass |
 | `model-mesh` | LIVE | ordered fallback after retries; every hop recorded in evidence |
-| other six | SOON | no implementation |
+| `datasets` | LIVE | immutable versions, tags, per-example and per-version sha256 |
+| other five | SOON | no implementation |
 
 ## LLM Gateway behaviour
 
@@ -71,3 +72,25 @@ Follows the LiteLLM fallback pattern: in order, and only after the gateway spent
 - `provider_call` evidence carries `hops`: every target tried, in order, with `ok`, `attempts` and the redacted error. The `provider` field names the target that served.
 - When every target fails, the run is FAILED and the sealed receipt's `runtime_failure` lists each hop.
 - Without `OSA_MODEL_FALLBACKS` the single-provider path is unchanged and evidence has no `hops`.
+
+## Datasets behaviour
+
+Follows the LangSmith and Braintrust dataset model, with OSA proof semantics.
+
+- An example is a mission template: `example_id`, `objective`, `input`, `requirements` (at least one), optional `expected.verdict`, `split`, `metadata`.
+- Every add, update or delete is a commit that creates a new immutable version. Old versions stay readable. A commit that changes nothing is refused (409).
+- Tags (`prod`, `baseline`) point at a version and can be moved. Reads take `as_of` = version number, tag, or `latest`.
+- Digests: `example_sha256` per example, `examples_root` over the id-sorted examples, `version_sha256` over the whole version. `GET /datasets/:id/verify` recomputes them; any tampering fails.
+- Invalid input is refused whole: no partial commits. At most 10 000 examples per version.
+- `missionFromExample` turns a pinned example into a runnable mission with id `<dataset>@v<version>:<example>`.
+- Storage is in-memory in the API process, like runs.
+
+```
+POST /datasets                          create (201)
+GET  /datasets                          latest version summary per dataset
+GET  /datasets/:id?as_of=               one version (number, tag or latest)
+GET  /datasets/:id/versions             version history with tags
+POST /datasets/:id/versions             commit {upsert, remove, message} (201)
+PUT  /datasets/:id/tags/:tag            {version} moves or creates a tag
+GET  /datasets/:id/verify?as_of=        recompute digests
+```
