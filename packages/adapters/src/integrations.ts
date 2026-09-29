@@ -119,6 +119,10 @@ export function loadIntegrationConfig(env: Env): IntegrationConfig {
   );
   const agentPair = pairedSecretConfig(env, "OSA_AGENT_BASE_URL", "OSA_AGENT_UI_TOKEN");
   const fleetBaseUrl = env.OSA_FLEET_BASE_URL?.trim();
+  const fleetApiKey = env.OSA_FLEET_API_KEY?.trim();
+  if (fleetApiKey && !fleetBaseUrl) {
+    throw new IntegrationConfigError("OSA_FLEET_BASE_URL is required when OSA_FLEET_API_KEY is configured");
+  }
 
   return {
     enabled: true,
@@ -155,7 +159,7 @@ export function loadIntegrationConfig(env: Env): IntegrationConfig {
     fleet: fleetBaseUrl
       ? {
           baseUrl: normalizedBaseUrl(fleetBaseUrl, "OSA_FLEET_BASE_URL"),
-          apiKey: env.OSA_FLEET_API_KEY?.trim() || undefined,
+          apiKey: fleetApiKey || undefined,
           model: env.OSA_FLEET_MODEL?.trim() || undefined,
           temperature: optionalFiniteNumber(
             env.OSA_FLEET_TEMPERATURE,
