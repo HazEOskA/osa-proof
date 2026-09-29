@@ -174,7 +174,14 @@ function stringField(input: Record<string, unknown>, ...names: string[]): string
 export function routeCapability(context: Pick<AgentExecutionContext, "mission" | "input">): OsaCapability {
   const input = mergedMissionInput(context);
   const explicit = stringField(input, "capability")?.toUpperCase();
-  if (explicit === "BUILD_CODE" || explicit === "RUN_TOOL" || explicit === "AGENT_TASK" || explicit === "VERIFY") {
+  if (
+    explicit === "BUILD_CODE" ||
+    explicit === "RUN_TOOL" ||
+    explicit === "AGENT_TASK" ||
+    explicit === "VERIFY" ||
+    explicit === "AUTONOMOUS_CYCLE" ||
+    explicit === "FLEET_CHAT"
+  ) {
     return explicit;
   }
 
@@ -184,6 +191,12 @@ export function routeCapability(context: Pick<AgentExecutionContext, "mission" |
     .replace(/ł/g, "l")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "");
+  if (/\b(fleet|agent fleet|fleet chat|gemini chat|conversation|rozmowa|czat fleety|flota agentow)\b/.test(objective)) {
+    return "FLEET_CHAT";
+  }
+  if (/\b(autonomous cycle|money cycle|opportunity cycle|run now|business cycle|cykl autonomiczny|cykl pieniedzy|cykl okazji|odpal cykl|uruchom cykl|szukaj okazji)\b/.test(objective)) {
+    return "AUTONOMOUS_CYCLE";
+  }
   if (/\b(build|implement|code|fix|refactor|repository|repo|zbuduj|zbudowac|stworz|stworzyc|zaimplementuj|napraw|refaktor|kod|repozytorium)\b/.test(objective)) {
     return "BUILD_CODE";
   }
