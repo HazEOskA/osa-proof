@@ -142,6 +142,7 @@ function integrationEnv(base: string, overrides: Record<string, string | undefin
   return {
     OSA_EXECUTION_MODE: "fixture",
     OSA_INTEGRATION_ENABLED: "1",
+    OSA_BUILDER_MODE: "legacy",
     OSA_BUILDER_BASE_URL: base,
     OSA_BUILDER_BRIDGE_TOKEN: BUILDER_TOKEN,
     OSA_BUILDER_DEFAULT_REPO_URL: "https://github.com/HazEOskA/osa-proof",
@@ -163,7 +164,7 @@ test("Integration V0.1: BUILD_CODE -> Coding Agent Platform -> evidence -> VERIF
     assert.equal(result.verdict, "VERIFIED");
     assert.equal(result.proof.verdict, "VERIFIED");
     assert.equal(result.final_output && typeof result.final_output === "object" && (result.final_output as any).capability, "BUILD_CODE");
-    assert.equal(result.evidence.find((item) => item.kind === "route")?.data.target, "coding-agent-platform");
+    assert.equal(result.evidence.find((item) => item.kind === "route")?.data.target, "coding-agent-platform-legacy");
     assert.equal(result.evidence.find((item) => item.kind === "builder_task")?.data.status, "completed");
     assert.equal(result.evidence.find((item) => item.kind === "artifact")?.data.status, "built");
     assert.ok(stub.requests.some((item) => item.path === "/api/tasks"));
@@ -206,23 +207,43 @@ test("Integration V0.1: AGENT_TASK stays on canonical native runtime", async () 
   }
 });
 
-test("Integration V0.1 fails closed when selected bridge is not configured", async () => {
+test("Integration V0.1 legacy builder fails closed when bridge is not configured", async () => {
   const stub = await startIntegrationStub();
   try {
-    const execution = createDevExecution(
-      integrationEnv(stub.base, {
-        OSA_BUILDER_BASE_URL: undefined,
-        OSA_BUILDER_BRIDGE_TOKEN: undefined,
-      })
+    assert.throws(
+      () =>
+        createDevExecution(
+          integrationEnv(stub.base, {
+            OSA_BUILDER_BASE_URL: undefined,
+            OSA_BUILDER_BRIDGE_TOKEN: undefined,
+          })
+        ),
+      /legacy builder mode requires/
     );
-    const result = await new OsaRuntime(execution.registry).run(graph, mission("BUILD_CODE", "mission_missing_builder"));
-
-    assert.equal(result.verdict, "FAILED");
-    assert.match(result.proof.runtime_failure ?? "", /BUILD_CODE integration is not configured/);
     assert.equal(stub.requests.length, 0);
   } finally {
     await stub.close();
   }
+});
+
+test("Native Builder V0.1 is the default BUILD_CODE authority and fails closed without a workspace provider", async () => {
+  const execution = createDevExecution({
+    OSA_EXECUTION_MODE: "fixture",
+    OSA_BUILDER_MODE: "native",
+  });
+
+  assert.equal(execution.description.builder_mode, "native");
+
+  const result = await new OsaRuntime(execution.registry).run(
+    graph,
+    mission("BUILD_CODE", "mission_native_builder_v01")
+  );
+
+  assert.equal(result.verdict, "FAILED");
+  assert.match(
+    result.proof.runtime_failure ?? "",
+    /WORKSPACE_PROVIDER_NOT_CONFIGURED/
+  );
 });
 
 test("Integration V0.1 configuration rejects half-configured credentials", () => {
