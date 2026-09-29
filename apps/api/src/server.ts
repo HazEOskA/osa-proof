@@ -3,6 +3,7 @@ import { createApiServer } from "./index";
 import { AgentExecutor } from "../../../packages/contracts/src";
 import { ExecutorRegistry } from "../../../packages/runtime/src";
 import { createNativeBuilderExecutor } from "../../../packages/builder-core/src";
+import { registerBuiltInWorkspaceProviders } from "../../../packages/workspace-runtime/src";
 import {
   createBuilderBridgeExecutor,
   createCapabilityRouterExecutor,
@@ -163,6 +164,7 @@ export interface DevExecution {
 
 // Fails closed on missing/unknown mode and on incomplete provider configuration.
 export function createDevExecution(env: Env): DevExecution {
+  registerBuiltInWorkspaceProviders(env);
   const mode = loadExecutionMode(env);
   if (mode === "fixture") {
     const registry = createDevFixtureRegistry();
