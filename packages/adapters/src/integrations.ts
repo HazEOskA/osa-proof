@@ -66,6 +66,20 @@ function positiveInteger(value: string | undefined, fallback: number, name: stri
   return parsed;
 }
 
+function optionalFiniteNumber(
+  value: string | undefined,
+  name: string,
+  min: number,
+  max: number
+): number | undefined {
+  if (value === undefined || value.trim() === "") return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+    throw new IntegrationConfigError(`${name} must be between ${min} and ${max}`);
+  }
+  return parsed;
+}
+
 function normalizedBaseUrl(value: string, name: string): string {
   let url: URL;
   try {
@@ -143,10 +157,12 @@ export function loadIntegrationConfig(env: Env): IntegrationConfig {
           baseUrl: normalizedBaseUrl(fleetBaseUrl, "OSA_FLEET_BASE_URL"),
           apiKey: env.OSA_FLEET_API_KEY?.trim() || undefined,
           model: env.OSA_FLEET_MODEL?.trim() || undefined,
-          temperature:
-            env.OSA_FLEET_TEMPERATURE?.trim() === undefined
-              ? undefined
-              : Number(env.OSA_FLEET_TEMPERATURE),
+          temperature: optionalFiniteNumber(
+            env.OSA_FLEET_TEMPERATURE,
+            "OSA_FLEET_TEMPERATURE",
+            0,
+            2
+          ),
           timeoutMs: positiveInteger(env.OSA_FLEET_TIMEOUT_MS, 90000, "OSA_FLEET_TIMEOUT_MS"),
         }
       : undefined,
