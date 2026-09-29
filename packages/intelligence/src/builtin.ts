@@ -14,6 +14,9 @@ import {
   SUPPORTED_PROVIDERS,
 } from "../../adapters/src";
 import { DatasetStore, ExampleInput, verifyDatasetVersion } from "../../datasets/src";
+import { EvaluationObservation, EvaluatorStore, observationMatchesRun, verifyEvaluationObservation } from "../../evaluators/src";
+import { ExecutorRegistry, OsaRuntime } from "../../runtime/src";
+import { RunResult } from "../../contracts/src";
 import { IntelligenceRegistry, ModuleImplementation } from "./index";
 
 type Env = Record<string, string | undefined>;
@@ -238,11 +241,81 @@ export const datasetsModule: ModuleImplementation = {
   ],
 };
 
+// A real run through the runtime with in-process fixture executors: the evaluator checks score an actual sealed receipt.
+async function probeRun(): Promise<RunResult> {
+  const registry = new ExecutorRegistry();
+  registry.register("probe.planner", ({ mission }) => ({ output: { plan: mission.objective }, evidence: [{ kind: "plan", data: { status: "ready" } }] }));
+  registry.register("probe.builder", () => ({ output: { title: "Release notes" }, evidence: [{ kind: "artifact", data: { status: "built" } }] }));
+  const graph = {
+    organization_id: "org_probe", project_id: "project_probe", team_id: "team_probe", version: "1",
+    agents: [{ agent_id: "planner", role: "planner", executor_ref: "probe.planner" }, { agent_id: "builder", role: "builder", executor_ref: "probe.builder" }],
+    edges: [{ edge_id: "p_b", from_agent_id: "planner", to_agent_id: "builder", kind: "handoff" as const }],
+  };
+  const example = sampleExample("probe", "Draft release notes");
+  return new OsaRuntime(registry).run(graph, {
+    organization_id: "org_probe", project_id: "project_probe", mission_id: "probe@v1:probe", team_id: "team_probe", team_version: "1",
+    objective: example.objective, entry_agent_id: "planner", input: example.input, requirements: example.requirements,
+  });
+}
+
+function probeEvaluators(): EvaluatorStore {
+  const store = new EvaluatorStore(() => new Date("2026-01-01T00:00:00Z"));
+  store.register({ evaluator_id: "receipt", spec: { type: "receipt_valid" } });
+  store.register({ evaluator_id: "title", spec: { type: "string_check", path: "title", operation: "ilike", reference: "release" } });
+  store.register({ evaluator_id: "built", spec: { type: "evidence_equals", evidence_kind: "artifact", field: "status", expected: "built" } });
+  store.register({ evaluator_id: "review", spec: { type: "human_label", choices: [0, 0.5, 1] }, pass_threshold: 0.5 });
+  return store;
+}
+
+const DETERMINISTIC_IDS = ["receipt", "title", "built"];
+
+export const evaluatorsModule: ModuleImplementation = {
+  id: "evaluators",
+  version: "0.1.0",
+  checks: [
+    {
+      proof_id: "evaluators.deterministic_or_labeled",
+      run: async () => {
+        const run = await probeRun();
+        const first = probeEvaluators().evaluate(run, DETERMINISTIC_IDS);
+        const second = probeEvaluators().evaluate(run, DETERMINISTIC_IDS);
+        const repeatable = first.map((o) => o.observation_sha256).join() === second.map((o) => o.observation_sha256).join();
+        const allPass = first.every((o) => o.score === 1 && o.passed);
+        let judgeRefused = false;
+        try { probeEvaluators().register({ evaluator_id: "judge", spec: { type: "llm_judge" } as never }); } catch { judgeRefused = true; }
+        let badLabelRefused = false;
+        try { probeEvaluators().label(run, { evaluator_id: "review", labeler: "ops", score: 0.7 }); } catch { badLabelRefused = true; }
+        const label = probeEvaluators().label(run, { evaluator_id: "review", labeler: "ops", score: 1 });
+        const ok = repeatable && allPass && judgeRefused && badLabelRefused && label.provenance === "HUMAN_LABEL" && label.passed;
+        return { ok, detail: `same run, same scores: ${repeatable}; model judge refused: ${judgeRefused}; label off-scale refused: ${badLabelRefused}` };
+      },
+    },
+    {
+      proof_id: "evaluators.results_as_observations",
+      run: async () => {
+        const run = await probeRun();
+        const results = probeEvaluators().evaluate(run, DETERMINISTIC_IDS);
+        const bound = results.every((o) => o.provenance === "VERIFIER_OBSERVATION" && observationMatchesRun(o, run) && verifyEvaluationObservation(o).ok);
+        const forged = structuredClone(results[0]) as EvaluationObservation;
+        forged.score = 0;
+        const forgeryCaught = !verifyEvaluationObservation(forged).ok;
+        const tampered = structuredClone(run);
+        (tampered.final_output as { title: string }).title = "forged";
+        const failClosed = probeEvaluators().evaluate(tampered, DETERMINISTIC_IDS).every((o) => o.score === 0 && !o.passed);
+        const receiptUntouched = run.proof.proof_id === `proof_${run.proof.receipt_sha256}`;
+        const ok = bound && forgeryCaught && failClosed && receiptUntouched;
+        return { ok, detail: `bound to receipt: ${bound}; forged score caught: ${forgeryCaught}; tampered run scores 0: ${failClosed}` };
+      },
+    },
+  ],
+};
+
 export function createBuiltinIntelligence(clock?: () => Date): IntelligenceRegistry {
   const registry = new IntelligenceRegistry(clock);
   registry.register(modelsModule);
   registry.register(llmGatewayModule);
   registry.register(modelMeshModule);
   registry.register(datasetsModule);
+  registry.register(evaluatorsModule);
   return registry;
 }

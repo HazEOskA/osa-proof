@@ -5,6 +5,7 @@ import { ExecutorRegistry, OsaRuntime } from "../../../packages/runtime/src";
 import { validateTeamGraph } from "../../../packages/team-graph/src";
 import { createBuiltinIntelligence, IntelligenceRegistry } from "../../../packages/intelligence/src";
 import { CommitChanges, DatasetError, DatasetStore, verifyDatasetVersion } from "../../../packages/datasets/src";
+import { EvaluatorError, EvaluatorInput, EvaluatorStore } from "../../../packages/evaluators/src";
 
 export class ApiState {
   readonly teams = new Map<string, TeamGraph>();
@@ -12,10 +13,16 @@ export class ApiState {
   readonly runs = new Map<string, RunResult>();
   readonly intelligence: IntelligenceRegistry;
   readonly datasets: DatasetStore;
+  readonly evaluators: EvaluatorStore;
 
-  constructor(intelligence: IntelligenceRegistry = createBuiltinIntelligence(), datasets: DatasetStore = new DatasetStore()) {
+  constructor(
+    intelligence: IntelligenceRegistry = createBuiltinIntelligence(),
+    datasets: DatasetStore = new DatasetStore(),
+    evaluators: EvaluatorStore = new EvaluatorStore()
+  ) {
     this.intelligence = intelligence;
     this.datasets = datasets;
+    this.evaluators = evaluators;
   }
 
   teamKey(teamId: string, version: string): string {
@@ -41,7 +48,7 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
     try {
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
-      const parts = url.pathname.split("/").filter(Boolean);
+      const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
 
       if (method === "GET" && url.pathname === "/layers") {
         return send(response, 200, listLayerProfiles());
@@ -87,6 +94,26 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
         }
       }
 
+      if (parts[0] === "evaluators") {
+        if (parts.length === 1 && method === "POST") return send(response, 201, state.evaluators.register(await readJson<EvaluatorInput>(request)));
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.evaluators.list());
+        if (parts.length === 2 && method === "GET") return send(response, 200, state.evaluators.get(parts[1]));
+      }
+
+      if (parts[0] === "runs" && parts.length === 3 && (parts[2] === "evaluations" || parts[2] === "labels")) {
+        const run = state.runs.get(parts[1]);
+        if (!run) return send(response, 404, { error: "run not found" });
+        if (parts[2] === "evaluations" && method === "GET") return send(response, 200, state.evaluators.resultsFor(run.run_id));
+        if (parts[2] === "evaluations" && method === "POST") {
+          const body = await readJson<{ evaluator_ids: string[]; example?: { dataset_id: string; as_of?: string; example_id: string } }>(request);
+          const dataset = body.example ? state.datasets.get(body.example.dataset_id, body.example.as_of) : undefined;
+          return send(response, 201, state.evaluators.evaluate(run, body.evaluator_ids, { dataset, example_id: body.example?.example_id }));
+        }
+        if (parts[2] === "labels" && method === "POST") {
+          return send(response, 201, state.evaluators.label(run, await readJson<{ evaluator_id: string; labeler: string; score: number; comment?: string }>(request)));
+        }
+      }
+
       if (method === "POST" && url.pathname === "/teams") {
         const graph = await readJson<TeamGraph>(request);
         validateTeamGraph(graph);
@@ -129,7 +156,7 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
       return send(response, 404, { error: "not found" });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (error instanceof DatasetError) {
+      if (error instanceof DatasetError || error instanceof EvaluatorError) {
         return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });
       }
       return send(response, 400, { error: message });

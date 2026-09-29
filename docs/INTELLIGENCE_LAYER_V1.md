@@ -49,7 +49,8 @@ GET /intelligence/:id    one report, 404 for unknown ids
 | `llm-gateway` | LIVE | routes by `OSA_PROVIDER` to `anthropic` or `openai`; bounded retries pass |
 | `model-mesh` | LIVE | ordered fallback after retries; every hop recorded in evidence |
 | `datasets` | LIVE | immutable versions, tags, per-example and per-version sha256 |
-| other five | SOON | no implementation |
+| `evaluators` | LIVE | deterministic or human-labeled only; results sealed and bound to the run's receipt |
+| other four | SOON | no implementation (`memory` lives in the separate neurosa repo) |
 
 ## LLM Gateway behaviour
 
@@ -93,4 +94,26 @@ GET  /datasets/:id/versions             version history with tags
 POST /datasets/:id/versions             commit {upsert, remove, message} (201)
 PUT  /datasets/:id/tags/:tag            {version} moves or creates a tag
 GET  /datasets/:id/verify?as_of=        recompute digests
+```
+
+## Evaluators behaviour
+
+Follows the OpenAI graders and LangSmith evaluators model, with OSA proof semantics.
+
+- An evaluator is declarative data, content-addressed by `evaluator_sha256`. Definitions are immutable: the same id with different content is refused (409).
+- Deterministic types: `verdict_match` (run verdict vs the example's `expected.verdict`), `receipt_valid`, `string_check` (`eq`, `neq`, `like`, `ilike` on a path in `final_output`), `evidence_equals` (evidence kind, optional agent, field, expected value).
+- Labeled type: `human_label` with a fixed scale of `choices` between 0 and 1. A label outside the scale is refused.
+- A model judge is a claim, not a proof, and is refused.
+- Scores are 0 to 1; `passed` is `score >= pass_threshold` (default 1).
+- Every result is an observation with `provenance` `VERIFIER_OBSERVATION` (deterministic) or `HUMAN_LABEL`, bound to the run's `binding`, `proof_id` and `receipt_sha256`, sealed with `observation_sha256`. The run's receipt is never changed.
+- Fail closed: when the receipt does not verify, every deterministic evaluator scores 0 and labels are refused.
+- A result bound to a dataset example carries `dataset_id`, `version`, `example_id` and `example_sha256`.
+
+```
+POST /evaluators                  register a definition (201)
+GET  /evaluators                  all definitions
+GET  /evaluators/:id              one definition
+POST /runs/:id/evaluations        {evaluator_ids, example?: {dataset_id, as_of, example_id}} (201)
+POST /runs/:id/labels             {evaluator_id, labeler, score, comment?} (201)
+GET  /runs/:id/evaluations        every result for the run
 ```

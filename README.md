@@ -99,6 +99,8 @@ behind `ModelProvider` in `packages/adapters`, so the runtime and proof core sta
 
 Datasets (`packages/datasets`, `/datasets` routes) hold versioned mission examples: every change is a
 new immutable version with sha256 digests, tags pin versions. See `docs/INTELLIGENCE_LAYER_V1.md`.
+Evaluators (`packages/evaluators`, `/evaluators` and `/runs/:id/evaluations` routes) score runs with
+deterministic checks or human labels; each result is a sealed observation bound to the run's receipt.
 
 Provider evidence is computed by executor code, never copied from model text:
 `provider_call` (status, model, response id, usage, request/response hashes) and
