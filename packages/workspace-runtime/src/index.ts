@@ -78,6 +78,7 @@ export class WorkspaceProviderNotConfiguredError extends Error {
 
 
 export { DockerWorkspaceProvider, createDockerWorkspaceProvider } from "./docker";
+export { RemoteWorkspaceProvider, createRemoteWorkspaceProvider } from "./remote";
 
 export function registerBuiltInWorkspaceProviders(env: Record<string, string | undefined> = process.env): void {
   if (!workspaceProviders.has("docker")) {
@@ -87,6 +88,25 @@ export function registerBuiltInWorkspaceProviders(env: Record<string, string | u
         image: env.OSA_WORKSPACE_DOCKER_IMAGE,
         network: env.OSA_WORKSPACE_DOCKER_NETWORK,
         dockerBinary: env.DOCKER_BIN,
+      })
+    );
+  }
+
+  const workerBaseUrl = env.OSA_WORKER_BASE_URL?.trim();
+  const workerToken = env.OSA_WORKER_TOKEN?.trim();
+  if ((workerBaseUrl || workerToken) && (!workerBaseUrl || !workerToken)) {
+    throw new Error("OSA_WORKER_BASE_URL and OSA_WORKER_TOKEN must be configured together");
+  }
+
+  if (workerBaseUrl && workerToken && !workspaceProviders.has("remote")) {
+    const { RemoteWorkspaceProvider } = require("./remote") as typeof import("./remote");
+    workspaceProviders.register(
+      new RemoteWorkspaceProvider({
+        baseUrl: workerBaseUrl,
+        token: workerToken,
+        requestTimeoutMs: env.OSA_WORKER_REQUEST_TIMEOUT_MS
+          ? Number(env.OSA_WORKER_REQUEST_TIMEOUT_MS)
+          : undefined,
       })
     );
   }
