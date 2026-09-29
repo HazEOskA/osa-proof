@@ -7,7 +7,8 @@
   },
   "files": [
     "tests/integration-slice.test.ts",
-    "tests/workspace-provider.test.ts"
+    "tests/workspace-provider.test.ts",
+    "tests/workspace-provider-live.test.ts"
   ],
   "include": []
 }
