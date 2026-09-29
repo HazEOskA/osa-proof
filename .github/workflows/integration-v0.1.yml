@@ -5,6 +5,7 @@ on:
     branches:
       - feature/osa-dashboard-live-control-plane
       - feature/native-builder-v0.1
+      - feature/workspace-provider-v0.1
   workflow_dispatch:
 
 permissions:
@@ -22,4 +23,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsc -p tsconfig.integration.json
-      - run: node --test dist-integration/tests/integration-slice.test.js
+      - run: node --test dist-integration/tests/*.test.js
