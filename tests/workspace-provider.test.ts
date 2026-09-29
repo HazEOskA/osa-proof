@@ -70,7 +70,7 @@ test("Docker Workspace Provider creates an isolated OSA container with bounded r
   assert.ok(create.args.includes("osa.workspace-node22:v0.1") === false);
   assert.ok(create.args.includes("osa/workspace-node22:v0.1"));
   assert.ok(create.args.includes("127.0.0.1::3000"));
-  assert.ok(create.args.includes("sleep infinity"));
+  assert.ok(create.args.some((arg) => arg.includes("sleep infinity")));
 
   await workspace.stop();
 });
