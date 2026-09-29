@@ -6,6 +6,7 @@ on:
       - feature/osa-dashboard-live-control-plane
       - feature/native-builder-v0.1
       - feature/workspace-provider-v0.1
+      - feature/osa-worker-host-v0.1
   workflow_dispatch:
 
 permissions:
@@ -25,10 +26,15 @@ jobs:
       - run: npx tsc -p tsconfig.integration.json
       - run: node --test dist-integration/tests/*.test.js
       - name: Build OSA workspace image
-        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1'
+        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1'
         run: npm run workspace:image:build
       - name: Live Docker workspace smoke
-        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1'
+        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1'
         env:
           OSA_LIVE_DOCKER_TEST: "1"
         run: node --test dist-integration/tests/workspace-provider-live.test.js
+      - name: Live OSA Worker Host smoke
+        if: github.ref == 'refs/heads/feature/osa-worker-host-v0.1'
+        env:
+          OSA_LIVE_WORKER_TEST: "1"
+        run: node --test dist-integration/tests/worker-host-live.test.js
