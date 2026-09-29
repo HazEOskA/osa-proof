@@ -2,6 +2,7 @@ import { Server } from "node:http";
 import { createApiServer } from "./index";
 import { AgentExecutor } from "../../../packages/contracts/src";
 import { ExecutorRegistry } from "../../../packages/runtime/src";
+import { createNativeBuilderExecutor } from "../../../packages/builder-core/src";
 import {
   createBuilderBridgeExecutor,
   createCapabilityRouterExecutor,
@@ -95,32 +96,61 @@ export function createDevProviderRegistry(provider: ModelProvider): ExecutorRegi
   return registry;
 }
 
+function loadBuilderMode(env: Env): "native" | "legacy" {
+  const mode = env.OSA_BUILDER_MODE?.trim() || "native";
+  if (mode === "native" || mode === "legacy") return mode;
+  throw new ExecutionConfigError("OSA_BUILDER_MODE must be one of: native, legacy");
+}
+
 function installIntegrationRouter(
   registry: ExecutorRegistry,
   env: Env,
   fallbackBuilder: AgentExecutor
 ): Record<string, unknown> {
   const integration = loadIntegrationConfig(env);
-  if (!integration.enabled) return {};
+  const builderMode = loadBuilderMode(env);
+
+  let builder: AgentExecutor;
+  let builderTarget: string;
+
+  if (builderMode === "legacy") {
+    if (!integration.enabled || !integration.builder) {
+      throw new ExecutionConfigError(
+        "legacy builder mode requires OSA_INTEGRATION_ENABLED=1 plus OSA_BUILDER_BASE_URL and OSA_BUILDER_BRIDGE_TOKEN"
+      );
+    }
+    builder = createBuilderBridgeExecutor(integration.builder);
+    builderTarget = "coding-agent-platform-legacy";
+  } else {
+    builder = createNativeBuilderExecutor({ env });
+    builderTarget = "osa-native-builder";
+  }
 
   registry.register(
     DEV_BUILDER_REF,
     createCapabilityRouterExecutor({
       fallback: fallbackBuilder,
-      builder: integration.builder ? createBuilderBridgeExecutor(integration.builder) : undefined,
-      executionForce: integration.executionForce
-        ? createExecutionForceExecutor(integration.executionForce)
-        : undefined,
-      osaAgent: integration.osaAgent
-        ? createOsaAgentControlExecutor(integration.osaAgent)
-        : undefined,
-      fleet: integration.fleet ? createFleetChatExecutor(integration.fleet) : undefined,
+      builder,
+      builderTarget,
+      executionForce:
+        integration.enabled && integration.executionForce
+          ? createExecutionForceExecutor(integration.executionForce)
+          : undefined,
+      osaAgent:
+        integration.enabled && integration.osaAgent
+          ? createOsaAgentControlExecutor(integration.osaAgent)
+          : undefined,
+      fleet:
+        integration.enabled && integration.fleet
+          ? createFleetChatExecutor(integration.fleet)
+          : undefined,
     })
   );
 
   return {
-    integration: "v0.1",
-    registry: describeIntegrationRegistry(integration),
+    integration: integration.enabled ? "v0.1" : "native-builder-v0.1",
+    builder_mode: builderMode,
+    registry: describeIntegrationRegistry(integration, builderMode),
   };
 }
 
