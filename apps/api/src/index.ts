@@ -3,11 +3,17 @@ import { Mission, RunResult, TeamGraph } from "../../../packages/contracts/src";
 import { enterLayer, getLayerProfile, listLayerProfiles } from "../../../packages/access-control/src";
 import { ExecutorRegistry, OsaRuntime } from "../../../packages/runtime/src";
 import { validateTeamGraph } from "../../../packages/team-graph/src";
+import { createBuiltinIntelligence, IntelligenceRegistry } from "../../../packages/intelligence/src";
 
 export class ApiState {
   readonly teams = new Map<string, TeamGraph>();
   readonly missions = new Map<string, Mission>();
   readonly runs = new Map<string, RunResult>();
+  readonly intelligence: IntelligenceRegistry;
+
+  constructor(intelligence: IntelligenceRegistry = createBuiltinIntelligence()) {
+    this.intelligence = intelligence;
+  }
 
   teamKey(teamId: string, version: string): string {
     return `${teamId}@${version}`;
@@ -46,6 +52,15 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
       if (parts[0] === "layers" && parts.length === 3 && parts[2] === "enter" && method === "POST") {
         const decision = enterLayer(parts[1]);
         return decision ? send(response, 200, decision) : send(response, 404, { error: "layer not found" });
+      }
+
+      if (method === "GET" && url.pathname === "/intelligence") {
+        return send(response, 200, await state.intelligence.reportAll());
+      }
+
+      if (method === "GET" && parts[0] === "intelligence" && parts.length === 2) {
+        const report = await state.intelligence.report(parts[1]);
+        return report ? send(response, 200, report) : send(response, 404, { error: "intelligence module not found" });
       }
 
       if (method === "POST" && url.pathname === "/teams") {

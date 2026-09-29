@@ -17,6 +17,8 @@ const PROVIDERS: Record<ProviderId, { key_var: string; base_url: string }> = {
   anthropic: { key_var: "ANTHROPIC_API_KEY", base_url: "https://api.anthropic.com" },
 };
 
+export const SUPPORTED_PROVIDERS: readonly ProviderId[] = Object.keys(PROVIDERS) as ProviderId[];
+
 function required(env: Env, name: string): string {
   const value = env[name]?.trim();
   if (!value) throw new ProviderConfigError(`${name} is required in provider mode`);
