@@ -239,9 +239,18 @@ test("Integration V0.1 configuration rejects half-configured credentials", () =>
 test("Integration V0.1 deterministic router honors explicit capability before keyword inference", () => {
   const baseMission = mission("AGENT_TASK", "route_test");
   assert.equal(routeCapability({ mission: baseMission, input: { capability: "RUN_TOOL" } }), "RUN_TOOL");
-  assert.equal(routeCapability({ mission: { ...baseMission, objective: "Fix repository tests" }, input: {} }), "BUILD_CODE");
-  assert.equal(routeCapability({ mission: { ...baseMission, objective: "Audit proof receipt" }, input: {} }), "VERIFY");
-  assert.equal(routeCapability({ mission: { ...baseMission, objective: "Zbudować poprawkę w repozytorium" }, input: {} }), "BUILD_CODE");
-  assert.equal(routeCapability({ mission: { ...baseMission, objective: "Uruchom narzędzie" }, input: {} }), "RUN_TOOL");
-  assert.equal(routeCapability({ mission: { ...baseMission, objective: "Sprawdź dowód" }, input: {} }), "VERIFY");
+
+  const inferredMission = {
+    ...baseMission,
+    input: {
+      repo_url: "https://github.com/HazEOskA/osa-proof",
+      task: "Integration Slice V0.1 test",
+    },
+  };
+
+  assert.equal(routeCapability({ mission: { ...inferredMission, objective: "Fix repository tests" }, input: {} }), "BUILD_CODE");
+  assert.equal(routeCapability({ mission: { ...inferredMission, objective: "Audit proof receipt" }, input: {} }), "VERIFY");
+  assert.equal(routeCapability({ mission: { ...inferredMission, objective: "Zbudować poprawkę w repozytorium" }, input: {} }), "BUILD_CODE");
+  assert.equal(routeCapability({ mission: { ...inferredMission, objective: "Uruchom narzędzie" }, input: {} }), "RUN_TOOL");
+  assert.equal(routeCapability({ mission: { ...inferredMission, objective: "Sprawdź dowód" }, input: {} }), "VERIFY");
 });
