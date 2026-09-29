@@ -20,4 +20,5 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      - run: npx tsc -p tsconfig.integration.json
+      - run: node --test dist-integration/tests/integration-slice.test.js
