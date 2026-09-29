@@ -475,7 +475,10 @@ export interface OsaIntegrationDescriptor {
   authority: "execution" | "orchestration" | "model-surface" | "native";
 }
 
-export function describeIntegrationRegistry(config: IntegrationConfig): OsaIntegrationDescriptor[] {
+export function describeIntegrationRegistry(
+  config: IntegrationConfig,
+  builderMode: "native" | "legacy" = "native"
+): OsaIntegrationDescriptor[] {
   return [
     {
       id: "native-runtime",
@@ -485,10 +488,17 @@ export function describeIntegrationRegistry(config: IntegrationConfig): OsaInteg
       authority: "native",
     },
     {
-      id: "builder",
+      id: "native-builder",
+      source: "HazEOskA/osa-proof",
+      capabilities: ["BUILD_CODE"],
+      configured: builderMode === "native",
+      authority: "execution",
+    },
+    {
+      id: "legacy-builder",
       source: "HazEOskA/coding-agent-platform",
       capabilities: ["BUILD_CODE"],
-      configured: Boolean(config.builder),
+      configured: builderMode === "legacy" && Boolean(config.builder),
       authority: "execution",
     },
     {
@@ -729,6 +739,7 @@ export function createFleetChatExecutor(
 export interface CapabilityRouterOptions {
   fallback: AgentExecutor;
   builder?: AgentExecutor;
+  builderTarget?: string;
   executionForce?: AgentExecutor;
   osaAgent?: AgentExecutor;
   fleet?: AgentExecutor;
@@ -742,7 +753,7 @@ export function createCapabilityRouterExecutor(options: CapabilityRouterOptions)
 
     if (capability === "BUILD_CODE") {
       if (!options.builder) throw new IntegrationConfigError("BUILD_CODE integration is not configured");
-      target = "coding-agent-platform";
+      target = options.builderTarget || "osa-native-builder";
       executor = options.builder;
     } else if (capability === "RUN_TOOL") {
       if (!options.executionForce) throw new IntegrationConfigError("RUN_TOOL integration is not configured");
