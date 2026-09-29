@@ -132,9 +132,15 @@ export function routeCapability(context: Pick<AgentExecutionContext, "mission" |
   }
 
   const objective = context.mission.objective.trim().toLowerCase();
-  if (/\b(verify|verification|proof|audit|check)\b/.test(objective)) return "VERIFY";
-  if (/\b(run|execute|tool|skill|command)\b/.test(objective)) return "RUN_TOOL";
-  if (/\b(build|implement|code|fix|refactor|repository|repo)\b/.test(objective)) return "BUILD_CODE";
+  if (/\b(build|implement|code|fix|refactor|repository|repo|zbuduj|zbudować|stwórz|stworzyć|zaimplementuj|napraw|refaktor|kod|repozytorium)\b/.test(objective)) {
+    return "BUILD_CODE";
+  }
+  if (/\b(run|execute|tool|skill|command|uruchom|wykonaj|narzędzie|narzedzie|komenda)\b/.test(objective)) {
+    return "RUN_TOOL";
+  }
+  if (/\b(verify|verification|proof|audit|check|zweryfikuj|sprawdź|sprawdz|audyt|dowód|dowod)\b/.test(objective)) {
+    return "VERIFY";
+  }
   return "AGENT_TASK";
 }
 
