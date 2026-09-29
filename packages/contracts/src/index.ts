@@ -243,8 +243,7 @@ export type OsaLayerId =
   | "army";
 
 export type OsaProductLayer = "ACADEMY" | "BUILDER" | "REGULATED";
-// DEV identity and session records used by packages/identity and packages/session
-// (restored from 9a346ad after 881f6bc removed them and broke the build).
+
 export type IdentityProvider = "local-dev" | "github" | "google" | "microsoft";
 
 export interface Identity {
@@ -266,7 +265,7 @@ export interface SessionRecord {
   expires_at: string;
 }
 
-export type LayerAccessMode = "PUBLIC" | "REGULATED";
+export type LayerAccessMode = "PUBLIC" | "AUTHENTICATED" | "REGULATED";
 export type LayerEntryDecision = "ALLOWED" | "GATED";
 
 export interface LayerProfile {
@@ -280,7 +279,7 @@ export interface LayerProfile {
 }
 
 export interface LayerAccessGate {
-  code: "VERIFIED_ORGANIZATION_REQUIRED";
+  code: "AUTHENTICATED_SESSION_REQUIRED" | "VERIFIED_ORGANIZATION_REQUIRED";
   requirements: string[];
   authoritative: true;
 }

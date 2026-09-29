@@ -233,7 +233,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
           <div class="crumbs">Start / <b>OSA Framework</b></div>
           <button class="copypage" type="button" id="copypage"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy page</span></button>
         </div>
-        <div class="note" role="note"><span class="dot" style="--c:var(--bad)"></span><div><b>Main does not build right now.</b> Commit <code>881f6bc</code> removed the <code>Identity</code> and <code>SessionRecord</code> types that <code>packages/identity</code> and <code>packages/session</code> still import. Until PR #2 lands, run the quickstart on commit <code>a321fd2</code>.</div></div>
+        <div class="note" role="note"><span class="dot" style="--c:var(--bad)"></span><div><b>Main does not build until this branch is merged.</b> Commit <code>881f6bc</code> removed the <code>Identity</code> and <code>SessionRecord</code> types and the DEV login. Branch <code>claude/osa-slice-1-real-execution-cfo2vp</code> restores both; until it lands, run the quickstart from that branch.</div></div>
 
         <section id="start" aria-labelledby="h-start">
           <div class="eyebrow">Start</div>
@@ -241,7 +241,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
-            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Twenty-six JSON routes for layers, teams, missions, runs, intelligence, datasets and evaluators.</p></a>
+            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Thirty JSON routes for auth, layers, teams, missions, runs, intelligence, datasets and evaluators.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -407,10 +407,14 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
 
     <section id="api" aria-labelledby="h-api">
       <h2 id="h-api">HTTP API</h2>
-      <p>JSON in, JSON out. State is held in memory by the API process. Errors return <code>{"error": "…"}</code> with 400, 404 or 409. <span class="nx">Authentication</span> is not enforced on main.</p>
+      <p>JSON in, JSON out. State is held in memory by the API process. Errors return <code>{"error": "…"}</code> with 400, 401, 404 or 409. Teams, missions, runs and run evaluations need a DEV session: <code>POST /auth/dev-login</code>, then <code>Authorization: Bearer &lt;token&gt;</code>. <span class="nx">OAuth providers</span> are not configured.</p>
       <div class="tbl"><table>
         <thead><tr><th>Method</th><th>Path</th><th>Returns</th></tr></thead>
         <tbody>
+          <tr><td><span class="m">GET</span></td><td><code>/auth/providers</code></td><td>Login providers; only local-dev is enabled.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/auth/dev-login</code></td><td>DEV identity and session token (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/session</code></td><td>The current session (401 without one).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/session/logout</code></td><td>Revoke the session token.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/layers</code></td><td>The six layer profiles.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/layers/:id</code></td><td>One layer profile.</td></tr>
           <tr><td><span class="m">POST</span></td><td><code>/layers/:id/enter</code></td><td><code>ALLOWED</code> or <code>GATED</code>, decided by the backend.</td></tr>

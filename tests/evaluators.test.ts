@@ -159,9 +159,12 @@ test("HTTP: register, evaluate a stored run against a pinned example, label, lis
   const server = createApiServer(createDevFixtureRegistry(), new ApiState(createBuiltinIntelligence(CLOCK), new DatasetStore(CLOCK), new EvaluatorStore(CLOCK)));
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const json = { "content-type": "application/json" };
+  let json: Record<string, string> = { "content-type": "application/json" };
   const post = (path: string, body: unknown) => fetch(`${base}${path}`, { method: "POST", headers: json, body: JSON.stringify(body) });
   try {
+    const login = await post("/auth/dev-login", { display_name: "Evaluator Test", email: "eval@example.com" });
+    assert.equal(login.status, 201);
+    json = { ...json, authorization: `Bearer ${((await login.json()) as { session: { token: string } }).session.token}` };
     assert.equal((await post("/datasets", { dataset_id: "notes", name: "Notes", examples: [example("a")] })).status, 201);
     const mission: Mission = { ...missionFromExample((await (await fetch(`${base}/datasets/notes`)).json()), "a", TEAM) };
     assert.equal((await post("/teams", graph)).status, 201);
@@ -181,9 +184,11 @@ test("HTTP: register, evaluate a stored run against a pinned example, label, lis
     assert.equal(result.proof_id, run.proof.proof_id);
 
     assert.equal((await post(`/runs/${run.run_id}/labels`, { evaluator_id: "review", labeler: "alice", score: 1 })).status, 201);
-    res = await fetch(`${base}/runs/${run.run_id}/evaluations`);
+    res = await fetch(`${base}/runs/${run.run_id}/evaluations`, { headers: json });
     assert.deepEqual(((await res.json()) as EvaluationObservation[]).map((o) => o.provenance), ["VERIFIER_OBSERVATION", "HUMAN_LABEL"]);
 
+    assert.equal((await fetch(`${base}/runs/${run.run_id}/evaluations`)).status, 401, "run results need a session, like the run itself");
+    assert.equal((await fetch(`${base}/runs/${run.run_id}/labels`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ evaluator_id: "review", labeler: "x", score: 1 }) })).status, 401);
     assert.equal((await fetch(`${base}/evaluators/nope`)).status, 404);
     assert.equal((await post("/runs/nope/evaluations", { evaluator_ids: ["verdict"] })).status, 404);
     assert.equal((await post("/evaluators", { evaluator_id: "verdict", spec: { type: "receipt_valid" } })).status, 409);
