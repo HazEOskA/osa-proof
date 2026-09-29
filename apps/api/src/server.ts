@@ -98,7 +98,7 @@ function installIntegrationRouter(
   fallbackBuilder: AgentExecutor
 ): Record<string, unknown> {
   const integration = loadIntegrationConfig(env);
-  if (!integration.enabled) return { integration: "disabled" };
+  if (!integration.enabled) return {};
 
   registry.register(
     DEV_BUILDER_REF,
