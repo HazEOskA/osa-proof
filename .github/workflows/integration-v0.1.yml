@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/osa-dashboard-live-control-plane
+      - feature/native-builder-v0.1
   workflow_dispatch:
 
 permissions:
