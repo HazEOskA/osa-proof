@@ -159,7 +159,7 @@ export function startApiServer(env: Env = process.env): Server {
 
   const host = env.HOST ?? "0.0.0.0";
   const execution = createDevExecution(env);
-  const server = createApiServer(execution.registry);
+  const server = createApiServer(execution.registry, undefined, execution.description);
   server.listen(port, host, () => {
     console.log(JSON.stringify({
       service: "osa-proof-api",

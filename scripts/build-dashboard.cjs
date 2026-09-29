@@ -79,7 +79,16 @@ fs.rmSync(work, { recursive: true, force: true });
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(work, { recursive: true });
 
-extractTarGz(archive, work);
+// Editable Build screens take precedence over the legacy source archive.
+const editableSource = path.join(root, "dashboard-src");
+if (fs.existsSync(path.join(editableSource, "package.json"))) {
+  fs.cpSync(editableSource, work, {
+    recursive: true,
+    filter: (source) => !["node_modules", "dist"].includes(path.basename(source)),
+  });
+} else {
+  extractTarGz(archive, work);
+}
 
 if (!fs.existsSync(path.join(work, "package.json"))) {
   throw new Error("dashboard package.json missing after extraction");

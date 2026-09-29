@@ -3,8 +3,10 @@ import { Mission, RunResult, TeamGraph } from "../../../packages/contracts/src";
 import { enterLayer, getLayerProfile, listLayerProfiles } from "../../../packages/access-control/src";
 import { ExecutorRegistry, OsaRuntime } from "../../../packages/runtime/src";
 import { validateTeamGraph } from "../../../packages/team-graph/src";
+import { BuildWorkspace, validateBuildWorkspace } from "./build";
 
 export class ApiState {
+  buildWorkspace?: BuildWorkspace;
   readonly teams = new Map<string, TeamGraph>();
   readonly missions = new Map<string, Mission>();
   readonly runs = new Map<string, RunResult>();
@@ -29,7 +31,8 @@ export async function handleApiRequest(
   request: IncomingMessage,
   response: ServerResponse,
   registry: ExecutorRegistry,
-  state = new ApiState()
+  state = new ApiState(),
+  executionDescription: Record<string, unknown> = { mode: "UNKNOWN" }
 ): Promise<void> {
   const runtime = new OsaRuntime(registry);
 
@@ -37,6 +40,22 @@ export async function handleApiRequest(
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean);
+
+      if (url.pathname === "/build/status" && method === "GET") {
+        return send(response, 200, { ...executionDescription, persistence: "PROCESS_MEMORY", protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
+      }
+
+      if (url.pathname === "/build/workspace" && method === "GET") {
+        return state.buildWorkspace ? send(response, 200, state.buildWorkspace) : send(response, 404, { error: "Build workspace not saved in this process" });
+      }
+      if (url.pathname === "/build/workspace" && method === "POST") {
+        const workspace = await readJson<BuildWorkspace>(request);
+        validateBuildWorkspace(workspace);
+        state.buildWorkspace = structuredClone(workspace);
+        const graph = workspace.team;
+        state.teams.set(state.teamKey(graph.team_id, graph.version), structuredClone(graph));
+        return send(response, 201, { ...workspace, persistence: "PROCESS_MEMORY" });
+      }
 
       if (method === "GET" && url.pathname === "/layers") {
         return send(response, 200, listLayerProfiles());
@@ -98,8 +117,8 @@ export async function handleApiRequest(
   }
 }
 
-export function createApiServer(registry: ExecutorRegistry, state = new ApiState()): Server {
+export function createApiServer(registry: ExecutorRegistry, state = new ApiState(), executionDescription: Record<string, unknown> = { mode: "UNKNOWN" }): Server {
   return createServer((request, response) => {
-    void handleApiRequest(request, response, registry, state);
+    void handleApiRequest(request, response, registry, state, executionDescription);
   });
 }
