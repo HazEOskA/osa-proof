@@ -6,9 +6,12 @@ import {
   createBuilderBridgeExecutor,
   createCapabilityRouterExecutor,
   createExecutionForceExecutor,
+  createFleetChatExecutor,
   createModelProvider,
+  createOsaAgentControlExecutor,
   createProviderBuilderExecutor,
   createProviderPlannerExecutor,
+  describeIntegrationRegistry,
   loadIntegrationConfig,
   loadProviderConfig,
   ModelProvider,
@@ -108,13 +111,16 @@ function installIntegrationRouter(
       executionForce: integration.executionForce
         ? createExecutionForceExecutor(integration.executionForce)
         : undefined,
+      osaAgent: integration.osaAgent
+        ? createOsaAgentControlExecutor(integration.osaAgent)
+        : undefined,
+      fleet: integration.fleet ? createFleetChatExecutor(integration.fleet) : undefined,
     })
   );
 
   return {
     integration: "v0.1",
-    builder: Boolean(integration.builder),
-    execution_force: Boolean(integration.executionForce),
+    registry: describeIntegrationRegistry(integration),
   };
 }
 
