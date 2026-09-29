@@ -3,5 +3,14 @@
   "buildCommand": "echo \"OSA Proof static preview build\"",
   "outputDirectory": "apps/web",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "env": {
+    "OSA_EXECUTION_MODE": "fixture"
+  },
+  "rewrites": [
+    { "source": "/layers/:path*", "destination": "/api/layers/:path*" },
+    { "source": "/teams/:path*", "destination": "/api/teams/:path*" },
+    { "source": "/missions/:path*", "destination": "/api/missions/:path*" },
+    { "source": "/runs/:path*", "destination": "/api/runs/:path*" }
+  ]
 }
