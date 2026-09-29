@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import { ProviderConfig } from "./config";
+import { asNumber, httpError, postJson, redactedError, sha256 } from "./http";
 import {
   ModelProvider,
   ModelRequest,
@@ -10,10 +10,6 @@ import {
 
 const ANTHROPIC_VERSION = "2023-06-01";
 
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
 interface AnthropicMessage {
   id?: unknown;
   model?: unknown;
@@ -22,11 +18,8 @@ interface AnthropicMessage {
   usage?: { input_tokens?: unknown; output_tokens?: unknown };
 }
 
-function asNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-// Minimal Anthropic Messages API adapter over native fetch (no SDK dependency).
+// Minimal Anthropic Messages API adapter over native fetch (no SDK dependency). One attempt per call;
+// retries belong to RetryingProvider.
 export class AnthropicProvider implements ModelProvider {
   readonly id = "anthropic";
   readonly model: string;
@@ -39,8 +32,7 @@ export class AnthropicProvider implements ModelProvider {
     try {
       return await this.call(request);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new ProviderCallError(redactSecret(message, this.config.api_key));
+      throw redactedError(error, (message) => redactSecret(message, this.config.api_key));
     }
   }
 
@@ -53,49 +45,25 @@ export class AnthropicProvider implements ModelProvider {
       output_config: { format: { type: "json_schema", schema: request.output_schema } },
     });
 
-    const started = Date.now();
-    let response: Response;
-    try {
-      response = await fetch(`${this.config.base_url}/v1/messages`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": this.config.api_key,
-          "anthropic-version": ANTHROPIC_VERSION,
-        },
-        body,
-        signal: AbortSignal.timeout(this.config.timeout_ms),
-      });
-    } catch (error) {
-      if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
-        throw new Error(`anthropic request timed out after ${this.config.timeout_ms}ms`);
-      }
-      throw new Error(`anthropic request failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    const response = await postJson({
+      provider: this.id,
+      url: `${this.config.base_url}/v1/messages`,
+      headers: { "x-api-key": this.config.api_key, "anthropic-version": ANTHROPIC_VERSION },
+      body,
+      timeoutMs: this.config.timeout_ms,
+    });
 
-    const raw = await response.text();
-    const latency = Date.now() - started;
-
-    if (!response.ok) {
-      let errorType = "unknown_error";
-      try {
-        const parsed = JSON.parse(raw) as { error?: { type?: unknown } };
-        if (typeof parsed.error?.type === "string") errorType = parsed.error.type;
-      } catch {
-        // non-JSON error body: keep status only
-      }
-      throw new Error(`anthropic HTTP ${response.status} (${errorType})`);
-    }
+    if (response.status < 200 || response.status >= 300) throw httpError(this.id, response);
 
     let message: AnthropicMessage;
     try {
-      message = JSON.parse(raw) as AnthropicMessage;
+      message = JSON.parse(response.raw) as AnthropicMessage;
     } catch {
-      throw new Error("anthropic response body is not valid JSON");
+      throw new ProviderCallError("anthropic response body is not valid JSON");
     }
 
     if (message.stop_reason !== "end_turn") {
-      throw new Error(`anthropic call did not complete (stop_reason=${String(message.stop_reason)})`);
+      throw new ProviderCallError(`anthropic call did not complete (stop_reason=${String(message.stop_reason)})`);
     }
 
     const blocks = Array.isArray(message.content) ? message.content : [];
@@ -104,7 +72,7 @@ export class AnthropicProvider implements ModelProvider {
         !!block && typeof block === "object" && block.type === "text" && typeof block.text === "string")
       .map((block) => block.text)
       .join("");
-    if (!text) throw new Error("anthropic response contained no text content");
+    if (!text) throw new ProviderCallError("anthropic response contained no text content");
 
     return {
       provider: this.id,
@@ -117,9 +85,9 @@ export class AnthropicProvider implements ModelProvider {
         input_tokens: asNumber(message.usage?.input_tokens),
         output_tokens: asNumber(message.usage?.output_tokens),
       },
-      latency_ms: latency,
+      latency_ms: response.latency_ms,
       request_sha256: sha256(body),
-      response_sha256: sha256(raw),
+      response_sha256: sha256(response.raw),
     };
   }
 }

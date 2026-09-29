@@ -46,5 +46,17 @@ GET /intelligence/:id    one report, 404 for unknown ids
 | Module | Status | Why |
 |---|---|---|
 | `models` | LIVE | all three proofs pass |
-| `llm-gateway` | PREVIEW | `routing.multi_provider` (only `anthropic`), `calls.bounded_retries` (single attempt) fail |
+| `llm-gateway` | LIVE | routes by `OSA_PROVIDER` to `anthropic` or `openai`; bounded retries pass |
 | other seven | SOON | no implementation |
+
+## LLM Gateway behaviour
+
+Retry rules follow the official OpenAI and Anthropic SDKs:
+
+- Retried: connection errors, timeouts, HTTP 408, 409, 429 and 5xx. `x-should-retry: true|false` overrides the status rule.
+- Never retried: other 4xx, incomplete or refused output, invalid response bodies.
+- Attempts: `OSA_PROVIDER_MAX_RETRIES + 1` (default 2 retries, allowed 0 to 10).
+- Delay: `retry-after-ms` or `retry-after` when present and at most 60 s; otherwise `OSA_PROVIDER_RETRY_BASE_MS × 2^n` (default 500 ms), capped at 8 s, minus up to 25% jitter.
+- Every `provider_call` evidence record carries `attempts`. A run that exhausts its retries fails with each attempt's error listed, secrets redacted.
+
+Cross-model fallback is not part of the gateway. It belongs to `model-mesh`.

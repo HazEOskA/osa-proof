@@ -87,6 +87,7 @@ function providerCallEvidence(response: ModelResponse): EvidenceInput {
       stop_reason: response.stop_reason,
       usage: { ...response.usage },
       latency_ms: response.latency_ms,
+      attempts: response.attempts ?? 1,
       request_sha256: response.request_sha256,
       response_sha256: response.response_sha256,
     },

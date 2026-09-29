@@ -98,12 +98,13 @@ test("rule 6: every report is content-addressed", async () => {
   }
 });
 
-test("built-in: Models LIVE, LLM Gateway PREVIEW with the exact failing proofs, the rest SOON", async () => {
+test("built-in: Models and LLM Gateway LIVE on their proofs, the rest SOON", async () => {
   const reports = await createBuiltinIntelligence(CLOCK).reportAll();
   assert.equal(byId(reports, "models").status, "LIVE");
   const gateway = byId(reports, "llm-gateway");
-  assert.equal(gateway.status, "PREVIEW");
-  assert.deepEqual(gateway.proofs.filter((p) => !p.ok).map((p) => p.proof_id), ["routing.multi_provider", "calls.bounded_retries"]);
+  assert.equal(gateway.status, "LIVE", JSON.stringify(gateway.proofs));
+  assert.ok(gateway.proofs.every((p) => p.ok));
+  assert.match(gateway.proofs.find((p) => p.proof_id === "routing.multi_provider")!.detail, /anthropic, openai/);
   assert.deepEqual(gateway.blocked_by, []);
   for (const id of ["model-mesh", "memory", "knowledge", "context-hub", "datasets", "experiments", "evaluators"]) {
     assert.equal(byId(reports, id).status, "SOON", id);
@@ -130,7 +131,7 @@ test("HTTP: GET /intelligence and /intelligence/:id serve computed reports", asy
     assert.equal(res.status, 200);
     const all = (await res.json()) as ModuleReport[];
     assert.equal(all.length, 9);
-    assert.equal(byId(all, "llm-gateway").status, "PREVIEW");
+    assert.equal(byId(all, "llm-gateway").status, "LIVE");
 
     res = await fetch(`${base}/intelligence/models`);
     assert.equal(res.status, 200);

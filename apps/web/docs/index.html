@@ -241,7 +241,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
-            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Eleven JSON routes for layers, teams, missions and runs.</p></a>
+            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Thirteen JSON routes for layers, teams, missions, runs and intelligence.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -390,12 +390,14 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
         <thead><tr><th>Variable</th><th>Required</th><th>Default</th><th>Meaning</th></tr></thead>
         <tbody>
           <tr><td><code>OSA_EXECUTION_MODE</code></td><td>Always</td><td>none</td><td><code>fixture</code> or <code>provider</code>. Anything else refuses to start.</td></tr>
-          <tr><td><code>OSA_PROVIDER</code></td><td>Provider mode</td><td>none</td><td><code>anthropic</code></td></tr>
+          <tr><td><code>OSA_PROVIDER</code></td><td>Provider mode</td><td>none</td><td><code>anthropic</code> or <code>openai</code></td></tr>
           <tr><td><code>OSA_MODEL</code></td><td>Provider mode</td><td>none</td><td>Model id sent to the provider.</td></tr>
-          <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Provider mode</td><td>none</td><td>Provider secret.</td></tr>
+          <tr><td><code>ANTHROPIC_API_KEY</code> · <code>OPENAI_API_KEY</code></td><td>Provider mode</td><td>none</td><td>Secret of the selected provider.</td></tr>
           <tr><td><code>OSA_PROVIDER_BASE_URL</code></td><td>No</td><td><code>https://api.anthropic.com</code></td><td>Point at a stub or proxy.</td></tr>
           <tr><td><code>OSA_PROVIDER_TIMEOUT_MS</code></td><td>No</td><td><code>120000</code></td><td>Per-call timeout; a timeout fails the run.</td></tr>
           <tr><td><code>OSA_PROVIDER_MAX_TOKENS</code></td><td>No</td><td><code>16000</code></td><td>Output token cap per call.</td></tr>
+          <tr><td><code>OSA_PROVIDER_MAX_RETRIES</code></td><td>No</td><td><code>2</code></td><td>Retries for connection errors, timeouts, 408, 409, 429 and 5xx (0 to 10).</td></tr>
+          <tr><td><code>OSA_PROVIDER_RETRY_BASE_MS</code></td><td>No</td><td><code>500</code></td><td>First backoff step; doubles per retry up to 8 s. <code>retry-after</code> wins.</td></tr>
           <tr><td><code>PORT</code> · <code>HOST</code></td><td>No</td><td><code>3000</code> · <code>0.0.0.0</code></td><td>Where the API listens.</td></tr>
           <tr><td><code>OSA_LIVE_PROVIDER_TEST</code></td><td>No</td><td>off</td><td>Set to <code>1</code> to run the live provider test.</td></tr>
         </tbody>
@@ -419,6 +421,8 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
           <tr><td><span class="m">GET</span></td><td><code>/runs/:id/events</code></td><td>Runtime events.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/runs/:id/evidence</code></td><td>Evidence records.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/runs/:id/proof</code></td><td>The sealed proof receipt.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/intelligence</code></td><td>Status reports for the nine Intelligence modules.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/intelligence/:id</code></td><td>One module report with its proofs.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code class="nx">/runs</code></td><td class="nx">List and search runs.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code class="nx">/health</code></td><td class="nx">Service health.</td></tr>
         </tbody>
