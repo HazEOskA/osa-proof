@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
 import { AddressInfo } from "node:net";
 import test from "node:test";
-import { createDevExecution, DEV_BUILDER_REF } from "../apps/api/src/server";
+import { createDevExecution, DEV_BUILDER_REF, DEV_PLANNER_REF } from "../apps/api/src/server";
 import { IntegrationConfigError, loadIntegrationConfig, routeCapability } from "../packages/adapters/src";
 import { Mission, TeamGraph } from "../packages/contracts/src";
 import { OsaRuntime } from "../packages/runtime/src";
@@ -15,8 +15,13 @@ const graph: TeamGraph = {
   project_id: "project_integration_v01",
   team_id: "team_integration_v01",
   version: "1",
-  agents: [{ agent_id: "builder", role: "builder", executor_ref: DEV_BUILDER_REF }],
-  edges: [],
+  agents: [
+    { agent_id: "planner", role: "planner", executor_ref: DEV_PLANNER_REF },
+    { agent_id: "builder", role: "builder", executor_ref: DEV_BUILDER_REF },
+  ],
+  edges: [
+    { edge_id: "planner_to_builder", from_agent_id: "planner", to_agent_id: "builder", kind: "handoff" },
+  ],
 };
 
 function mission(capability: string, id: string): Mission {
@@ -32,7 +37,7 @@ function mission(capability: string, id: string): Mission {
         : capability === "AGENT_TASK"
           ? "Summarize the task"
           : "Build the requested repository change",
-    entry_agent_id: "builder",
+    entry_agent_id: "planner",
     input: {
       capability,
       repo_url: "https://github.com/HazEOskA/osa-proof",
