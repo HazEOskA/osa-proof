@@ -1,4 +1,4 @@
-import { DockerWorkspaceProvider } from "../../../packages/workspace-runtime/src/docker";
+import { DockerWorkspaceProvider, cleanupManagedDockerWorkspaces } from "../../../packages/workspace-runtime/src/docker";
 import { createWorkerServer } from "./index";
 
 type Env = Record<string, string | undefined>;
@@ -12,7 +12,7 @@ function positiveInteger(value: string | undefined, fallback: number, name: stri
   return parsed;
 }
 
-export function startWorkerHost(env: Env = process.env) {
+export async function startWorkerHost(env: Env = process.env) {
   const token = env.OSA_WORKER_TOKEN?.trim();
   if (!token) throw new Error("OSA_WORKER_TOKEN is required");
 
@@ -26,6 +26,10 @@ export function startWorkerHost(env: Env = process.env) {
     network: env.OSA_WORKSPACE_DOCKER_NETWORK,
   });
 
+  const cleaned = await cleanupManagedDockerWorkspaces({
+    dockerBinary: env.DOCKER_BIN,
+  });
+
   const server = createWorkerServer({ token, provider });
   server.listen(port, host, () => {
     console.log(
@@ -33,6 +37,7 @@ export function startWorkerHost(env: Env = process.env) {
         service: "osa-worker-host",
         version: "v0.1",
         provider: provider.id,
+        cleaned_orphaned_workspaces: cleaned,
         host,
         port,
       })
@@ -44,7 +49,7 @@ export function startWorkerHost(env: Env = process.env) {
 
 if (require.main === module) {
   try {
-    startWorkerHost();
+    void startWorkerHost();
   } catch (error) {
     console.error(
       JSON.stringify({
