@@ -116,6 +116,10 @@ function objectInput(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function mergedMissionInput(context: Pick<AgentExecutionContext, "mission" | "input">): Record<string, unknown> {
+  return { ...objectInput(context.mission.input), ...objectInput(context.input) };
+}
+
 function stringField(input: Record<string, unknown>, ...names: string[]): string | undefined {
   for (const name of names) {
     const value = input[name];
@@ -125,7 +129,7 @@ function stringField(input: Record<string, unknown>, ...names: string[]): string
 }
 
 export function routeCapability(context: Pick<AgentExecutionContext, "mission" | "input">): OsaCapability {
-  const input = objectInput(context.input);
+  const input = mergedMissionInput(context);
   const explicit = stringField(input, "capability")?.toUpperCase();
   if (explicit === "BUILD_CODE" || explicit === "RUN_TOOL" || explicit === "AGENT_TASK" || explicit === "VERIFY") {
     return explicit;
@@ -220,7 +224,7 @@ export function createBuilderBridgeExecutor(
   fetchImpl: FetchLike = fetch
 ): AgentExecutor {
   return async ({ mission, input }): Promise<AgentExecutionResult> => {
-    const data = objectInput(input);
+    const data = { ...objectInput(mission.input), ...objectInput(input) };
     const repoUrl = stringField(data, "repo_url", "repoUrl") || config.defaultRepoUrl;
     if (!repoUrl) {
       throw new IntegrationConfigError(
@@ -318,7 +322,7 @@ export function createExecutionForceExecutor(
   fetchImpl: FetchLike = fetch
 ): AgentExecutor {
   return async ({ mission, input }): Promise<AgentExecutionResult> => {
-    const data = objectInput(input);
+    const data = { ...objectInput(mission.input), ...objectInput(input) };
     const response = await fetchWithTimeout(
       fetchImpl,
       `${config.baseUrl}/api/v2/missions/run`,
