@@ -3,9 +3,13 @@ import { createApiServer } from "./index";
 import { AgentExecutor } from "../../../packages/contracts/src";
 import { ExecutorRegistry } from "../../../packages/runtime/src";
 import {
+  createBuilderBridgeExecutor,
+  createCapabilityRouterExecutor,
+  createExecutionForceExecutor,
   createModelProvider,
   createProviderBuilderExecutor,
   createProviderPlannerExecutor,
+  loadIntegrationConfig,
   loadProviderConfig,
   ModelProvider,
 } from "../../../packages/adapters/src";
@@ -88,6 +92,32 @@ export function createDevProviderRegistry(provider: ModelProvider): ExecutorRegi
   return registry;
 }
 
+function installIntegrationRouter(
+  registry: ExecutorRegistry,
+  env: Env,
+  fallbackBuilder: AgentExecutor
+): Record<string, unknown> {
+  const integration = loadIntegrationConfig(env);
+  if (!integration.enabled) return { integration: "disabled" };
+
+  registry.register(
+    DEV_BUILDER_REF,
+    createCapabilityRouterExecutor({
+      fallback: fallbackBuilder,
+      builder: integration.builder ? createBuilderBridgeExecutor(integration.builder) : undefined,
+      executionForce: integration.executionForce
+        ? createExecutionForceExecutor(integration.executionForce)
+        : undefined,
+    })
+  );
+
+  return {
+    integration: "v0.1",
+    builder: Boolean(integration.builder),
+    execution_force: Boolean(integration.executionForce),
+  };
+}
+
 export interface DevExecution {
   mode: ExecutionMode;
   registry: ExecutorRegistry;
@@ -99,13 +129,19 @@ export interface DevExecution {
 export function createDevExecution(env: Env): DevExecution {
   const mode = loadExecutionMode(env);
   if (mode === "fixture") {
-    return { mode, registry: createDevFixtureRegistry(), description: { mode } };
+    const registry = createDevFixtureRegistry();
+    const integration = installIntegrationRouter(registry, env, fixtureBuilder);
+    return { mode, registry, description: { mode, ...integration } };
   }
+
   const config = loadProviderConfig(env);
+  const provider = createModelProvider(config);
+  const registry = createDevProviderRegistry(provider);
+  const integration = installIntegrationRouter(registry, env, createProviderBuilderExecutor(provider));
   return {
     mode,
-    registry: createDevProviderRegistry(createModelProvider(config)),
-    description: { mode, provider: config.provider, model: config.model },
+    registry,
+    description: { mode, provider: config.provider, model: config.model, ...integration },
   };
 }
 
