@@ -25,11 +25,15 @@ function send(response: ServerResponse, status: number, body: unknown): void {
   response.end(JSON.stringify(body));
 }
 
-export function createApiServer(registry: ExecutorRegistry, state = new ApiState()): Server {
+export async function handleApiRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  registry: ExecutorRegistry,
+  state = new ApiState()
+): Promise<void> {
   const runtime = new OsaRuntime(registry);
 
-  return createServer(async (request, response) => {
-    try {
+  try {
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean);
@@ -87,10 +91,15 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
         if (parts[2] === "proof") return send(response, 200, run.proof);
       }
 
-      return send(response, 404, { error: "not found" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return send(response, 400, { error: message });
-    }
+    return send(response, 404, { error: "not found" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return send(response, 400, { error: message });
+  }
+}
+
+export function createApiServer(registry: ExecutorRegistry, state = new ApiState()): Server {
+  return createServer((request, response) => {
+    void handleApiRequest(request, response, registry, state);
   });
 }
