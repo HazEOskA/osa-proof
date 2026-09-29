@@ -6,7 +6,8 @@
     "sourceMap": false
   },
   "files": [
-    "tests/integration-slice.test.ts"
+    "tests/integration-slice.test.ts",
+    "tests/workspace-provider.test.ts"
   ],
   "include": []
 }
