@@ -16,6 +16,7 @@ export interface WorkspaceCreateRequest {
   runtime?: string;
   cpu?: number;
   memoryMb?: number;
+  ports?: number[];
 }
 
 export interface WorkspaceHandle {
@@ -72,5 +73,21 @@ export class WorkspaceProviderNotConfiguredError extends Error {
   constructor(providerId: string) {
     super(`WORKSPACE_PROVIDER_NOT_CONFIGURED: ${providerId}`);
     this.name = "WorkspaceProviderNotConfiguredError";
+  }
+}
+
+
+export { DockerWorkspaceProvider, createDockerWorkspaceProvider } from "./docker";
+
+export function registerBuiltInWorkspaceProviders(env: Record<string, string | undefined> = process.env): void {
+  if (!workspaceProviders.has("docker")) {
+    const { DockerWorkspaceProvider } = require("./docker") as typeof import("./docker");
+    workspaceProviders.register(
+      new DockerWorkspaceProvider({
+        image: env.OSA_WORKSPACE_DOCKER_IMAGE,
+        network: env.OSA_WORKSPACE_DOCKER_NETWORK,
+        dockerBinary: env.DOCKER_BIN,
+      })
+    );
   }
 }
