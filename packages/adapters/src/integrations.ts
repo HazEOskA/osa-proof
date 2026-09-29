@@ -135,14 +135,19 @@ export function routeCapability(context: Pick<AgentExecutionContext, "mission" |
     return explicit;
   }
 
-  const objective = context.mission.objective.trim().toLowerCase();
-  if (/\b(build|implement|code|fix|refactor|repository|repo|zbuduj|zbudować|stwórz|stworzyć|zaimplementuj|napraw|refaktor|kod|repozytorium)\b/.test(objective)) {
+  const objective = context.mission.objective
+    .trim()
+    .toLowerCase()
+    .replace(/ł/g, "l")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (/\b(build|implement|code|fix|refactor|repository|repo|zbuduj|zbudowac|stworz|stworzyc|zaimplementuj|napraw|refaktor|kod|repozytorium)\b/.test(objective)) {
     return "BUILD_CODE";
   }
-  if (/\b(run|execute|tool|skill|command|uruchom|wykonaj|narzędzie|narzedzie|komenda)\b/.test(objective)) {
+  if (/\b(run|execute|tool|skill|command|uruchom|wykonaj|narzedzie|komenda)\b/.test(objective)) {
     return "RUN_TOOL";
   }
-  if (/\b(verify|verification|proof|audit|check|zweryfikuj|sprawdź|sprawdz|audyt|dowód|dowod)\b/.test(objective)) {
+  if (/\b(verify|verification|proof|audit|check|zweryfikuj|sprawdz|audyt|dowod)\b/.test(objective)) {
     return "VERIFY";
   }
   return "AGENT_TASK";
