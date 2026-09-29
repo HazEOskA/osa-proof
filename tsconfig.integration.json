@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist-integration",
+    "declaration": false,
+    "sourceMap": false
+  },
+  "files": [
+    "tests/integration-slice.test.ts"
+  ],
+  "include": []
+}
