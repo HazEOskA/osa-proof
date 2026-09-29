@@ -7,6 +7,7 @@ Routes:
 - `/bank/`, `/financial/`, `/cybersecurity/`, `/army/` — regulated gate surfaces.
 - `/framework/` — Framework Console: static map of which framework features exist in code on `main`; missing features are underlined.
 - `/console/` — Tracing console (LangSmith / LangGraph Studio feature set) on the OSA Framework design system; static snapshot of 3 sealed runs, receipts re-verified in the browser. Missing backend features are underlined.
+- `/docs/` — Documentation home: quickstart, first mission, concepts, proof receipt, layers, configuration and HTTP API. Missing backend features are underlined.
 
 The selector calls `POST /layers/:id/enter` before navigation. Public layers receive `ALLOWED`; regulated layers receive `GATED`. Browser flags cannot unlock regulated capability.
 
