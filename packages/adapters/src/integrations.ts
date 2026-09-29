@@ -3,7 +3,13 @@ import { AgentExecutionContext, AgentExecutionResult, AgentExecutor, EvidenceInp
 type Env = Record<string, string | undefined>;
 type FetchLike = typeof fetch;
 
-export type OsaCapability = "BUILD_CODE" | "RUN_TOOL" | "AGENT_TASK" | "VERIFY";
+export type OsaCapability =
+  | "BUILD_CODE"
+  | "RUN_TOOL"
+  | "AGENT_TASK"
+  | "VERIFY"
+  | "AUTONOMOUS_CYCLE"
+  | "FLEET_CHAT";
 
 export class IntegrationConfigError extends Error {
   constructor(message: string) {
@@ -29,10 +35,26 @@ export interface ExecutionForceConfig {
   timeoutMs: number;
 }
 
+export interface OsaAgentConfig {
+  baseUrl: string;
+  uiToken: string;
+  timeoutMs: number;
+}
+
+export interface FleetConfig {
+  baseUrl: string;
+  apiKey?: string;
+  model?: string;
+  temperature?: number;
+  timeoutMs: number;
+}
+
 export interface IntegrationConfig {
   enabled: boolean;
   builder?: BuilderBridgeConfig;
   executionForce?: ExecutionForceConfig;
+  osaAgent?: OsaAgentConfig;
+  fleet?: FleetConfig;
 }
 
 function positiveInteger(value: string | undefined, fallback: number, name: string): number {
@@ -81,6 +103,8 @@ export function loadIntegrationConfig(env: Env): IntegrationConfig {
     "OSA_EXECUTION_FORCE_BASE_URL",
     "OSA_EXECUTION_FORCE_API_KEY"
   );
+  const agentPair = pairedSecretConfig(env, "OSA_AGENT_BASE_URL", "OSA_AGENT_UI_TOKEN");
+  const fleetBaseUrl = env.OSA_FLEET_BASE_URL?.trim();
 
   return {
     enabled: true,
@@ -105,6 +129,25 @@ export function loadIntegrationConfig(env: Env): IntegrationConfig {
             120000,
             "OSA_EXECUTION_FORCE_TIMEOUT_MS"
           ),
+        }
+      : undefined,
+    osaAgent: agentPair
+      ? {
+          baseUrl: agentPair.baseUrl,
+          uiToken: agentPair.secret,
+          timeoutMs: positiveInteger(env.OSA_AGENT_TIMEOUT_MS, 30000, "OSA_AGENT_TIMEOUT_MS"),
+        }
+      : undefined,
+    fleet: fleetBaseUrl
+      ? {
+          baseUrl: normalizedBaseUrl(fleetBaseUrl, "OSA_FLEET_BASE_URL"),
+          apiKey: env.OSA_FLEET_API_KEY?.trim() || undefined,
+          model: env.OSA_FLEET_MODEL?.trim() || undefined,
+          temperature:
+            env.OSA_FLEET_TEMPERATURE?.trim() === undefined
+              ? undefined
+              : Number(env.OSA_FLEET_TEMPERATURE),
+          timeoutMs: positiveInteger(env.OSA_FLEET_TIMEOUT_MS, 90000, "OSA_FLEET_TIMEOUT_MS"),
         }
       : undefined,
   };
