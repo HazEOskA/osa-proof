@@ -463,10 +463,271 @@ export function createExecutionForceExecutor(
   };
 }
 
+export interface OsaIntegrationDescriptor {
+  id: string;
+  source: string;
+  capabilities: OsaCapability[];
+  configured: boolean;
+  authority: "execution" | "orchestration" | "model-surface" | "native";
+}
+
+export function describeIntegrationRegistry(config: IntegrationConfig): OsaIntegrationDescriptor[] {
+  return [
+    {
+      id: "native-runtime",
+      source: "HazEOskA/osa-proof",
+      capabilities: ["AGENT_TASK", "VERIFY"],
+      configured: true,
+      authority: "native",
+    },
+    {
+      id: "builder",
+      source: "HazEOskA/coding-agent-platform",
+      capabilities: ["BUILD_CODE"],
+      configured: Boolean(config.builder),
+      authority: "execution",
+    },
+    {
+      id: "execution-force",
+      source: "HazEOskA/osa-execution-force-skills",
+      capabilities: ["RUN_TOOL"],
+      configured: Boolean(config.executionForce),
+      authority: "execution",
+    },
+    {
+      id: "osa-agent",
+      source: "HazEOskA/osa-agent",
+      capabilities: ["AUTONOMOUS_CYCLE"],
+      configured: Boolean(config.osaAgent),
+      authority: "orchestration",
+    },
+    {
+      id: "fleet-control-plane",
+      source: "HazEOskA/osa-agent-fleet-control-plane",
+      capabilities: ["FLEET_CHAT"],
+      configured: Boolean(config.fleet),
+      authority: "model-surface",
+    },
+  ];
+}
+
+const OSA_AGENT_CONTROL_ACTIONS = new Set([
+  "START",
+  "STOP",
+  "PAUSE",
+  "RESUME",
+  "RUN_NOW",
+  "APPROVE",
+  "RETRY",
+]);
+
+export function createOsaAgentControlExecutor(
+  config: OsaAgentConfig,
+  fetchImpl: FetchLike = fetch
+): AgentExecutor {
+  return async ({ mission, input }): Promise<AgentExecutionResult> => {
+    const data = { ...objectInput(mission.input), ...objectInput(input) };
+    const requested = (
+      stringField(data, "control_action", "controlAction", "action") || "RUN_NOW"
+    ).toUpperCase();
+
+    if (!OSA_AGENT_CONTROL_ACTIONS.has(requested)) {
+      throw new IntegrationConfigError(
+        `AUTONOMOUS_CYCLE control action is not supported: ${requested}`
+      );
+    }
+
+    const response = await fetchWithTimeout(
+      fetchImpl,
+      `${config.baseUrl}/api/control`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${config.uiToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          action: requested,
+          mission_id: stringField(data, "mission_id", "missionId"),
+        }),
+      },
+      config.timeoutMs,
+      "osa-agent"
+    );
+
+    const returnedAction = (stringField(response, "action") || requested).toUpperCase();
+    const accepted = Boolean(stringField(response, "accepted_at")) && returnedAction === requested;
+    const content = JSON.stringify(response);
+
+    return {
+      output: {
+        capability: "AUTONOMOUS_CYCLE",
+        service: "osa-agent",
+        control: response,
+      },
+      evidence: [
+        {
+          kind: "osa_agent_control",
+          data: {
+            status: accepted ? "accepted" : "rejected",
+            source: "osa-agent",
+            action: returnedAction,
+            accepted_at: response.accepted_at,
+          },
+          content,
+        },
+        {
+          kind: "artifact",
+          data: {
+            status: accepted ? "triggered" : "rejected",
+            source: "osa-agent",
+            action: returnedAction,
+            reason: accepted ? undefined : "OSA Agent did not confirm the control action",
+          },
+          content,
+        },
+      ],
+    };
+  };
+}
+
+async function fleetSseResponse(
+  fetchImpl: FetchLike,
+  url: string,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<{ text: string; grounding: unknown[] }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(url, { ...init, signal: controller.signal });
+    const raw = await response.text();
+    if (!response.ok) {
+      let detail = `HTTP ${response.status}`;
+      try {
+        const body = JSON.parse(raw) as Record<string, unknown>;
+        detail = stringField(body, "message", "error", "detail") || detail;
+      } catch {
+        if (raw.trim()) detail = raw.trim().slice(0, 500);
+      }
+      throw new Error(`osa-agent-fleet-control-plane request failed: ${detail}`);
+    }
+
+    let text = "";
+    const grounding: unknown[] = [];
+    for (const block of raw.split(/\n\n+/)) {
+      const dataLine = block
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line.startsWith("data:"));
+      if (!dataLine) continue;
+      const payload = dataLine.slice("data:".length).trim();
+      if (!payload || payload === "[DONE]") continue;
+      try {
+        const chunk = JSON.parse(payload) as Record<string, unknown>;
+        if (typeof chunk.text === "string") text += chunk.text;
+        if (chunk.grounding !== undefined) grounding.push(chunk.grounding);
+      } catch {
+        throw new Error("osa-agent-fleet-control-plane returned invalid SSE JSON");
+      }
+    }
+
+    if (!text.trim()) {
+      throw new Error("osa-agent-fleet-control-plane completed without text output");
+    }
+    return { text, grounding };
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(
+        `osa-agent-fleet-control-plane request timed out after ${timeoutMs}ms`
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export function createFleetChatExecutor(
+  config: FleetConfig,
+  fetchImpl: FetchLike = fetch
+): AgentExecutor {
+  return async ({ mission, input }): Promise<AgentExecutionResult> => {
+    const data = { ...objectInput(mission.input), ...objectInput(input) };
+    const prompt = stringField(data, "prompt", "task", "message") || mission.objective;
+    const model = stringField(data, "model") || config.model;
+    const systemInstruction = stringField(
+      data,
+      "system_instruction",
+      "systemInstruction"
+    );
+    const temperatureValue = data.temperature;
+    const temperature =
+      typeof temperatureValue === "number" && Number.isFinite(temperatureValue)
+        ? temperatureValue
+        : config.temperature;
+
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+    };
+    if (config.apiKey) headers.authorization = `Bearer ${config.apiKey}`;
+
+    const result = await fleetSseResponse(
+      fetchImpl,
+      `${config.baseUrl}/api/chat`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          messages: [{ role: "user", text: prompt }],
+          model,
+          systemInstruction,
+          temperature,
+          useSearch: Boolean(data.use_search ?? data.useSearch ?? false),
+        }),
+      },
+      config.timeoutMs
+    );
+
+    return {
+      output: {
+        capability: "FLEET_CHAT",
+        service: "osa-agent-fleet-control-plane",
+        model: model || null,
+        text: result.text,
+        grounding: result.grounding,
+      },
+      evidence: [
+        {
+          kind: "fleet_chat",
+          data: {
+            status: "completed",
+            source: "osa-agent-fleet-control-plane",
+            model: model || null,
+            grounding_items: result.grounding.length,
+          },
+          content: result.text,
+        },
+        {
+          kind: "artifact",
+          data: {
+            status: "built",
+            source: "osa-agent-fleet-control-plane",
+            model: model || null,
+          },
+          content: result.text,
+        },
+      ],
+    };
+  };
+}
+
 export interface CapabilityRouterOptions {
   fallback: AgentExecutor;
   builder?: AgentExecutor;
   executionForce?: AgentExecutor;
+  osaAgent?: AgentExecutor;
+  fleet?: AgentExecutor;
 }
 
 export function createCapabilityRouterExecutor(options: CapabilityRouterOptions): AgentExecutor {
@@ -483,6 +744,14 @@ export function createCapabilityRouterExecutor(options: CapabilityRouterOptions)
       if (!options.executionForce) throw new IntegrationConfigError("RUN_TOOL integration is not configured");
       target = "osa-execution-force";
       executor = options.executionForce;
+    } else if (capability === "AUTONOMOUS_CYCLE") {
+      if (!options.osaAgent) throw new IntegrationConfigError("AUTONOMOUS_CYCLE integration is not configured");
+      target = "osa-agent";
+      executor = options.osaAgent;
+    } else if (capability === "FLEET_CHAT") {
+      if (!options.fleet) throw new IntegrationConfigError("FLEET_CHAT integration is not configured");
+      target = "osa-agent-fleet-control-plane";
+      executor = options.fleet;
     }
 
     const result = await executor(context);
