@@ -297,6 +297,45 @@ export function createDockerWorkspaceProvider(
   return new DockerWorkspaceProvider(options);
 }
 
+export async function cleanupManagedDockerWorkspaces(
+  options: Pick<DockerWorkspaceProviderOptions, "dockerBinary" | "cli"> = {}
+): Promise<number> {
+  const cli =
+    options.cli ??
+    new SpawnDockerCli(
+      options.dockerBinary?.trim() || process.env.DOCKER_BIN?.trim() || "docker"
+    );
+
+  const listed = await cli.run([
+    "ps",
+    "-aq",
+    "--filter",
+    "label=osa.managed=true",
+  ]);
+
+  if (listed.exitCode !== 0) {
+    throw new Error(
+      `WORKSPACE_CLEANUP_LIST_FAILED: ${listed.stderr.trim() || listed.exitCode}`
+    );
+  }
+
+  const ids = listed.stdout
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (ids.length === 0) return 0;
+
+  const removed = await cli.run(["rm", "-f", ...ids]);
+  if (removed.exitCode !== 0) {
+    throw new Error(
+      `WORKSPACE_CLEANUP_REMOVE_FAILED: ${removed.stderr.trim() || removed.exitCode}`
+    );
+  }
+
+  return ids.length;
+}
+
 export const __dockerWorkspaceInternals = {
   parsePublishedPort,
   sanitizeContainerName,
