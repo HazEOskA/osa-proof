@@ -11,10 +11,12 @@ Dashboard
   -> Team Graph / Mission
   -> OSA Runtime
   -> deterministic capability router
-       BUILD_CODE -> Coding Agent Platform
-       RUN_TOOL   -> OSA Execution Force Runtime V2
-       AGENT_TASK -> existing native DEV executor
-       VERIFY     -> existing native DEV executor -> canonical OSA Proof verifier
+       BUILD_CODE       -> Coding Agent Platform
+       RUN_TOOL         -> OSA Execution Force Runtime V2
+       AUTONOMOUS_CYCLE -> OSA Agent command center (/api/control)
+       FLEET_CHAT       -> OSA Agent Fleet control plane (/api/chat)
+       AGENT_TASK       -> existing native DEV executor
+       VERIFY           -> existing native DEV executor -> canonical OSA Proof verifier
   -> Events
   -> Evidence
   -> ProofReceipt v2
@@ -40,6 +42,8 @@ Supported values:
 - `RUN_TOOL`
 - `AGENT_TASK`
 - `VERIFY`
+- `AUTONOMOUS_CYCLE`
+- `FLEET_CHAT`
 
 Without an explicit capability, V0.1 uses a small deterministic Polish/English
 keyword classifier. There is no model call inside the router.
@@ -109,6 +113,54 @@ When this flag is absent, current fixture/provider behavior is unchanged.
 Partial secret configuration is rejected. Selected capabilities whose bridge is
 not configured fail closed and the canonical runtime produces a failed proof
 receipt.
+
+## OSA Agent command-center bridge
+
+Existing `osa-agent` operator API is used as-is. The framework does not copy
+its scheduler, Money Graph, RuntimeV2 or Cloud Run Job logic.
+
+```text
+OSA_AGENT_BASE_URL=https://<osa-agent-command-center>
+OSA_AGENT_UI_TOKEN=<existing OSA_UI_TOKEN>
+OSA_AGENT_TIMEOUT_MS=30000
+```
+
+`AUTONOMOUS_CYCLE` calls the existing `POST /api/control` surface. Default
+action is `RUN_NOW`; an explicit `control_action` may select one of the
+already-supported operator actions. A successful trigger is recorded as
+`triggered`, not as completed work.
+
+## Fleet bridge
+
+The current Fleet repository is a model/chat control surface, not a second OSA
+execution authority. V0.1 therefore wires only its existing SSE chat endpoint.
+
+```text
+OSA_FLEET_BASE_URL=https://<osa-agent-fleet-control-plane>
+OSA_FLEET_API_KEY=<optional future/platform bearer token>
+OSA_FLEET_MODEL=<optional>
+OSA_FLEET_TEMPERATURE=<optional 0..2>
+OSA_FLEET_TIMEOUT_MS=90000
+```
+
+`FLEET_CHAT` calls `POST /api/chat`, aggregates the existing SSE response and
+returns the generated text as evidence/artifact. It does not create a duplicate
+agent registry or execution authority.
+
+## Canonical integration registry
+
+Runtime startup now describes one registry:
+
+```text
+native-runtime        AGENT_TASK, VERIFY
+builder               BUILD_CODE
+execution-force       RUN_TOOL
+osa-agent             AUTONOMOUS_CYCLE
+fleet-control-plane   FLEET_CHAT
+```
+
+Each external component stays in its own repository and is reached through one
+adapter boundary in `osa-proof`.
 
 ## Proof authority
 
