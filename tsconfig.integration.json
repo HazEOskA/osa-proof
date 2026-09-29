@@ -8,7 +8,9 @@
   "files": [
     "tests/integration-slice.test.ts",
     "tests/workspace-provider.test.ts",
-    "tests/workspace-provider-live.test.ts"
+    "tests/workspace-provider-live.test.ts",
+    "tests/worker-host.test.ts",
+    "tests/worker-host-live.test.ts"
   ],
   "include": []
 }
