@@ -35,7 +35,9 @@ function sanitizeContainerName(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9_.-]+/g, "-")
     .replace(/^[^a-z0-9]+/, "")
-    .slice(0, 45);
+    .replace(/[-._]+$/g, "")
+    .slice(0, 45)
+    .replace(/[-._]+$/g, "");
   return normalized || "workspace";
 }
 
