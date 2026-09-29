@@ -53,10 +53,12 @@ export class RetryingProvider implements ModelProvider {
         failures.push(error);
         const retriesLeft = this.options.maxRetries - (attempt - 1);
         if (!error.retryable || retriesLeft <= 0) {
-          if (failures.length === 1) throw error;
+          if (failures.length === 1) {
+            throw new ProviderCallError(error.message, { retryable: error.retryable, status: error.status, retryAfterMs: error.retryAfterMs, attempts: 1 });
+          }
           throw new ProviderCallError(
             `${this.id} failed after ${failures.length} attempts: ${failures.map((f) => f.message).join("; ")}`,
-            { retryable: false, status: error.status }
+            { retryable: false, status: error.status, attempts: failures.length }
           );
         }
         await sleep(retryDelayMs(attempt - 1, error, this.options));

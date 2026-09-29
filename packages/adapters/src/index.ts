@@ -2,6 +2,7 @@ import { AnthropicProvider } from "./anthropic";
 import { ProviderConfig } from "./config";
 import { OpenAIProvider } from "./openai";
 import { ModelProvider } from "./provider";
+import { ModelMesh } from "./mesh";
 import { RetryingProvider, RetryOptions } from "./retry";
 
 export * from "./provider";
@@ -9,6 +10,7 @@ export * from "./config";
 export * from "./executors";
 export { AnthropicProvider } from "./anthropic";
 export { OpenAIProvider } from "./openai";
+export { ModelMesh } from "./mesh";
 export { RetryingProvider, retryDelayMs } from "./retry";
 export type { RetryOptions } from "./retry";
 export { isRetryableStatus, retryAfterMs } from "./http";
@@ -28,4 +30,13 @@ export function createModelProvider(
       break;
   }
   return new RetryingProvider(inner, { maxRetries: config.max_retries, baseDelayMs: config.retry_base_ms, ...retry });
+}
+
+// Model Mesh entry point: one gateway provider per target; a single target is returned unwrapped.
+export function createModelMesh(
+  configs: ProviderConfig[],
+  retry: Pick<RetryOptions, "sleep" | "random"> = {}
+): ModelProvider {
+  const targets = configs.map((config) => createModelProvider(config, retry));
+  return targets.length === 1 ? targets[0] : new ModelMesh(targets);
 }

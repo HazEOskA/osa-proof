@@ -26,6 +26,16 @@ export interface ModelResponse {
   response_sha256: string;
   // Attempts the gateway made for this call (1 = no retry). Set by RetryingProvider.
   attempts?: number;
+  // Every model target the mesh tried, in order, ending with the one that served. Set by ModelMesh.
+  hops?: ModelHop[];
+}
+
+export interface ModelHop {
+  provider: string;
+  model: string;
+  ok: boolean;
+  attempts: number;
+  error?: string;
 }
 
 export interface ModelProvider {
@@ -47,12 +57,15 @@ export interface ProviderCallErrorOptions {
   retryable?: boolean;
   status?: number;
   retryAfterMs?: number;
+  // Attempts spent before this error was raised (set by RetryingProvider).
+  attempts?: number;
 }
 
 export class ProviderCallError extends Error {
   readonly retryable: boolean;
   readonly status?: number;
   readonly retryAfterMs?: number;
+  readonly attempts?: number;
 
   constructor(message: string, options: ProviderCallErrorOptions = {}) {
     super(message);
@@ -60,6 +73,7 @@ export class ProviderCallError extends Error {
     this.retryable = options.retryable ?? false;
     this.status = options.status;
     this.retryAfterMs = options.retryAfterMs;
+    this.attempts = options.attempts;
   }
 }
 

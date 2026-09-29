@@ -47,7 +47,8 @@ GET /intelligence/:id    one report, 404 for unknown ids
 |---|---|---|
 | `models` | LIVE | all three proofs pass |
 | `llm-gateway` | LIVE | routes by `OSA_PROVIDER` to `anthropic` or `openai`; bounded retries pass |
-| other seven | SOON | no implementation |
+| `model-mesh` | LIVE | ordered fallback after retries; every hop recorded in evidence |
+| other six | SOON | no implementation |
 
 ## LLM Gateway behaviour
 
@@ -60,3 +61,13 @@ Retry rules follow the official OpenAI and Anthropic SDKs:
 - Every `provider_call` evidence record carries `attempts`. A run that exhausts its retries fails with each attempt's error listed, secrets redacted.
 
 Cross-model fallback is not part of the gateway. It belongs to `model-mesh`.
+
+## Model Mesh behaviour
+
+Follows the LiteLLM fallback pattern: in order, and only after the gateway spent its retries.
+
+- Targets: the primary (`OSA_PROVIDER`, `OSA_MODEL`) then `OSA_MODEL_FALLBACKS="provider:model,provider:model"`, at most 4 fallbacks. Each fallback needs its provider key; duplicates and malformed entries refuse to start.
+- A target that fails with a provider error hands over to the next one. Programming errors are never swallowed.
+- `provider_call` evidence carries `hops`: every target tried, in order, with `ok`, `attempts` and the redacted error. The `provider` field names the target that served.
+- When every target fails, the run is FAILED and the sealed receipt's `runtime_failure` lists each hop.
+- Without `OSA_MODEL_FALLBACKS` the single-provider path is unchanged and evidence has no `hops`.

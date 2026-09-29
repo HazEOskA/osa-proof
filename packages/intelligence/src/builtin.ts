@@ -1,6 +1,9 @@
 import {
   createModelProvider,
+  createProviderBuilderExecutor,
+  loadMeshConfig,
   loadProviderConfig,
+  ModelMesh,
   ModelProvider,
   ModelRequest,
   ModelResponse,
@@ -126,9 +129,70 @@ export const llmGatewayModule: ModuleImplementation = {
   ],
 };
 
+// Fake gateway targets for mesh self-tests: `fail` throws a provider error, otherwise returns `text`.
+function target(id: string, outcome: { fail?: string; text?: string }): ModelProvider {
+  return {
+    id,
+    model: `${id}-model`,
+    complete: async (): Promise<ModelResponse> => {
+      if (outcome.fail) throw new ProviderCallError(outcome.fail, { retryable: false, attempts: 3 });
+      return { provider: id, model: `${id}-model`, response_id: "r", http_status: 200, stop_reason: "end_turn", text: outcome.text ?? "{}", usage: {}, latency_ms: 0, request_sha256: "", response_sha256: "", attempts: 1 };
+    },
+  };
+}
+
+export const modelMeshModule: ModuleImplementation = {
+  id: "model-mesh",
+  version: "0.1.0",
+  checks: [
+    {
+      proof_id: "mesh.fallback_on_failure",
+      run: async () => {
+        const request = { system: "", prompt: "", output_schema: {} };
+        const served = await new ModelMesh([target("primary", { fail: "HTTP 503" }), target("backup", {})]).complete(request);
+        let exhausted = "";
+        try {
+          await new ModelMesh([target("a", { fail: "HTTP 500" }), target("b", { fail: "HTTP 429" })]).complete(request);
+        } catch (error) {
+          exhausted = error instanceof ProviderCallError ? error.message : "wrong error type";
+        }
+        let bugSurfaced = false;
+        try {
+          await new ModelMesh([{ id: "bug", model: "m", complete: async () => { throw new TypeError("bug"); } }, target("backup", {})]).complete(request);
+        } catch (error) {
+          bugSurfaced = error instanceof TypeError;
+        }
+        const configOk = loadMeshConfig({ OSA_PROVIDER: "anthropic", OSA_MODEL: "a", ANTHROPIC_API_KEY: "k", OPENAI_API_KEY: "k", OSA_MODEL_FALLBACKS: "openai:b" }).length === 2
+          && throwsConfigError(() => loadMeshConfig({ OSA_PROVIDER: "anthropic", OSA_MODEL: "a", ANTHROPIC_API_KEY: "k", OSA_MODEL_FALLBACKS: "openai:b" }), "OPENAI_API_KEY");
+        const ok = served.provider === "backup" && /exhausted 2 targets/.test(exhausted) && bugSurfaced && configOk;
+        return { ok, detail: `served by ${served.provider} after primary failed; exhausted: "${exhausted.slice(0, 60)}"; bugs surface: ${bugSurfaced}; fallback keys required: ${configOk}` };
+      },
+    },
+    {
+      proof_id: "mesh.evidence_per_hop",
+      run: async () => {
+        const artifact = JSON.stringify({ title: "t", content: "c" });
+        const mesh = new ModelMesh([target("primary", { fail: "HTTP 503" }), target("backup", { text: artifact })]);
+        const result = await createProviderBuilderExecutor(mesh)({
+          run_id: "r", execution_id: "e", operation_id: "o",
+          mission: { objective: "o" } as never,
+          agent: { agent_id: "builder", role: "builder", executor_ref: "x" },
+          input: { plan: { summary: "s", steps: ["a"] } },
+        });
+        const call = result.evidence.find((e) => e.kind === "provider_call");
+        const hops = (call?.data.hops ?? []) as Array<{ provider: string; ok: boolean; attempts: number; error?: string }>;
+        const ok = hops.length === 2 && hops[0].provider === "primary" && !hops[0].ok && hops[0].attempts === 3 && hops[0].error === "HTTP 503"
+          && hops[1].provider === "backup" && hops[1].ok && call?.data.provider === "backup";
+        return { ok, detail: `provider_call.hops = ${hops.map((h) => `${h.provider}:${h.ok ? "ok" : "failed"}`).join(" -> ") || "missing"}` };
+      },
+    },
+  ],
+};
+
 export function createBuiltinIntelligence(clock?: () => Date): IntelligenceRegistry {
   const registry = new IntelligenceRegistry(clock);
   registry.register(modelsModule);
   registry.register(llmGatewayModule);
+  registry.register(modelMeshModule);
   return registry;
 }

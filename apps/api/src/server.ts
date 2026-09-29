@@ -3,10 +3,10 @@ import { createApiServer } from "./index";
 import { AgentExecutor } from "../../../packages/contracts/src";
 import { ExecutorRegistry } from "../../../packages/runtime/src";
 import {
-  createModelProvider,
+  createModelMesh,
   createProviderBuilderExecutor,
   createProviderPlannerExecutor,
-  loadProviderConfig,
+  loadMeshConfig,
   ModelProvider,
 } from "../../../packages/adapters/src";
 
@@ -101,11 +101,17 @@ export function createDevExecution(env: Env): DevExecution {
   if (mode === "fixture") {
     return { mode, registry: createDevFixtureRegistry(), description: { mode } };
   }
-  const config = loadProviderConfig(env);
+  const targets = loadMeshConfig(env);
+  const [primary, ...fallbacks] = targets;
   return {
     mode,
-    registry: createDevProviderRegistry(createModelProvider(config)),
-    description: { mode, provider: config.provider, model: config.model },
+    registry: createDevProviderRegistry(createModelMesh(targets)),
+    description: {
+      mode,
+      provider: primary.provider,
+      model: primary.model,
+      ...(fallbacks.length ? { fallbacks: fallbacks.map((t) => `${t.provider}:${t.model}`) } : {}),
+    },
   };
 }
 

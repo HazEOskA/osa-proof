@@ -70,3 +70,32 @@ export function loadProviderConfig(env: Env): ProviderConfig {
     retry_base_ms: boundedInt(env, "OSA_PROVIDER_RETRY_BASE_MS", 500, 0, 60_000),
   };
 }
+
+export const MAX_MODEL_FALLBACKS = 4;
+
+// Primary target plus ordered fallbacks from OSA_MODEL_FALLBACKS="provider:model,provider:model".
+// Every fallback is validated like the primary (its provider key must be set); duplicates are refused.
+export function loadMeshConfig(env: Env): ProviderConfig[] {
+  const primary = loadProviderConfig(env);
+  const raw = env.OSA_MODEL_FALLBACKS?.trim();
+  if (!raw) return [primary];
+  const entries = raw.split(",").map((entry) => entry.trim());
+  if (entries.length > MAX_MODEL_FALLBACKS) {
+    throw new ProviderConfigError(`OSA_MODEL_FALLBACKS allows at most ${MAX_MODEL_FALLBACKS} entries`);
+  }
+  const targets = [primary];
+  for (const entry of entries) {
+    const split = entry.indexOf(":");
+    const provider = split > 0 ? entry.slice(0, split).trim() : "";
+    const model = split > 0 ? entry.slice(split + 1).trim() : "";
+    if (!provider || !model) {
+      throw new ProviderConfigError("OSA_MODEL_FALLBACKS entries must look like provider:model");
+    }
+    const config = loadProviderConfig({ ...env, OSA_PROVIDER: provider, OSA_MODEL: model });
+    if (targets.some((t) => t.provider === config.provider && t.model === config.model)) {
+      throw new ProviderConfigError(`OSA_MODEL_FALLBACKS repeats ${provider}:${model}`);
+    }
+    targets.push(config);
+  }
+  return targets;
+}

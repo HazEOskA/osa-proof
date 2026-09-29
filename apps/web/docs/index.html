@@ -397,6 +397,7 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
           <tr><td><code>OSA_PROVIDER_TIMEOUT_MS</code></td><td>No</td><td><code>120000</code></td><td>Per-call timeout; a timeout fails the run.</td></tr>
           <tr><td><code>OSA_PROVIDER_MAX_TOKENS</code></td><td>No</td><td><code>16000</code></td><td>Output token cap per call.</td></tr>
           <tr><td><code>OSA_PROVIDER_MAX_RETRIES</code></td><td>No</td><td><code>2</code></td><td>Retries for connection errors, timeouts, 408, 409, 429 and 5xx (0 to 10).</td></tr>
+          <tr><td><code>OSA_MODEL_FALLBACKS</code></td><td>No</td><td>none</td><td>Ordered <code>provider:model</code> fallbacks (max 4) tried after the primary fails; every hop is evidence.</td></tr>
           <tr><td><code>OSA_PROVIDER_RETRY_BASE_MS</code></td><td>No</td><td><code>500</code></td><td>First backoff step; doubles per retry up to 8 s. <code>retry-after</code> wins.</td></tr>
           <tr><td><code>PORT</code> · <code>HOST</code></td><td>No</td><td><code>3000</code> · <code>0.0.0.0</code></td><td>Where the API listens.</td></tr>
           <tr><td><code>OSA_LIVE_PROVIDER_TEST</code></td><td>No</td><td>off</td><td>Set to <code>1</code> to run the live provider test.</td></tr>
