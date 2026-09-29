@@ -5,6 +5,7 @@ import { ModelProvider } from "./provider";
 export * from "./provider";
 export * from "./config";
 export * from "./executors";
+export * from "./integrations";
 export { AnthropicProvider } from "./anthropic";
 
 export function createModelProvider(config: ProviderConfig): ModelProvider {
