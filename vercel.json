@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "echo \"OSA Proof static preview build\"",
+  "outputDirectory": "apps/web",
+  "cleanUrls": true,
+  "trailingSlash": false
+}
