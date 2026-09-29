@@ -241,4 +241,7 @@ test("Integration V0.1 deterministic router honors explicit capability before ke
   assert.equal(routeCapability({ mission: baseMission, input: { capability: "RUN_TOOL" } }), "RUN_TOOL");
   assert.equal(routeCapability({ mission: { ...baseMission, objective: "Fix repository tests" }, input: {} }), "BUILD_CODE");
   assert.equal(routeCapability({ mission: { ...baseMission, objective: "Audit proof receipt" }, input: {} }), "VERIFY");
+  assert.equal(routeCapability({ mission: { ...baseMission, objective: "Zbudować poprawkę w repozytorium" }, input: {} }), "BUILD_CODE");
+  assert.equal(routeCapability({ mission: { ...baseMission, objective: "Uruchom narzędzie" }, input: {} }), "RUN_TOOL");
+  assert.equal(routeCapability({ mission: { ...baseMission, objective: "Sprawdź dowód" }, input: {} }), "VERIFY");
 });
