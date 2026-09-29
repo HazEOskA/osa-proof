@@ -52,7 +52,7 @@ function resolveWorkspaceProvider(
   explicit?: WorkspaceProvider
 ): WorkspaceProvider {
   if (explicit) return explicit;
-  const providerId = env.OSA_WORKSPACE_PROVIDER?.trim() || "default";
+  const providerId = env.OSA_WORKSPACE_PROVIDER?.trim() || "docker";
   const provider = workspaceProviders.get(providerId);
   if (!provider) throw new WorkspaceProviderNotConfiguredError(providerId);
   return provider;
