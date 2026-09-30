@@ -167,7 +167,7 @@ export async function handleApiRequest(
       }
 
       if (url.pathname === "/build/status" && method === "GET") {
-        return send(response, 200, { ...executionDescription, auth_mode: state.authMode, persistence: "PROCESS_MEMORY", protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
+        return send(response, 200, { ...executionDescription, auth_mode: state.authMode, executors: registry.refs(), persistence: "PROCESS_MEMORY", protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
       }
 
       if (url.pathname === "/build/workspace" && method === "GET") {
