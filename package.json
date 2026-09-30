@@ -9,7 +9,9 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/tests/*.test.js",
-    "start": "node dist/apps/api/src/server.js"
+    "start": "node dist/apps/api/src/server.js",
+    "start:worker": "node dist/apps/worker/src/server.js",
+    "test:platform:local": "npm run build && OSA_LOCAL_DOCKER_TEST=1 node --test dist/tests/platform-v05.test.js"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

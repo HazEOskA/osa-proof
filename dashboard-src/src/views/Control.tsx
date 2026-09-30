@@ -56,6 +56,7 @@ function useAction() {
 export function Deployments() {
   const { data } = useOsa();
   const list = useLoad<Deployment[]>("/deployments");
+  const platform = useLoad<{version:string;mode:string;persistence:string;fleet:unknown[];capabilities:unknown[];cloud_providers:string[];deployment_execution_enabled:boolean}>("/platform/status");
   const act = useAction();
   const [result, setResult] = useState<{ deployment_id: string; verdict: string; proof_id: string; team_version: string } | null>(null);
   const team = data.team;
@@ -72,6 +73,15 @@ export function Deployments() {
   });
   return (
     <Page eyebrow="RUNTIME · DEPLOYMENTS" title="Deployments" lead="A deployment pins one Team Graph version (by sha256) to preview or production. One is active per team and environment; deploying again supersedes it, rollback restores the previous one, and runs through a deployment always use the pinned graph after policies allow it.">
+      <Section title="Platform v0.3–v0.5 · przegląd lokalny">
+        <Err msg={platform.error} />
+        {platform.data && <div className="text-[13px] space-y-2">
+          <p><Mono>{platform.data.version}</Mono> · {platform.data.mode}</p>
+          <p>Workers: {platform.data.fleet.length} · Capability: {platform.data.capabilities.length} · Cloud providers: {platform.data.cloud_providers.join(', ') || 'brak konfiguracji'}</p>
+          <p>Deployment aplikacji jest zatrzymany przed wykonaniem. Poniższe operacje przypinają wersję TeamGraph.</p>
+          <Btn onClick={platform.reload}>Odśwież stan runtime</Btn>
+        </div>}
+      </Section>
       <div className="flex flex-wrap items-center gap-3">
         <Btn onClick={deploy} disabled={act.busy}>Deploy {team.team_id} v{team.version} to preview</Btn>
         <Btn onClick={() => act.run(async () => { await post("/deployments/rollback", { team_id: team.team_id, environment: "preview" }); list.reload(); })} disabled={act.busy}>Roll back preview</Btn>

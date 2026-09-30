@@ -4,7 +4,7 @@ export type MissionState = "CREATED" | "PLANNED" | "EXECUTING" | "VERIFYING" | "
 export type TaskState = "PENDING" | "EXECUTING" | "COMPLETED" | "FAILED";
 // Limits S1 can actually enforce before execution. Monetary/resource budgets
 // belong to the metered execution plane and must not be implied by these fields.
-export interface MissionPolicy { allowed_executor_refs: string[]; allowed_model_refs?: string[] }
+export interface MissionPolicy { allowed_executor_refs: string[]; allowed_model_refs?: string[]; required_receipts?: Array<"sandbox_receipt" | "build_receipt" | "image_receipt" | "deployment_receipt" | "live_verification_receipt"> }
 export interface MissionBudget { max_tasks: number; max_context_chars?: number }
 export interface TaskNode { task_id: string; mission_id: string; agent_id: string; depends_on: string[]; state: TaskState }
 export interface TaskGraph { mission_id: string; nodes: TaskNode[] }

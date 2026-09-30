@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node scripts/build-dashboard.cjs",
   "outputDirectory": "dashboard-dist",
+  "git": { "deploymentEnabled": { "feature/platform-v03-v05-review": false } },
   "cleanUrls": true,
   "trailingSlash": false,
   "env": {

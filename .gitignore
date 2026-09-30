@@ -5,3 +5,6 @@ dist/
 .osa-dashboard-src/
 dashboard-dist/
 .vercel/
+
+.osa-local-review/
+dist-worker/
