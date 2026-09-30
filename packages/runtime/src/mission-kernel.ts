@@ -46,6 +46,7 @@ export class MissionKernel {
     if (ids.some((id) => !id || id === "__runtime_execution__") || new Set(ids).size !== ids.length) throw new Error("invalid requirement identifiers");
     if (mission.requirements.some((r) => r.type !== "evidence_field_equals" || !r.evidence_kind || !r.field ||
         (r.agent_id !== undefined && !graph.agents.some((agent) => agent.agent_id === r.agent_id)))) throw new Error("invalid acceptance requirement");
+    if (mission.policy?.required_receipts && (!Array.isArray(mission.policy.required_receipts) || mission.policy.required_receipts.some(kind => !["sandbox_receipt","build_receipt","image_receipt","deployment_receipt","live_verification_receipt"].includes(kind)))) throw new Error("invalid required receipt policy");
     const order = getLinearExecutionOrder(graph, mission.entry_agent_id);
     if (mission.budget && (!Number.isInteger(mission.budget.max_tasks) || mission.budget.max_tasks < 1 || order.length > mission.budget.max_tasks)) throw new Error("mission task budget exceeded or invalid");
     if (mission.policy && order.some((id) => !mission.policy!.allowed_executor_refs.includes(graph.agents.find((agent) => agent.agent_id === id)!.executor_ref))) throw new Error("executor denied by mission policy");

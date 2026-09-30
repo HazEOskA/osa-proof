@@ -1,3 +1,6 @@
+import { PlatformControlPlane } from "../../../packages/platform/src";
+import { FleetQueue } from "../../../packages/fleet/src";
+import { DeploymentPlan } from "../../../packages/deployment/src";
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
 import { Mission, RunResult, SessionRecord, TeamGraph } from "../../../packages/contracts/src";
 import { enterLayer, getLayerProfile, listLayerProfiles } from "../../../packages/access-control/src";
@@ -60,7 +63,8 @@ export class ApiState {
   readonly evaluators: EvaluatorStore;
   readonly deployments = new DeploymentStore();
   readonly experiments = new ExperimentStore();
-  readonly queue = new JobQueue();
+  readonly queue = new FleetQueue();
+  readonly platform = new PlatformControlPlane(this.queue);
   readonly knowledge = new KnowledgeStore();
   readonly policies = new PolicyStore();
   readonly organizations = new OrganizationStore();
@@ -132,6 +136,7 @@ export async function handleApiRequest(
   state = new ApiState(),
   executionDescription: Record<string, unknown> = { mode: "UNKNOWN" }
 ): Promise<void> {
+  state.platform.syncExecutors(registry);
   const runtime = new OsaRuntime(registry);
 
   // A deployment pins the graph: the mission runs against the deployed version, whatever it names,
@@ -152,6 +157,20 @@ export async function handleApiRequest(
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+
+      if (parts[0] === "platform") {
+        const session = requireSession(request,response,state);
+        if (!session) return;
+        if (method === "GET" && url.pathname === "/platform/status") return send(response,200,state.platform.describe(session.identity.organization_id));
+        if (method === "POST" && url.pathname === "/platform/deployments/review") {
+          const plan = await readJson<DeploymentPlan>(request);
+          if (plan.organization_id !== session.identity.organization_id) return send(response,403,{ error: "PLATFORM_SCOPE_DENIED" });
+          const record = await state.missionKernel.get(plan.mission_id);
+          if (!record || record.mission.organization_id !== plan.organization_id || record.mission.project_id !== plan.project_id) return send(response,404,{ error: "MISSION_NOT_FOUND_IN_SCOPE" });
+          return send(response,200,state.platform.reviewDeployment(plan));
+        }
+        return send(response,404,{ error: "PLATFORM_ROUTE_NOT_FOUND" });
+      }
 
       if (method === "GET" && url.pathname === "/auth/providers") {
         return send(response, 200, [

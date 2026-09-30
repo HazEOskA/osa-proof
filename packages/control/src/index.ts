@@ -279,8 +279,8 @@ export interface Job {
 }
 
 export class JobQueue {
-  private readonly jobs: Job[] = [];
-  constructor(private readonly clock: () => Date = () => new Date()) {}
+  protected readonly jobs: Job[] = [];
+  constructor(protected readonly clock: () => Date = () => new Date()) {}
 
   enqueue(params: { mission_id: string; run_at?: string; deployment_id?: string }): Job {
     if (typeof params?.mission_id !== "string" || !params.mission_id) throw new ControlError("mission_id is required");
