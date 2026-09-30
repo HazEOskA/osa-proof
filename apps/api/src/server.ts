@@ -148,9 +148,16 @@ function installIntegrationRouter(
     })
   );
 
+  const workspaceProvider =
+    env.OSA_WORKSPACE_PROVIDER?.trim() ||
+    (env.OSA_WORKER_BASE_URL?.trim() && env.OSA_WORKER_TOKEN?.trim()
+      ? "remote"
+      : "docker");
+
   return {
     integration: integration.enabled ? "v0.1" : "native-builder-v0.1",
     builder_mode: builderMode,
+    workspace_provider: workspaceProvider,
     registry: describeIntegrationRegistry(integration, builderMode),
   };
 }
