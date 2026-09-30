@@ -214,6 +214,23 @@ test("OSA Worker Host restricts file writes to /workspace", async () => {
     assert.equal(denied.status, 400);
     const deniedBody = (await denied.json()) as { error: string };
     assert.match(deniedBody.error, /inside \/workspace/);
+
+    const traversal = await fetch(
+      `${worker.baseUrl}/v1/workspaces/${encodeURIComponent(body.workspace.id)}/files`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          path: "/workspace/../etc/osa-secret",
+          encoding: "base64",
+          content: Buffer.from("no").toString("base64"),
+        }),
+      }
+    );
+    assert.equal(traversal.status, 400);
   } finally {
     await worker.close();
   }
