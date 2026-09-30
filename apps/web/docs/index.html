@@ -205,7 +205,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
     <details open><summary>Concepts<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#concepts">Core concepts</a><a href="#pipeline">How a run is proven</a><a href="#receipt">Proof receipt</a><a href="#layers">Layers</a><a href="#auth">Auth modes</a></details>
     <details open><summary>Intelligence<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#intelligence">Overview</a><a href="#datasets">Datasets</a><a href="#evaluators">Evaluators</a><a href="#" class="nx" data-nolink>Experiments</a></details>
+      <a href="#intelligence">Overview</a><a href="#models">Models</a><a href="#llm-gateway">LLM Gateway</a><a href="#model-mesh">Model Mesh</a><a href="#datasets">Datasets</a><a href="#evaluators">Evaluators</a><a href="#" class="nx" data-nolink>Experiments</a></details>
     <details open><summary>Reference<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
     <details><summary>Guides<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
@@ -400,7 +400,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
 
     <section id="intelligence" aria-labelledby="h-int">
       <h2 id="h-int">Intelligence layer</h2>
-      <p>Nine modules. Each one reports a status computed from its own proofs, not declared. <code>GET /intelligence</code> returns every report with a <code>report_sha256</code>.</p>
+      <p>Nine modules. Each one reports a status computed from its own proofs, not declared. The dashboard shows each report live under <b>Intelligence</b> in the sidebar. <code>GET /intelligence</code> returns every report with a <code>report_sha256</code>.</p>
       <ol>
         <li>No implementation: <b>SOON</b>.</li>
         <li>Implemented, but a required proof is missing, failing or throwing: <b>PREVIEW</b>.</li>
@@ -409,9 +409,9 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
       <div class="tbl"><table>
         <thead><tr><th>Module</th><th>Status</th><th>What it does</th></tr></thead>
         <tbody>
-          <tr><td><code>models</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Configured models, read from the environment, validated fail-closed.</td></tr>
-          <tr><td><code>llm-gateway</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Routes to Anthropic or OpenAI. Retries follow the official SDKs: 408, 409, 429, 5xx and timeouts, honouring <code>retry-after</code>.</td></tr>
-          <tr><td><code>model-mesh</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Ordered fallback across models after retries run out (<code>OSA_MODEL_FALLBACKS</code>). Every hop is evidence.</td></tr>
+          <tr><td><code>models</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Configured models, read from the environment, validated fail-closed. <a href="#models">Details</a></td></tr>
+          <tr><td><code>llm-gateway</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Routes to Anthropic or OpenAI. Retries follow the official SDKs: 408, 409, 429, 5xx and timeouts, honouring <code>retry-after</code>. <a href="#llm-gateway">Details</a></td></tr>
+          <tr><td><code>model-mesh</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Ordered fallback across models after retries run out (<code>OSA_MODEL_FALLBACKS</code>). Every hop is evidence. <a href="#model-mesh">Details</a></td></tr>
           <tr><td><code>datasets</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Versioned mission examples with sha256 digests. <a href="#datasets">Details</a></td></tr>
           <tr><td><code>evaluators</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Deterministic scores and human labels bound to the receipt. <a href="#evaluators">Details</a></td></tr>
           <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Run a dataset against team versions and compare receipts.</td></tr>
@@ -420,6 +420,48 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
           <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Lives in the separate neurosa repository.</td></tr>
         </tbody>
       </table></div>
+    </section>
+
+    <section id="models" aria-labelledby="h-mod">
+      <h2 id="h-mod">Models</h2>
+      <p>Which model the API may call is read only from the environment and validated before any call. Proofs: <code>config.fails_closed</code>, <code>models.lists_configured</code>, <code>provider.rejects_unknown</code>.</p>
+      <ul>
+        <li><code>OSA_PROVIDER</code> is <code>anthropic</code> or <code>openai</code>. Any other value refuses to start.</li>
+        <li><code>OSA_MODEL</code> and the provider key are required in provider mode. A missing one refuses to start and the error names the variable, never its value.</li>
+      </ul>
+    </section>
+
+    <section id="llm-gateway" aria-labelledby="h-gw">
+      <h2 id="h-gw">LLM Gateway</h2>
+      <p>One call surface over Anthropic and OpenAI. Retry rules follow the official SDKs. Proofs: <code>config.fails_closed</code>, <code>errors.redact_secrets</code>, <code>routing.multi_provider</code>, <code>calls.bounded_retries</code>.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Case</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td>Retried</td><td>Connection errors, timeouts, HTTP 408, 409, 429 and 5xx. <code>x-should-retry: true|false</code> overrides the status rule.</td></tr>
+          <tr><td>Never retried</td><td>Other 4xx, incomplete or refused output, invalid response bodies.</td></tr>
+          <tr><td>Attempts</td><td><code>OSA_PROVIDER_MAX_RETRIES + 1</code>. Default 2 retries, allowed 0 to 10.</td></tr>
+          <tr><td>Delay</td><td><code>retry-after-ms</code> or <code>retry-after</code> when present and at most 60 s. Otherwise <code>OSA_PROVIDER_RETRY_BASE_MS × 2^n</code> (default 500 ms), capped at 8 s, minus up to 25% jitter.</td></tr>
+          <tr><td>Evidence</td><td>Every <code>provider_call</code> record carries <code>attempts</code>. A run that exhausts its retries fails with each attempt's error listed, secrets redacted.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="code"><div class="bar"><span class="file">shell · OpenAI through the gateway</span><button class="copy" type="button">Copy</button></div><pre>OSA_EXECUTION_MODE=provider OSA_PROVIDER=openai OSA_MODEL=&lt;model id&gt; \
+OPENAI_API_KEY=&lt;secret&gt; OSA_PROVIDER_MAX_RETRIES=3 \
+node dist/apps/api/src/server.js</pre></div>
+    </section>
+
+    <section id="model-mesh" aria-labelledby="h-mm">
+      <h2 id="h-mm">Model Mesh</h2>
+      <p>Ordered fallback across models, following the LiteLLM pattern: the next target is tried only after the previous one spent its gateway retries. Proofs: <code>mesh.fallback_on_failure</code>, <code>mesh.evidence_per_hop</code>.</p>
+      <ul>
+        <li>Targets: the primary (<code>OSA_PROVIDER</code>, <code>OSA_MODEL</code>), then <code>OSA_MODEL_FALLBACKS</code>, at most 4. Each fallback needs its provider key. Duplicates and malformed entries refuse to start.</li>
+        <li>Only provider errors hand over to the next target. Programming errors are never swallowed.</li>
+        <li><code>provider_call</code> evidence carries <code>hops</code>: every target tried, in order, with <code>ok</code>, <code>attempts</code> and the redacted error.</li>
+        <li>When every target fails, the run is FAILED and the receipt's <code>runtime_failure</code> lists each hop.</li>
+      </ul>
+      <div class="code"><div class="bar"><span class="file">shell · primary OpenAI, fallback Anthropic</span><button class="copy" type="button">Copy</button></div><pre>OSA_EXECUTION_MODE=provider OSA_PROVIDER=openai OSA_MODEL=&lt;primary model&gt; \
+OPENAI_API_KEY=&lt;secret&gt; ANTHROPIC_API_KEY=&lt;secret&gt; \
+OSA_MODEL_FALLBACKS="anthropic:&lt;fallback model&gt;" \
+node dist/apps/api/src/server.js</pre></div>
     </section>
 
     <section id="datasets" aria-labelledby="h-ds">
@@ -562,6 +604,9 @@ curl -s localhost:3000/runs/$RUN/evaluations -H "authorization: Bearer $TOKEN" -
         <a href="#layers">Layers</a>
         <a href="#auth">Auth modes</a>
         <a href="#intelligence">Intelligence layer</a>
+        <a href="#models">Models</a>
+        <a href="#llm-gateway">LLM Gateway</a>
+        <a href="#model-mesh">Model Mesh</a>
         <a href="#datasets">Datasets</a>
         <a href="#evaluators">Evaluators</a>
         <a href="#config">Configuration</a>

@@ -12,6 +12,9 @@
     { "source": "/layers/:path*", "destination": "/api/layers/:path*" },
     { "source": "/teams/:path*", "destination": "/api/teams/:path*" },
     { "source": "/missions/:path*", "destination": "/api/missions/:path*" },
-    { "source": "/runs/:path*", "destination": "/api/runs/:path*" }
+    { "source": "/runs/:path*", "destination": "/api/runs/:path*" },
+    { "source": "/intelligence/:path*", "destination": "/api/intelligence/:path*" },
+    { "source": "/datasets/:path*", "destination": "/api/datasets/:path*" },
+    { "source": "/evaluators/:path*", "destination": "/api/evaluators/:path*" }
   ]
 }

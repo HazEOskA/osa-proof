@@ -12,6 +12,7 @@ import Proofs from "./Proofs";
 import BuildWorkspace from "./BuildWorkspace";
 import { BUILD_LABELS, type BuildPage } from "../build";
 import Replay from "./Replay";
+import Intelligence from "./Intelligence";
 
 const TITLES: Record<string, string> = { home: "Home", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
 
@@ -100,11 +101,12 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   else if (v === "proofs") body = <Proofs />;
   else if (v === "replay") body = <Replay />;
   else if (v.startsWith("build:")) body = <BuildWorkspace page={v.slice(6) as BuildPage} />;
+  else if (v.startsWith("intel:")) body = <Intelligence id={v.slice(6)} />;
   else {
     const name = v.replace("pending:", "");
     body = <Empty title={`${name.toUpperCase()} · NOT BUILT YET`} body={`${name} has no view in this pass, and osa-proof does not expose the data for it yet. Nothing is shown rather than something invented.`} steps={["Knowledge World", "Missions", "Tracing", "Proofs", "Replay"].map((s) => `${s} is live`)} />;
   }
-  const title = v.startsWith("build:") ? BUILD_LABELS[v.slice(6) as BuildPage] : TITLES[v] ?? v.replace("pending:", "");
+  const title = v.startsWith("build:") ? BUILD_LABELS[v.slice(6) as BuildPage] : v.startsWith("intel:") ? `Intelligence · ${v.slice(6)}` : TITLES[v] ?? v.replace("pending:", "");
   return (
     <div className="flex h-[100dvh] bg-void">
       <aside className="osa-sidebar hidden w-[252px] shrink-0 flex-col border-r border-line bg-ink lg:flex">

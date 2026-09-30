@@ -11,6 +11,7 @@ const V: Record<string, { c: string; t: string }> = {
   FAILED: { c: "var(--bad)", t: "FAILED" }, MISMATCH: { c: "var(--bad)", t: "MISMATCH" },
   INCOMPLETE: { c: "var(--warn)", t: "INCOMPLETE" }, MATCH: { c: "var(--ok)", t: "MATCH" },
   UNKNOWN: { c: "var(--faint)", t: "UNKNOWN" }, SNAPSHOT: { c: "var(--warn)", t: "SNAPSHOT" }, LIVE: { c: "var(--ok)", t: "LIVE" },
+  PREVIEW: { c: "var(--warn)", t: "PREVIEW" }, SOON: { c: "var(--faint)", t: "SOON" },
 };
 // Design system StatusBadge: dot plus a word, tracked uppercase, never colour alone.
 export function Status({ v, label, framed = false }: { v: Verdict | string; label?: string; framed?: boolean }) {
