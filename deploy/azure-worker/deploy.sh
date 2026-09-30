@@ -42,6 +42,25 @@ fi
 
 echo "Spending limit: ON (hard guard present)"
 
+REQUIRED_PROVIDERS=(
+  Microsoft.KeyVault
+  Microsoft.Compute
+  Microsoft.Network
+  Microsoft.Storage
+  Microsoft.ManagedIdentity
+  Microsoft.DevTestLab
+)
+
+for provider in "${REQUIRED_PROVIDERS[@]}"; do
+  state="$(az provider show --namespace "${provider}" --query registrationState -o tsv 2>/dev/null || true)"
+  if [[ "${state}" != "Registered" ]]; then
+    echo "Registering Azure provider ${provider} ..."
+    az provider register --namespace "${provider}" --wait --output none
+  fi
+done
+
+echo "Required Azure providers: REGISTERED"
+
 az group create \
   --name "${RG}" \
   --location "${LOCATION}" \
