@@ -328,15 +328,15 @@ fi
 az login --identity --allow-no-subscriptions >/dev/null
 TOKEN=""
 for i in $(seq 1 30); do
-  TOKEN=$(az keyvault secret show --vault-name "${KV_NAME}" --name osa-worker-token --query value -o tsv 2>/dev/null || true)
-  if [ -n "${TOKEN}" ]; then break; fi
+  TOKEN=\$(az keyvault secret show --vault-name "${KV_NAME}" --name osa-worker-token --query value -o tsv 2>/dev/null || true)
+  if [ -n "\${TOKEN}" ]; then break; fi
   sleep 10
 done
-if [ -z "${TOKEN}" ]; then
+if [ -z "\${TOKEN}" ]; then
   echo "Unable to retrieve worker token from Key Vault" >&2
   exit 31
 fi
-export OSA_WORKER_TOKEN="${TOKEN}"
+export OSA_WORKER_TOKEN="\${TOKEN}"
 export OSA_WORKER_DOMAIN="${FQDN}"
 export OSA_WORKER_BRANCH="${BRANCH}"
 export OSA_REPO_URL="${REPO_URL}"
