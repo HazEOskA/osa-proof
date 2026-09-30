@@ -4,7 +4,7 @@ set -euo pipefail
 RG="${OSA_AZURE_RG:-rg-osa-worker}"
 LOCATION="${OSA_AZURE_LOCATION:-northeurope}"
 VM_NAME="${OSA_AZURE_VM_NAME:-osa-worker-v01}"
-VM_SIZE="${OSA_AZURE_VM_SIZE:-Standard_B2ms}"
+VM_SIZE_OVERRIDE="${OSA_AZURE_VM_SIZE:-}"
 BUDGET_AMOUNT="${OSA_AZURE_BUDGET_AMOUNT:-40}"
 AUTO_SHUTDOWN_UTC="${OSA_AZURE_AUTO_SHUTDOWN_UTC:-0100}"
 ADMIN_USER="${OSA_AZURE_ADMIN_USER:-osa}"
@@ -179,22 +179,72 @@ az network nic create \
   --output none
 
 if ! az vm show -g "${RG}" -n "${VM_NAME}" >/dev/null 2>&1; then
-  az vm create \
-    --resource-group "${RG}" \
-    --location "${LOCATION}" \
-    --name "${VM_NAME}" \
-    --nics "${NIC_NAME}" \
-    --image Ubuntu2404 \
-    --size "${VM_SIZE}" \
-    --admin-username "${ADMIN_USER}" \
-    --ssh-key-values "${SSH_KEY}.pub" \
-    --authentication-type ssh \
-    --os-disk-size-gb 64 \
-    --storage-sku StandardSSD_LRS \
-    --security-type Standard \
-    --assign-identity \
-    --tags osa=framework component=worker environment=preview autoShutdown=true \
-    --output none
+  if [[ -n "${VM_SIZE_OVERRIDE}" ]]; then
+    VM_SIZE_CANDIDATES=("${VM_SIZE_OVERRIDE}")
+  else
+    VM_SIZE_CANDIDATES=(
+      Standard_B2ms
+      Standard_D2as_v5
+      Standard_D2s_v5
+      Standard_D2_v5
+    )
+  fi
+
+  VM_SIZE=""
+  for candidate in "${VM_SIZE_CANDIDATES[@]}"; do
+    echo "Trying VM size ${candidate} in ${LOCATION} ..."
+
+    # Skip SKUs that Azure already marks as unavailable for this subscription.
+    allowed="$(az vm list-skus \
+      --location "${LOCATION}" \
+      --resource-type virtualMachines \
+      --size "${candidate}" \
+      --all \
+      --query "[?name=='${candidate}' && length(restrictions)==\`0\`].name | [0]" \
+      -o tsv 2>/dev/null || true)"
+
+    if [[ "${allowed}" != "${candidate}" ]]; then
+      echo "Skipping ${candidate}: Azure SKU restrictions reported."
+      continue
+    fi
+
+    rm -f /tmp/osa-vm-create.err
+    if az vm create \
+      --resource-group "${RG}" \
+      --location "${LOCATION}" \
+      --name "${VM_NAME}" \
+      --nics "${NIC_NAME}" \
+      --image Ubuntu2404 \
+      --size "${candidate}" \
+      --admin-username "${ADMIN_USER}" \
+      --ssh-key-values "${SSH_KEY}.pub" \
+      --authentication-type ssh \
+      --os-disk-size-gb 64 \
+      --storage-sku StandardSSD_LRS \
+      --security-type Standard \
+      --assign-identity \
+      --tags osa=framework component=worker environment=preview autoShutdown=true \
+      --output none 2>/tmp/osa-vm-create.err; then
+      VM_SIZE="${candidate}"
+      break
+    fi
+
+    if grep -Eq 'SkuNotAvailable|Capacity Restrictions|AllocationFailed|ZonalAllocationFailed' /tmp/osa-vm-create.err; then
+      echo "Capacity unavailable for ${candidate}; trying the next guarded 2-vCPU/8-GB SKU."
+      continue
+    fi
+
+    cat /tmp/osa-vm-create.err >&2
+    exit 30
+  done
+
+  if [[ -z "${VM_SIZE}" ]]; then
+    echo "BLOCKED: no guarded 2-vCPU/8-GB VM SKU could be allocated in ${LOCATION}." >&2
+    echo "No fallback to a larger VM is allowed automatically." >&2
+    exit 32
+  fi
+else
+  VM_SIZE="$(az vm show -g "${RG}" -n "${VM_NAME}" --query hardwareProfile.vmSize -o tsv)"
 fi
 
 PRINCIPAL_ID="$(az vm identity show -g "${RG}" -n "${VM_NAME}" --query principalId -o tsv)"
