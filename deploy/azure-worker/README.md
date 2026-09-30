@@ -85,3 +85,23 @@ Standard_D2_v5
 SKUs that Azure marks as restricted for the subscription are skipped. If
 preflight still returns a capacity/allocation error, the next candidate is
 tried. Any non-capacity error stops the deployment immediately.
+
+
+## Guarded EU region fallback
+
+When the preferred region has subscription or capacity restrictions, the deploy
+script probes only this EU pool:
+
+```text
+northeurope
+westeurope
+swedencentral
+germanywestcentral
+francecentral
+```
+
+Selection is size-first, so `Standard_B2ms` is preferred across all candidate
+regions before moving to the more expensive D-series candidates. The deploy
+never auto-selects a larger VM and never leaves the EU region pool.
+
+Set `OSA_AZURE_LOCATION` explicitly to disable automatic region fallback.
