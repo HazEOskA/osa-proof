@@ -104,7 +104,9 @@ Evaluators (`packages/evaluators`, `/evaluators` and `/runs/:id/evaluations` rou
 deterministic checks or human labels; each result is a sealed observation bound to the run's receipt.
 Experiments (`packages/experiments`, `/experiments` routes) run a pinned dataset version against one Team
 Graph version through the runtime, score each run with evaluators and seal the outcome; two experiments
-on the same dataset version can be compared example by example.
+on the same dataset version can be compared example by example. Knowledge (`packages/knowledge`,
+`/knowledge` routes) chunks sources with sha256 and searches them with deterministic BM25; every hit
+cites a chunk anyone can re-hash.
 
 ## Control plane
 

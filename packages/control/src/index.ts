@@ -260,6 +260,7 @@ export const PERMISSIONS: ReadonlyArray<PermissionRow> = [
   { permission: "experiments.run", method: "POST", path: "/experiments", enforced: "session" },
   { permission: "queue.write", method: "POST", path: "/queue", enforced: "session" },
   { permission: "queue.drain", method: "POST", path: "/queue/drain", enforced: "session" },
+  { permission: "knowledge.write", method: "POST", path: "/knowledge/:id/documents", enforced: "session" },
   { permission: "layers.read", method: "GET", path: "/layers", enforced: "public" },
   { permission: "intelligence.read", method: "GET", path: "/intelligence", enforced: "public" },
   { permission: "datasets.write", method: "POST", path: "/datasets", enforced: "public" },

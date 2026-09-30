@@ -22,7 +22,7 @@ export const NAV: NavGroup[] = [
     pick("Replay", "replay", true, I.play), pick("Verification", "proofs", true, I.security), pick("Audit Trail", "ops:audit", true, I.logs) ] },
   { title: "INTELLIGENCE", items: [
     pick("Models", "intel:models", true, I.minions), pick("Model Mesh", "intel:model-mesh", true, I.minionBot), pick("LLM Gateway", "intel:llm-gateway", true, I.workerBot),
-    pick("Memory", "intel:memory", false, I.storage), pick("Knowledge", "intel:knowledge", false, I.cube), pick("Context Hub", "intel:context-hub", false, I.knowledge),
+    pick("Memory", "intel:memory", false, I.storage), pick("Knowledge", "ops:knowledge", true, I.cube), pick("Context Hub", "intel:context-hub", false, I.knowledge),
     pick("Datasets", "intel:datasets", true, I.logs), pick("Experiments", "ops:experiments", true, I.playground), pick("Evaluators", "intel:evaluators", true, I.target) ] },
   { title: "WORLD", items: [
     pick("World State", "world", true, I.world), pick("Knowledge Graph", "world", true, I.planet), pick("Timeline", "ops:timeline", true, I.events),

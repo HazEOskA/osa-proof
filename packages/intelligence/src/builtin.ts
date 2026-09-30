@@ -17,6 +17,7 @@ import { DatasetStore, ExampleInput, verifyDatasetVersion } from "../../datasets
 import { EvaluationObservation, EvaluatorStore, observationMatchesRun, verifyEvaluationObservation } from "../../evaluators/src";
 import { ExecutorRegistry, OsaRuntime } from "../../runtime/src";
 import { ExperimentError, ExperimentStore, verifyExperiment } from "../../experiments/src";
+import { KnowledgeStore, verifyCitation, verifyDocument } from "../../knowledge/src";
 import { TeamGraph } from "../../contracts/src";
 import { RunResult } from "../../contracts/src";
 import { IntelligenceRegistry, ModuleImplementation } from "./index";
@@ -370,6 +371,49 @@ export const experimentsModule: ModuleImplementation = {
   ],
 };
 
+function probeKnowledge(): KnowledgeStore {
+  const store = new KnowledgeStore(() => new Date("2026-01-01T00:00:00Z"));
+  store.add("probe", { doc_id: "receipts", title: "Receipts", text: "A proof receipt is sealed after the verdict.\n\nThe proof_id commits to the receipt digest." });
+  store.add("probe", { doc_id: "evidence", title: "Evidence", text: "Evidence records are hashed by core.\n\nExecutor hashes are claims, not proof." });
+  return store;
+}
+
+export const knowledgeModule: ModuleImplementation = {
+  id: "knowledge",
+  version: "0.1.0",
+  checks: [
+    {
+      proof_id: "knowledge.sources_cited",
+      run: () => {
+        const store = probeKnowledge();
+        const a = store.search("probe", "receipt digest", 3);
+        const b = probeKnowledge().search("probe", "receipt digest", 3);
+        const cited = a.hits.length > 0 && a.hits.every((h) => verifyCitation(h, store.get("probe", h.doc_id)));
+        const top = a.hits[0]?.doc_id === "receipts";
+        const deterministic = a.retrieval_sha256 === b.retrieval_sha256;
+        const forged = structuredClone(a.hits[0]); forged.text = "A proof receipt is optional.";
+        const caught = !verifyCitation(forged, store.get("probe", forged.doc_id));
+        const ok = cited && top && deterministic && caught;
+        return { ok, detail: `hits cite verifiable chunks: ${cited}; relevant source first: ${top}; same query, same retrieval_sha256: ${deterministic}; altered quote caught: ${caught}` };
+      },
+    },
+    {
+      proof_id: "knowledge.content_digests",
+      run: () => {
+        const store = probeKnowledge();
+        const doc = store.get("probe", "receipts");
+        const clean = verifyDocument(doc).ok;
+        const tampered = structuredClone(doc); tampered.chunks[0].text = "Receipts are optional.";
+        const caught = !verifyDocument(tampered).ok;
+        let immutable = false;
+        try { store.add("probe", { doc_id: "receipts", text: "different text" }); } catch { immutable = true; }
+        const ok = clean && caught && immutable && doc.chunks.length === 2;
+        return { ok, detail: `document verifies: ${clean}; tampered chunk caught: ${caught}; doc_id immutable: ${immutable}` };
+      },
+    },
+  ],
+};
+
 export function createBuiltinIntelligence(clock?: () => Date): IntelligenceRegistry {
   const registry = new IntelligenceRegistry(clock);
   registry.register(modelsModule);
@@ -378,5 +422,6 @@ export function createBuiltinIntelligence(clock?: () => Date): IntelligenceRegis
   registry.register(datasetsModule);
   registry.register(evaluatorsModule);
   registry.register(experimentsModule);
+  registry.register(knowledgeModule);
   return registry;
 }

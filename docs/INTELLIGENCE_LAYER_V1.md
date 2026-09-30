@@ -51,7 +51,8 @@ GET /intelligence/:id    one report, 404 for unknown ids
 | `datasets` | LIVE | immutable versions, tags, per-example and per-version sha256 |
 | `evaluators` | LIVE | deterministic or human-labeled only; results sealed and bound to the run's receipt |
 | `experiments` | LIVE | dataset version × team version through the real runtime, scored by evaluators, sealed and comparable |
-| other three | SOON | no implementation (`memory` lives in the separate neurosa repo) |
+| `knowledge` | LIVE | chunked sources with sha256, deterministic BM25 search, every hit a verifiable citation |
+| `memory`, `context-hub` | SOON | `memory` lives in the separate neurosa repo; `context-hub` depends on it |
 
 ## LLM Gateway behaviour
 
@@ -133,4 +134,20 @@ POST /experiments                 {dataset_id, as_of?, team_id, version, evaluat
 GET  /experiments                 newest first
 GET  /experiments/:id             one experiment
 GET  /experiments/compare?a=&b=   per-example changes
+```
+
+## Knowledge behaviour
+
+- Documents are split into chunks on blank lines (long paragraphs wrap at 800 characters); `chunk_sha256` covers the exact chunk text, `document_sha256` the document.
+- Search is lexical BM25 (k1 1.2, b 0.75): deterministic, no model. Each search is sealed with `retrieval_sha256`.
+- Every hit carries `doc_id`, chunk index, `chunk_sha256` and `document_sha256`; `verifyCitation` re-checks a quote against the stored document.
+- A `doc_id` is immutable: the same id with different text is refused (409).
+- Not yet: retrieval results recorded as run evidence.
+
+```
+POST /knowledge/:collection/documents   {doc_id, title?, source?, text} (201)
+POST /knowledge/:collection/search      {query, k?}
+GET  /knowledge                         collections
+GET  /knowledge/:collection             documents
+GET  /knowledge/:collection/documents/:id
 ```

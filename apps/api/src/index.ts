@@ -10,6 +10,7 @@ import { CommitChanges, DatasetError, DatasetStore, verifyDatasetVersion } from 
 import { EvaluatorError, EvaluatorInput, EvaluatorStore } from "../../../packages/evaluators/src";
 import { ControlError, DeploymentStore, JobQueue, OrganizationStore, PERMISSIONS, PolicyInput, PolicyStore, secretStatus } from "../../../packages/control/src";
 import { ExperimentError, ExperimentStore } from "../../../packages/experiments/src";
+import { KnowledgeError, KnowledgeStore } from "../../../packages/knowledge/src";
 import { BuildWorkspace, validateBuildWorkspace } from "./build";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
@@ -59,6 +60,7 @@ export class ApiState {
   readonly deployments = new DeploymentStore();
   readonly experiments = new ExperimentStore();
   readonly queue = new JobQueue();
+  readonly knowledge = new KnowledgeStore();
   readonly policies = new PolicyStore();
   readonly organizations = new OrganizationStore();
 
@@ -339,6 +341,20 @@ export async function handleApiRequest(
         if (parts.length === 2 && method === "DELETE") return send(response, 200, state.queue.cancel(parts[1]));
       }
 
+      if (parts[0] === "knowledge") {
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.knowledge.list());
+        if (parts.length === 2 && method === "GET") return send(response, 200, state.knowledge.documents(parts[1]));
+        if (parts.length === 3 && parts[2] === "search" && method === "POST") {
+          const body = await readJson<{ query: string; k?: number }>(request);
+          return send(response, 200, state.knowledge.search(parts[1], body.query, body.k));
+        }
+        if (parts.length === 4 && parts[2] === "documents" && method === "GET") return send(response, 200, state.knowledge.get(parts[1], parts[3]));
+        if (parts.length === 3 && parts[2] === "documents" && method === "POST") {
+          if (!requireSession(request, response, state)) return;
+          return send(response, 201, state.knowledge.add(parts[1], await readJson<{ doc_id: string; title?: string; source?: string; text: string }>(request)));
+        }
+      }
+
       if (parts[0] === "policies") {
         if (parts.length === 1 && method === "GET") return send(response, 200, state.policies.list());
         if (!requireSession(request, response, state)) return;
@@ -451,7 +467,7 @@ export async function handleApiRequest(
     return send(response, 404, { error: "not found" });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (error instanceof ExperimentError) {
+    if (error instanceof KnowledgeError || error instanceof ExperimentError) {
       return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });
     }
     if (error instanceof ControlError) {

@@ -205,7 +205,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
     <details open><summary>Concepts<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#concepts">Core concepts</a><a href="#pipeline">How a run is proven</a><a href="#receipt">Proof receipt</a><a href="#layers">Layers</a><a href="#auth">Auth modes</a></details>
     <details open><summary>Intelligence<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#intelligence">Overview</a><a href="#models">Models</a><a href="#llm-gateway">LLM Gateway</a><a href="#model-mesh">Model Mesh</a><a href="#datasets">Datasets</a><a href="#evaluators">Evaluators</a><a href="#control">Experiments</a></details>
+      <a href="#intelligence">Overview</a><a href="#models">Models</a><a href="#llm-gateway">LLM Gateway</a><a href="#model-mesh">Model Mesh</a><a href="#datasets">Datasets</a><a href="#evaluators">Evaluators</a><a href="#control">Experiments</a><a href="#knowledge">Knowledge</a></details>
     <details open><summary>Reference<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#control">Control plane</a><a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
     <details><summary>Guides<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
@@ -242,7 +242,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
-            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Fifty JSON routes for auth, layers, teams, missions, runs, build, intelligence, datasets, evaluators, experiments, deployments, policies and the job queue.</p></a>
+            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Fifty-five JSON routes for auth, layers, teams, missions, runs, build, intelligence, datasets, evaluators, experiments, knowledge, deployments, policies and the job queue.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -256,7 +256,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>git clone https://github.com/HazEOskA/osa-proof.git
 cd osa-proof
 npm ci</pre></div></div></li>
-        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Run the tests</div><div class="d">Builds TypeScript and runs the node test suite: 99 pass, 1 live-provider test skipped (opt-in).</div>
+        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Run the tests</div><div class="d">Builds TypeScript and runs the node test suite: 113 pass, 1 live-provider test skipped (opt-in).</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>npm test</pre></div></div></li>
         <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Start the API in fixture mode</div><div class="d"><code>OSA_EXECUTION_MODE</code> is required. There is no default: a missing or unknown value refuses to start. Login is on by default (<a href="#auth">auth modes</a>).</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>npm run build
@@ -415,8 +415,8 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
           <tr><td><code>datasets</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Versioned mission examples with sha256 digests. <a href="#datasets">Details</a></td></tr>
           <tr><td><code>evaluators</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Deterministic scores and human labels bound to the receipt. <a href="#evaluators">Details</a></td></tr>
           <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Run a dataset against team versions and compare receipts. <a href="#control">Details</a></td></tr>
-          <tr><td><code>knowledge</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Retrieval with source digests.</td></tr>
-          <tr><td><code>context-hub</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Shared context for agents.</td></tr>
+          <tr><td><code>knowledge</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Retrieval where every hit cites a content-addressed source. <a href="#knowledge">Details</a></td></tr>
+          <tr><td><code>context-hub</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Shared context for agents. Depends on memory (neurosa) and knowledge.</td></tr>
           <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Lives in the separate neurosa repository.</td></tr>
         </tbody>
       </table></div>
@@ -509,6 +509,21 @@ curl -s localhost:3000/runs/$RUN/evaluations -H "authorization: Bearer $TOKEN" -
   -d '{"evaluator_ids":["verdict"],"example":{"dataset_id":"release-notes","as_of":"prod","example_id":"a"}}'</pre></div>
     </section>
 
+    <section id="knowledge" aria-labelledby="h-kn">
+      <h2 id="h-kn">Knowledge</h2>
+      <p>Retrieval over your sources where every hit cites a content-addressed chunk. Proofs: <code>knowledge.sources_cited</code>, <code>knowledge.content_digests</code>.</p>
+      <ul>
+        <li>Documents are split into chunks on blank lines (long paragraphs wrap at 800 characters). Each chunk has <code>chunk_sha256</code> over its exact text; each document has <code>document_sha256</code>.</li>
+        <li>Search is lexical BM25: deterministic and model-free. The same query over the same collection returns the same hits, sealed with <code>retrieval_sha256</code>.</li>
+        <li>Every hit carries <code>doc_id</code>, chunk index, <code>chunk_sha256</code> and <code>document_sha256</code>. The dashboard re-hashes each quoted chunk in the browser.</li>
+        <li>A <code>doc_id</code> is immutable: the same id with different text is refused with 409.</li>
+        <li class="nx">Retrieval results are not yet recorded as run evidence.</li>
+      </ul>
+      <div class="code"><div class="bar"><span class="file">POST /knowledge/:collection/documents · POST /knowledge/:collection/search</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/knowledge/docs/documents -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"doc_id":"receipts","title":"Proof receipt","text":"A proof receipt is sealed after the final verdict."}'
+curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json' -d '{"query":"sealed receipt","k":3}'</pre></div>
+    </section>
+
     <section id="control" aria-labelledby="h-ctl">
       <h2 id="h-ctl">Control plane</h2>
       <p>Deployments, policies, experiments and the job queue. State is held in the API process (<code>PROCESS_MEMORY</code>); every record that matters carries a sha256.</p>
@@ -588,6 +603,11 @@ curl -s localhost:3000/runs/$RUN/evaluations -H "authorization: Bearer $TOKEN" -
           <tr><td><span class="m">GET</span></td><td><code>/organizations</code></td><td>Registered and observed organizations.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/secrets</code></td><td>Secret names and whether they are set.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/permissions</code></td><td>Route-by-route enforcement table.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/knowledge</code></td><td>Collections with document and chunk counts.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/knowledge/:collection</code></td><td>Documents in a collection.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/knowledge/:collection/documents</code></td><td>Add a document; chunks and digests are computed by the API (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/knowledge/:collection/documents/:id</code></td><td>One document with its chunks.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/knowledge/:collection/search</code></td><td>BM25 search; hits cite chunk and document digests.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/intelligence</code></td><td>Status reports for the nine Intelligence modules.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/intelligence/:id</code></td><td>One module report with its proofs.</td></tr>
           <tr><td><span class="m">POST</span></td><td><code>/datasets</code></td><td>Create a dataset; version 1 (201).</td></tr>
@@ -641,6 +661,7 @@ curl -s localhost:3000/runs/$RUN/evaluations -H "authorization: Bearer $TOKEN" -
         <a href="#model-mesh">Model Mesh</a>
         <a href="#datasets">Datasets</a>
         <a href="#evaluators">Evaluators</a>
+        <a href="#knowledge">Knowledge</a>
         <a href="#control">Control plane</a>
         <a href="#config">Configuration</a>
         <a href="#api">HTTP API</a>

@@ -26,6 +26,7 @@
     { "source": "/secrets/:path*", "destination": "/api/osa?__osa_path=secrets/:path*" },
     { "source": "/permissions/:path*", "destination": "/api/osa?__osa_path=permissions/:path*" },
     { "source": "/experiments/:path*", "destination": "/api/osa?__osa_path=experiments/:path*" },
-    { "source": "/queue/:path*", "destination": "/api/osa?__osa_path=queue/:path*" }
+    { "source": "/queue/:path*", "destination": "/api/osa?__osa_path=queue/:path*" },
+    { "source": "/knowledge/:path*", "destination": "/api/osa?__osa_path=knowledge/:path*" }
   ]
 }

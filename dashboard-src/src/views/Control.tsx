@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ComponentType, type ReactNode } 
 import { useOsa } from "../ctx";
 import { requestJson } from "../data/data";
 import { Kv, Mono, Section, Status, short } from "../ui/primitives";
+import { sha256 } from "../lib/verify";
 
 // Control-plane screens backed by the API (packages/control). Every button calls a real route; results and
 // errors are shown as the API returns them. State lives in the API process (PROCESS_MEMORY).
@@ -360,6 +361,79 @@ export function Scheduler() {
   );
 }
 
+
+// ── Knowledge ────────────────────────────────────────────────────────────────────────────────────────
+interface Hit { doc_id: string; title: string; source: string; chunk_index: number; text: string; chunk_sha256: string; document_sha256: string; score: number }
+interface Retrieval { collection: string; query: string; hits: Hit[]; retrieval_sha256: string }
+
+export function Knowledge() {
+  const list = useLoad<{ collection: string; documents: number; chunks: number }[]>("/knowledge");
+  const act = useAction();
+  const [collection, setCollection] = useState("docs");
+  const [docId, setDocId] = useState("");
+  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
+  const [query, setQuery] = useState("");
+  const [result, setResult] = useState<Retrieval | null>(null);
+  const [checks, setChecks] = useState<Record<string, boolean>>({});
+  const add = () => act.run(async () => {
+    await requestJson(`/knowledge/${encodeURIComponent(collection)}/documents`, { method: "POST", body: JSON.stringify({ doc_id: docId, title, text }) });
+    setDocId(""); setTitle(""); setText(""); list.reload();
+  });
+  const search = () => act.run(async () => {
+    const r = await requestJson<Retrieval>(`/knowledge/${encodeURIComponent(collection)}/search`, { method: "POST", body: JSON.stringify({ query, k: 5 }) });
+    setResult(r);
+    // Re-check each quoted chunk in this browser: sha256(text) must equal the chunk_sha256 the source commits to.
+    const entries = await Promise.all(r.hits.map(async (h) => [`${h.doc_id}:${h.chunk_index}`, (await sha256(h.text)) === h.chunk_sha256] as const));
+    setChecks(Object.fromEntries(entries));
+  });
+  return (
+    <Page eyebrow="INTELLIGENCE · KNOWLEDGE" title="Knowledge" lead="Retrieval over your sources where every hit cites a content-addressed chunk. Search is lexical BM25: deterministic, no model, so the same query gives the same sealed retrieval.">
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Section title="Add a document">
+          <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
+            <div className="flex flex-wrap gap-2">
+              <label className="sr-only" htmlFor="kn-col">Collection</label>
+              <input id="kn-col" value={collection} onChange={(e) => setCollection(e.target.value)} placeholder="collection" className="focus-ring glass mono w-32 rounded-md px-3 py-2 text-[12px]" />
+              <label className="sr-only" htmlFor="kn-id">Document id</label>
+              <input id="kn-id" value={docId} onChange={(e) => setDocId(e.target.value)} placeholder="doc_id" className="focus-ring glass mono w-40 rounded-md px-3 py-2 text-[12px]" />
+              <label className="sr-only" htmlFor="kn-title">Title</label>
+              <input id="kn-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="focus-ring glass min-w-0 flex-1 rounded-md px-3 py-2 text-[13px]" />
+            </div>
+            <label className="sr-only" htmlFor="kn-text">Text</label>
+            <textarea id="kn-text" value={text} onChange={(e) => setText(e.target.value)} rows={6} placeholder="Paste the source text. Blank lines split it into chunks." className="focus-ring glass rounded-md px-3 py-2 text-[13px]" />
+            <button type="submit" disabled={act.busy || !docId || !text.trim()} className="focus-ring tap self-start rounded-md border border-cyan/40 bg-cyan/10 px-3 text-[12px] text-cyan disabled:opacity-40">Add document</button>
+          </form>
+        </Section>
+        <Section title={`Collections · ${list.data?.length ?? 0}`}>
+          {list.data?.length === 0 && <p className="text-[13px] text-dim">No documents in this API process yet.</p>}
+          {list.data?.map((c) => <Kv key={c.collection} k={c.collection}>{c.documents} documents · {c.chunks} chunks</Kv>)}
+        </Section>
+      </div>
+      <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); search(); }}>
+        <label className="sr-only" htmlFor="kn-q">Query</label>
+        <input id="kn-q" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${collection}`} className="focus-ring glass min-w-0 flex-1 rounded-md px-3 py-2 text-[13px]" />
+        <button type="submit" disabled={act.busy || !query.trim()} className="focus-ring tap rounded-md border border-cyan/40 bg-cyan/10 px-3 text-[12px] text-cyan disabled:opacity-40">Search</button>
+      </form>
+      <Err msg={act.error || list.error} />
+      {result && <Section title={`${result.hits.length} hit(s) · retrieval_sha256 ${short(result.retrieval_sha256)}`}>
+        {result.hits.length === 0 && <p className="text-[13px] text-dim">No chunk matches. Nothing is invented.</p>}
+        {result.hits.map((h) => {
+          const ok = checks[`${h.doc_id}:${h.chunk_index}`];
+          return (
+            <div key={`${h.doc_id}:${h.chunk_index}`} className="border-b border-line py-2 last:border-0">
+              <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[13px]"><Mono>{h.doc_id}#{h.chunk_index}</Mono> · {h.title}{h.source ? <span className="text-dim"> · {h.source}</span> : null}</span>
+                <span className="flex items-center gap-3"><Mono className="text-[11px] text-dim">score {h.score}</Mono>{ok !== undefined && <Status v={ok ? "MATCH" : "MISMATCH"} label={ok ? "citation verified" : "citation mismatch"} />}</span></div>
+              <p className="mt-1 text-[13px] text-dim">{h.text}</p>
+              <div className="mono text-[11px] text-dim">chunk_sha256 {short(h.chunk_sha256)} · document_sha256 {short(h.document_sha256)}</div>
+            </div>
+          );
+        })}
+      </Section>}
+    </Page>
+  );
+}
+
 export const CONTROL_VIEWS: Record<string, ComponentType> = {
-  deployments: Deployments, experiments: Experiments, queues: Queues, scheduler: Scheduler, policies: Policies, organizations: Organizations, secrets: Secrets, permissions: PermissionsView, notifications: Notifications,
+  deployments: Deployments, experiments: Experiments, knowledge: Knowledge, queues: Queues, scheduler: Scheduler, policies: Policies, organizations: Organizations, secrets: Secrets, permissions: PermissionsView, notifications: Notifications,
 };
