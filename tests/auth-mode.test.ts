@@ -49,7 +49,10 @@ test("open mode: no login needed, identity is the explicit OPEN MODE identity, s
     const session = (await (await fetch(`${base}/session`)).json()) as { identity: { identity_id: string; display_name: string } };
     assert.equal(session.identity.identity_id, "idn_open_mode");
     assert.match(session.identity.display_name, /OPEN MODE/);
-    assert.equal(((await (await fetch(`${base}/build/status`)).json()) as { auth_mode: string }).auth_mode, "open");
+    const status = (await (await fetch(`${base}/build/status`)).json()) as { auth_mode: string; executors: string[] };
+    assert.equal(status.auth_mode, "open");
+    assert.ok(status.executors.includes("dev.planner.v1") && status.executors.includes("dev.builder.v1"), "registered executor refs are reported");
+    assert.deepEqual(status.executors, [...status.executors].sort());
     // Regulated layers stay gated whatever the auth mode.
     assert.equal(((await (await fetch(`${base}/layers/bank/enter`, { method: "POST" })).json()) as { decision: string }).decision, "GATED");
   });

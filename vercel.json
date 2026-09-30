@@ -9,12 +9,16 @@
     "OSA_AUTH_MODE": "open"
   },
   "rewrites": [
-    { "source": "/layers/:path*", "destination": "/api/layers/:path*" },
-    { "source": "/teams/:path*", "destination": "/api/teams/:path*" },
-    { "source": "/missions/:path*", "destination": "/api/missions/:path*" },
-    { "source": "/runs/:path*", "destination": "/api/runs/:path*" },
-    { "source": "/intelligence/:path*", "destination": "/api/intelligence/:path*" },
-    { "source": "/datasets/:path*", "destination": "/api/datasets/:path*" },
-    { "source": "/evaluators/:path*", "destination": "/api/evaluators/:path*" }
+    { "source": "/api/:path*", "destination": "/api/osa?__osa_path=:path*" },
+    { "source": "/layers/:path*", "destination": "/api/osa?__osa_path=layers/:path*" },
+    { "source": "/teams/:path*", "destination": "/api/osa?__osa_path=teams/:path*" },
+    { "source": "/missions/:path*", "destination": "/api/osa?__osa_path=missions/:path*" },
+    { "source": "/runs/:path*", "destination": "/api/osa?__osa_path=runs/:path*" },
+    { "source": "/intelligence/:path*", "destination": "/api/osa?__osa_path=intelligence/:path*" },
+    { "source": "/datasets/:path*", "destination": "/api/osa?__osa_path=datasets/:path*" },
+    { "source": "/evaluators/:path*", "destination": "/api/osa?__osa_path=evaluators/:path*" },
+    { "source": "/build/:path*", "destination": "/api/osa?__osa_path=build/:path*" },
+    { "source": "/auth/:path*", "destination": "/api/osa?__osa_path=auth/:path*" },
+    { "source": "/session/:path*", "destination": "/api/osa?__osa_path=session/:path*" }
   ]
 }

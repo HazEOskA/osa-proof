@@ -25,6 +25,11 @@ export class ExecutorRegistry {
     this.executors.set(ref, executor);
   }
 
+  // Registered executor refs, sorted. Refs only: never the executors or their configuration.
+  refs(): string[] {
+    return [...this.executors.keys()].sort();
+  }
+
   get(ref: string): AgentExecutor {
     const executor = this.executors.get(ref);
     if (!executor) throw new Error(`executor not registered: ${ref}`);
