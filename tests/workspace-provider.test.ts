@@ -66,6 +66,13 @@ test("Docker Workspace Provider creates an isolated OSA container with bounded r
   assert.ok(create.args.includes("3072m"));
   assert.ok(create.args.includes("--network"));
   assert.ok(create.args.includes("bridge"));
+  assert.ok(create.args.includes("--pids-limit"));
+  assert.ok(create.args.includes("512"));
+  assert.ok(create.args.includes("--security-opt"));
+  assert.ok(create.args.includes("no-new-privileges:true"));
+  assert.ok(create.args.includes("--cap-drop"));
+  assert.ok(create.args.includes("ALL"));
+  assert.ok(create.args.includes("--init"));
   assert.ok(create.args.includes("osa.managed=true"));
   assert.ok(create.args.includes("osa.workspace-node22:v0.1") === false);
   assert.ok(create.args.includes("osa/workspace-node22:v0.1"));
