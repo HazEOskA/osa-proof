@@ -48,9 +48,7 @@ export async function startWorkerHost(env: Env = process.env) {
 }
 
 if (require.main === module) {
-  try {
-    void startWorkerHost();
-  } catch (error) {
+  void startWorkerHost().catch((error) => {
     console.error(
       JSON.stringify({
         service: "osa-worker-host",
@@ -59,5 +57,5 @@ if (require.main === module) {
       })
     );
     process.exit(1);
-  }
+  });
 }
