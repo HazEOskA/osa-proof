@@ -12,7 +12,7 @@ export const NAV: NavGroup[] = [
     pick("Prompty", "build:prompts", true, I.code), pick("Studio", "build:studio", true, I.spaceship), pick("Playground", "build:playground", true, I.playground) ] },
   { title: "RUNTIME", items: [
     pick("Missions", "missions", true, I.missions), pick("Execution", "missions", true, I.execution), pick("Runtime", "ops:runtime", true, I.runtime),
-    pick("Sandboxes", p("Sandboxes"), false, I.sandbox), pick("Scheduler", p("Scheduler"), false, I.scheduler), pick("Queues", p("Queues"), false, I.workers),
+    pick("Sandboxes", p("Sandboxes"), false, I.sandbox), pick("Scheduler", "ops:scheduler", true, I.scheduler), pick("Queues", "ops:queues", true, I.workers),
     pick("Deployments", "ops:deployments", true, I.deployments) ] },
   { title: "OBSERVE", items: [
     pick("Tracing", "trace", true, I.observability), pick("Events", "trace", true, I.events), pick("Monitoring", "ops:monitoring", true, I.monitor),
@@ -23,7 +23,7 @@ export const NAV: NavGroup[] = [
   { title: "INTELLIGENCE", items: [
     pick("Models", "intel:models", true, I.minions), pick("Model Mesh", "intel:model-mesh", true, I.minionBot), pick("LLM Gateway", "intel:llm-gateway", true, I.workerBot),
     pick("Memory", "intel:memory", false, I.storage), pick("Knowledge", "intel:knowledge", false, I.cube), pick("Context Hub", "intel:context-hub", false, I.knowledge),
-    pick("Datasets", "intel:datasets", true, I.logs), pick("Experiments", "intel:experiments", false, I.playground), pick("Evaluators", "intel:evaluators", true, I.target) ] },
+    pick("Datasets", "intel:datasets", true, I.logs), pick("Experiments", "ops:experiments", true, I.playground), pick("Evaluators", "intel:evaluators", true, I.target) ] },
   { title: "WORLD", items: [
     pick("World State", "world", true, I.world), pick("Knowledge Graph", "world", true, I.planet), pick("Timeline", "ops:timeline", true, I.events),
     pick("Dependencies", "ops:dependencies", true, I.workflows), pick("Architecture", "ops:architecture", true, I.runtime) ] },

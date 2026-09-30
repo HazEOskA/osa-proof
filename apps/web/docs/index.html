@@ -205,9 +205,9 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
     <details open><summary>Concepts<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#concepts">Core concepts</a><a href="#pipeline">How a run is proven</a><a href="#receipt">Proof receipt</a><a href="#layers">Layers</a><a href="#auth">Auth modes</a></details>
     <details open><summary>Intelligence<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#intelligence">Overview</a><a href="#models">Models</a><a href="#llm-gateway">LLM Gateway</a><a href="#model-mesh">Model Mesh</a><a href="#datasets">Datasets</a><a href="#evaluators">Evaluators</a><a href="#" class="nx" data-nolink>Experiments</a></details>
+      <a href="#intelligence">Overview</a><a href="#models">Models</a><a href="#llm-gateway">LLM Gateway</a><a href="#model-mesh">Model Mesh</a><a href="#datasets">Datasets</a><a href="#evaluators">Evaluators</a><a href="#control">Experiments</a></details>
     <details open><summary>Reference<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
+      <a href="#control">Control plane</a><a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
     <details><summary>Guides<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#guides">All guides</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
     <details><summary>Releases<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
@@ -242,7 +242,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
-            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Thirty-three JSON routes for auth, layers, teams, missions, runs, build, intelligence, datasets and evaluators.</p></a>
+            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Fifty JSON routes for auth, layers, teams, missions, runs, build, intelligence, datasets, evaluators, experiments, deployments, policies and the job queue.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -414,7 +414,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
           <tr><td><code>model-mesh</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Ordered fallback across models after retries run out (<code>OSA_MODEL_FALLBACKS</code>). Every hop is evidence. <a href="#model-mesh">Details</a></td></tr>
           <tr><td><code>datasets</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Versioned mission examples with sha256 digests. <a href="#datasets">Details</a></td></tr>
           <tr><td><code>evaluators</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Deterministic scores and human labels bound to the receipt. <a href="#evaluators">Details</a></td></tr>
-          <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Run a dataset against team versions and compare receipts.</td></tr>
+          <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Run a dataset against team versions and compare receipts. <a href="#control">Details</a></td></tr>
           <tr><td><code>knowledge</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Retrieval with source digests.</td></tr>
           <tr><td><code>context-hub</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Shared context for agents.</td></tr>
           <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Lives in the separate neurosa repository.</td></tr>
@@ -509,6 +509,21 @@ curl -s localhost:3000/runs/$RUN/evaluations -H "authorization: Bearer $TOKEN" -
   -d '{"evaluator_ids":["verdict"],"example":{"dataset_id":"release-notes","as_of":"prod","example_id":"a"}}'</pre></div>
     </section>
 
+    <section id="control" aria-labelledby="h-ctl">
+      <h2 id="h-ctl">Control plane</h2>
+      <p>Deployments, policies, experiments and the job queue. State is held in the API process (<code>PROCESS_MEMORY</code>); every record that matters carries a sha256.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Area</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td>Deployments</td><td>Pin one Team Graph version (<code>graph_sha256</code>) to <code>preview</code> or <code>production</code>. One ACTIVE per team and environment; deploying again supersedes it; rollback restores the previous one; promote copies a preview graph to production. <code>POST /deployments/:id/run</code> always runs the pinned graph.</td></tr>
+          <tr><td>Policies</td><td>Rules <code>max_agents</code>, <code>allowed_executor_refs</code>, <code>min_requirements</code>, <code>forbidden_roles</code>. Checked before a deployment runs; any failing enabled policy blocks the run with 403 <code>POLICY_DENIED</code>. Unknown rule types are refused.</td></tr>
+          <tr><td>Experiments</td><td>Run every example of a pinned dataset version against one team version, score with evaluators, seal <code>outcome_sha256</code> and <code>experiment_sha256</code>. <code>GET /experiments/compare?a=&amp;b=</code> lists per-example verdict and score changes; different dataset versions are refused.</td></tr>
+          <tr><td>Queue and scheduler</td><td>Queue a mission now or at <code>run_at</code>, optionally through a deployment. There is no background worker in a serverless function: due jobs run on <code>POST /queue/drain</code>, which a cron can call.</td></tr>
+          <tr><td>Organizations · Secrets · Permissions</td><td>Registered plus observed organizations; secret names with set/unset only, never values; the route-by-route enforcement table, checked by a test.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
     <section id="config" aria-labelledby="h-cfg">
       <h2 id="h-cfg">Configuration</h2>
       <p>Everything is read from the environment. Secrets never reach events, evidence, receipts, logs or error messages.</p>
@@ -556,6 +571,23 @@ curl -s localhost:3000/runs/$RUN/evaluations -H "authorization: Bearer $TOKEN" -
           <tr><td><span class="m">GET</span></td><td><code>/build/status</code></td><td>Execution mode, auth mode, persistence and protocol support.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/build/workspace</code></td><td>The saved Build workspace (404 until one is saved).</td></tr>
           <tr><td><span class="m">POST</span></td><td><code>/build/workspace</code></td><td>Validate and save the Build workspace; registers its Team Graph (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/deployments</code></td><td>Deployments, newest first.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/deployments</code></td><td>Deploy a registered team version to preview or production (201).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/deployments/:id/promote</code></td><td>Promote a preview deployment to production (201).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/deployments/rollback</code></td><td>Reactivate the previous deployment of a team in an environment.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/deployments/:id/run</code></td><td>Run a mission on the pinned graph after policies allow it (201, 403 when denied).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/policies</code></td><td>Policies.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/policies</code></td><td>Add a policy (201).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/policies/evaluate</code></td><td>Evaluate a team version and mission against enabled policies.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/experiments</code></td><td>Experiments, newest first.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/experiments</code></td><td>Run a dataset version against a team version with evaluators (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/experiments/compare?a=&b=</code></td><td>Per-example changes between two experiments.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/queue</code></td><td>Queued, running and finished jobs.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/queue</code></td><td>Queue a mission now or at run_at (201).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/queue/drain</code></td><td>Run due jobs.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/organizations</code></td><td>Registered and observed organizations.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/secrets</code></td><td>Secret names and whether they are set.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/permissions</code></td><td>Route-by-route enforcement table.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/intelligence</code></td><td>Status reports for the nine Intelligence modules.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/intelligence/:id</code></td><td>One module report with its proofs.</td></tr>
           <tr><td><span class="m">POST</span></td><td><code>/datasets</code></td><td>Create a dataset; version 1 (201).</td></tr>
@@ -609,6 +641,7 @@ curl -s localhost:3000/runs/$RUN/evaluations -H "authorization: Bearer $TOKEN" -
         <a href="#model-mesh">Model Mesh</a>
         <a href="#datasets">Datasets</a>
         <a href="#evaluators">Evaluators</a>
+        <a href="#control">Control plane</a>
         <a href="#config">Configuration</a>
         <a href="#api">HTTP API</a>
         <a href="#guides">Guides</a>

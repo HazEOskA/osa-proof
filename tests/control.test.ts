@@ -119,3 +119,38 @@ test("HTTP permissions table matches enforcement: every 'session' row answers 40
     assert.equal(perms.identity, null);
   });
 });
+
+test("queue: due jobs run on drain (now and scheduled), through a deployment with policies, failures recorded", async () => {
+  let now = new Date("2026-09-30T12:00:00.000Z");
+  const { JobQueue } = await import("../packages/control/src");
+  const q = new JobQueue(() => now);
+  const a = q.enqueue({ mission_id: "m1" });
+  const later = q.enqueue({ mission_id: "m2", run_at: "2026-09-30T13:00:00.000Z" });
+  assert.throws(() => q.enqueue({ mission_id: "m3", run_at: "not a date" }), ControlError);
+  assert.deepEqual(q.takeDue().map((j) => j.job_id), [a.job_id], "only due jobs");
+  assert.deepEqual(q.takeDue(), [], "a RUNNING job is not taken twice");
+  now = new Date("2026-09-30T13:00:01.000Z");
+  assert.deepEqual(q.takeDue().map((j) => j.job_id), [later.job_id]);
+  assert.throws(() => q.cancel(later.job_id), (e: unknown) => e instanceof ControlError && e.code === "conflict");
+
+  await withServer("open", async (base) => {
+    assert.equal((await post(base, "/teams", team("1"))).status, 201);
+    assert.equal((await post(base, "/missions", mission)).status, 201);
+    const dep = await (await post(base, "/deployments", { team_id: "team_c", version: "1", environment: "production" })).json() as { deployment_id: string };
+    assert.equal((await post(base, "/queue", { mission_id: "m_c" })).status, 201);
+    assert.equal((await post(base, "/queue", { mission_id: "m_c", deployment_id: dep.deployment_id })).status, 201);
+    assert.equal((await post(base, "/queue", { mission_id: "m_c", run_at: "2999-01-01T00:00:00.000Z" })).status, 201);
+    assert.equal((await post(base, "/queue", { mission_id: "missing" })).status, 404);
+    let done = await (await post(base, "/queue/drain", {})).json() as Array<{ status: string; verdict: string; run_id: string }>;
+    assert.deepEqual(done.map((j) => [j.status, j.verdict]), [["DONE", "VERIFIED"], ["DONE", "VERIFIED"]], "the far-future job waits");
+    assert.equal((await fetch(`${base}/runs/${done[0].run_id}/proof`)).status, 200, "a drained job points at a stored receipt");
+
+    assert.equal((await post(base, "/policies", { policy_id: "tiny", rule: { type: "max_agents", max: 1 } })).status, 201);
+    await post(base, "/queue", { mission_id: "m_c", deployment_id: dep.deployment_id });
+    done = await (await post(base, "/queue/drain", {})).json() as Array<{ status: string; verdict: string; run_id: string }>;
+    assert.equal(done[0].status, "FAILED");
+    assert.match((done[0] as unknown as { error: string }).error, /blocked by policy: tiny/);
+    const all = await (await fetch(base + "/queue")).json() as Array<{ status: string }>;
+    assert.deepEqual(all.map((j) => j.status).sort(), ["DONE", "DONE", "FAILED", "QUEUED"]);
+  });
+});

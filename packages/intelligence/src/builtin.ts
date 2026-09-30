@@ -16,6 +16,8 @@ import {
 import { DatasetStore, ExampleInput, verifyDatasetVersion } from "../../datasets/src";
 import { EvaluationObservation, EvaluatorStore, observationMatchesRun, verifyEvaluationObservation } from "../../evaluators/src";
 import { ExecutorRegistry, OsaRuntime } from "../../runtime/src";
+import { ExperimentError, ExperimentStore, verifyExperiment } from "../../experiments/src";
+import { TeamGraph } from "../../contracts/src";
 import { RunResult } from "../../contracts/src";
 import { IntelligenceRegistry, ModuleImplementation } from "./index";
 
@@ -310,6 +312,64 @@ export const evaluatorsModule: ModuleImplementation = {
   ],
 };
 
+// Experiments probe: two examples, two team versions whose builders differ (built vs draft), real runtime.
+function probeExperimentWorld() {
+  const registry = new ExecutorRegistry();
+  registry.register("probe.planner", ({ mission }) => ({ output: { plan: mission.objective }, evidence: [{ kind: "plan", data: { status: "ready" } }] }));
+  registry.register("probe.builder", () => ({ output: { title: "Release notes" }, evidence: [{ kind: "artifact", data: { status: "built" } }] }));
+  registry.register("probe.builder.draft", () => ({ output: { title: "Draft" }, evidence: [{ kind: "artifact", data: { status: "draft" } }] }));
+  const runtime = new OsaRuntime(registry);
+  const graph = (version: string, builder: string): TeamGraph => ({
+    organization_id: "org_probe", project_id: "project_probe", team_id: "team_probe", version,
+    agents: [{ agent_id: "planner", role: "planner", executor_ref: "probe.planner" }, { agent_id: "builder", role: "builder", executor_ref: builder }],
+    edges: [{ edge_id: "p_b", from_agent_id: "planner", to_agent_id: "builder", kind: "handoff" }],
+  });
+  const datasets = new DatasetStore(() => new Date("2026-01-01T00:00:00Z"));
+  const v1 = datasets.create({ dataset_id: "probe-exp", name: "Probe", examples: [sampleExample("a", "first"), sampleExample("b", "second")] });
+  const v2 = datasets.commit("probe-exp", { upsert: [sampleExample("c", "third")] });
+  const evaluators = new EvaluatorStore(() => new Date("2026-01-01T00:00:00Z"));
+  evaluators.register({ evaluator_id: "verdict", spec: { type: "verdict_match" } });
+  evaluators.register({ evaluator_id: "receipt", spec: { type: "receipt_valid" } });
+  const run = (store: ExperimentStore, dataset: typeof v1, g: TeamGraph) =>
+    store.run({ dataset, graph: g, evaluators, evaluator_ids: ["verdict", "receipt"], runMission: (gg, m) => runtime.run(gg, m) });
+  return { graph, v1, v2, run };
+}
+
+export const experimentsModule: ModuleImplementation = {
+  id: "experiments",
+  version: "0.1.0",
+  checks: [
+    {
+      proof_id: "experiments.reproducible",
+      run: async () => {
+        const w = probeExperimentWorld();
+        const a = await w.run(new ExperimentStore(() => new Date("2026-01-01T00:00:00Z")), w.v1, w.graph("1", "probe.builder"));
+        const b = await w.run(new ExperimentStore(() => new Date("2026-01-01T00:00:00Z")), w.v1, w.graph("1", "probe.builder"));
+        const sealed = verifyExperiment(a).ok && verifyExperiment(b).ok;
+        const receipts = a.results.every((r) => r.proof_id.startsWith("proof_")) && new Set(a.results.map((r) => r.run_id)).size === a.results.length;
+        const ok = a.outcome_sha256 === b.outcome_sha256 && sealed && receipts && a.summary.verified === 2;
+        return { ok, detail: `same pins, same outcome_sha256: ${a.outcome_sha256 === b.outcome_sha256}; sealed: ${sealed}; one receipt per example run: ${receipts}` };
+      },
+    },
+    {
+      proof_id: "experiments.receipts_compared",
+      run: async () => {
+        const w = probeExperimentWorld();
+        const store = new ExperimentStore(() => new Date("2026-01-01T00:00:00Z"));
+        const good = await w.run(store, w.v1, w.graph("1", "probe.builder"));
+        const bad = await w.run(store, w.v1, w.graph("2", "probe.builder.draft"));
+        const other = await w.run(store, w.v2, w.graph("1", "probe.builder"));
+        const cmp = store.compare(good.experiment_id, bad.experiment_id);
+        let refused = false;
+        try { store.compare(good.experiment_id, other.experiment_id); } catch (e) { refused = e instanceof ExperimentError && e.code === "conflict"; }
+        const regressions = cmp.changed.filter((c) => c.verdict?.a === "VERIFIED" && c.verdict?.b === "FAILED").length;
+        const ok = !cmp.same_outcome && regressions === 2 && cmp.verified_delta === -2 && cmp.mean_score_deltas.verdict === -1 && refused;
+        return { ok, detail: `v1→v2 regressions caught: ${regressions}/2; verdict score delta ${cmp.mean_score_deltas.verdict}; different dataset versions refused: ${refused}` };
+      },
+    },
+  ],
+};
+
 export function createBuiltinIntelligence(clock?: () => Date): IntelligenceRegistry {
   const registry = new IntelligenceRegistry(clock);
   registry.register(modelsModule);
@@ -317,5 +377,6 @@ export function createBuiltinIntelligence(clock?: () => Date): IntelligenceRegis
   registry.register(modelMeshModule);
   registry.register(datasetsModule);
   registry.register(evaluatorsModule);
+  registry.register(experimentsModule);
   return registry;
 }

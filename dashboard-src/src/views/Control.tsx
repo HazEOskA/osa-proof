@@ -225,6 +225,141 @@ export function Notifications() {
   );
 }
 
+
+// ── Experiments ──────────────────────────────────────────────────────────────────────────────────────
+interface ExperimentRow { experiment_id: string; name: string; dataset_id: string; dataset_version: number; team_version: string; summary: { examples: number; verified: number; mean_scores: Record<string, number> }; outcome_sha256: string }
+interface Comparison { same_outcome: boolean; verified_delta: number; mean_score_deltas: Record<string, number>; changed: { example_id: string; verdict: { a: string; b: string } | null; score_deltas: Record<string, number> }[] }
+const tolerate409 = async (p: Promise<unknown>) => { try { await p; } catch (e) { if (!(e instanceof Error) || !/already exists|changes nothing/.test(e.message)) throw e; } };
+
+export function Experiments() {
+  const { data } = useOsa();
+  const report = useLoad<{ status: string; proofs: { proof_id: string; ok: boolean; detail: string }[] }>("/intelligence/experiments");
+  const list = useLoad<ExperimentRow[]>("/experiments");
+  const act = useAction();
+  const [cmp, setCmp] = useState<Comparison | null>(null);
+  const post = (path: string, body: unknown) => requestJson(path, { method: "POST", body: JSON.stringify(body) });
+  const prepare = () => act.run(async () => {
+    await post("/teams", data.team);
+    const examples = data.missions.map((m) => ({ example_id: m.mission_id.replace(/[^A-Za-z0-9_.-]/g, "_"), objective: m.objective, input: m.input, requirements: m.requirements, expected: { verdict: "VERIFIED" } }));
+    await tolerate409(post("/datasets", { dataset_id: "dashboard-missions", name: "Dashboard missions", examples }));
+    await tolerate409(post("/evaluators", { evaluator_id: "verdict", spec: { type: "verdict_match" } }));
+    await tolerate409(post("/evaluators", { evaluator_id: "receipt", spec: { type: "receipt_valid" } }));
+  });
+  const runExp = () => act.run(async () => {
+    await post("/experiments", { dataset_id: "dashboard-missions", team_id: data.team.team_id, version: data.team.version, evaluator_ids: ["verdict", "receipt"] });
+    list.reload();
+  });
+  const compareLatest = () => act.run(async () => {
+    const rows = list.data ?? [];
+    if (rows.length < 2) throw new Error("run at least two experiments to compare");
+    setCmp(await requestJson<Comparison>(`/experiments/compare?a=${rows[1].experiment_id}&b=${rows[0].experiment_id}`));
+  });
+  return (
+    <Page eyebrow="INTELLIGENCE · EXPERIMENTS" title="Experiments" lead="Run every example of a pinned dataset version against one Team Graph version, score each run with evaluators, and seal the outcome. Compare two experiments to see which examples regressed.">
+      {report.data && <div className="flex flex-wrap items-center gap-3 text-[13px]"><Status v={report.data.status} framed />{report.data.proofs.map((p) => <span key={p.proof_id} className="text-dim"><Mono>{p.proof_id}</Mono> {p.ok ? "✓" : "✗"}</span>)}</div>}
+      <div className="flex flex-wrap gap-2">
+        <Btn onClick={prepare} disabled={act.busy}>1 · Prepare dataset + evaluators from dashboard missions</Btn>
+        <Btn onClick={runExp} disabled={act.busy}>2 · Run experiment on {data.team.team_id} v{data.team.version}</Btn>
+        <Btn onClick={compareLatest} disabled={act.busy}>3 · Compare the latest two</Btn>
+      </div>
+      <Err msg={act.error || list.error} />
+      {cmp && <Section title="Comparison (older → newer)">
+        <div className="text-[13px]">{cmp.same_outcome ? "Same outcome on every example." : `${cmp.changed.length} example(s) changed · verified Δ ${cmp.verified_delta}`}</div>
+        {Object.entries(cmp.mean_score_deltas).map(([k, v]) => <Kv key={k} k={`mean ${k} Δ`}>{v}</Kv>)}
+        {cmp.changed.map((c) => <div key={c.example_id} className="mono text-[12px] text-dim">{c.example_id}: {c.verdict ? `${c.verdict.a} → ${c.verdict.b}` : "same verdict"} {JSON.stringify(c.score_deltas)}</div>)}
+      </Section>}
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <table className="w-full text-left text-[12px]">
+          <thead className="bg-panel text-dim"><tr><th className="px-3 py-2">Experiment</th><th className="px-3 py-2">Dataset</th><th className="px-3 py-2">Team</th><th className="px-3 py-2">Verified</th><th className="px-3 py-2">Mean scores</th><th className="px-3 py-2">outcome_sha256</th></tr></thead>
+          <tbody>
+            {list.data?.length === 0 && <tr><td colSpan={6} className="px-3 py-4 text-dim">No experiments in this API process yet. Use steps 1 and 2 above.</td></tr>}
+            {list.data?.map((e) => (
+              <tr key={e.experiment_id} className="border-t border-line">
+                <td className="mono px-3 py-2">{short(e.experiment_id)}</td><td className="mono px-3 py-2">{e.dataset_id}@v{e.dataset_version}</td><td className="mono px-3 py-2">v{e.team_version}</td>
+                <td className="px-3 py-2">{e.summary.verified}/{e.summary.examples}</td>
+                <td className="mono px-3 py-2">{Object.entries(e.summary.mean_scores).map(([k, v]) => `${k} ${v}`).join(" · ")}</td>
+                <td className="mono px-3 py-2">{short(e.outcome_sha256)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Page>
+  );
+}
+
+// ── Queues and Scheduler ─────────────────────────────────────────────────────────────────────────────
+interface Job { job_id: string; mission_id: string; deployment_id: string | null; run_at: string; status: string; run_id: string | null; verdict: string | null; error: string | null }
+
+function JobsTable({ jobs, onCancel }: { jobs: Job[]; onCancel: (id: string) => void }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-line">
+      <table className="w-full text-left text-[12px]">
+        <thead className="bg-panel text-dim"><tr><th className="px-3 py-2">Job</th><th className="px-3 py-2">Mission</th><th className="px-3 py-2">Run at (UTC)</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Result</th><th className="px-3 py-2" /></tr></thead>
+        <tbody>
+          {jobs.length === 0 && <tr><td colSpan={6} className="px-3 py-4 text-dim">No jobs.</td></tr>}
+          {jobs.map((j) => (
+            <tr key={j.job_id} className="border-t border-line">
+              <td className="mono px-3 py-2">{short(j.job_id)}</td>
+              <td className="mono px-3 py-2">{j.mission_id}{j.deployment_id ? ` · ${short(j.deployment_id)}` : ""}</td>
+              <td className="mono px-3 py-2">{j.run_at.replace("T", " ").slice(0, 19)}</td>
+              <td className="px-3 py-2"><Status v={j.status === "DONE" ? "PASS" : j.status === "FAILED" ? "FAILED" : "UNKNOWN"} label={j.status} /></td>
+              <td className="mono px-3 py-2 text-dim">{j.verdict ? `${j.verdict} · ${short(j.run_id ?? "")}` : j.error ?? ""}</td>
+              <td className="px-3 py-2">{j.status === "QUEUED" && <button className="focus-ring text-[11px] text-dim hover:text-bad" onClick={() => onCancel(j.job_id)}>cancel</button>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function useQueue() {
+  const { data } = useOsa();
+  const list = useLoad<Job[]>("/queue");
+  const act = useAction();
+  const post = (path: string, body: unknown) => requestJson(path, { method: "POST", body: JSON.stringify(body) });
+  const seed = async () => { await post("/teams", data.team); for (const m of data.missions) await post("/missions", m); };
+  const enqueue = (missionId: string, runAt?: string) => act.run(async () => { await seed(); await post("/queue", { mission_id: missionId, run_at: runAt }); list.reload(); });
+  const drain = () => act.run(async () => { await post("/queue/drain", {}); list.reload(); });
+  const cancel = (id: string) => act.run(async () => { await requestJson(`/queue/${id}`, { method: "DELETE" }); list.reload(); });
+  return { data, list, act, enqueue, drain, cancel };
+}
+
+export function Queues() {
+  const q = useQueue();
+  return (
+    <Page eyebrow="RUNTIME · QUEUES" title="Queues" lead="Missions waiting to run. A serverless API has no background worker, so due jobs run when the queue is drained (a cron can call POST /queue/drain). Each finished job points at its run and sealed receipt.">
+      <div className="flex flex-wrap gap-2">
+        {q.data.missions.map((m) => <Btn key={m.mission_id} disabled={q.act.busy} onClick={() => q.enqueue(m.mission_id)}>Queue {m.mission_id} now</Btn>)}
+        <Btn disabled={q.act.busy} onClick={q.drain}>Drain due jobs</Btn>
+      </div>
+      <Err msg={q.act.error || q.list.error} />
+      <JobsTable jobs={q.list.data ?? []} onCancel={q.cancel} />
+    </Page>
+  );
+}
+
+export function Scheduler() {
+  const q = useQueue();
+  const [mission, setMission] = useState(q.data.missions[0]?.mission_id ?? "");
+  const [at, setAt] = useState("");
+  const future = (q.list.data ?? []).filter((j) => j.status === "QUEUED" && new Date(j.run_at).getTime() > Date.now());
+  return (
+    <Page eyebrow="RUNTIME · SCHEDULER" title="Scheduler" lead="Schedule a mission for a later time. It waits in the queue until run_at has passed and the queue is drained.">
+      <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); q.enqueue(mission, new Date(at).toISOString()); }}>
+        <label className="sr-only" htmlFor="sch-mission">Mission</label>
+        <select id="sch-mission" value={mission} onChange={(e) => setMission(e.target.value)} className="focus-ring glass rounded-md px-3 py-2 text-[13px]">{q.data.missions.map((m) => <option key={m.mission_id} value={m.mission_id}>{m.mission_id}</option>)}</select>
+        <label className="sr-only" htmlFor="sch-at">Run at</label>
+        <input id="sch-at" type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} className="focus-ring glass rounded-md px-3 py-2 text-[13px]" />
+        <button type="submit" disabled={q.act.busy || !at || !mission} className="focus-ring tap rounded-md border border-cyan/40 bg-cyan/10 px-3 text-[12px] text-cyan disabled:opacity-40">Schedule</button>
+      </form>
+      <Err msg={q.act.error || q.list.error} />
+      <Section title={`Scheduled for later · ${future.length}`}><JobsTable jobs={future} onCancel={q.cancel} /></Section>
+    </Page>
+  );
+}
+
 export const CONTROL_VIEWS: Record<string, ComponentType> = {
-  deployments: Deployments, policies: Policies, organizations: Organizations, secrets: Secrets, permissions: PermissionsView, notifications: Notifications,
+  deployments: Deployments, experiments: Experiments, queues: Queues, scheduler: Scheduler, policies: Policies, organizations: Organizations, secrets: Secrets, permissions: PermissionsView, notifications: Notifications,
 };

@@ -257,9 +257,72 @@ export const PERMISSIONS: ReadonlyArray<PermissionRow> = [
   { permission: "policies.write", method: "POST", path: "/policies", enforced: "session" },
   { permission: "organizations.write", method: "POST", path: "/organizations", enforced: "session" },
   { permission: "secrets.read", method: "GET", path: "/secrets", enforced: "session" },
+  { permission: "experiments.run", method: "POST", path: "/experiments", enforced: "session" },
+  { permission: "queue.write", method: "POST", path: "/queue", enforced: "session" },
+  { permission: "queue.drain", method: "POST", path: "/queue/drain", enforced: "session" },
   { permission: "layers.read", method: "GET", path: "/layers", enforced: "public" },
   { permission: "intelligence.read", method: "GET", path: "/intelligence", enforced: "public" },
   { permission: "datasets.write", method: "POST", path: "/datasets", enforced: "public" },
   { permission: "evaluators.write", method: "POST", path: "/evaluators", enforced: "public" },
 ];
 
+
+// ── Queue and scheduler ─────────────────────────────────────────────────────────────────────────────────
+// Missions queued to run now or at run_at. There is no background worker in a serverless function, so due
+// jobs run when POST /queue/drain is called (a cron can call it). Each finished job keeps its run_id and
+// verdict, so it points at a sealed receipt.
+export type JobStatus = "QUEUED" | "RUNNING" | "DONE" | "FAILED";
+export interface Job {
+  job_id: string; mission_id: string; deployment_id: string | null; run_at: string; created_at: string;
+  status: JobStatus; run_id: string | null; verdict: string | null; error: string | null;
+}
+
+export class JobQueue {
+  private readonly jobs: Job[] = [];
+  constructor(private readonly clock: () => Date = () => new Date()) {}
+
+  enqueue(params: { mission_id: string; run_at?: string; deployment_id?: string }): Job {
+    if (typeof params?.mission_id !== "string" || !params.mission_id) throw new ControlError("mission_id is required");
+    const now = this.clock();
+    let runAt = now;
+    if (params.run_at !== undefined) {
+      runAt = new Date(params.run_at);
+      if (Number.isNaN(runAt.getTime())) throw new ControlError("run_at must be an ISO timestamp");
+    }
+    const job: Job = {
+      job_id: `job_${digest({ m: params.mission_id, d: params.deployment_id ?? null, at: runAt.toISOString(), c: now.toISOString(), n: this.jobs.length }).slice(0, 16)}`,
+      mission_id: params.mission_id, deployment_id: params.deployment_id ?? null, run_at: runAt.toISOString(), created_at: now.toISOString(),
+      status: "QUEUED", run_id: null, verdict: null, error: null,
+    };
+    this.jobs.push(job);
+    return structuredClone(job);
+  }
+
+  // Due jobs in run_at order, marked RUNNING so a second drain does not pick them up.
+  takeDue(max = 10): Job[] {
+    const now = this.clock().getTime();
+    const due = this.jobs.filter((j) => j.status === "QUEUED" && new Date(j.run_at).getTime() <= now)
+      .sort((a, b) => (a.run_at < b.run_at ? -1 : a.run_at > b.run_at ? 1 : 0)).slice(0, Math.max(1, Math.min(max, 50)));
+    for (const j of due) j.status = "RUNNING";
+    return due.map((j) => structuredClone(j));
+  }
+
+  finish(jobId: string, outcome: { run_id: string; verdict: string } | { error: string }): Job {
+    const job = this.jobs.find((j) => j.job_id === jobId);
+    if (!job) throw new ControlError(`job not found: ${jobId}`, "not_found");
+    if ("error" in outcome) { job.status = "FAILED"; job.error = outcome.error; } else { job.status = "DONE"; job.run_id = outcome.run_id; job.verdict = outcome.verdict; }
+    return structuredClone(job);
+  }
+
+  cancel(jobId: string): Job {
+    const index = this.jobs.findIndex((j) => j.job_id === jobId);
+    if (index < 0) throw new ControlError(`job not found: ${jobId}`, "not_found");
+    if (this.jobs[index].status !== "QUEUED") throw new ControlError(`only QUEUED jobs can be cancelled; ${jobId} is ${this.jobs[index].status}`, "conflict");
+    const [job] = this.jobs.splice(index, 1);
+    return structuredClone(job);
+  }
+
+  list(): Job[] {
+    return this.jobs.map((j) => structuredClone(j)).reverse();
+  }
+}
