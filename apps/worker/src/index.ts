@@ -271,6 +271,12 @@ export async function handleWorkerRequest(
 
     if (parts[0] === "v1" && parts[1] === "workspaces" && parts[2]) {
       const workspaceId = decodeURIComponent(parts[2]);
+
+      if (method === "DELETE" && parts.length === 3) {
+        const removed = await state.remove(workspaceId);
+        return send(response, 200, { ok: true, removed });
+      }
+
       const workspace = state.get(workspaceId);
       if (!workspace) return send(response, 404, { error: "workspace not found" });
 
@@ -307,10 +313,6 @@ export async function handleWorkerRequest(
         return send(response, 200, { url: exposed });
       }
 
-      if (method === "DELETE" && parts.length === 3) {
-        await state.remove(workspaceId);
-        return send(response, 200, { ok: true });
-      }
     }
 
     return send(response, 404, { error: "not found" });
