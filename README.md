@@ -102,6 +102,30 @@ Datasets (`packages/datasets`, `/datasets` routes) hold versioned mission exampl
 new immutable version with sha256 digests, tags pin versions. See `docs/INTELLIGENCE_LAYER_V1.md`.
 Evaluators (`packages/evaluators`, `/evaluators` and `/runs/:id/evaluations` routes) score runs with
 deterministic checks or human labels; each result is a sealed observation bound to the run's receipt.
+Experiments (`packages/experiments`, `/experiments` routes) run a pinned dataset version against one Team
+Graph version through the runtime, score each run with evaluators and seal the outcome; two experiments
+on the same dataset version can be compared example by example. Knowledge (`packages/knowledge`,
+`/knowledge` routes) chunks sources with sha256 and searches them with deterministic BM25; every hit
+cites a chunk anyone can re-hash.
+
+## Control plane
+
+`packages/control` holds the control plane; state is process memory, like runs.
+
+- Deployments (`/deployments`): pin a Team Graph version by `graph_sha256` to `preview` or `production`;
+  one ACTIVE per team and environment; promote, rollback; runs through a deployment use the pinned graph.
+- Policies (`/policies`): rules checked before a deployment runs a mission; a failing enabled policy
+  refuses the run with 403 `POLICY_DENIED`.
+- Queue and scheduler (`/queue`): missions queued now or at `run_at`; due jobs run on `POST /queue/drain`
+  (no background worker on serverless).
+- Organizations, secret status (names only, never values) and the route-by-route permission table.
+
+## Dashboard and Vercel
+
+`vercel.json` builds the dashboard (`scripts/build-dashboard.cjs`, source in `dashboard-src`) into
+`dashboard-dist`, copies the docs to `/docs`, and routes every API path to one function, `api/osa.ts`,
+so all routes share one process state. The preview runs with `OSA_EXECUTION_MODE=fixture` and
+`OSA_AUTH_MODE=open`; no model is called and no key is configured there.
 
 Provider evidence is computed by executor code, never copied from model text:
 `provider_call` (status, model, response id, usage, request/response hashes) and

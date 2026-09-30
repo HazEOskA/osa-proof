@@ -8,6 +8,9 @@ import { validateTeamGraph } from "../../../packages/team-graph/src";
 import { createBuiltinIntelligence, IntelligenceRegistry } from "../../../packages/intelligence/src";
 import { CommitChanges, DatasetError, DatasetStore, verifyDatasetVersion } from "../../../packages/datasets/src";
 import { EvaluatorError, EvaluatorInput, EvaluatorStore } from "../../../packages/evaluators/src";
+import { ControlError, DeploymentStore, JobQueue, OrganizationStore, PERMISSIONS, PolicyInput, PolicyStore, secretStatus } from "../../../packages/control/src";
+import { ExperimentError, ExperimentStore } from "../../../packages/experiments/src";
+import { KnowledgeError, KnowledgeStore } from "../../../packages/knowledge/src";
 import { BuildWorkspace, validateBuildWorkspace } from "./build";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
@@ -54,6 +57,12 @@ export class ApiState {
   readonly intelligence: IntelligenceRegistry;
   readonly datasets: DatasetStore;
   readonly evaluators: EvaluatorStore;
+  readonly deployments = new DeploymentStore();
+  readonly experiments = new ExperimentStore();
+  readonly queue = new JobQueue();
+  readonly knowledge = new KnowledgeStore();
+  readonly policies = new PolicyStore();
+  readonly organizations = new OrganizationStore();
 
   constructor(
     intelligence: IntelligenceRegistry = createBuiltinIntelligence(),
@@ -119,6 +128,20 @@ export async function handleApiRequest(
   executionDescription: Record<string, unknown> = { mode: "UNKNOWN" }
 ): Promise<void> {
   const runtime = new OsaRuntime(registry);
+
+  // A deployment pins the graph: the mission runs against the deployed version, whatever it names,
+  // and only after every enabled policy allows it.
+  async function runThroughDeployment(deploymentId: string, requested: Mission | undefined) {
+    const deployment = state.deployments.get(deploymentId);
+    if (deployment.status !== "ACTIVE") throw new ControlError(`deployment ${deployment.deployment_id} is ${deployment.status}, not ACTIVE`, "conflict");
+    if (!requested || requested.team_id !== deployment.team_id) throw new ControlError("mission.team_id must match the deployment's team");
+    const mission: Mission = { ...structuredClone(requested), team_version: deployment.team_version };
+    const policy = state.policies.evaluate(deployment.graph, mission);
+    if (!policy.allowed) return { deployment_id: deployment.deployment_id, graph_sha256: deployment.graph_sha256, policy, run: null };
+    const run = await runtime.run(deployment.graph, mission);
+    state.runs.set(run.run_id, structuredClone(run));
+    return { deployment_id: deployment.deployment_id, graph_sha256: deployment.graph_sha256, policy, run };
+  }
 
   try {
       const method = request.method ?? "GET";
@@ -236,6 +259,140 @@ export async function handleApiRequest(
         }
       }
 
+      if (parts[0] === "deployments") {
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.deployments.list());
+        if (!requireSession(request, response, state)) return;
+        if (parts.length === 1 && method === "POST") {
+          const body = await readJson<{ team_id?: string; version?: string; environment: string; note?: string }>(request);
+          const team = state.teams.get(state.teamKey(String(body.team_id), String(body.version)));
+          if (!team) return send(response, 404, { error: "team version not found; register it with POST /teams first" });
+          return send(response, 201, state.deployments.deploy({ team, environment: body.environment, note: body.note }));
+        }
+        if (parts.length === 2 && method === "GET") return send(response, 200, state.deployments.get(parts[1]));
+        if (parts.length === 3 && parts[2] === "promote" && method === "POST") {
+          const body = await readJson<{ note?: string }>(request);
+          return send(response, 201, state.deployments.promote(parts[1], body.note));
+        }
+        if (parts.length === 2 && parts[1] === "rollback" && method === "POST") {
+          const body = await readJson<{ team_id: string; environment: string }>(request);
+          return send(response, 200, state.deployments.rollback(body.team_id, body.environment));
+        }
+        if (parts.length === 3 && parts[2] === "run" && method === "POST") {
+          const body = await readJson<{ mission: Mission }>(request);
+          const out = await runThroughDeployment(parts[1], body.mission);
+          if (!out.policy.allowed) return send(response, 403, { error: "blocked by policy", code: "POLICY_DENIED", policy: out.policy });
+          return send(response, 201, out);
+        }
+      }
+
+      if (parts[0] === "experiments") {
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.experiments.list());
+        if (parts.length === 2 && parts[1] === "compare" && method === "GET") {
+          return send(response, 200, state.experiments.compare(String(url.searchParams.get("a")), String(url.searchParams.get("b"))));
+        }
+        if (parts.length === 2 && method === "GET") return send(response, 200, state.experiments.get(parts[1]));
+        if (parts.length === 1 && method === "POST") {
+          if (!requireSession(request, response, state)) return;
+          const body = await readJson<{ name?: string; dataset_id: string; as_of?: string; team_id: string; version: string; evaluator_ids: string[]; split?: string }>(request);
+          const graph = state.teams.get(state.teamKey(String(body.team_id), String(body.version)));
+          if (!graph) return send(response, 404, { error: "team version not found; register it with POST /teams first" });
+          const dataset = state.datasets.get(body.dataset_id, body.as_of);
+          const experiment = await state.experiments.run({
+            name: body.name, dataset, graph, evaluators: state.evaluators, evaluator_ids: body.evaluator_ids, split: body.split,
+            runMission: (g, m) => runtime.run(g, m), onRun: (run) => state.runs.set(run.run_id, structuredClone(run)),
+          });
+          return send(response, 201, experiment);
+        }
+      }
+
+      if (parts[0] === "queue") {
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.queue.list());
+        if (!requireSession(request, response, state)) return;
+        if (parts.length === 1 && method === "POST") {
+          const body = await readJson<{ mission_id: string; run_at?: string; deployment_id?: string }>(request);
+          if (!state.missions.has(body.mission_id)) return send(response, 404, { error: "mission not found; register it with POST /missions first" });
+          if (body.deployment_id) state.deployments.get(body.deployment_id);
+          return send(response, 201, state.queue.enqueue(body));
+        }
+        if (parts.length === 2 && parts[1] === "drain" && method === "POST") {
+          const body = await readJson<{ max?: number }>(request);
+          const done = [];
+          for (const job of state.queue.takeDue(body.max ?? 10)) {
+            try {
+              const mission = state.missions.get(job.mission_id);
+              if (!mission) throw new Error(`mission not found: ${job.mission_id}`);
+              if (job.deployment_id) {
+                const out = await runThroughDeployment(job.deployment_id, mission);
+                if (!out.run) throw new Error(`blocked by policy: ${out.policy.decisions.filter((d) => !d.ok).map((d) => d.policy_id).join(", ")}`);
+                done.push(state.queue.finish(job.job_id, { run_id: out.run.run_id, verdict: out.run.verdict }));
+              } else {
+                const graph = state.teams.get(state.teamKey(mission.team_id, mission.team_version));
+                if (!graph) throw new Error(`team version not found: ${mission.team_id} v${mission.team_version}`);
+                const run = await runtime.run(graph, mission);
+                state.runs.set(run.run_id, structuredClone(run));
+                done.push(state.queue.finish(job.job_id, { run_id: run.run_id, verdict: run.verdict }));
+              }
+            } catch (error) {
+              done.push(state.queue.finish(job.job_id, { error: error instanceof Error ? error.message : String(error) }));
+            }
+          }
+          return send(response, 200, done);
+        }
+        if (parts.length === 2 && method === "DELETE") return send(response, 200, state.queue.cancel(parts[1]));
+      }
+
+      if (parts[0] === "knowledge") {
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.knowledge.list());
+        if (parts.length === 2 && method === "GET") return send(response, 200, state.knowledge.documents(parts[1]));
+        if (parts.length === 3 && parts[2] === "search" && method === "POST") {
+          const body = await readJson<{ query: string; k?: number }>(request);
+          return send(response, 200, state.knowledge.search(parts[1], body.query, body.k));
+        }
+        if (parts.length === 4 && parts[2] === "documents" && method === "GET") return send(response, 200, state.knowledge.get(parts[1], parts[3]));
+        if (parts.length === 3 && parts[2] === "documents" && method === "POST") {
+          if (!requireSession(request, response, state)) return;
+          return send(response, 201, state.knowledge.add(parts[1], await readJson<{ doc_id: string; title?: string; source?: string; text: string }>(request)));
+        }
+      }
+
+      if (parts[0] === "policies") {
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.policies.list());
+        if (!requireSession(request, response, state)) return;
+        if (parts.length === 1 && method === "POST") return send(response, 201, state.policies.add(await readJson<PolicyInput>(request)));
+        if (parts.length === 2 && parts[1] === "evaluate" && method === "POST") {
+          const body = await readJson<{ team_id: string; version: string; mission?: Mission }>(request);
+          const team = state.teams.get(state.teamKey(String(body.team_id), String(body.version)));
+          if (!team) return send(response, 404, { error: "team version not found" });
+          return send(response, 200, state.policies.evaluate(team, body.mission));
+        }
+        if (parts.length === 2 && method === "DELETE") { state.policies.remove(parts[1]); return send(response, 200, { removed: parts[1] }); }
+      }
+
+      if (parts[0] === "organizations" && parts.length === 1) {
+        if (method === "GET") {
+          const observed = [
+            ...[...state.teams.values()].map((t) => ({ organization_id: t.organization_id, project_id: t.project_id })),
+            ...[...state.missions.values()].map((m) => ({ organization_id: m.organization_id, project_id: m.project_id })),
+            ...[...state.runs.values()].map((r) => ({ organization_id: r.proof.organization_id, project_id: r.proof.project_id })),
+          ];
+          return send(response, 200, state.organizations.list(observed));
+        }
+        if (method === "POST") {
+          if (!requireSession(request, response, state)) return;
+          return send(response, 201, state.organizations.register(await readJson<{ organization_id: string; name: string; projects?: string[] }>(request)));
+        }
+      }
+
+      if (url.pathname === "/secrets" && method === "GET") {
+        if (!requireSession(request, response, state)) return;
+        return send(response, 200, secretStatus(process.env));
+      }
+
+      if (url.pathname === "/permissions" && method === "GET") {
+        const session = authenticatedSession(request, state);
+        return send(response, 200, { auth_mode: state.authMode, identity: session ? { identity_id: session.identity.identity_id, roles: session.identity.roles } : null, permissions: PERMISSIONS });
+      }
+
       if (parts[0] === "evaluators") {
         if (parts.length === 1 && method === "POST") return send(response, 201, state.evaluators.register(await readJson<EvaluatorInput>(request)));
         if (parts.length === 1 && method === "GET") return send(response, 200, state.evaluators.list());
@@ -310,6 +467,13 @@ export async function handleApiRequest(
     return send(response, 404, { error: "not found" });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof KnowledgeError || error instanceof ExperimentError) {
+      return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });
+    }
+    if (error instanceof ControlError) {
+      const status = { not_found: 404, conflict: 409, forbidden: 403, invalid: 400 }[error.code];
+      return send(response, status, { error: message });
+    }
     if (error instanceof DatasetError || error instanceof EvaluatorError) {
       return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });
     }
