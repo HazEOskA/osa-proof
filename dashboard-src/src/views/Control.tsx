@@ -1,0 +1,230 @@
+import { useCallback, useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useOsa } from "../ctx";
+import { requestJson } from "../data/data";
+import { Kv, Mono, Section, Status, short } from "../ui/primitives";
+
+// Control-plane screens backed by the API (packages/control). Every button calls a real route; results and
+// errors are shown as the API returns them. State lives in the API process (PROCESS_MEMORY).
+
+interface Deployment { deployment_id: string; team_id: string; team_version: string; environment: string; graph_sha256: string; status: string; replaces: string | null; note: string; created_at: string }
+interface Policy { policy_id: string; description: string; rule: { type: string; [k: string]: unknown }; enabled: boolean; policy_sha256: string }
+interface Evaluation { allowed: boolean; decisions: { policy_id: string; ok: boolean; reason: string }[]; evaluation_sha256: string }
+interface Org { organization_id: string; name: string; source: string; projects: string[] }
+interface Secret { name: string; set: boolean; used_by: string }
+interface Permissions { auth_mode: string; identity: { identity_id: string; roles: string[] } | null; permissions: { permission: string; method: string; path: string; enforced: string }[] }
+
+function useLoad<T>(path: string): { data: T | null; error: string; reload: () => void } {
+  const [state, setState] = useState<{ data: T | null; error: string }>({ data: null, error: "" });
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    requestJson<T>(path).then((data) => alive && setState({ data, error: "" })).catch((e: Error) => alive && setState({ data: null, error: e.message }));
+    return () => { alive = false; };
+  }, [path, n]);
+  return { ...state, reload: useCallback(() => setN((x) => x + 1), []) };
+}
+
+function Page({ eyebrow, title, lead, children }: { eyebrow: string; title: string; lead: string; children: ReactNode }) {
+  return (
+    <div className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 py-6 md:px-8">
+      <header className="border-b border-line pb-5">
+        <div className="label mb-2">{eyebrow}</div>
+        <h2 className="font-display text-[clamp(20px,3vw,34px)] font-normal">{title}</h2>
+        <p className="mt-1 max-w-[72ch] text-[14px] text-dim">{lead}</p>
+      </header>
+      {children}
+    </div>
+  );
+}
+const Btn = ({ children, onClick, disabled }: { children: ReactNode; onClick: () => void; disabled?: boolean }) => (
+  <button disabled={disabled} onClick={onClick} className="focus-ring tap rounded-md border border-cyan/40 bg-cyan/10 px-3 text-[12px] text-cyan hover:bg-cyan/15 disabled:opacity-40">{children}</button>
+);
+const Err = ({ msg }: { msg: string }) => (msg ? <p className="mono text-[12px] text-bad">{msg}</p> : null);
+
+function useAction() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const run = useCallback(async (fn: () => Promise<void>) => {
+    setBusy(true); setError("");
+    try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
+  }, []);
+  return { busy, error, run };
+}
+
+// ── Deployments ──────────────────────────────────────────────────────────────────────────────────────
+export function Deployments() {
+  const { data } = useOsa();
+  const list = useLoad<Deployment[]>("/deployments");
+  const act = useAction();
+  const [result, setResult] = useState<{ deployment_id: string; verdict: string; proof_id: string; team_version: string } | null>(null);
+  const team = data.team;
+  const post = <T,>(path: string, body: unknown) => requestJson<T>(path, { method: "POST", body: JSON.stringify(body) });
+  const deploy = () => act.run(async () => {
+    await post("/teams", team);
+    await post("/deployments", { team_id: team.team_id, version: team.version, environment: "preview", note: "deployed from dashboard" });
+    list.reload();
+  });
+  const runOn = (d: Deployment) => act.run(async () => {
+    const mission = data.missions[0];
+    const out = await post<{ deployment_id: string; run: { verdict: string; proof: { proof_id: string; team_version: string } } }>(`/deployments/${d.deployment_id}/run`, { mission });
+    setResult({ deployment_id: out.deployment_id, verdict: out.run.verdict, proof_id: out.run.proof.proof_id, team_version: out.run.proof.team_version });
+  });
+  return (
+    <Page eyebrow="RUNTIME · DEPLOYMENTS" title="Deployments" lead="A deployment pins one Team Graph version (by sha256) to preview or production. One is active per team and environment; deploying again supersedes it, rollback restores the previous one, and runs through a deployment always use the pinned graph after policies allow it.">
+      <div className="flex flex-wrap items-center gap-3">
+        <Btn onClick={deploy} disabled={act.busy}>Deploy {team.team_id} v{team.version} to preview</Btn>
+        <Btn onClick={() => act.run(async () => { await post("/deployments/rollback", { team_id: team.team_id, environment: "preview" }); list.reload(); })} disabled={act.busy}>Roll back preview</Btn>
+        <Btn onClick={() => act.run(async () => { await post("/deployments/rollback", { team_id: team.team_id, environment: "production" }); list.reload(); })} disabled={act.busy}>Roll back production</Btn>
+      </div>
+      <Err msg={act.error || list.error} />
+      {result && <p className="text-[13px]">Run through <Mono>{short(result.deployment_id)}</Mono> on pinned v{result.team_version}: <Status v={result.verdict} /> <Mono className="text-dim">{short(result.proof_id)}</Mono></p>}
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <table className="w-full text-left text-[12px]">
+          <thead className="bg-panel text-dim"><tr><th className="px-3 py-2">Deployment</th><th className="px-3 py-2">Team</th><th className="px-3 py-2">Env</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">graph_sha256</th><th className="px-3 py-2">Actions</th></tr></thead>
+          <tbody>
+            {list.data?.length === 0 && <tr><td colSpan={6} className="px-3 py-4 text-dim">No deployments in this API process yet. Deploy the current team to preview to create one.</td></tr>}
+            {list.data?.map((d) => (
+              <tr key={d.deployment_id} className="border-t border-line align-middle">
+                <td className="mono px-3 py-2">{short(d.deployment_id)}</td>
+                <td className="mono px-3 py-2">{d.team_id} v{d.team_version}</td>
+                <td className="px-3 py-2">{d.environment}</td>
+                <td className="px-3 py-2"><Status v={d.status === "ACTIVE" ? "LIVE" : d.status} label={d.status} /></td>
+                <td className="mono px-3 py-2">{short(d.graph_sha256)}</td>
+                <td className="flex flex-wrap gap-2 px-3 py-2">
+                  {d.status === "ACTIVE" && <Btn onClick={() => runOn(d)} disabled={act.busy}>Run mission</Btn>}
+                  {d.status === "ACTIVE" && d.environment === "preview" && <Btn onClick={() => act.run(async () => { await post(`/deployments/${d.deployment_id}/promote`, {}); list.reload(); })} disabled={act.busy}>Promote</Btn>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Page>
+  );
+}
+
+// ── Policies ─────────────────────────────────────────────────────────────────────────────────────────
+export function Policies() {
+  const { data } = useOsa();
+  const list = useLoad<Policy[]>("/policies");
+  const act = useAction();
+  const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+  const refs = [...new Set(data.team.agents.map((a) => a.executor_ref))];
+  const presets: { label: string; body: unknown }[] = [
+    { label: "Max 5 agents", body: { policy_id: "max-5-agents", description: "Teams stay small", rule: { type: "max_agents", max: 5 } } },
+    { label: "Only current executors", body: { policy_id: "known-executors", description: "Only executor refs the team uses today", rule: { type: "allowed_executor_refs", refs } } },
+    { label: "At least 1 requirement", body: { policy_id: "has-requirements", description: "Missions must declare acceptance requirements", rule: { type: "min_requirements", min: 1 } } },
+    { label: "No admin role", body: { policy_id: "no-admin-role", description: "No agent may hold the admin role", rule: { type: "forbidden_roles", roles: ["admin"] } } },
+  ];
+  const evaluate = () => act.run(async () => {
+    await requestJson("/teams", { method: "POST", body: JSON.stringify(data.team) });
+    setEvaluation(await requestJson<Evaluation>("/policies/evaluate", { method: "POST", body: JSON.stringify({ team_id: data.team.team_id, version: data.team.version, mission: data.missions[0] }) }));
+  });
+  return (
+    <Page eyebrow="CONTROL · POLICIES" title="Policies" lead="Declarative rules checked before a deployment runs a mission. Every enabled policy must pass or the run is refused with 403 (fail closed). Unknown rule types are refused when added.">
+      <div className="flex flex-wrap gap-2">
+        {presets.map((p) => <Btn key={p.label} disabled={act.busy} onClick={() => act.run(async () => { await requestJson("/policies", { method: "POST", body: JSON.stringify(p.body) }); list.reload(); })}>Add: {p.label}</Btn>)}
+        <Btn disabled={act.busy} onClick={evaluate}>Evaluate {data.team.team_id} v{data.team.version}</Btn>
+      </div>
+      <Err msg={act.error || list.error} />
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Section title={`Policies · ${list.data?.length ?? 0}`}>
+          {list.data?.length === 0 && <p className="text-[13px] text-dim">No policies. Add one of the presets above.</p>}
+          {list.data?.map((p) => (
+            <div key={p.policy_id} className="py-1.5">
+              <div className="flex items-center justify-between gap-3"><Mono className="text-[12px]">{p.policy_id}</Mono>
+                <button className="focus-ring text-[11px] text-dim hover:text-bad" onClick={() => act.run(async () => { await requestJson(`/policies/${p.policy_id}`, { method: "DELETE" }); list.reload(); })}>remove</button></div>
+              <div className="mono text-[11px] text-dim">{JSON.stringify(p.rule)} · {short(p.policy_sha256)}</div>
+            </div>
+          ))}
+        </Section>
+        <Section title="Last evaluation">
+          {!evaluation ? <p className="text-[13px] text-dim">Evaluate the current team and its first mission against every enabled policy.</p> : <>
+            <div className="mb-2"><Status v={evaluation.allowed ? "PASS" : "FAILED"} label={evaluation.allowed ? "allowed" : "blocked"} /></div>
+            {evaluation.decisions.length === 0 && <p className="text-[13px] text-dim">No enabled policy: allowed.</p>}
+            {evaluation.decisions.map((d) => <div key={d.policy_id} className="flex items-center justify-between gap-3 py-1"><span className="text-[12px]"><Mono>{d.policy_id}</Mono> · <span className="text-dim">{d.reason}</span></span><Status v={d.ok ? "PASS" : "FAILED"} /></div>)}
+            <div className="mono mt-2 text-[11px] text-dim">evaluation_sha256 {short(evaluation.evaluation_sha256)}</div>
+          </>}
+        </Section>
+      </div>
+    </Page>
+  );
+}
+
+// ── Organizations ────────────────────────────────────────────────────────────────────────────────────
+export function Organizations() {
+  const list = useLoad<Org[]>("/organizations");
+  const act = useAction();
+  const [id, setId] = useState("");
+  const [name, setName] = useState("");
+  return (
+    <Page eyebrow="CONTROL · ORGANIZATIONS" title="Organizations" lead="Registered organizations plus every organization and project the API has seen in teams, missions and runs.">
+      <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); act.run(async () => { await requestJson("/organizations", { method: "POST", body: JSON.stringify({ organization_id: id, name }) }); setId(""); setName(""); list.reload(); }); }}>
+        <label className="sr-only" htmlFor="org-id">Organization id</label>
+        <input id="org-id" value={id} onChange={(e) => setId(e.target.value)} placeholder="organization_id" className="focus-ring glass mono rounded-md px-3 py-2 text-[12px]" />
+        <label className="sr-only" htmlFor="org-name">Name</label>
+        <input id="org-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="focus-ring glass rounded-md px-3 py-2 text-[13px]" />
+        <button type="submit" disabled={act.busy || !id || !name} className="focus-ring tap rounded-md border border-cyan/40 bg-cyan/10 px-3 text-[12px] text-cyan disabled:opacity-40">Register</button>
+      </form>
+      <Err msg={act.error || list.error} />
+      <Section title={`Organizations · ${list.data?.length ?? 0}`}>
+        {list.data?.length === 0 && <p className="text-[13px] text-dim">None yet in this API process. Run a mission or register one.</p>}
+        {list.data?.map((o) => <Kv key={o.organization_id} k={`${o.organization_id} · ${o.source}`}>{o.name}{o.projects.length ? ` · ${o.projects.join(", ")}` : ""}</Kv>)}
+      </Section>
+    </Page>
+  );
+}
+
+// ── Secrets ──────────────────────────────────────────────────────────────────────────────────────────
+export function Secrets() {
+  const list = useLoad<Secret[]>("/secrets");
+  return (
+    <Page eyebrow="CONTROL · SECRETS" title="Secrets" lead="Secrets live in the deployment's environment variables. This page shows only their names and whether they are set: never a value, a length, a prefix or a hash.">
+      <Err msg={list.error} />
+      <Section title="Environment">
+        {list.data?.map((s) => <div key={s.name} className="flex items-center justify-between gap-3 py-1.5"><span className="text-[12px]"><Mono>{s.name}</Mono> · <span className="text-dim">{s.used_by}</span></span><Status v={s.set ? "PASS" : "UNKNOWN"} label={s.set ? "set" : "not set"} /></div>)}
+      </Section>
+    </Page>
+  );
+}
+
+// ── Permissions ──────────────────────────────────────────────────────────────────────────────────────
+export function PermissionsView() {
+  const p = useLoad<Permissions>("/permissions");
+  return (
+    <Page eyebrow="CONTROL · PERMISSIONS" title="Permissions" lead="What the API enforces today, route by route. A test calls every 'session' route without a token and expects 401, so this table cannot drift from the code.">
+      <Err msg={p.error} />
+      {p.data && <>
+        <div className="flex flex-wrap gap-6 text-[13px]"><span>Auth mode <Mono>{p.data.auth_mode}</Mono></span><span>Identity <Mono>{p.data.identity ? `${p.data.identity.identity_id} · ${p.data.identity.roles.join(", ")}` : "none (no session)"}</Mono></span></div>
+        <div className="overflow-x-auto rounded-lg border border-line">
+          <table className="w-full text-left text-[12px]">
+            <thead className="bg-panel text-dim"><tr><th className="px-3 py-2">Permission</th><th className="px-3 py-2">Route</th><th className="px-3 py-2">Enforced</th></tr></thead>
+            <tbody>{p.data.permissions.map((r) => <tr key={r.permission} className="border-t border-line"><td className="mono px-3 py-1.5">{r.permission}</td><td className="mono px-3 py-1.5 text-dim">{r.method} {r.path}</td><td className="px-3 py-1.5"><Status v={r.enforced === "session" ? "PASS" : "UNKNOWN"} label={r.enforced} /></td></tr>)}</tbody>
+          </table>
+        </div>
+      </>}
+    </Page>
+  );
+}
+
+// ── Notifications ────────────────────────────────────────────────────────────────────────────────────
+export function Notifications() {
+  const { data } = useOsa();
+  const intel = useLoad<{ id: string; label: string; status: string; version: string | null; proofs: { ok: boolean; proof_id: string }[] }[]>("/intelligence");
+  const deps = useLoad<Deployment[]>("/deployments");
+  const items: { level: string; text: string }[] = [];
+  for (const r of data.runs) if (r.verdict !== "VERIFIED") items.push({ level: "FAILED", text: `Run ${r.proof.mission_id} ended ${r.verdict}${r.proof.runtime_failure ? `: ${r.proof.runtime_failure}` : ""}` });
+  for (const m of intel.data ?? []) if (m.version && m.status !== "LIVE") items.push({ level: "INCOMPLETE", text: `${m.label} is ${m.status}: failing proofs ${m.proofs.filter((p) => !p.ok).map((p) => p.proof_id).join(", ")}` });
+  for (const d of deps.data ?? []) if (d.status === "ROLLED_BACK") items.push({ level: "INCOMPLETE", text: `Deployment ${short(d.deployment_id)} (${d.team_id} v${d.team_version}, ${d.environment}) was rolled back` });
+  return (
+    <Page eyebrow="SYSTEM · NOTIFICATIONS" title="Notifications" lead="Things that need attention, derived when this page opens from runs, Intelligence reports and deployments. Nothing is stored or pushed yet.">
+      <Err msg={intel.error || deps.error} />
+      {items.length === 0 ? <p className="text-[14px] text-dim">Nothing needs attention: every run verified, every implemented module is LIVE, no rollbacks.</p> :
+        <ul className="space-y-2">{items.map((n, i) => <li key={i} className="flex items-start gap-3 rounded-md border border-line bg-panel px-3 py-2 text-[13px]"><Status v={n.level} label={n.level === "FAILED" ? "alert" : "notice"} /><span>{n.text}</span></li>)}</ul>}
+    </Page>
+  );
+}
+
+export const CONTROL_VIEWS: Record<string, ComponentType> = {
+  deployments: Deployments, policies: Policies, organizations: Organizations, secrets: Secrets, permissions: PermissionsView, notifications: Notifications,
+};

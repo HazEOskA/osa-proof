@@ -8,6 +8,7 @@ import { validateTeamGraph } from "../../../packages/team-graph/src";
 import { createBuiltinIntelligence, IntelligenceRegistry } from "../../../packages/intelligence/src";
 import { CommitChanges, DatasetError, DatasetStore, verifyDatasetVersion } from "../../../packages/datasets/src";
 import { EvaluatorError, EvaluatorInput, EvaluatorStore } from "../../../packages/evaluators/src";
+import { ControlError, DeploymentStore, OrganizationStore, PERMISSIONS, PolicyInput, PolicyStore, secretStatus } from "../../../packages/control/src";
 import { BuildWorkspace, validateBuildWorkspace } from "./build";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
@@ -54,6 +55,9 @@ export class ApiState {
   readonly intelligence: IntelligenceRegistry;
   readonly datasets: DatasetStore;
   readonly evaluators: EvaluatorStore;
+  readonly deployments = new DeploymentStore();
+  readonly policies = new PolicyStore();
+  readonly organizations = new OrganizationStore();
 
   constructor(
     intelligence: IntelligenceRegistry = createBuiltinIntelligence(),
@@ -236,6 +240,77 @@ export async function handleApiRequest(
         }
       }
 
+      if (parts[0] === "deployments") {
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.deployments.list());
+        if (!requireSession(request, response, state)) return;
+        if (parts.length === 1 && method === "POST") {
+          const body = await readJson<{ team_id?: string; version?: string; environment: string; note?: string }>(request);
+          const team = state.teams.get(state.teamKey(String(body.team_id), String(body.version)));
+          if (!team) return send(response, 404, { error: "team version not found; register it with POST /teams first" });
+          return send(response, 201, state.deployments.deploy({ team, environment: body.environment, note: body.note }));
+        }
+        if (parts.length === 2 && method === "GET") return send(response, 200, state.deployments.get(parts[1]));
+        if (parts.length === 3 && parts[2] === "promote" && method === "POST") {
+          const body = await readJson<{ note?: string }>(request);
+          return send(response, 201, state.deployments.promote(parts[1], body.note));
+        }
+        if (parts.length === 2 && parts[1] === "rollback" && method === "POST") {
+          const body = await readJson<{ team_id: string; environment: string }>(request);
+          return send(response, 200, state.deployments.rollback(body.team_id, body.environment));
+        }
+        if (parts.length === 3 && parts[2] === "run" && method === "POST") {
+          const deployment = state.deployments.get(parts[1]);
+          if (deployment.status !== "ACTIVE") throw new ControlError(`deployment ${deployment.deployment_id} is ${deployment.status}, not ACTIVE`, "conflict");
+          const body = await readJson<{ mission: Mission }>(request);
+          if (!body.mission || body.mission.team_id !== deployment.team_id) throw new ControlError("mission.team_id must match the deployment's team");
+          // The deployment pins the graph: the mission runs against the deployed version, whatever it names.
+          const mission: Mission = { ...structuredClone(body.mission), team_version: deployment.team_version };
+          const policy = state.policies.evaluate(deployment.graph, mission);
+          if (!policy.allowed) return send(response, 403, { error: "blocked by policy", code: "POLICY_DENIED", policy });
+          const run = await runtime.run(deployment.graph, mission);
+          state.runs.set(run.run_id, structuredClone(run));
+          return send(response, 201, { deployment_id: deployment.deployment_id, graph_sha256: deployment.graph_sha256, policy, run });
+        }
+      }
+
+      if (parts[0] === "policies") {
+        if (parts.length === 1 && method === "GET") return send(response, 200, state.policies.list());
+        if (!requireSession(request, response, state)) return;
+        if (parts.length === 1 && method === "POST") return send(response, 201, state.policies.add(await readJson<PolicyInput>(request)));
+        if (parts.length === 2 && parts[1] === "evaluate" && method === "POST") {
+          const body = await readJson<{ team_id: string; version: string; mission?: Mission }>(request);
+          const team = state.teams.get(state.teamKey(String(body.team_id), String(body.version)));
+          if (!team) return send(response, 404, { error: "team version not found" });
+          return send(response, 200, state.policies.evaluate(team, body.mission));
+        }
+        if (parts.length === 2 && method === "DELETE") { state.policies.remove(parts[1]); return send(response, 200, { removed: parts[1] }); }
+      }
+
+      if (parts[0] === "organizations" && parts.length === 1) {
+        if (method === "GET") {
+          const observed = [
+            ...[...state.teams.values()].map((t) => ({ organization_id: t.organization_id, project_id: t.project_id })),
+            ...[...state.missions.values()].map((m) => ({ organization_id: m.organization_id, project_id: m.project_id })),
+            ...[...state.runs.values()].map((r) => ({ organization_id: r.proof.organization_id, project_id: r.proof.project_id })),
+          ];
+          return send(response, 200, state.organizations.list(observed));
+        }
+        if (method === "POST") {
+          if (!requireSession(request, response, state)) return;
+          return send(response, 201, state.organizations.register(await readJson<{ organization_id: string; name: string; projects?: string[] }>(request)));
+        }
+      }
+
+      if (url.pathname === "/secrets" && method === "GET") {
+        if (!requireSession(request, response, state)) return;
+        return send(response, 200, secretStatus(process.env));
+      }
+
+      if (url.pathname === "/permissions" && method === "GET") {
+        const session = authenticatedSession(request, state);
+        return send(response, 200, { auth_mode: state.authMode, identity: session ? { identity_id: session.identity.identity_id, roles: session.identity.roles } : null, permissions: PERMISSIONS });
+      }
+
       if (parts[0] === "evaluators") {
         if (parts.length === 1 && method === "POST") return send(response, 201, state.evaluators.register(await readJson<EvaluatorInput>(request)));
         if (parts.length === 1 && method === "GET") return send(response, 200, state.evaluators.list());
@@ -310,6 +385,10 @@ export async function handleApiRequest(
     return send(response, 404, { error: "not found" });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof ControlError) {
+      const status = { not_found: 404, conflict: 409, forbidden: 403, invalid: 400 }[error.code];
+      return send(response, status, { error: message });
+    }
     if (error instanceof DatasetError || error instanceof EvaluatorError) {
       return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });
     }

@@ -13,7 +13,7 @@ export const NAV: NavGroup[] = [
   { title: "RUNTIME", items: [
     pick("Missions", "missions", true, I.missions), pick("Execution", "missions", true, I.execution), pick("Runtime", "ops:runtime", true, I.runtime),
     pick("Sandboxes", p("Sandboxes"), false, I.sandbox), pick("Scheduler", p("Scheduler"), false, I.scheduler), pick("Queues", p("Queues"), false, I.workers),
-    pick("Deployments", p("Deployments"), false, I.deployments) ] },
+    pick("Deployments", "ops:deployments", true, I.deployments) ] },
   { title: "OBSERVE", items: [
     pick("Tracing", "trace", true, I.observability), pick("Events", "trace", true, I.events), pick("Monitoring", "ops:monitoring", true, I.monitor),
     pick("Logs", "ops:logs", true, I.logs), pick("Metrics", "ops:metrics", true, I.eye), pick("Topology", "ops:topology", true, I.teammesh) ] },
@@ -28,8 +28,8 @@ export const NAV: NavGroup[] = [
     pick("World State", "world", true, I.world), pick("Knowledge Graph", "world", true, I.planet), pick("Timeline", "ops:timeline", true, I.events),
     pick("Dependencies", "ops:dependencies", true, I.workflows), pick("Architecture", "ops:architecture", true, I.runtime) ] },
   { title: "CONTROL", items: [
-    pick("Policies", p("Policies"), false, I.security), pick("Permissions", p("Permissions"), false, I.helmet), pick("Secrets", p("Secrets"), false, I.sandbox),
-    pick("Organizations", p("Organizations"), false, I.bee), pick("Cloud", p("Cloud"), false, I.cloud), pick("Infrastructure", p("Infrastructure"), false, I.cube) ] },
-  { title: "SYSTEM", items: [ pick("Notifications", p("Notifications"), false, I.events), pick("Settings", "ops:settings", true, I.settings) ] },
+    pick("Policies", "ops:policies", true, I.security), pick("Permissions", "ops:permissions", true, I.helmet), pick("Secrets", "ops:secrets", true, I.sandbox),
+    pick("Organizations", "ops:organizations", true, I.bee), pick("Cloud", p("Cloud"), false, I.cloud), pick("Infrastructure", p("Infrastructure"), false, I.cube) ] },
+  { title: "SYSTEM", items: [ pick("Notifications", "ops:notifications", true, I.events), pick("Settings", "ops:settings", true, I.settings) ] },
 ];
 export const HOME_ITEM: NavItem = { label: "Home", view: "home", built: true, icon: I.home };

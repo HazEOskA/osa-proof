@@ -14,6 +14,7 @@ import { BUILD_LABELS, type BuildPage } from "../build";
 import Replay from "./Replay";
 import Intelligence from "./Intelligence";
 import { OPS_VIEWS } from "./Ops";
+import { CONTROL_VIEWS } from "./Control";
 
 const TITLES: Record<string, string> = { home: "Home", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
 
@@ -103,7 +104,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   else if (v === "replay") body = <Replay />;
   else if (v.startsWith("build:")) body = <BuildWorkspace page={v.slice(6) as BuildPage} />;
   else if (v.startsWith("intel:")) body = <Intelligence id={v.slice(6)} />;
-  else if (v.startsWith("ops:") && OPS_VIEWS[v.slice(4)]) { const View = OPS_VIEWS[v.slice(4)]; body = <View />; }
+  else if (v.startsWith("ops:") && (OPS_VIEWS[v.slice(4)] || CONTROL_VIEWS[v.slice(4)])) { const View = OPS_VIEWS[v.slice(4)] ?? CONTROL_VIEWS[v.slice(4)]; body = <View />; }
   else {
     const name = v.replace("pending:", "");
     body = <Empty title={`${name.toUpperCase()} · NOT BUILT YET`} body={`${name} has no view in this pass, and osa-proof does not expose the data for it yet. Nothing is shown rather than something invented.`} steps={["Knowledge World", "Missions", "Tracing", "Proofs", "Replay"].map((s) => `${s} is live`)} />;
