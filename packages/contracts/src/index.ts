@@ -1,3 +1,5 @@
+export * from "./mission-kernel";
+export * from "./brain";
 export type RunVerdict = "VERIFIED" | "FAILED" | "INCOMPLETE";
 
 export type EdgeKind = "handoff";
@@ -43,6 +45,8 @@ export interface EvidenceFieldEqualsRequirement {
 export type AcceptanceRequirement = EvidenceFieldEqualsRequirement;
 
 export interface Mission {
+  policy?: import("./mission-kernel").MissionPolicy;
+  budget?: import("./mission-kernel").MissionBudget;
   organization_id: string;
   project_id: string;
   mission_id: string;
@@ -208,6 +212,8 @@ export interface ProofReceipt {
 }
 
 export interface AgentExecutionContext {
+  // Validated, pinned control-plane plan. Executors receive an isolated copy.
+  mission_plan?: import("./brain").MissionPlan;
   run_id: string;
   execution_id: string;
   operation_id: string;
@@ -291,4 +297,3 @@ export interface LayerEnterResult {
   layer: LayerProfile;
   gate?: LayerAccessGate;
 }
-

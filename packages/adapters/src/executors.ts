@@ -105,12 +105,13 @@ function providerRef(response: ModelResponse) {
 }
 
 export function createProviderPlannerExecutor(provider: ModelProvider): AgentExecutor {
-  return async ({ mission, agent, input }) => {
+  return async ({ mission, agent, input, mission_plan }) => {
     const response = await provider.complete({
       system:
         `You are the ${agent.role} agent in an OSA team. ` +
         "Produce a short, concrete plan for the objective. Respond only with JSON matching the schema.",
-      prompt: JSON.stringify({ objective: mission.objective, input }),
+      prompt: JSON.stringify({ objective: mission.objective, input,
+        ...(mission_plan ? { pinned_plan_sha256: mission_plan.plan_sha256, instruction: mission_plan.tasks.find((task) => task.agent_id === agent.agent_id)?.instruction, goals: mission_plan.goals } : {}) }),
       output_schema: PLAN_SCHEMA,
     });
 
@@ -148,7 +149,7 @@ function upstreamPlan(input: unknown): Plan | undefined {
 }
 
 export function createProviderBuilderExecutor(provider: ModelProvider): AgentExecutor {
-  return async ({ mission, agent, input }) => {
+  return async ({ mission, agent, input, mission_plan }) => {
     const plan = upstreamPlan(input);
     if (!plan) {
       return {
@@ -166,7 +167,8 @@ export function createProviderBuilderExecutor(provider: ModelProvider): AgentExe
       system:
         `You are the ${agent.role} agent in an OSA team. ` +
         "Build the artifact described by the plan. Respond only with JSON matching the schema.",
-      prompt: JSON.stringify({ objective: mission.objective, plan }),
+      prompt: JSON.stringify({ objective: mission.objective, plan,
+        ...(mission_plan ? { pinned_plan_sha256: mission_plan.plan_sha256, instruction: mission_plan.tasks.find((task) => task.agent_id === agent.agent_id)?.instruction, goals: mission_plan.goals } : {}) }),
       output_schema: ARTIFACT_SCHEMA,
     });
 

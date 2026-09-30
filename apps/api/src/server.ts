@@ -1,7 +1,8 @@
 import { Server } from "node:http";
 import { ApiState, createApiServer, loadAuthMode } from "./index";
 import { AgentExecutor } from "../../../packages/contracts/src";
-import { ExecutorRegistry } from "../../../packages/runtime/src";
+import { ExecutorRegistry, FileMissionStore } from "../../../packages/runtime/src";
+import { BrainControlPlane } from "../../../packages/brain/src";
 import {
   createBuilderBridgeExecutor,
   createCapabilityRouterExecutor,
@@ -15,6 +16,7 @@ import {
   loadIntegrationConfig,
   loadMeshConfig,
   ModelProvider,
+  createConfiguredBrain,
 } from "../../../packages/adapters/src";
 
 type Env = Record<string, string | undefined>;
@@ -125,6 +127,7 @@ function installIntegrationRouter(
 }
 
 export interface DevExecution {
+  brain: BrainControlPlane;
   mode: ExecutionMode;
   registry: ExecutorRegistry;
   // Safe to log: never contains credentials.
@@ -137,7 +140,7 @@ export function createDevExecution(env: Env): DevExecution {
   if (mode === "fixture") {
     const registry = createDevFixtureRegistry();
     const integration = installIntegrationRouter(registry, env, fixtureBuilder);
-    return { mode, registry, description: { mode, ...integration } };
+    return { mode, registry, brain: createConfiguredBrain(env), description: { mode, ...integration } };
   }
   const targets = loadMeshConfig(env);
   const [primary, ...fallbacks] = targets;
@@ -147,6 +150,7 @@ export function createDevExecution(env: Env): DevExecution {
   return {
     mode,
     registry,
+    brain: createConfiguredBrain(env, provider, targets.map((target) => `${target.provider}:${target.model}`)),
     description: {
       mode,
       provider: primary.provider,
@@ -166,7 +170,8 @@ export function startApiServer(env: Env = process.env): Server {
   const host = env.HOST ?? "0.0.0.0";
   const execution = createDevExecution(env);
   const authMode = loadAuthMode(env);
-  const server = createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, authMode), execution.description);
+  const missionStore = env.OSA_MISSION_STORE_DIR ? new FileMissionStore(env.OSA_MISSION_STORE_DIR) : undefined;
+  const server = createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, authMode, missionStore, execution.brain), execution.description);
   server.listen(port, host, () => {
     console.log(JSON.stringify({
       service: "osa-proof-api",

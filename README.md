@@ -63,6 +63,15 @@ HTTP additionally exposes the product-layer catalog and backend-authoritative la
 
 ## Local verification
 
+Mission lifecycle, durable snapshots, timeline and receipt-gated completion are
+available through the [S1 Mission Kernel](docs/MISSION_KERNEL_V1.md). The kernel
+reuses TeamGraph, OsaRuntime and the deterministic proof verifier.
+
+[S2 NeurOSA Brain](docs/NEUROSA_BRAIN_S2.md) adds validated planning before
+execution, pinned instructions, planning/decision receipts, optional NeurOSA
+memory context and proof-derived reflection. Set `OSA_BRAIN_MODE=model` with the
+existing provider configuration to enable model-backed planning.
+
 ```bash
 npm ci
 npm test

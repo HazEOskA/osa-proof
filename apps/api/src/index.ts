@@ -2,7 +2,7 @@ import { createServer, IncomingMessage, Server, ServerResponse } from "node:http
 import { Mission, RunResult, SessionRecord, TeamGraph } from "../../../packages/contracts/src";
 import { enterLayer, getLayerProfile, listLayerProfiles } from "../../../packages/access-control/src";
 import { createLocalDevIdentity } from "../../../packages/identity/src";
-import { ExecutorRegistry, OsaRuntime } from "../../../packages/runtime/src";
+import { ExecutorRegistry, OsaRuntime, MissionKernel, MissionStore, MissionConflictError } from "../../../packages/runtime/src";
 import { SessionStore } from "../../../packages/session/src";
 import { validateTeamGraph } from "../../../packages/team-graph/src";
 import { createBuiltinIntelligence, IntelligenceRegistry } from "../../../packages/intelligence/src";
@@ -12,6 +12,7 @@ import { ControlError, DeploymentStore, JobQueue, OrganizationStore, PERMISSIONS
 import { ExperimentError, ExperimentStore } from "../../../packages/experiments/src";
 import { KnowledgeError, KnowledgeStore } from "../../../packages/knowledge/src";
 import { BuildWorkspace, validateBuildWorkspace } from "./build";
+import { BrainControlPlane, verifyBrainPlan } from "../../../packages/brain/src";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
 // "open": no login, for the Vercel preview dashboard; every open-mode request acts as OPEN_MODE_SESSION.
@@ -63,16 +64,20 @@ export class ApiState {
   readonly knowledge = new KnowledgeStore();
   readonly policies = new PolicyStore();
   readonly organizations = new OrganizationStore();
+  readonly missionKernel: MissionKernel;
 
   constructor(
     intelligence: IntelligenceRegistry = createBuiltinIntelligence(),
     datasets: DatasetStore = new DatasetStore(),
     evaluators: EvaluatorStore = new EvaluatorStore(),
-    readonly authMode: AuthMode = "session"
+    readonly authMode: AuthMode = "session",
+    missionStore?: MissionStore,
+    brain?: BrainControlPlane
   ) {
     this.intelligence = intelligence;
     this.datasets = datasets;
     this.evaluators = evaluators;
+    this.missionKernel = new MissionKernel(missionStore, undefined, brain);
   }
 
   teamKey(teamId: string, version: string): string {
@@ -190,7 +195,7 @@ export async function handleApiRequest(
       }
 
       if (url.pathname === "/build/status" && method === "GET") {
-        return send(response, 200, { ...executionDescription, auth_mode: state.authMode, executors: registry.refs(), persistence: "PROCESS_MEMORY", protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
+        return send(response, 200, { ...executionDescription, auth_mode: state.authMode, executors: registry.refs(), persistence: "PROCESS_MEMORY", mission_persistence: state.missionKernel.store.persistence, brain: state.missionKernel.brain.describe(), protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
       }
 
       if (url.pathname === "/build/workspace" && method === "GET") {
@@ -437,20 +442,34 @@ export async function handleApiRequest(
         const session = requireSession(request, response, state);
         if (!session) return;
         const mission = await readJson<Mission>(request);
+        const graph = state.teams.get(state.teamKey(mission.team_id, mission.team_version));
+        if (!graph) return send(response, 404, { error: "team version not found" });
+        await state.missionKernel.create(mission, graph);
         state.missions.set(mission.mission_id, structuredClone(mission));
         return send(response, 201, mission);
       }
 
-      if (method === "POST" && parts[0] === "missions" && parts[2] === "run") {
+      if (parts[0] === "missions" && parts.length >= 2 && parts.length <= 3) {
         const session = requireSession(request, response, state);
         if (!session) return;
-        const mission = state.missions.get(parts[1]);
-        if (!mission) return send(response, 404, { error: "mission not found" });
-        const graph = state.teams.get(state.teamKey(mission.team_id, mission.team_version));
-        if (!graph) return send(response, 404, { error: "team version not found" });
-        const run = await runtime.run(graph, mission);
-        state.runs.set(run.run_id, structuredClone(run));
-        return send(response, 201, run);
+        const record = await state.missionKernel.get(parts[1]);
+        if (!record) return send(response, 404, { error: "mission not found" });
+        if (method === "GET" && parts.length === 2) return send(response, 200, record);
+        if (method === "GET" && parts[2] === "timeline") return send(response, 200, record.timeline);
+        if (method === "GET" && parts[2] === "run") return record.run ? send(response, 200, record.run) : send(response, 404, { error: "mission has no run" });
+        if (method === "GET" && parts[2] === "receipt") return record.mission_receipt ? send(response, 200, record.mission_receipt) : send(response, 404, { error: "mission has no receipt" });
+        if (method === "POST" && parts[2] === "plan") return send(response, 200, await state.missionKernel.plan(parts[1], registry));
+        if (method === "GET" && parts[2] === "plan") {
+          if (!record.brain) return send(response, 404, { error: "mission has no accepted plan" });
+          verifyBrainPlan(record);
+          return send(response, 200, record.brain);
+        }
+        if (method === "POST" && parts[2] === "cancel") return send(response, 200, await state.missionKernel.cancel(parts[1]));
+        if (method === "POST" && parts[2] === "run") {
+          const run = await state.missionKernel.execute(parts[1], registry);
+          state.runs.set(run.run_id, structuredClone(run));
+          return send(response, 201, run);
+        }
       }
 
       if (method === "GET" && parts[0] === "runs" && parts.length >= 2) {
@@ -474,6 +493,7 @@ export async function handleApiRequest(
       const status = { not_found: 404, conflict: 409, forbidden: 403, invalid: 400 }[error.code];
       return send(response, status, { error: message });
     }
+    if (error instanceof MissionConflictError) return send(response, 409, { error: message });
     if (error instanceof DatasetError || error instanceof EvaluatorError) {
       return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });
     }

@@ -14,6 +14,7 @@ import {
 import { canonicalJson, digest, digestWithout } from "./canonical";
 
 export * from "./canonical";
+export * from "./mission-verifier";
 
 export const RUNTIME_EXECUTION_REQUIREMENT_ID = "__runtime_execution__";
 

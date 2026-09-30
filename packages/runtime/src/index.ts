@@ -1,8 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
+import { verifyRuntimePlan } from "../../brain/src/plan";
+export * from "./mission-kernel";
+export * from "./mission-store";
 import {
   AgentExecutor,
   AgentNode,
   Mission,
+  MissionPlan,
   RunResult,
   RuntimeEvent,
   RuntimeEventType,
@@ -38,6 +42,7 @@ export class ExecutorRegistry {
 }
 
 export interface RuntimeOptions {
+  missionPlan?: MissionPlan;
   eventStore?: EventStore;
   evidenceCollector?: EvidenceCollector;
   verifier?: DeterministicProofVerifier;
@@ -51,6 +56,7 @@ export class OsaRuntime {
   private readonly verifier: DeterministicProofVerifier;
   private readonly clock: () => Date;
   private readonly createExecutionId: () => string;
+  private readonly missionPlan?: MissionPlan;
 
   constructor(private readonly registry: ExecutorRegistry, options: RuntimeOptions = {}) {
     this.eventStore = options.eventStore ?? new MemoryEventStore();
@@ -58,6 +64,7 @@ export class OsaRuntime {
     this.verifier = options.verifier ?? new DeterministicProofVerifier();
     this.clock = options.clock ?? (() => new Date());
     this.createExecutionId = options.createExecutionId ?? (() => `exec_${randomUUID()}`);
+    this.missionPlan = structuredClone(options.missionPlan);
   }
 
   static createRunId(graph: TeamGraph, mission: Mission): string {
@@ -68,8 +75,11 @@ export class OsaRuntime {
   }
 
   async run(graph: TeamGraph, mission: Mission): Promise<RunResult> {
+    graph = structuredClone(graph);
+    mission = structuredClone(mission);
     validateTeamGraph(graph);
     validateMissionAgainstGraph(graph, mission);
+    if (this.missionPlan) verifyRuntimePlan(graph, mission, this.missionPlan);
     const runId = OsaRuntime.createRunId(graph, mission);
     const executionId = this.createExecutionId();
     const binding = bindingFor(graph, mission, runId, executionId);
@@ -124,8 +134,9 @@ export class OsaRuntime {
           run_id: runId,
           execution_id: executionId,
           operation_id: operationId,
-          mission,
-          agent,
+          mission: structuredClone(mission),
+          agent: structuredClone(agent),
+          mission_plan: structuredClone(this.missionPlan),
           input: structuredClone(currentInput),
         });
 
