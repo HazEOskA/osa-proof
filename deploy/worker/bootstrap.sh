@@ -29,17 +29,28 @@ fi
 cd "${INSTALL_DIR}"
 
 ENV_FILE="deploy/worker/.env"
-if [[ ! -f "${ENV_FILE}" ]]; then
-  umask 077
+umask 077
+if [[ -n "${OSA_WORKER_TOKEN:-}" ]]; then
+  TOKEN="${OSA_WORKER_TOKEN}"
+elif [[ -f "${ENV_FILE}" ]]; then
+  TOKEN="$(awk -F= '$1 == "OSA_WORKER_TOKEN" { print substr($0, index($0, "=") + 1) }' "${ENV_FILE}" | tail -n1)"
+else
   TOKEN="$(openssl rand -hex 32)"
-  cat > "${ENV_FILE}" <<EOF
+fi
+
+if [[ -z "${TOKEN}" ]]; then
+  echo "worker token resolution failed" >&2
+  exit 11
+fi
+
+cat > "${ENV_FILE}" <<EOF
 OSA_WORKER_DOMAIN=${DOMAIN}
 OSA_WORKER_TOKEN=${TOKEN}
 OSA_WORKSPACE_DOCKER_IMAGE=osa/workspace-node22:v0.1
 OSA_WORKSPACE_DOCKER_NETWORK=bridge
 EOF
-  chmod 600 "${ENV_FILE}"
-fi
+chmod 600 "${ENV_FILE}"
+unset TOKEN
 
 docker build \
   -f packages/workspace-runtime/docker/Dockerfile.node22 \
