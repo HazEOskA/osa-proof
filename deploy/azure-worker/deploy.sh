@@ -2,7 +2,7 @@
 set -euo pipefail
 
 RG="${OSA_AZURE_RG:-rg-osa-worker}"
-LOCATION="${OSA_AZURE_LOCATION:-northeurope}"
+PRIMARY_LOCATION="${OSA_AZURE_LOCATION:-northeurope}"
 VM_NAME="${OSA_AZURE_VM_NAME:-osa-worker-v01}"
 VM_SIZE_OVERRIDE="${OSA_AZURE_VM_SIZE:-}"
 BUDGET_AMOUNT="${OSA_AZURE_BUDGET_AMOUNT:-40}"
@@ -63,7 +63,7 @@ echo "Required Azure providers: REGISTERED"
 
 az group create \
   --name "${RG}" \
-  --location "${LOCATION}" \
+  --location "${PRIMARY_LOCATION}" \
   --tags osa=framework component=worker environment=preview costGuard=true \
   --output none
 
@@ -75,13 +75,7 @@ az deployment group create \
   --output none
 
 SUB_SHORT="$(printf '%s' "${SUBSCRIPTION_ID}" | tr -d '-' | cut -c1-8)"
-DNS_LABEL="osa-worker-${SUB_SHORT}"
 KV_NAME="kvosa${SUB_SHORT}"
-VNET_NAME="osa-worker-vnet"
-SUBNET_NAME="worker"
-NSG_NAME="osa-worker-nsg"
-PIP_NAME="osa-worker-pip"
-NIC_NAME="osa-worker-nic"
 SSH_KEY="${HOME}/.ssh/osa-worker-azure"
 
 if [[ ! -f "${SSH_KEY}" || ! -f "${SSH_KEY}.pub" ]]; then
@@ -94,7 +88,7 @@ if ! az keyvault show -g "${RG}" -n "${KV_NAME}" >/dev/null 2>&1; then
   az keyvault create \
     --resource-group "${RG}" \
     --name "${KV_NAME}" \
-    --location "${LOCATION}" \
+    --location "${PRIMARY_LOCATION}" \
     --enable-rbac-authorization true \
     --retention-days 7 \
     --output none
@@ -107,6 +101,94 @@ az keyvault secret set \
   --value "${WORKER_TOKEN}" \
   --output none
 unset WORKER_TOKEN
+
+# Pick the cheapest guarded 2-vCPU / 8-GB option across nearby EU regions.
+# An explicit OSA_AZURE_LOCATION disables automatic region fallback.
+if [[ -n "${OSA_AZURE_LOCATION:-}" ]]; then
+  LOCATION_CANDIDATES=("${PRIMARY_LOCATION}")
+else
+  LOCATION_CANDIDATES=(
+    northeurope
+    westeurope
+    swedencentral
+    germanywestcentral
+    francecentral
+  )
+fi
+
+if [[ -n "${VM_SIZE_OVERRIDE}" ]]; then
+  VM_SIZE_CANDIDATES=("${VM_SIZE_OVERRIDE}")
+else
+  VM_SIZE_CANDIDATES=(
+    Standard_B2ms
+    Standard_D2as_v5
+    Standard_D2s_v5
+    Standard_D2_v5
+  )
+fi
+
+LOCATION=""
+VM_SIZE=""
+
+# Size-first ordering keeps the cheaper B2ms preferred across all candidate regions.
+for candidate_size in "${VM_SIZE_CANDIDATES[@]}"; do
+  for candidate_location in "${LOCATION_CANDIDATES[@]}"; do
+    echo "Checking VM size ${candidate_size} in ${candidate_location} ..."
+
+    allowed="$(az vm list-skus \
+      --location "${candidate_location}" \
+      --resource-type virtualMachines \
+      --size "${candidate_size}" \
+      --all \
+      --query "[?name=='${candidate_size}' && length(restrictions)==\`0\`].name | [0]" \
+      -o tsv 2>/dev/null || true)"
+
+    if [[ "${allowed}" == "${candidate_size}" ]]; then
+      LOCATION="${candidate_location}"
+      VM_SIZE="${candidate_size}"
+      break 2
+    fi
+
+    echo "Restricted/unavailable: ${candidate_size} @ ${candidate_location}"
+  done
+done
+
+if [[ -z "${LOCATION}" || -z "${VM_SIZE}" ]]; then
+  echo "BLOCKED: no approved 2-vCPU/8-GB VM SKU is available in the guarded EU region pool." >&2
+  echo "No larger VM and no non-EU region will be selected automatically." >&2
+  exit 32
+fi
+
+echo "Selected worker placement: ${VM_SIZE} @ ${LOCATION}"
+
+REGION_TAG="$(printf '%s' "${LOCATION}" | tr -cd '[:alnum:]-')"
+DNS_LABEL="osa-worker-${SUB_SHORT}-${REGION_TAG}"
+VNET_NAME="osa-worker-vnet-${REGION_TAG}"
+SUBNET_NAME="worker"
+NSG_NAME="osa-worker-nsg-${REGION_TAG}"
+PIP_NAME="osa-worker-pip-${REGION_TAG}"
+NIC_NAME="osa-worker-nic-${REGION_TAG}"
+
+# Cleanup exact legacy pre-VM networking created by earlier V0.1 attempts.
+# This runs only while the Worker VM does not exist.
+if ! az vm show -g "${RG}" -n "${VM_NAME}" >/dev/null 2>&1; then
+  if az network nic show -g "${RG}" -n osa-worker-nic >/dev/null 2>&1; then
+    echo "Cleaning legacy pre-VM NIC osa-worker-nic ..."
+    az network nic delete -g "${RG}" -n osa-worker-nic --output none
+  fi
+  if az network public-ip show -g "${RG}" -n osa-worker-pip >/dev/null 2>&1; then
+    echo "Cleaning legacy pre-VM Public IP osa-worker-pip ..."
+    az network public-ip delete -g "${RG}" -n osa-worker-pip --output none
+  fi
+  if az network nsg show -g "${RG}" -n osa-worker-nsg >/dev/null 2>&1; then
+    echo "Cleaning legacy pre-VM NSG osa-worker-nsg ..."
+    az network nsg delete -g "${RG}" -n osa-worker-nsg --output none
+  fi
+  if az network vnet show -g "${RG}" -n osa-worker-vnet >/dev/null 2>&1; then
+    echo "Cleaning legacy pre-VM VNet osa-worker-vnet ..."
+    az network vnet delete -g "${RG}" -n osa-worker-vnet --output none
+  fi
+fi
 
 az network vnet create \
   --resource-group "${RG}" \
@@ -179,71 +261,34 @@ az network nic create \
   --output none
 
 if ! az vm show -g "${RG}" -n "${VM_NAME}" >/dev/null 2>&1; then
-  if [[ -n "${VM_SIZE_OVERRIDE}" ]]; then
-    VM_SIZE_CANDIDATES=("${VM_SIZE_OVERRIDE}")
-  else
-    VM_SIZE_CANDIDATES=(
-      Standard_B2ms
-      Standard_D2as_v5
-      Standard_D2s_v5
-      Standard_D2_v5
-    )
-  fi
+  echo "Creating ${VM_NAME} as ${VM_SIZE} in ${LOCATION} ..."
 
-  VM_SIZE=""
-  for candidate in "${VM_SIZE_CANDIDATES[@]}"; do
-    echo "Trying VM size ${candidate} in ${LOCATION} ..."
-
-    # Skip SKUs that Azure already marks as unavailable for this subscription.
-    allowed="$(az vm list-skus \
-      --location "${LOCATION}" \
-      --resource-type virtualMachines \
-      --size "${candidate}" \
-      --all \
-      --query "[?name=='${candidate}' && length(restrictions)==\`0\`].name | [0]" \
-      -o tsv 2>/dev/null || true)"
-
-    if [[ "${allowed}" != "${candidate}" ]]; then
-      echo "Skipping ${candidate}: Azure SKU restrictions reported."
-      continue
-    fi
-
-    rm -f /tmp/osa-vm-create.err
-    if az vm create \
-      --resource-group "${RG}" \
-      --location "${LOCATION}" \
-      --name "${VM_NAME}" \
-      --nics "${NIC_NAME}" \
-      --image Ubuntu2404 \
-      --size "${candidate}" \
-      --admin-username "${ADMIN_USER}" \
-      --ssh-key-values "${SSH_KEY}.pub" \
-      --authentication-type ssh \
-      --os-disk-size-gb 64 \
-      --storage-sku StandardSSD_LRS \
-      --security-type Standard \
-      --assign-identity \
-      --tags osa=framework component=worker environment=preview autoShutdown=true \
-      --output none 2>/tmp/osa-vm-create.err; then
-      VM_SIZE="${candidate}"
-      break
-    fi
-
-    if grep -Eq 'SkuNotAvailable|Capacity Restrictions|AllocationFailed|ZonalAllocationFailed' /tmp/osa-vm-create.err; then
-      echo "Capacity unavailable for ${candidate}; trying the next guarded 2-vCPU/8-GB SKU."
-      continue
-    fi
-
+  rm -f /tmp/osa-vm-create.err
+  if ! az vm create \
+    --resource-group "${RG}" \
+    --location "${LOCATION}" \
+    --name "${VM_NAME}" \
+    --nics "${NIC_NAME}" \
+    --image Ubuntu2404 \
+    --size "${VM_SIZE}" \
+    --admin-username "${ADMIN_USER}" \
+    --ssh-key-values "${SSH_KEY}.pub" \
+    --authentication-type ssh \
+    --os-disk-size-gb 64 \
+    --storage-sku StandardSSD_LRS \
+    --security-type Standard \
+    --assign-identity \
+    --tags osa=framework component=worker environment=preview autoShutdown=true \
+    --output none 2>/tmp/osa-vm-create.err; then
     cat /tmp/osa-vm-create.err >&2
+    if grep -Eq 'SkuNotAvailable|Capacity Restrictions|AllocationFailed|ZonalAllocationFailed' /tmp/osa-vm-create.err; then
+      echo "Azure capacity changed after SKU discovery. Re-run the script; the guarded selector will probe the current pool again." >&2
+      exit 33
+    fi
     exit 30
-  done
-
-  if [[ -z "${VM_SIZE}" ]]; then
-    echo "BLOCKED: no guarded 2-vCPU/8-GB VM SKU could be allocated in ${LOCATION}." >&2
-    echo "No fallback to a larger VM is allowed automatically." >&2
-    exit 32
   fi
 else
+  LOCATION="$(az vm show -g "${RG}" -n "${VM_NAME}" --query location -o tsv)"
   VM_SIZE="$(az vm show -g "${RG}" -n "${VM_NAME}" --query hardwareProfile.vmSize -o tsv)"
 fi
 
@@ -282,16 +327,16 @@ if ! command -v az >/dev/null 2>&1; then
 fi
 az login --identity --allow-no-subscriptions >/dev/null
 TOKEN=""
-for i in \$(seq 1 30); do
-  TOKEN=\$(az keyvault secret show --vault-name "${KV_NAME}" --name osa-worker-token --query value -o tsv 2>/dev/null || true)
-  if [ -n "\${TOKEN}" ]; then break; fi
+for i in $(seq 1 30); do
+  TOKEN=$(az keyvault secret show --vault-name "${KV_NAME}" --name osa-worker-token --query value -o tsv 2>/dev/null || true)
+  if [ -n "${TOKEN}" ]; then break; fi
   sleep 10
 done
-if [ -z "\${TOKEN}" ]; then
+if [ -z "${TOKEN}" ]; then
   echo "Unable to retrieve worker token from Key Vault" >&2
   exit 31
 fi
-export OSA_WORKER_TOKEN="\${TOKEN}"
+export OSA_WORKER_TOKEN="${TOKEN}"
 export OSA_WORKER_DOMAIN="${FQDN}"
 export OSA_WORKER_BRANCH="${BRANCH}"
 export OSA_REPO_URL="${REPO_URL}"
@@ -340,6 +385,7 @@ echo
 echo "AZURE WORKER DEPLOY V0.1: PASS"
 echo "Worker URL: https://${FQDN}"
 echo "Worker IP: ${PUBLIC_IP}"
+echo "Worker location: ${LOCATION}"
 echo "VM size: ${VM_SIZE}"
 echo "Monthly RG budget: ${BUDGET_AMOUNT}"
 echo "Auto-shutdown UTC: ${AUTO_SHUTDOWN_UTC}"
