@@ -10,8 +10,9 @@
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/tests/*.test.js",
     "workspace:image:build": "docker build -f packages/workspace-runtime/docker/Dockerfile.node22 -t osa/workspace-node22:v0.1 packages/workspace-runtime/docker",
-    "worker:start": "node dist/apps/worker/src/server.js",
-    "worker:run": "npm run build && node dist/apps/worker/src/server.js"
+    "worker:start": "node dist-worker/apps/worker/src/server.js",
+    "worker:run": "npm run worker:build && node dist-worker/apps/worker/src/server.js",
+    "worker:build": "rm -rf dist-worker && tsc -p tsconfig.worker.json"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
