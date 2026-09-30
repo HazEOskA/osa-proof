@@ -21,9 +21,9 @@ export const NAV: NavGroup[] = [
     pick("Proofs", "proofs", true, I.proofs), pick("Evidence", "proofs", true, I.knowledge), pick("Receipts", "proofs", true, I.storage),
     pick("Replay", "replay", true, I.play), pick("Verification", "proofs", true, I.security), pick("Audit Trail", p("Audit Trail"), false, I.logs) ] },
   { title: "INTELLIGENCE", items: [
-    pick("Models", p("Models"), false, I.minions), pick("Model Mesh", p("Model Mesh"), false, I.minionBot), pick("LLM Gateway", p("LLM Gateway"), false, I.workerBot),
-    pick("Memory", p("Memory"), false, I.storage), pick("Knowledge", p("Knowledge"), false, I.cube), pick("Context Hub", p("Context Hub"), false, I.knowledge),
-    pick("Datasets", p("Datasets"), false, I.logs), pick("Experiments", p("Experiments"), false, I.playground), pick("Evaluators", p("Evaluators"), false, I.target) ] },
+    pick("Models", "intel:models", true, I.minions), pick("Model Mesh", "intel:model-mesh", true, I.minionBot), pick("LLM Gateway", "intel:llm-gateway", true, I.workerBot),
+    pick("Memory", "intel:memory", false, I.storage), pick("Knowledge", "intel:knowledge", false, I.cube), pick("Context Hub", "intel:context-hub", false, I.knowledge),
+    pick("Datasets", "intel:datasets", true, I.logs), pick("Experiments", "intel:experiments", false, I.playground), pick("Evaluators", "intel:evaluators", true, I.target) ] },
   { title: "WORLD", items: [
     pick("World State", "world", true, I.world), pick("Knowledge Graph", "world", true, I.planet), pick("Timeline", p("Timeline"), false, I.events),
     pick("Dependencies", p("Dependencies"), false, I.workflows), pick("Architecture", p("Architecture"), false, I.runtime) ] },

@@ -203,13 +203,15 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
     <hr>
     <h4>Documentation</h4>
     <details open><summary>Concepts<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#concepts">Core concepts</a><a href="#pipeline">How a run is proven</a><a href="#receipt">Proof receipt</a><a href="#layers">Layers</a></details>
+      <a href="#concepts">Core concepts</a><a href="#pipeline">How a run is proven</a><a href="#receipt">Proof receipt</a><a href="#layers">Layers</a><a href="#auth">Auth modes</a></details>
+    <details open><summary>Intelligence<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
+      <a href="#intelligence">Overview</a><a href="#models">Models</a><a href="#llm-gateway">LLM Gateway</a><a href="#model-mesh">Model Mesh</a><a href="#datasets">Datasets</a><a href="#evaluators">Evaluators</a><a href="#" class="nx" data-nolink>Experiments</a></details>
     <details open><summary>Reference<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
     <details><summary>Guides<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#guides">All guides</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#" class="nx" data-nolink>Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
+      <a href="#guides">All guides</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
     <details><summary>Releases<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#" data-nolink>Slice 2 · Proof integrity</a><a href="#" data-nolink>Slice 1 · Real execution</a></details>
+      <a href="#intelligence">Intelligence · Datasets &amp; Evaluators</a><a href="#" data-nolink>Slice 2 · Proof integrity</a><a href="#" data-nolink>Slice 1 · Real execution</a></details>
   </aside>
 
   <div>
@@ -240,7 +242,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
-            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Thirty JSON routes for auth, layers, teams, missions, runs, intelligence, datasets and evaluators.</p></a>
+            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Thirty-three JSON routes for auth, layers, teams, missions, runs, build, intelligence, datasets and evaluators.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -253,14 +255,13 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
         <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Clone and install</div><div class="d">Dependencies are locked in <code>package-lock.json</code>.</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>git clone https://github.com/HazEOskA/osa-proof.git
 cd osa-proof
-git checkout a321fd2   <span class="c-c"># until PR #2 fixes main</span>
 npm ci</pre></div></div></li>
-        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Run the tests</div><div class="d">Builds TypeScript and runs the node test suite: 44 pass, 1 live-provider test skipped.</div>
+        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Run the tests</div><div class="d">Builds TypeScript and runs the node test suite: 99 pass, 1 live-provider test skipped (opt-in).</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>npm test</pre></div></div></li>
-        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Start the API in fixture mode</div><div class="d"><code>OSA_EXECUTION_MODE</code> is required. There is no default: a missing or unknown value refuses to start.</div>
+        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Start the API in fixture mode</div><div class="d"><code>OSA_EXECUTION_MODE</code> is required. There is no default: a missing or unknown value refuses to start. Login is on by default (<a href="#auth">auth modes</a>).</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>npm run build
 OSA_EXECUTION_MODE=fixture PORT=3000 node dist/apps/api/src/server.js</pre></div></div></li>
-        <li class="step" ><span class="sd" aria-hidden="true"></span><div><div class="t">Switch to a real model</div><div class="d">Provider mode calls Anthropic behind the <code>ModelProvider</code> interface. Missing provider, model or key refuses to start.</div>
+        <li class="step" ><span class="sd" aria-hidden="true"></span><div><div class="t">Switch to a real model</div><div class="d">Provider mode calls Anthropic or OpenAI behind the <code>ModelProvider</code> interface. Missing provider, model or key refuses to start.</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>OSA_EXECUTION_MODE=provider \
 OSA_PROVIDER=anthropic \
 OSA_MODEL=&lt;model id&gt; \
@@ -272,8 +273,11 @@ node dist/apps/api/src/server.js</pre></div></div></li>
     <section id="first-mission" aria-labelledby="h-fm">
       <h2 id="h-fm">Your first mission</h2>
       <p>Register a two-agent Team Graph, submit a mission with one acceptance requirement, run it, and read the receipt. The server decides which implementation serves <code>dev.planner.v1</code> and <code>dev.builder.v1</code>.</p>
+      <h3 class="h">0. Log in (DEV)</h3>
+      <div class="code"><div class="bar"><span class="file">POST /auth/dev-login</span><button class="copy" type="button">Copy</button></div><pre>TOKEN=$(curl -s localhost:3000/auth/dev-login -H 'content-type: application/json' \
+  -d '{"display_name":"Dev","email":"dev@example.com"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).session.token')</pre></div>
       <h3 class="h">1. Register the team</h3>
-      <div class="code"><div class="bar"><span class="file">POST /teams</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/teams -H 'content-type: application/json' -d '{
+      <div class="code"><div class="bar"><span class="file">POST /teams</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/teams -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{
   "organization_id": "org_dev", "project_id": "project_dev", "team_id": "team_dev", "version": "1",
   "agents": [
     { "agent_id": "planner", "role": "planner", "executor_ref": "dev.planner.v1" },
@@ -282,7 +286,7 @@ node dist/apps/api/src/server.js</pre></div></div></li>
   "edges": [{ "edge_id": "planner_to_builder", "from_agent_id": "planner", "to_agent_id": "builder", "kind": "handoff" }]
 }'</pre></div>
       <h3 class="h">2. Submit the mission</h3>
-      <div class="code"><div class="bar"><span class="file">POST /missions</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/missions -H 'content-type: application/json' -d '{
+      <div class="code"><div class="bar"><span class="file">POST /missions</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/missions -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{
   "organization_id": "org_dev", "project_id": "project_dev", "mission_id": "mission_hello",
   "team_id": "team_dev", "team_version": "1", "entry_agent_id": "planner",
   "objective": "Write landing page copy", "input": { "request": "Write landing page copy" },
@@ -290,8 +294,8 @@ node dist/apps/api/src/server.js</pre></div></div></li>
     "evidence_kind": "artifact", "agent_id": "builder", "field": "status", "expected": "built" }]
 }'</pre></div>
       <h3 class="h">3. Run it and read the proof</h3>
-      <div class="code"><div class="bar"><span class="file">POST /missions/:id/run · GET /runs/:id/proof</span><button class="copy" type="button">Copy</button></div><pre>RUN=$(curl -s -X POST localhost:3000/missions/mission_hello/run | node -pe 'JSON.parse(require("fs").readFileSync(0)).run_id')
-curl -s localhost:3000/runs/$RUN/proof</pre></div>
+      <div class="code"><div class="bar"><span class="file">POST /missions/:id/run · GET /runs/:id/proof</span><button class="copy" type="button">Copy</button></div><pre>RUN=$(curl -s -X POST localhost:3000/missions/mission_hello/run -H "authorization: Bearer $TOKEN" | node -pe 'JSON.parse(require("fs").readFileSync(0)).run_id')
+curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></div>
     </section>
 
     <section id="concepts" aria-labelledby="h-c">
@@ -371,15 +375,138 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
 
     <section id="layers" aria-labelledby="h-l">
       <h2 id="h-l">Layers</h2>
-      <p>One core, six entry points. Public layers enter directly. Regulated layers fail closed until organization verification exists.</p>
+      <p>One core, six entry points. School enters directly, Dev needs a DEV login, regulated layers fail closed until organization verification exists.</p>
       <div class="layers">
         <div class="layer" style="--c:#3d6ad1"><b>School</b><span>Academy</span><span class="st"><span class="dot" style="--c:var(--ok);margin:0"></span>Public</span></div>
-        <div class="layer" style="--c:#7749f0"><b>Dev</b><span>Builder / Core</span><span class="st"><span class="dot" style="--c:var(--ok);margin:0"></span>Public</span></div>
+        <div class="layer" style="--c:#7749f0"><b>Dev</b><span>Builder / Core</span><span class="st"><span class="dot" style="--c:var(--ok);margin:0"></span>DEV login</span></div>
         <div class="layer" style="--c:#50deda"><b>Bank</b><span>Regulated</span><span class="st"><span class="dot" style="--c:var(--gated);margin:0"></span>Gated</span></div>
         <div class="layer" style="--c:#cda15a"><b>Financial</b><span>Regulated</span><span class="st"><span class="dot" style="--c:var(--gated);margin:0"></span>Gated</span></div>
         <div class="layer" style="--c:#c3484e"><b>Cybersecurity</b><span>Regulated</span><span class="st"><span class="dot" style="--c:var(--gated);margin:0"></span>Gated</span></div>
         <div class="layer" style="--c:#63d36f"><b>Army</b><span>Regulated</span><span class="st"><span class="dot" style="--c:var(--gated);margin:0"></span>Gated</span></div>
       </div>
+    </section>
+
+    <section id="auth" aria-labelledby="h-auth">
+      <h2 id="h-auth">Auth modes</h2>
+      <p><code>OSA_AUTH_MODE</code> decides whether the API asks for a login. Unset means <code>session</code>. Any value other than <code>session</code> or <code>open</code> refuses to start.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Mode</th><th>Where</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td><code>session</code></td><td>Default</td><td>Teams, missions, runs, run evaluations and the build workspace need <code>Authorization: Bearer &lt;token&gt;</code> from <code>POST /auth/dev-login</code>. Missing or revoked token: 401.</td></tr>
+          <tr><td><code>open</code></td><td>Vercel preview (<code>vercel.json</code>)</td><td>No login. Requests act as the explicit <code>OPEN MODE</code> identity, and <code>GET /build/status</code> reports <code>auth_mode: "open"</code>. Regulated layers stay gated.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="intelligence" aria-labelledby="h-int">
+      <h2 id="h-int">Intelligence layer</h2>
+      <p>Nine modules. Each one reports a status computed from its own proofs, not declared. The dashboard shows each report live under <b>Intelligence</b> in the sidebar. <code>GET /intelligence</code> returns every report with a <code>report_sha256</code>.</p>
+      <ol>
+        <li>No implementation: <b>SOON</b>.</li>
+        <li>Implemented, but a required proof is missing, failing or throwing: <b>PREVIEW</b>.</li>
+        <li>Every required proof passes and every dependency is LIVE: <b>LIVE</b>.</li>
+      </ol>
+      <div class="tbl"><table>
+        <thead><tr><th>Module</th><th>Status</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>models</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Configured models, read from the environment, validated fail-closed. <a href="#models">Details</a></td></tr>
+          <tr><td><code>llm-gateway</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Routes to Anthropic or OpenAI. Retries follow the official SDKs: 408, 409, 429, 5xx and timeouts, honouring <code>retry-after</code>. <a href="#llm-gateway">Details</a></td></tr>
+          <tr><td><code>model-mesh</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Ordered fallback across models after retries run out (<code>OSA_MODEL_FALLBACKS</code>). Every hop is evidence. <a href="#model-mesh">Details</a></td></tr>
+          <tr><td><code>datasets</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Versioned mission examples with sha256 digests. <a href="#datasets">Details</a></td></tr>
+          <tr><td><code>evaluators</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Deterministic scores and human labels bound to the receipt. <a href="#evaluators">Details</a></td></tr>
+          <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Run a dataset against team versions and compare receipts.</td></tr>
+          <tr><td><code>knowledge</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Retrieval with source digests.</td></tr>
+          <tr><td><code>context-hub</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Shared context for agents.</td></tr>
+          <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Lives in the separate neurosa repository.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="models" aria-labelledby="h-mod">
+      <h2 id="h-mod">Models</h2>
+      <p>Which model the API may call is read only from the environment and validated before any call. Proofs: <code>config.fails_closed</code>, <code>models.lists_configured</code>, <code>provider.rejects_unknown</code>.</p>
+      <ul>
+        <li><code>OSA_PROVIDER</code> is <code>anthropic</code> or <code>openai</code>. Any other value refuses to start.</li>
+        <li><code>OSA_MODEL</code> and the provider key are required in provider mode. A missing one refuses to start and the error names the variable, never its value.</li>
+      </ul>
+    </section>
+
+    <section id="llm-gateway" aria-labelledby="h-gw">
+      <h2 id="h-gw">LLM Gateway</h2>
+      <p>One call surface over Anthropic and OpenAI. Retry rules follow the official SDKs. Proofs: <code>config.fails_closed</code>, <code>errors.redact_secrets</code>, <code>routing.multi_provider</code>, <code>calls.bounded_retries</code>.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Case</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td>Retried</td><td>Connection errors, timeouts, HTTP 408, 409, 429 and 5xx. <code>x-should-retry: true|false</code> overrides the status rule.</td></tr>
+          <tr><td>Never retried</td><td>Other 4xx, incomplete or refused output, invalid response bodies.</td></tr>
+          <tr><td>Attempts</td><td><code>OSA_PROVIDER_MAX_RETRIES + 1</code>. Default 2 retries, allowed 0 to 10.</td></tr>
+          <tr><td>Delay</td><td><code>retry-after-ms</code> or <code>retry-after</code> when present and at most 60 s. Otherwise <code>OSA_PROVIDER_RETRY_BASE_MS × 2^n</code> (default 500 ms), capped at 8 s, minus up to 25% jitter.</td></tr>
+          <tr><td>Evidence</td><td>Every <code>provider_call</code> record carries <code>attempts</code>. A run that exhausts its retries fails with each attempt's error listed, secrets redacted.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="code"><div class="bar"><span class="file">shell · OpenAI through the gateway</span><button class="copy" type="button">Copy</button></div><pre>OSA_EXECUTION_MODE=provider OSA_PROVIDER=openai OSA_MODEL=&lt;model id&gt; \
+OPENAI_API_KEY=&lt;secret&gt; OSA_PROVIDER_MAX_RETRIES=3 \
+node dist/apps/api/src/server.js</pre></div>
+    </section>
+
+    <section id="model-mesh" aria-labelledby="h-mm">
+      <h2 id="h-mm">Model Mesh</h2>
+      <p>Ordered fallback across models, following the LiteLLM pattern: the next target is tried only after the previous one spent its gateway retries. Proofs: <code>mesh.fallback_on_failure</code>, <code>mesh.evidence_per_hop</code>.</p>
+      <ul>
+        <li>Targets: the primary (<code>OSA_PROVIDER</code>, <code>OSA_MODEL</code>), then <code>OSA_MODEL_FALLBACKS</code>, at most 4. Each fallback needs its provider key. Duplicates and malformed entries refuse to start.</li>
+        <li>Only provider errors hand over to the next target. Programming errors are never swallowed.</li>
+        <li><code>provider_call</code> evidence carries <code>hops</code>: every target tried, in order, with <code>ok</code>, <code>attempts</code> and the redacted error.</li>
+        <li>When every target fails, the run is FAILED and the receipt's <code>runtime_failure</code> lists each hop.</li>
+      </ul>
+      <div class="code"><div class="bar"><span class="file">shell · primary OpenAI, fallback Anthropic</span><button class="copy" type="button">Copy</button></div><pre>OSA_EXECUTION_MODE=provider OSA_PROVIDER=openai OSA_MODEL=&lt;primary model&gt; \
+OPENAI_API_KEY=&lt;secret&gt; ANTHROPIC_API_KEY=&lt;secret&gt; \
+OSA_MODEL_FALLBACKS="anthropic:&lt;fallback model&gt;" \
+node dist/apps/api/src/server.js</pre></div>
+    </section>
+
+    <section id="datasets" aria-labelledby="h-ds">
+      <h2 id="h-ds">Datasets</h2>
+      <p>A dataset is a versioned set of mission examples, following the LangSmith and Braintrust model with OSA proof semantics.</p>
+      <ul>
+        <li>An example is a mission template: <code>example_id</code>, <code>objective</code>, <code>input</code>, at least one requirement, and an optional <code>expected.verdict</code>, <code>split</code> and <code>metadata</code>.</li>
+        <li>Every add, update or delete creates a new immutable version. Old versions stay readable. A commit that changes nothing is refused with 409.</li>
+        <li>Tags such as <code>prod</code> point at a version and can move. Read with <code>as_of</code> = version number, tag or <code>latest</code>.</li>
+        <li>Each example has <code>example_sha256</code>, each version has <code>examples_root</code> and <code>version_sha256</code>. <code>GET /datasets/:id/verify</code> recomputes them.</li>
+        <li>A pinned example runs as a mission with id <code>&lt;dataset&gt;@v&lt;version&gt;:&lt;example&gt;</code>.</li>
+      </ul>
+      <div class="code"><div class="bar"><span class="file">POST /datasets · PUT /datasets/:id/tags/:tag</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/datasets -H 'content-type: application/json' -d '{
+  "dataset_id": "release-notes", "name": "Release notes",
+  "examples": [{ "example_id": "a", "objective": "Draft release notes", "input": { "request": "notes" },
+    "requirements": [{ "requirement_id": "artifact_status", "type": "evidence_field_equals",
+      "evidence_kind": "artifact", "agent_id": "builder", "field": "status", "expected": "built" }],
+    "expected": { "verdict": "VERIFIED" } }]
+}'
+curl -s -X PUT localhost:3000/datasets/release-notes/tags/prod -H 'content-type: application/json' -d '{"version":1}'
+curl -s "localhost:3000/datasets/release-notes?as_of=prod"</pre></div>
+    </section>
+
+    <section id="evaluators" aria-labelledby="h-ev">
+      <h2 id="h-ev">Evaluators</h2>
+      <p>Evaluators score runs, following OpenAI graders and LangSmith evaluators. Only deterministic checks and human labels are allowed. A model judge is a claim, not a proof, and is refused.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Type</th><th>Kind</th><th>Scores 1 when</th></tr></thead>
+        <tbody>
+          <tr><td><code>verdict_match</code></td><td>Deterministic</td><td>The run verdict equals the example's <code>expected.verdict</code>.</td></tr>
+          <tr><td><code>receipt_valid</code></td><td>Deterministic</td><td>The sealed receipt verifies against evidence, observations and final output.</td></tr>
+          <tr><td><code>string_check</code></td><td>Deterministic</td><td>A string in <code>final_output</code> passes <code>eq</code>, <code>neq</code>, <code>like</code> or <code>ilike</code>.</td></tr>
+          <tr><td><code>evidence_equals</code></td><td>Deterministic</td><td>An evidence record of the given kind has the expected field value.</td></tr>
+          <tr><td><code>human_label</code></td><td>Labeled</td><td>A person picks a score from the fixed <code>choices</code> scale.</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li>Definitions are content-addressed (<code>evaluator_sha256</code>) and immutable: the same id with different content is refused with 409.</li>
+        <li>Every result is an observation bound to the run's <code>proof_id</code> and <code>receipt_sha256</code>, sealed with <code>observation_sha256</code>. The receipt itself never changes.</li>
+        <li>Fail closed: when the receipt does not verify, every deterministic evaluator scores 0 and labels are refused.</li>
+      </ul>
+      <div class="code"><div class="bar"><span class="file">POST /evaluators · POST /runs/:id/evaluations</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/evaluators -H 'content-type: application/json' \
+  -d '{"evaluator_id":"verdict","spec":{"type":"verdict_match"}}'
+curl -s localhost:3000/runs/$RUN/evaluations -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"evaluator_ids":["verdict"],"example":{"dataset_id":"release-notes","as_of":"prod","example_id":"a"}}'</pre></div>
     </section>
 
     <section id="config" aria-labelledby="h-cfg">
@@ -426,6 +553,9 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
           <tr><td><span class="m">GET</span></td><td><code>/runs/:id/events</code></td><td>Runtime events.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/runs/:id/evidence</code></td><td>Evidence records.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/runs/:id/proof</code></td><td>The sealed proof receipt.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/build/status</code></td><td>Execution mode, auth mode, persistence and protocol support.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/build/workspace</code></td><td>The saved Build workspace (404 until one is saved).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/build/workspace</code></td><td>Validate and save the Build workspace; registers its Team Graph (201).</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/intelligence</code></td><td>Status reports for the nine Intelligence modules.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/intelligence/:id</code></td><td>One module report with its proofs.</td></tr>
           <tr><td><span class="m">POST</span></td><td><code>/datasets</code></td><td>Create a dataset; version 1 (201).</td></tr>
@@ -455,7 +585,7 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
         <div class="card planned"><span class="label k">Durability</span><h4 class="nx">Checkpoints and resume</h4><p>Resume after a crash into the same receipt; pause for a human.</p></div>
         <div class="card planned"><span class="label k">Tools</span><h4 class="nx">Tools over MCP</h4><p>Tool calls with digested results and permissions.</p></div>
         <div class="card planned"><span class="label k">Control</span><h4 class="nx">Guardrails and budgets</h4><p>Tripwires that fail the run as a verifier observation.</p></div>
-        <div class="card planned"><span class="label k">Quality</span><h4 class="nx">Evals</h4><p>Mission suites with expected receipts, run in CI.</p></div>
+        <a class="card" href="#evaluators"><span class="label k">Quality</span><h4>Evals</h4><p>Datasets of missions scored by deterministic evaluators and human labels. Experiments that compare runs are next.</p></a>
         <div class="card planned"><span class="label k">Ship</span><h4 class="nx">Deploy</h4><p>Hosted runtime, persistent storage, signed receipts.</p></div>
       </div>
     </section>
@@ -472,6 +602,13 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
         <a href="#pipeline">How a run is proven</a>
         <a href="#receipt">Proof receipt</a>
         <a href="#layers">Layers</a>
+        <a href="#auth">Auth modes</a>
+        <a href="#intelligence">Intelligence layer</a>
+        <a href="#models">Models</a>
+        <a href="#llm-gateway">LLM Gateway</a>
+        <a href="#model-mesh">Model Mesh</a>
+        <a href="#datasets">Datasets</a>
+        <a href="#evaluators">Evaluators</a>
         <a href="#config">Configuration</a>
         <a href="#api">HTTP API</a>
         <a href="#guides">Guides</a>

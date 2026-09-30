@@ -109,4 +109,10 @@ if (!fs.existsSync(path.join(built, "index.html"))) {
 }
 
 fs.cpSync(built, output, { recursive: true });
+
+// Publish the static documentation at /docs next to the dashboard.
+const docs = path.join(root, "apps", "web", "docs");
+if (!fs.existsSync(path.join(docs, "index.html"))) throw new Error("apps/web/docs/index.html missing");
+fs.cpSync(docs, path.join(output, "docs"), { recursive: true });
+
 console.log("OSA dashboard built:", output);
