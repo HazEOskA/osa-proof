@@ -1,7 +1,7 @@
 FROM node:22-bookworm AS build
 
 WORKDIR /app
-COPY package.json package-lock.json tsconfig.json ./
+COPY package.json package-lock.json tsconfig.json tsconfig.worker.json ./
 RUN npm ci
 COPY apps ./apps
 COPY packages ./packages
