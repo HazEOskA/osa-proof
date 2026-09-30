@@ -8,6 +8,7 @@ on:
       - feature/workspace-provider-v0.1
       - feature/osa-worker-host-v0.1
       - feature/worker-deploy-v0.1
+      - feature/azure-worker-deploy-v0.1
   workflow_dispatch:
 
 permissions:
@@ -27,20 +28,20 @@ jobs:
       - run: npx tsc -p tsconfig.integration.json
       - run: node --test dist-integration/tests/*.test.js
       - name: Build OSA workspace image
-        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1' || github.ref == 'refs/heads/feature/worker-deploy-v0.1'
+        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1' || (github.ref == 'refs/heads/feature/worker-deploy-v0.1' || github.ref == 'refs/heads/feature/azure-worker-deploy-v0.1')
         run: npm run workspace:image:build
       - name: Live Docker workspace smoke
-        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1' || github.ref == 'refs/heads/feature/worker-deploy-v0.1'
+        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1' || (github.ref == 'refs/heads/feature/worker-deploy-v0.1' || github.ref == 'refs/heads/feature/azure-worker-deploy-v0.1')
         env:
           OSA_LIVE_DOCKER_TEST: "1"
         run: node --test dist-integration/tests/workspace-provider-live.test.js
       - name: Live OSA Worker Host smoke
-        if: github.ref == 'refs/heads/feature/osa-worker-host-v0.1' || github.ref == 'refs/heads/feature/worker-deploy-v0.1'
+        if: github.ref == 'refs/heads/feature/osa-worker-host-v0.1' || (github.ref == 'refs/heads/feature/worker-deploy-v0.1' || github.ref == 'refs/heads/feature/azure-worker-deploy-v0.1')
         env:
           OSA_LIVE_WORKER_TEST: "1"
         run: node --test dist-integration/tests/worker-host-live.test.js
       - name: Validate Worker deploy artifacts
-        if: github.ref == 'refs/heads/feature/worker-deploy-v0.1'
+        if: (github.ref == 'refs/heads/feature/worker-deploy-v0.1' || github.ref == 'refs/heads/feature/azure-worker-deploy-v0.1')
         env:
           OSA_WORKER_DOMAIN: worker.example.invalid
           OSA_WORKER_TOKEN: ci-worker-token
@@ -48,10 +49,16 @@ jobs:
           bash -n deploy/worker/bootstrap.sh
           docker compose -f deploy/worker/compose.yml config >/tmp/osa-worker-compose.yml
       - name: Build Worker deploy image
-        if: github.ref == 'refs/heads/feature/worker-deploy-v0.1'
+        if: (github.ref == 'refs/heads/feature/worker-deploy-v0.1' || github.ref == 'refs/heads/feature/azure-worker-deploy-v0.1')
         run: docker build -f deploy/worker/Dockerfile -t osa/worker-host:v0.1 .
+      - name: Validate Azure Worker deploy shell
+        if: github.ref == 'refs/heads/feature/azure-worker-deploy-v0.1'
+        run: bash -n deploy/azure-worker/deploy.sh
+      - name: Validate Azure budget Bicep
+        if: github.ref == 'refs/heads/feature/azure-worker-deploy-v0.1'
+        run: az bicep build --file deploy/azure-worker/budget.bicep --stdout >/tmp/osa-worker-budget.json
       - name: Smoke deployed Worker container
-        if: github.ref == 'refs/heads/feature/worker-deploy-v0.1'
+        if: (github.ref == 'refs/heads/feature/worker-deploy-v0.1' || github.ref == 'refs/heads/feature/azure-worker-deploy-v0.1')
         run: |
           set -euo pipefail
           docker run -d --name osa-worker-deploy-smoke \
