@@ -1,7 +1,7 @@
 // Mirrors the contracts in HazEOskA/osa-proof (packages/contracts/src/index.ts). Only fields the UI reads.
 export type Verdict = "VERIFIED" | "FAILED" | "INCOMPLETE";
 export interface Binding { organization_id: string; project_id: string; team_id: string; team_version: string; mission_id: string; run_id: string; execution_id: string }
-export interface AgentNode { agent_id: string; role: string; executor_ref: string; model_ref?: string; tool_capabilities?: string[]; memory_ref?: string; policy_ref?: string }
+export interface AgentNode { avatar_ref?: string; agent_id: string; role: string; executor_ref: string; model_ref?: string; tool_capabilities?: string[]; memory_ref?: string; policy_ref?: string }
 export interface TeamGraph { organization_id: string; project_id: string; team_id: string; version: string; agents: AgentNode[]; edges: { edge_id: string; from_agent_id: string; to_agent_id: string; kind: string }[] }
 export interface Requirement { requirement_id: string; type: string; evidence_kind: string; field: string; expected: unknown; agent_id?: string }
 export interface Mission { organization_id: string; project_id: string; mission_id: string; team_id: string; team_version: string; objective: string; entry_agent_id: string; input: unknown; requirements: Requirement[] }
