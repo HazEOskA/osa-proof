@@ -7,6 +7,7 @@ on:
       - feature/native-builder-v0.1
       - feature/workspace-provider-v0.1
       - feature/osa-worker-host-v0.1
+      - feature/worker-deploy-v0.1
   workflow_dispatch:
 
 permissions:
@@ -26,15 +27,69 @@ jobs:
       - run: npx tsc -p tsconfig.integration.json
       - run: node --test dist-integration/tests/*.test.js
       - name: Build OSA workspace image
-        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1'
+        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1' || github.ref == 'refs/heads/feature/worker-deploy-v0.1'
         run: npm run workspace:image:build
       - name: Live Docker workspace smoke
-        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1'
+        if: github.ref == 'refs/heads/feature/workspace-provider-v0.1' || github.ref == 'refs/heads/feature/osa-worker-host-v0.1' || github.ref == 'refs/heads/feature/worker-deploy-v0.1'
         env:
           OSA_LIVE_DOCKER_TEST: "1"
         run: node --test dist-integration/tests/workspace-provider-live.test.js
       - name: Live OSA Worker Host smoke
-        if: github.ref == 'refs/heads/feature/osa-worker-host-v0.1'
+        if: github.ref == 'refs/heads/feature/osa-worker-host-v0.1' || github.ref == 'refs/heads/feature/worker-deploy-v0.1'
         env:
           OSA_LIVE_WORKER_TEST: "1"
         run: node --test dist-integration/tests/worker-host-live.test.js
+      - name: Validate Worker deploy artifacts
+        if: github.ref == 'refs/heads/feature/worker-deploy-v0.1'
+        env:
+          OSA_WORKER_DOMAIN: worker.example.invalid
+          OSA_WORKER_TOKEN: ci-worker-token
+        run: |
+          bash -n deploy/worker/bootstrap.sh
+          docker compose -f deploy/worker/compose.yml config >/tmp/osa-worker-compose.yml
+      - name: Build Worker deploy image
+        if: github.ref == 'refs/heads/feature/worker-deploy-v0.1'
+        run: docker build -f deploy/worker/Dockerfile -t osa/worker-host:v0.1 .
+      - name: Smoke deployed Worker container
+        if: github.ref == 'refs/heads/feature/worker-deploy-v0.1'
+        run: |
+          set -euo pipefail
+          docker run -d --name osa-worker-deploy-smoke \
+            -e HOST=0.0.0.0 \
+            -e PORT=8787 \
+            -e OSA_WORKER_TOKEN=ci-worker-token \
+            -e OSA_WORKSPACE_DOCKER_IMAGE=osa/workspace-node22:v0.1 \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -p 127.0.0.1:8788:8787 \
+            osa/worker-host:v0.1
+
+          trap 'docker rm -f osa-worker-deploy-smoke >/dev/null 2>&1 || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8788/health >/tmp/worker-health.json; then
+              break
+            fi
+            sleep 1
+          done
+          cat /tmp/worker-health.json
+
+          curl -fsS \
+            -H 'Authorization: Bearer ci-worker-token' \
+            -H 'Content-Type: application/json' \
+            -d '{"workspaceId":"deploy-smoke","timeoutMs":60000,"cpu":1,"memoryMb":512,"ports":[]}' \
+            http://127.0.0.1:8788/v1/workspaces >/tmp/workspace.json
+
+          WORKSPACE_ID=$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/workspace.json','utf8'));process.stdout.write(j.workspace.id)")
+
+          curl -fsS \
+            -H 'Authorization: Bearer ci-worker-token' \
+            -H 'Content-Type: application/json' \
+            -d '{"command":"node","args":["-e","process.stdout.write(\"deploy-ok\")"]}' \
+            "http://127.0.0.1:8788/v1/workspaces/${WORKSPACE_ID}/exec" >/tmp/exec.json
+
+          node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/exec.json','utf8'));if(j.exitCode!==0||j.stdout!=='deploy-ok')process.exit(1)"
+
+          curl -fsS -X DELETE \
+            -H 'Authorization: Bearer ci-worker-token' \
+            "http://127.0.0.1:8788/v1/workspaces/${WORKSPACE_ID}" >/tmp/delete.json
+          cat /tmp/delete.json
