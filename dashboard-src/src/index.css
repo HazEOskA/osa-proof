@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* OSA Framework design system: tokens sampled in the design system artifact (proof + godmode themes).
+   Legacy names map to DS names: void=bg-000 ink=bg-100 panel=bg-200 raise=bg-300 line=line-100 line2=line-200
+   fg=text-100 dim=text-200 faint=text-300 cyan=steel ok=success warn=warning bad=danger. */
+:root, :root[data-osa-theme="proof"] {
+  color-scheme: dark;
+  --void-rgb: 5 13 23; --ink-rgb: 7 14 28; --panel-rgb: 11 21 39; --raise-rgb: 24 30 53;
+  --line-rgb: 48 77 132; --line2-rgb: 72 92 117;
+  --fg-rgb: 226 236 247; --hero-rgb: 214 229 250; --dim-rgb: 120 144 184; --faint-rgb: 85 104 136;
+  --cyan-rgb: 131 152 200; --steel-rgb: 131 152 200; --brand-rgb: 75 80 248; --onbrand-rgb: 255 255 255; --violet-rgb: 119 73 240;
+  --ok-rgb: 2 244 119; --warn-rgb: 205 161 90; --bad-rgb: 212 87 81; --info-rgb: 80 222 218;
+}
+:root[data-osa-theme="godmode"] {
+  --void-rgb: 8 1 12; --ink-rgb: 15 1 28; --panel-rgb: 27 2 44; --raise-rgb: 43 4 68;
+  --line-rgb: 75 9 111; --line2-rgb: 178 36 227;
+  --fg-rgb: 254 251 247; --hero-rgb: 254 220 138; --dim-rgb: 242 115 248; --faint-rgb: 178 36 227;
+  --cyan-rgb: 254 220 138; --steel-rgb: 254 220 138; --brand-rgb: 248 165 65; --onbrand-rgb: 8 1 12; --violet-rgb: 178 36 227;
+}
+:root {
+  --void: rgb(var(--void-rgb)); --ink: rgb(var(--ink-rgb)); --panel: rgb(var(--panel-rgb)); --raise: rgb(var(--raise-rgb));
+  --line: rgb(var(--line-rgb)); --line2: rgb(var(--line2-rgb)); --fg: rgb(var(--fg-rgb)); --dim: rgb(var(--dim-rgb)); --faint: rgb(var(--faint-rgb));
+  --cyan: rgb(var(--cyan-rgb)); --violet: rgb(var(--violet-rgb)); --ok: rgb(var(--ok-rgb)); --warn: rgb(var(--warn-rgb)); --bad: rgb(var(--bad-rgb));
+  --brand: rgb(var(--brand-rgb)); --hero: rgb(var(--hero-rgb));
+  --glow-brand: 0 0 0 1px rgb(var(--brand-rgb)), 0 0 24px rgb(var(--brand-rgb) / .35);
+  --glow-violet: 0 0 0 1px rgb(var(--violet-rgb)), 0 0 24px rgb(var(--violet-rgb) / .35);
+}
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--void); color: var(--fg); font-family: "Exo 2", system-ui, sans-serif; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+::selection { background: rgb(var(--brand-rgb) / .35); }
+.mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.font-display { font-family: Michroma, "Eurostile Extended", system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.label { font: 500 12px/16px "Exo 2", system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+.glass { background: rgb(var(--panel-rgb)); border: 1px solid rgb(var(--line-rgb)); }
+.grid-bg { background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 48px 48px; opacity: .14; }
+.focus-ring:focus-visible, :focus-visible { outline: 2px solid rgb(var(--steel-rgb)); outline-offset: 2px; }
+button { font: inherit; color: inherit; }
+.tap { min-height: 44px; }
+.sel-mark { box-shadow: inset 2px 0 0 rgb(var(--brand-rgb)); }
+
+@keyframes flow { to { stroke-dashoffset: -24; } }
+@keyframes pulse-node { 0%,100% { opacity: .18; transform: scale(1); } 50% { opacity: .5; transform: scale(1.6); } }
+@keyframes reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes slide-in { from { transform: translateX(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+.flow-edge { stroke-dasharray: 4 8; animation: flow 1.6s linear infinite; }
+.reveal { animation: reveal .35s ease both; }
+.slide-in { animation: slide-in .25s ease both; }
+.pulse-halo { transform-box: fill-box; transform-origin: center; animation: pulse-node 3.2s ease-in-out infinite; }
+.skeleton { background: linear-gradient(90deg, var(--raise) 0, #172031 50%, var(--raise) 100%); background-size: 400px 100%; animation: shimmer 1.4s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .flow-edge, .pulse-halo, .reveal, .slide-in, .skeleton { animation: none !important; } }
+
+/* 3D solar world labels */
+.solar-label { position: absolute; left: 0; top: 0; white-space: nowrap; font: 500 11px/14px "JetBrains Mono", ui-monospace, monospace; color: rgb(var(--fg-rgb)); text-shadow: 0 0 6px rgb(var(--void-rgb)), 0 0 2px rgb(var(--void-rgb)); opacity: 0; transition: opacity .2s; will-change: transform; }
+.solar-label.is-sel { color: rgb(var(--hero-rgb)); font-weight: 600; }
+.solar-label--sun { font: 500 10px/14px "Exo 2", system-ui, sans-serif; letter-spacing: .18em; color: rgb(var(--hero-rgb)); }
+.solar-orbit-label { position: absolute; left: 0; top: 0; white-space: nowrap; font: 500 9px/12px "Exo 2", system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: rgb(var(--dim-rgb)); opacity: 0; transition: opacity .3s; }
+
+/* OSA sidebar */
+.osa-sidebar { background: linear-gradient(180deg, rgb(var(--ink-rgb)), rgb(var(--void-rgb))); }
+.osa-nav-icon { transition: filter .2s, transform .2s; }
+.osa-nav-item:hover .osa-nav-icon { filter: drop-shadow(0 0 5px rgb(255 255 255 / .35)); transform: scale(1.06); }
+.osa-nav-item.is-active .osa-nav-icon { filter: drop-shadow(0 0 7px rgb(var(--brand-rgb) / .8)); }
+.osa-nav-item.is-active { box-shadow: inset 2px 0 0 rgb(var(--brand-rgb)), 0 0 0 1px rgb(var(--line-rgb)); }
+@media (prefers-reduced-motion: reduce) { .osa-nav-icon { transition: none; } .osa-nav-item:hover .osa-nav-icon { transform: none; } }
+
+.osa-card { transition: box-shadow .2s, background .2s, transform .2s; box-shadow: inset 0 0 18px -10px var(--c); }
+.osa-card:hover { background: rgb(var(--raise-rgb)); box-shadow: 0 0 20px -6px var(--c), inset 0 0 22px -8px var(--c); transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) { .osa-card, .osa-card:hover { transform: none; } }

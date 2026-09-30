@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node scripts/build-dashboard.cjs",
+  "outputDirectory": "dashboard-dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "env": {
+    "OSA_EXECUTION_MODE": "fixture",
+    "OSA_AUTH_MODE": "open"
+  },
+  "rewrites": [
+    { "source": "/layers/:path*", "destination": "/api/layers/:path*" },
+    { "source": "/teams/:path*", "destination": "/api/teams/:path*" },
+    { "source": "/missions/:path*", "destination": "/api/missions/:path*" },
+    { "source": "/runs/:path*", "destination": "/api/runs/:path*" }
+  ]
+}

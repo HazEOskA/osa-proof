@@ -8,6 +8,7 @@ import { RetryingProvider, RetryOptions } from "./retry";
 export * from "./provider";
 export * from "./config";
 export * from "./executors";
+export * from "./integrations";
 export { AnthropicProvider } from "./anthropic";
 export { OpenAIProvider } from "./openai";
 export { ModelMesh } from "./mesh";

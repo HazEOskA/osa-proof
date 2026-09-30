@@ -3,6 +3,8 @@ export type RunVerdict = "VERIFIED" | "FAILED" | "INCOMPLETE";
 export type EdgeKind = "handoff";
 
 export interface AgentNode {
+  // Optional UI asset reference; it does not alter the execution role.
+  avatar_ref?: string;
   agent_id: string;
   role: string;
   executor_ref: string;
@@ -289,3 +291,4 @@ export interface LayerEnterResult {
   layer: LayerProfile;
   gate?: LayerAccessGate;
 }
+

@@ -90,7 +90,8 @@ npm start
 Optional: `OSA_PROVIDER_BASE_URL`, `OSA_PROVIDER_TIMEOUT_MS` (default 120000),
 `OSA_PROVIDER_MAX_TOKENS` (default 16000), `OSA_PROVIDER_MAX_RETRIES` (default 2),
 `OSA_PROVIDER_RETRY_BASE_MS` (default 500), `OSA_MODEL_FALLBACKS` (ordered `provider:model` list
-for the model mesh). Retries follow the official SDK rules; see
+for the model mesh). `OSA_AUTH_MODE` is `session` (default: DEV login required for
+teams, missions and runs) or `open` (no login; set only for the Vercel preview in `vercel.json`). Retries follow the official SDK rules; see
 `docs/INTELLIGENCE_LAYER_V1.md`.
 
 Team Graphs reference only the stable executor refs `dev.planner.v1` and `dev.builder.v1`;

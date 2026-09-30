@@ -8,8 +8,45 @@ import { validateTeamGraph } from "../../../packages/team-graph/src";
 import { createBuiltinIntelligence, IntelligenceRegistry } from "../../../packages/intelligence/src";
 import { CommitChanges, DatasetError, DatasetStore, verifyDatasetVersion } from "../../../packages/datasets/src";
 import { EvaluatorError, EvaluatorInput, EvaluatorStore } from "../../../packages/evaluators/src";
+import { BuildWorkspace, validateBuildWorkspace } from "./build";
+
+// "session" (default): teams, missions, runs and run results need a DEV session.
+// "open": no login, for the Vercel preview dashboard; every open-mode request acts as OPEN_MODE_SESSION.
+export type AuthMode = "session" | "open";
+
+export class AuthConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthConfigError";
+  }
+}
+
+// Fails closed: unset means "session"; any value other than session or open refuses to start.
+export function loadAuthMode(env: Record<string, string | undefined>): AuthMode {
+  const mode = env.OSA_AUTH_MODE?.trim();
+  if (!mode || mode === "session") return "session";
+  if (mode === "open") return "open";
+  throw new AuthConfigError("OSA_AUTH_MODE must be one of: session, open");
+}
+
+const OPEN_MODE_SESSION: SessionRecord = Object.freeze({
+  session_id: "ses_open_mode",
+  token: "",
+  identity: Object.freeze({
+    identity_id: "idn_open_mode",
+    provider: "local-dev",
+    subject: "local-dev:open-mode",
+    display_name: "OPEN MODE (no login)",
+    organization_id: "org_dev_local",
+    roles: Object.freeze(["developer"]) as unknown as string[],
+    verified: true,
+  }),
+  created_at: "1970-01-01T00:00:00.000Z",
+  expires_at: "9999-12-31T23:59:59.999Z",
+}) as SessionRecord;
 
 export class ApiState {
+  buildWorkspace?: BuildWorkspace;
   readonly teams = new Map<string, TeamGraph>();
   readonly missions = new Map<string, Mission>();
   readonly runs = new Map<string, RunResult>();
@@ -21,7 +58,8 @@ export class ApiState {
   constructor(
     intelligence: IntelligenceRegistry = createBuiltinIntelligence(),
     datasets: DatasetStore = new DatasetStore(),
-    evaluators: EvaluatorStore = new EvaluatorStore()
+    evaluators: EvaluatorStore = new EvaluatorStore(),
+    readonly authMode: AuthMode = "session"
   ) {
     this.intelligence = intelligence;
     this.datasets = datasets;
@@ -53,7 +91,8 @@ function bearerToken(request: IncomingMessage): string | undefined {
 
 function authenticatedSession(request: IncomingMessage, state: ApiState): SessionRecord | undefined {
   const token = bearerToken(request);
-  return token ? state.sessions.get(token) : undefined;
+  const session = token ? state.sessions.get(token) : undefined;
+  return session ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
 }
 
 function requireSession(
@@ -72,11 +111,16 @@ function requireSession(
   return session;
 }
 
-export function createApiServer(registry: ExecutorRegistry, state = new ApiState()): Server {
+export async function handleApiRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  registry: ExecutorRegistry,
+  state = new ApiState(),
+  executionDescription: Record<string, unknown> = { mode: "UNKNOWN" }
+): Promise<void> {
   const runtime = new OsaRuntime(registry);
 
-  return createServer(async (request, response) => {
-    try {
+  try {
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
@@ -120,6 +164,25 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
           });
         }
         return send(response, 200, { revoked: true });
+      }
+
+      if (url.pathname === "/build/status" && method === "GET") {
+        return send(response, 200, { ...executionDescription, auth_mode: state.authMode, persistence: "PROCESS_MEMORY", protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
+      }
+
+      if (url.pathname === "/build/workspace" && method === "GET") {
+        if (!requireSession(request, response, state)) return;
+        return state.buildWorkspace ? send(response, 200, state.buildWorkspace) : send(response, 404, { error: "Build workspace not saved in this process" });
+      }
+      if (url.pathname === "/build/workspace" && method === "POST") {
+        // Saving a workspace registers its Team Graph, so it needs the same session as POST /teams.
+        if (!requireSession(request, response, state)) return;
+        const workspace = await readJson<BuildWorkspace>(request);
+        validateBuildWorkspace(workspace);
+        state.buildWorkspace = structuredClone(workspace);
+        const graph = workspace.team;
+        state.teams.set(state.teamKey(graph.team_id, graph.version), structuredClone(graph));
+        return send(response, 201, { ...workspace, persistence: "PROCESS_MEMORY" });
       }
 
       if (method === "GET" && url.pathname === "/layers") {
@@ -244,13 +307,18 @@ export function createApiServer(registry: ExecutorRegistry, state = new ApiState
         if (parts[2] === "proof") return send(response, 200, run.proof);
       }
 
-      return send(response, 404, { error: "not found" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (error instanceof DatasetError || error instanceof EvaluatorError) {
-        return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });
-      }
-      return send(response, 400, { error: message });
+    return send(response, 404, { error: "not found" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof DatasetError || error instanceof EvaluatorError) {
+      return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });
     }
+    return send(response, 400, { error: message });
+  }
+}
+
+export function createApiServer(registry: ExecutorRegistry, state = new ApiState(), executionDescription: Record<string, unknown> = { mode: "UNKNOWN" }): Server {
+  return createServer((request, response) => {
+    void handleApiRequest(request, response, registry, state, executionDescription);
   });
 }

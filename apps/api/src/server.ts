@@ -1,11 +1,18 @@
 import { Server } from "node:http";
-import { createApiServer } from "./index";
+import { ApiState, createApiServer, loadAuthMode } from "./index";
 import { AgentExecutor } from "../../../packages/contracts/src";
 import { ExecutorRegistry } from "../../../packages/runtime/src";
 import {
+  createBuilderBridgeExecutor,
+  createCapabilityRouterExecutor,
+  createExecutionForceExecutor,
+  createFleetChatExecutor,
   createModelMesh,
+  createOsaAgentControlExecutor,
   createProviderBuilderExecutor,
   createProviderPlannerExecutor,
+  describeIntegrationRegistry,
+  loadIntegrationConfig,
   loadMeshConfig,
   ModelProvider,
 } from "../../../packages/adapters/src";
@@ -88,6 +95,35 @@ export function createDevProviderRegistry(provider: ModelProvider): ExecutorRegi
   return registry;
 }
 
+function installIntegrationRouter(
+  registry: ExecutorRegistry,
+  env: Env,
+  fallbackBuilder: AgentExecutor
+): Record<string, unknown> {
+  const integration = loadIntegrationConfig(env);
+  if (!integration.enabled) return {};
+
+  registry.register(
+    DEV_BUILDER_REF,
+    createCapabilityRouterExecutor({
+      fallback: fallbackBuilder,
+      builder: integration.builder ? createBuilderBridgeExecutor(integration.builder) : undefined,
+      executionForce: integration.executionForce
+        ? createExecutionForceExecutor(integration.executionForce)
+        : undefined,
+      osaAgent: integration.osaAgent
+        ? createOsaAgentControlExecutor(integration.osaAgent)
+        : undefined,
+      fleet: integration.fleet ? createFleetChatExecutor(integration.fleet) : undefined,
+    })
+  );
+
+  return {
+    integration: "v0.1",
+    registry: describeIntegrationRegistry(integration),
+  };
+}
+
 export interface DevExecution {
   mode: ExecutionMode;
   registry: ExecutorRegistry;
@@ -99,18 +135,24 @@ export interface DevExecution {
 export function createDevExecution(env: Env): DevExecution {
   const mode = loadExecutionMode(env);
   if (mode === "fixture") {
-    return { mode, registry: createDevFixtureRegistry(), description: { mode } };
+    const registry = createDevFixtureRegistry();
+    const integration = installIntegrationRouter(registry, env, fixtureBuilder);
+    return { mode, registry, description: { mode, ...integration } };
   }
   const targets = loadMeshConfig(env);
   const [primary, ...fallbacks] = targets;
+  const provider = createModelMesh(targets);
+  const registry = createDevProviderRegistry(provider);
+  const integration = installIntegrationRouter(registry, env, createProviderBuilderExecutor(provider));
   return {
     mode,
-    registry: createDevProviderRegistry(createModelMesh(targets)),
+    registry,
     description: {
       mode,
       provider: primary.provider,
       model: primary.model,
       ...(fallbacks.length ? { fallbacks: fallbacks.map((t) => `${t.provider}:${t.model}`) } : {}),
+      ...integration,
     },
   };
 }
@@ -123,11 +165,13 @@ export function startApiServer(env: Env = process.env): Server {
 
   const host = env.HOST ?? "0.0.0.0";
   const execution = createDevExecution(env);
-  const server = createApiServer(execution.registry);
+  const authMode = loadAuthMode(env);
+  const server = createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, authMode), execution.description);
   server.listen(port, host, () => {
     console.log(JSON.stringify({
       service: "osa-proof-api",
       ...execution.description,
+      auth_mode: authMode,
       host,
       port,
     }));

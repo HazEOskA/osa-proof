@@ -1,0 +1,6 @@
+{
+ "extends":"./tsconfig.json",
+ "compilerOptions":{"outDir":"dist-build","declaration":false,"sourceMap":false},
+ "include":[],
+ "files":["apps/api/src/server.ts","tests/build-workspace.test.ts","tests/integration-slice.test.ts","tests/backend.test.ts","tests/layers.test.ts","tests/proof-integrity.test.ts","tests/provider-executor.test.ts"]
+}

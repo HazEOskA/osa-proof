@@ -233,7 +233,6 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
           <div class="crumbs">Start / <b>OSA Framework</b></div>
           <button class="copypage" type="button" id="copypage"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy page</span></button>
         </div>
-        <div class="note" role="note"><span class="dot" style="--c:var(--bad)"></span><div><b>Main does not build until this branch is merged.</b> Commit <code>881f6bc</code> removed the <code>Identity</code> and <code>SessionRecord</code> types and the DEV login. Branch <code>claude/osa-slice-1-real-execution-cfo2vp</code> restores both; until it lands, run the quickstart from that branch.</div></div>
 
         <section id="start" aria-labelledby="h-start">
           <div class="eyebrow">Start</div>
@@ -399,6 +398,7 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
           <tr><td><code>OSA_PROVIDER_MAX_RETRIES</code></td><td>No</td><td><code>2</code></td><td>Retries for connection errors, timeouts, 408, 409, 429 and 5xx (0 to 10).</td></tr>
           <tr><td><code>OSA_MODEL_FALLBACKS</code></td><td>No</td><td>none</td><td>Ordered <code>provider:model</code> fallbacks (max 4) tried after the primary fails; every hop is evidence.</td></tr>
           <tr><td><code>OSA_PROVIDER_RETRY_BASE_MS</code></td><td>No</td><td><code>500</code></td><td>First backoff step; doubles per retry up to 8 s. <code>retry-after</code> wins.</td></tr>
+          <tr><td><code>OSA_AUTH_MODE</code></td><td>No</td><td><code>session</code></td><td><code>session</code> needs a DEV login for teams, missions and runs. <code>open</code> skips login (Vercel preview only). Any other value refuses to start.</td></tr>
           <tr><td><code>PORT</code> · <code>HOST</code></td><td>No</td><td><code>3000</code> · <code>0.0.0.0</code></td><td>Where the API listens.</td></tr>
           <tr><td><code>OSA_LIVE_PROVIDER_TEST</code></td><td>No</td><td>off</td><td>Set to <code>1</code> to run the live provider test.</td></tr>
         </tbody>
@@ -407,7 +407,7 @@ curl -s localhost:3000/runs/$RUN/proof</pre></div>
 
     <section id="api" aria-labelledby="h-api">
       <h2 id="h-api">HTTP API</h2>
-      <p>JSON in, JSON out. State is held in memory by the API process. Errors return <code>{"error": "…"}</code> with 400, 401, 404 or 409. Teams, missions, runs and run evaluations need a DEV session: <code>POST /auth/dev-login</code>, then <code>Authorization: Bearer &lt;token&gt;</code>. <span class="nx">OAuth providers</span> are not configured.</p>
+      <p>JSON in, JSON out. State is held in memory by the API process. Errors return <code>{"error": "…"}</code> with 400, 401, 404 or 409. With <code>OSA_AUTH_MODE=session</code> (default) teams, missions, runs, run evaluations and the build workspace need a DEV session: <code>POST /auth/dev-login</code>, then <code>Authorization: Bearer &lt;token&gt;</code>. With <code>open</code> they do not. <span class="nx">OAuth providers</span> are not configured.</p>
       <div class="tbl"><table>
         <thead><tr><th>Method</th><th>Path</th><th>Returns</th></tr></thead>
         <tbody>
