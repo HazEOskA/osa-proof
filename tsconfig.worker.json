@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist-worker",
+    "declaration": false,
+    "sourceMap": false
+  },
+  "files": [
+    "apps/worker/src/index.ts",
+    "apps/worker/src/server.ts"
+  ],
+  "include": []
+}
