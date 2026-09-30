@@ -85,12 +85,23 @@ ANTHROPIC_API_KEY=<secret> \
 npm start
 ```
 
+`OSA_PROVIDER` is `anthropic` (key in `ANTHROPIC_API_KEY`) or `openai` (key in `OPENAI_API_KEY`).
+
 Optional: `OSA_PROVIDER_BASE_URL`, `OSA_PROVIDER_TIMEOUT_MS` (default 120000),
-`OSA_PROVIDER_MAX_TOKENS` (default 16000).
+`OSA_PROVIDER_MAX_TOKENS` (default 16000), `OSA_PROVIDER_MAX_RETRIES` (default 2),
+`OSA_PROVIDER_RETRY_BASE_MS` (default 500), `OSA_MODEL_FALLBACKS` (ordered `provider:model` list
+for the model mesh). `OSA_AUTH_MODE` is `session` (default: DEV login required for
+teams, missions and runs) or `open` (no login; set only for the Vercel preview in `vercel.json`). Retries follow the official SDK rules; see
+`docs/INTELLIGENCE_LAYER_V1.md`.
 
 Team Graphs reference only the stable executor refs `dev.planner.v1` and `dev.builder.v1`;
 the server registers the fixture or provider implementation under them. The provider sits
 behind `ModelProvider` in `packages/adapters`, so the runtime and proof core stay provider-neutral.
+
+Datasets (`packages/datasets`, `/datasets` routes) hold versioned mission examples: every change is a
+new immutable version with sha256 digests, tags pin versions. See `docs/INTELLIGENCE_LAYER_V1.md`.
+Evaluators (`packages/evaluators`, `/evaluators` and `/runs/:id/evaluations` routes) score runs with
+deterministic checks or human labels; each result is a sealed observation bound to the run's receipt.
 
 Provider evidence is computed by executor code, never copied from model text:
 `provider_call` (status, model, response id, usage, request/response hashes) and

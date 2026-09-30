@@ -1,5 +1,5 @@
 import { Server } from "node:http";
-import { createApiServer } from "./index";
+import { ApiState, createApiServer, loadAuthMode } from "./index";
 import { AgentExecutor } from "../../../packages/contracts/src";
 import { ExecutorRegistry } from "../../../packages/runtime/src";
 import {
@@ -7,13 +7,13 @@ import {
   createCapabilityRouterExecutor,
   createExecutionForceExecutor,
   createFleetChatExecutor,
-  createModelProvider,
+  createModelMesh,
   createOsaAgentControlExecutor,
   createProviderBuilderExecutor,
   createProviderPlannerExecutor,
   describeIntegrationRegistry,
   loadIntegrationConfig,
-  loadProviderConfig,
+  loadMeshConfig,
   ModelProvider,
 } from "../../../packages/adapters/src";
 
@@ -139,15 +139,21 @@ export function createDevExecution(env: Env): DevExecution {
     const integration = installIntegrationRouter(registry, env, fixtureBuilder);
     return { mode, registry, description: { mode, ...integration } };
   }
-
-  const config = loadProviderConfig(env);
-  const provider = createModelProvider(config);
+  const targets = loadMeshConfig(env);
+  const [primary, ...fallbacks] = targets;
+  const provider = createModelMesh(targets);
   const registry = createDevProviderRegistry(provider);
   const integration = installIntegrationRouter(registry, env, createProviderBuilderExecutor(provider));
   return {
     mode,
     registry,
-    description: { mode, provider: config.provider, model: config.model, ...integration },
+    description: {
+      mode,
+      provider: primary.provider,
+      model: primary.model,
+      ...(fallbacks.length ? { fallbacks: fallbacks.map((t) => `${t.provider}:${t.model}`) } : {}),
+      ...integration,
+    },
   };
 }
 
@@ -159,11 +165,13 @@ export function startApiServer(env: Env = process.env): Server {
 
   const host = env.HOST ?? "0.0.0.0";
   const execution = createDevExecution(env);
-  const server = createApiServer(execution.registry, undefined, execution.description);
+  const authMode = loadAuthMode(env);
+  const server = createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, authMode), execution.description);
   server.listen(port, host, () => {
     console.log(JSON.stringify({
       service: "osa-proof-api",
       ...execution.description,
+      auth_mode: authMode,
       host,
       port,
     }));

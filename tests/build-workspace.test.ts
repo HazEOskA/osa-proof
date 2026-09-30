@@ -12,7 +12,8 @@ test('Build rejects cycles, unknown agents and credential material in revisions'
  const connection=workspace();connection.resources=[{id:'mcp',kind:'connections',name:'MCP',description:'',config:{protocol:'MCP',endpoint:'https://example.com/mcp?token=secret'},revisions:[]}];assert.throws(()=>validateBuildWorkspace(connection));
 });
 test('Build config roundtrip and mission to canonical receipt in fixture mode',async()=>{
- const state=new ApiState();const server=createApiServer(createDevFixtureRegistry(),state,{mode:'fixture'});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+ // The preview dashboard runs with OSA_AUTH_MODE=open (vercel.json); session mode is covered in auth-mode.test.ts.
+ const state=new ApiState(undefined,undefined,undefined,'open');const server=createApiServer(createDevFixtureRegistry(),state,{mode:'fixture'});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
  const post=(path:string,body:unknown)=>fetch(base+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
  try{
   assert.equal((await fetch(base+'/build/workspace')).status,404);

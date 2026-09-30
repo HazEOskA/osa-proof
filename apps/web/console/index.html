@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OSA Tracing Studio</title>
+<meta name="theme-color" content="#08010c" />
+<!-- OSA console built on the OSA Framework design system (tokens, Michroma / Exo 2 / JetBrains Mono, GODMODE and PROOF themes).
+     Data: static snapshot of 3 sealed runs from the Slice 2 runtime (commit a321fd2) with example executors, embedded below.
+     Not wired to the API yet. Features the backend lacks are underlined (.nx). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Michroma&display=swap">
+<style>
+/* OSA Framework design system (artifact H5SJypMAfm5SrZqYykQuEi): tokens.json + components/bundle.css applied to the tracing console.
+   Layout: panel shell on bg-000; bg-100 panels (radius-lg), bg-200 cards (radius-md), bg-300 hover/selected. Motion: running pulse only. */
+:root{
+  color-scheme:dark;
+  /* proof theme */
+  --bg-000:#050d17;--bg-100:#070e1c;--bg-200:#0b1527;--bg-300:#181e35;
+  --line-100:#304d84;--line-200:#485c75;
+  --text-100:#e2ecf7;--text-hero:#d6e5fa;--text-200:#7890b8;--text-300:#556888;
+  --steel:#8398c8;--brand:#4b50f8;--text-on-brand:#ffffff;--violet:#7749f0;
+  --domain-school:#3d6ad1;--domain-dev:#7749f0;--domain-bank:#50deda;--domain-financial:#cda15a;--domain-cyber:#c3484e;--domain-army:#63d36f;
+  --online:#02f477;--success:#02f477;--danger:#d45751;--warning:#cda15a;--info:#50deda;--pending:#7749f0;
+  --glow-brand:0 0 0 1px #4b50f8,0 0 24px rgba(75,80,248,.35);
+  --glow-violet:0 0 0 1px #7749f0,0 0 24px rgba(119,73,240,.35);
+  --shadow-panel:0 24px 64px rgba(0,0,0,.55);
+  --font-display:Michroma,"Eurostile Extended",system-ui,sans-serif;
+  --font-sans:"Exo 2",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;
+  --radius-sm:6px;--radius-md:12px;--radius-lg:24px;--radius-full:9999px;
+}
+/* godmode theme: builder-facing runtime consoles */
+body.godmode{
+  --bg-000:#08010c;--bg-100:#0f011c;--bg-200:#1b022c;--bg-300:#2b0444;
+  --line-100:#4b096f;--line-200:#b224e3;
+  --text-100:#fefbf7;--text-hero:#fedc8a;--text-200:#f273f8;--text-300:#b224e3;
+  --steel:#fedc8a;--brand:#f8a541;--text-on-brand:#08010c;--violet:#b224e3;--domain-dev:#b224e3;--pending:#b224e3;
+  --glow-brand:0 0 0 1px #f8a541,0 0 24px rgba(248,165,65,.35);
+  --glow-violet:0 0 0 1px #b224e3,0 0 24px rgba(178,36,227,.4);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg-000);color:var(--text-100);font:400 15px/22px var(--font-sans)}
+:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+
+/* Not in backend: owner's rule, underline in danger */
+.nx{color:var(--text-200);text-decoration:underline;text-decoration-color:var(--danger);text-decoration-thickness:2px;text-underline-offset:4px}
+
+/* Shell */
+.app{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100%}
+.side{background:var(--bg-100);border-right:1px solid var(--line-100);padding:var(--space-6) var(--space-3);display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow:auto}
+.ws{display:flex;align-items:center;gap:var(--space-3);padding:0 var(--space-3) var(--space-6)}
+.ws i{width:28px;height:28px;border-radius:var(--radius-sm);display:grid;place-items:center;font:400 12px var(--font-display);font-style:normal;color:var(--text-on-brand);background:var(--brand)}
+.ws b{font:400 20px/24px var(--font-display);letter-spacing:.08em;display:block}
+.ws small{display:block;font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-200);margin-top:2px}
+.side .grp{font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-300);padding:var(--space-6) var(--space-3) var(--space-2)}
+.side button{all:unset;display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-100);font:500 14px/20px var(--font-sans)}
+.side button:hover{background:var(--bg-200)}
+.side button[aria-current="page"]{background:var(--bg-300);box-shadow:inset 2px 0 0 var(--brand)}
+.side button:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+.ic{width:16px;text-align:center;font-family:var(--font-mono);font-size:12px;color:var(--steel)}
+.main{min-width:0;padding-bottom:var(--space-12)}
+.bar{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:center;justify-content:space-between;padding:var(--space-4) var(--space-8);border-bottom:1px solid var(--line-100);background:var(--bg-100);position:sticky;top:0;z-index:3}
+.crumbs{font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-200)}
+.crumbs b{color:var(--text-100);font-weight:500}
+.note{display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:center;font:400 13px/18px var(--font-sans);color:var(--text-200)}
+.themes{display:inline-flex;border:1px solid var(--text-300);border-radius:var(--radius-md);overflow:hidden}
+.themes button{all:unset;cursor:pointer;padding:6px var(--space-3);font:500 12px/16px var(--font-sans);letter-spacing:.18em;color:var(--text-200)}
+.themes button[aria-pressed="true"]{background:var(--brand);color:var(--text-on-brand)}
+.themes button:focus-visible{outline:2px solid var(--steel);outline-offset:-2px}
+.live{display:inline-flex;align-items:center;gap:var(--space-2);font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-100)}
+.live::before{content:"";width:8px;height:8px;border-radius:var(--radius-full);background:var(--online);box-shadow:0 0 8px var(--online)}
+
+.page{padding:var(--space-8);display:grid;gap:var(--space-6)}
+.head{display:grid;gap:var(--space-1)}
+h1{margin:0;font:400 28px/36px var(--font-display);letter-spacing:.06em;text-transform:uppercase;color:var(--text-hero);text-wrap:balance;overflow-wrap:anywhere}
+.sub{margin:0;font:400 13px/18px var(--font-sans);color:var(--text-200)}
+.toolbar{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:center}
+.input{border:1px solid var(--text-300);background:var(--bg-200);border-radius:var(--radius-sm);padding:var(--space-2) var(--space-3);color:var(--text-200);min-width:240px;font:400 13px/18px var(--font-sans)}
+
+/* Button = osa-btn */
+.btn{font:600 14px/20px var(--font-sans);letter-spacing:.04em;display:inline-flex;align-items:center;gap:var(--space-2);padding:10px var(--space-4);border-radius:var(--radius-md);border:1px solid var(--text-300);cursor:pointer;background:var(--bg-200);color:var(--text-100)}
+.btn:hover{background:var(--bg-300)}
+.btn.primary{background:var(--brand);color:var(--text-on-brand);border-color:transparent;box-shadow:0 0 20px -4px var(--brand)}
+.btn.primary:hover{box-shadow:var(--glow-brand)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+
+/* Panels and cards */
+.card{background:var(--bg-100);border:1px solid var(--line-100);border-radius:var(--radius-lg);min-width:0;overflow:hidden}
+.card.stat{background:var(--bg-200);border-radius:var(--radius-md)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--line-100);white-space:nowrap;vertical-align:middle;font:400 14px/20px var(--font-sans)}
+tbody tr:last-child td{border-bottom:0}
+th{font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-200);background:var(--bg-200)}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--bg-200)}
+td.trunc{max-width:280px;overflow:hidden;text-overflow:ellipsis}
+
+/* StatusBadge: dot plus word, never colour alone */
+.st,.badge{display:inline-flex;align-items:center;gap:var(--space-2);font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-100);white-space:nowrap}
+.st::before,.badge::before{content:"";width:8px;height:8px;border-radius:var(--radius-full);background:var(--osa-c);box-shadow:0 0 8px var(--osa-c);flex:none}
+.badge{padding:4px var(--space-2);border-radius:var(--radius-sm);border:1px solid var(--line-200);background:var(--bg-200)}
+.st.ok,.badge.ok{--osa-c:var(--success)}
+.st.err,.badge.err{--osa-c:var(--danger)}
+.st.warn,.badge.warn{--osa-c:var(--warning)}
+.st:empty{gap:0}
+.mono{font:400 13px/20px var(--font-mono)}
+.muted{color:var(--text-200)}
+
+/* MetricTile */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--space-6)}
+.stat{padding:var(--space-4) var(--space-6);display:flex;flex-direction:column-reverse;justify-content:flex-end}
+.stat .v{font:400 28px/36px var(--font-display);letter-spacing:.02em;color:var(--text-100);margin-top:var(--space-2);font-variant-numeric:tabular-nums}
+.stat .l{font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-200)}
+
+/* TraceTree + detail */
+.split{display:grid;grid-template-columns:minmax(280px,380px) minmax(0,1fr);min-height:540px}
+.tree{border-right:1px solid var(--line-100);padding:var(--space-2) 0;overflow:auto}
+.node{display:grid;grid-template-columns:auto 1fr auto;gap:var(--space-2);align-items:center;padding:var(--space-2) var(--space-4);cursor:pointer;font:400 14px/20px var(--font-sans)}
+.node:hover{background:var(--bg-200)}
+.node[aria-selected="true"]{background:var(--bg-300);box-shadow:inset 2px 0 0 var(--brand)}
+.kind{font:500 11px/16px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--text-200);border:1px solid var(--line-200);border-radius:var(--radius-sm);padding:0 6px}
+.detail{padding:var(--space-6);min-width:0}
+.tabs{display:flex;flex-wrap:wrap;gap:var(--space-1);border-bottom:1px solid var(--line-100);margin-bottom:var(--space-6)}
+.tabs button{all:unset;cursor:pointer;padding:var(--space-2) var(--space-4);font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-200)}
+.tabs button[aria-selected="true"]{color:var(--text-100);box-shadow:inset 0 -2px 0 var(--brand)}
+.tabs button:focus-visible{outline:2px solid var(--steel);outline-offset:-2px}
+.io h4{margin:var(--space-6) 0 var(--space-2);font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-200)}
+.io h4:first-child{margin-top:0}
+pre{margin:0;font:400 13px/20px var(--font-mono);color:var(--text-100);white-space:pre-wrap;word-break:break-word;background:var(--bg-000);border:1px solid var(--line-100);border-radius:var(--radius-sm);padding:var(--space-3);max-height:340px;overflow:auto}
+.kv{display:grid;grid-template-columns:180px minmax(0,1fr);gap:var(--space-2) var(--space-4)}
+.kv dt{font:500 12px/20px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-200)}
+.kv dd{margin:0;overflow-wrap:anywhere;font:400 13px/20px var(--font-mono)}
+.checks{list-style:none;margin:var(--space-4) 0 0;padding:0;display:grid;gap:var(--space-2)}
+.checks li{display:grid;grid-template-columns:20px 1fr;gap:var(--space-2);font:400 14px/20px var(--font-sans)}
+.ok-t{color:var(--success)}.err-t{color:var(--danger)}
+.seal{display:block;margin-top:var(--space-2);padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;background:var(--bg-200)}
+.seal.ok{border:1px solid var(--success);color:var(--text-100)}
+.seal.bad{border:1px solid var(--danger);color:var(--danger)}
+
+/* Studio */
+.studio{display:grid;grid-template-columns:240px minmax(0,1fr) 320px;min-height:540px}
+.studio>div{min-width:0}
+.threads{border-right:1px solid var(--line-100);padding:var(--space-3);display:grid;gap:var(--space-1);align-content:start}
+.threads .th{padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);cursor:pointer}
+.threads .th:hover{background:var(--bg-200)}
+.threads .th[aria-selected="true"]{background:var(--bg-300);box-shadow:inset 2px 0 0 var(--brand)}
+.canvas{display:grid;place-items:center;padding:var(--space-8)}
+.flow{display:grid;justify-items:center;gap:var(--space-2)}
+.gnode{background:var(--bg-200);border:1px solid var(--line-100);border-radius:var(--radius-md);padding:var(--space-3) var(--space-6);min-width:180px;text-align:center;font:700 14px/20px var(--font-sans);letter-spacing:.04em;text-transform:uppercase}
+.gnode.start,.gnode.end{border-radius:var(--radius-full);min-width:120px;font:400 13px/20px var(--font-mono);text-transform:none;color:var(--text-200)}
+.gnode.active{border-color:var(--success)}
+.gnode.failed{border-color:var(--danger);color:var(--danger)}
+.gnode.planned{border-style:dashed;border-color:var(--text-300);background:transparent}
+.arrow{font:400 12px/16px var(--font-mono);color:var(--text-200)}
+.state{border-left:1px solid var(--line-100);padding:var(--space-4);display:grid;gap:var(--space-3);align-content:start}
+.state b{font:500 12px/16px var(--font-sans);letter-spacing:.18em;text-transform:uppercase;color:var(--text-200)}
+.empty{padding:var(--space-6);display:grid;gap:var(--space-3)}
+.empty ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--space-3)}
+.empty li{padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);border:1px dashed var(--text-300);background:var(--bg-200)}
+
+@media (max-width:980px){.app{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line-100)}.side .grp,.ws{display:none}.split,.studio{grid-template-columns:1fr}.tree,.threads,.state{border:0;border-bottom:1px solid var(--line-100)}.bar{position:static;padding:var(--space-3) var(--space-4)}.page{padding:var(--space-4)}}
+@media (max-width:520px){.kv{grid-template-columns:1fr}.input{min-width:0;width:100%}h1{font-size:22px;line-height:28px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" aria-label="Nawigacja">
+    <div class="ws"><i>O</i><div><b>OSA</b><small>org_dev</small></div></div>
+    <div class="grp">Observability</div>
+    <button type="button" data-view="projects" id="nav-projects"><span class="ic">≡</span>Tracing projects</button>
+    <button type="button" data-view="runs" id="nav-runs"><span class="ic">▤</span>Runs</button>
+    <button type="button" data-view="monitor" id="nav-monitor"><span class="ic">∿</span><span class="nx">Monitoring</span></button>
+    <button type="button" data-view="threads" id="nav-threads"><span class="ic">☰</span><span class="nx">Threads</span></button>
+    <div class="grp">Build</div>
+    <button type="button" data-view="studio" id="nav-studio"><span class="ic">◇</span>Studio (graph)</button>
+    <button type="button" data-view="prompts" id="nav-prompts"><span class="ic">✎</span><span class="nx">Prompts &amp; Playground</span></button>
+    <div class="grp">Evaluate</div>
+    <button type="button" data-view="datasets" id="nav-datasets"><span class="ic">▦</span><span class="nx">Datasets &amp; Experiments</span></button>
+    <button type="button" data-view="queues" id="nav-queues"><span class="ic">☑</span><span class="nx">Annotation queues</span></button>
+    <div class="grp">Deploy</div>
+    <button type="button" data-view="deploy" id="nav-deploy"><span class="ic">⇪</span><span class="nx">Deployments</span></button>
+    <button type="button" data-view="settings" id="nav-settings"><span class="ic">⚙</span><span class="nx">Settings &amp; API keys</span></button>
+  </aside>
+
+  <div class="main">
+    <div class="bar">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="note"><span class="themes" role="group" aria-label="Motyw"><button type="button" id="t-godmode" data-t="godmode">GODMODE</button><button type="button" id="t-proof" data-t="proof">PROOF</button></span><span><span class="nx">podkreślone</span> = nie istnieje w backendzie</span><span>Dane: 3 prawdziwe runy runtime OSA (commit a321fd2), przykładowe executory</span></div>
+    </div>
+    <div id="view"></div>
+  </div>
+</div>
+
+<script type="application/json" id="osa-data">{"graph":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","version":"1","agents":[{"agent_id":"planner","role":"planner","executor_ref":"dev.planner.v1"},{"agent_id":"builder","role":"builder","executor_ref":"dev.builder.v1"}],"edges":[{"edge_id":"planner_to_builder","from_agent_id":"planner","to_agent_id":"builder","kind":"handoff"}]},"runs":[{"run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","verdict":"VERIFIED","final_output":{"artifact":{"title":"Write landing page copy for OSA DEV","content":"# Write landing page copy for OSA DEV\n\nArtifact produced by the builder agent."},"objective":"Write landing page copy for OSA DEV","upstream":{"plan":{"summary":"two steps","steps":["draft","hash"]},"objective":"Write landing page copy for OSA DEV"}},"events":[{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:1","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":1,"type":"RUN_CREATED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","payload":{"objective":"Write landing page copy for OSA DEV"}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:2","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":2,"type":"RUN_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","payload":{}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:3","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":3,"type":"AGENT_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","agent_id":"planner","payload":{"role":"planner","executor_ref":"dev.planner.v1","operation_id":"exec_f73d431f-5087-412a-a355-c016bc06353a:op:1:planner"}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:4","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":4,"type":"EVIDENCE_RECORDED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","agent_id":"planner","payload":{"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:1","kind":"plan","evidence_sha256":"b5312892765aa0503e23762e89b48607b637f455501ae16632d9d1154281db66"}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:5","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":5,"type":"AGENT_COMPLETED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","agent_id":"planner","payload":{}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:6","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":6,"type":"HANDOFF_CREATED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","agent_id":"planner","payload":{"from_agent_id":"planner","to_agent_id":"builder"}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:7","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":7,"type":"AGENT_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","agent_id":"builder","payload":{"role":"builder","executor_ref":"dev.builder.v1","operation_id":"exec_f73d431f-5087-412a-a355-c016bc06353a:op:2:builder"}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:8","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":8,"type":"EVIDENCE_RECORDED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","agent_id":"builder","payload":{"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:2","kind":"artifact","evidence_sha256":"46a12e31b3438de4aecbfcaf41020d3e2d95ad1bcd6713f74bc27afecf494c00"}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:9","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":9,"type":"AGENT_COMPLETED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","agent_id":"builder","payload":{}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:10","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":10,"type":"VERIFICATION_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","payload":{"requirement_count":1}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:11","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":11,"type":"VERIFICATION_PASSED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","payload":{"proof_id":"proof_75811c7c721e14f4a0dddfee97259da39064852055b151b7dc0f88aead0ed04f"}},{"event_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:event:12","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":12,"type":"RUN_VERIFIED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","payload":{"proof_id":"proof_75811c7c721e14f4a0dddfee97259da39064852055b151b7dc0f88aead0ed04f"}}],"evidence":[{"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:1","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":1,"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","agent_id":"planner","provenance":"EXECUTOR_EVIDENCE","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a"},"producer":{"type":"executor","agent_id":"planner","executor_ref":"dev.planner.v1","operation_id":"exec_f73d431f-5087-412a-a355-c016bc06353a:op:1:planner"},"kind":"plan","data":{"status":"ready","step_count":2,"objective":"Write landing page copy for OSA DEV","source":"example-executor"},"evidence_sha256":"b5312892765aa0503e23762e89b48607b637f455501ae16632d9d1154281db66"},{"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:2","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","sequence":2,"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","agent_id":"builder","provenance":"EXECUTOR_EVIDENCE","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a"},"producer":{"type":"executor","agent_id":"builder","executor_ref":"dev.builder.v1","operation_id":"exec_f73d431f-5087-412a-a355-c016bc06353a:op:2:builder"},"kind":"artifact","data":{"status":"built","title":"Write landing page copy for OSA DEV","content_sha256":"4b0ea111282df7438cb5c6d3e17d3dd0accf4c0c91e15cd5de0aa1f7f2ec660e","bytes":78,"objective":"Write landing page copy for OSA DEV","source":"example-executor"},"content_sha256":"4b0ea111282df7438cb5c6d3e17d3dd0accf4c0c91e15cd5de0aa1f7f2ec660e","content_bytes":78,"evidence_sha256":"46a12e31b3438de4aecbfcaf41020d3e2d95ad1bcd6713f74bc27afecf494c00"}],"observations":[{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:1","sequence":1,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:1","check":"binding","ok":true,"reason":"evidence bound to this execution","observation_sha256":"6f14657889cdf55b2ec43c01b24bec9f287f153380e0aff58ff77c3cee84f747"},{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:2","sequence":2,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:1","check":"evidence_digest","ok":true,"expected":"b5312892765aa0503e23762e89b48607b637f455501ae16632d9d1154281db66","observed":"b5312892765aa0503e23762e89b48607b637f455501ae16632d9d1154281db66","reason":"evidence digest recomputed","observation_sha256":"3b60ab2c59a29a99b08693ee2e802477969c70863886dfec71676a4f2b278d16"},{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:3","sequence":3,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:2","check":"binding","ok":true,"reason":"evidence bound to this execution","observation_sha256":"167a52a8750be3fcd328fce68cad18c4cc4ba7fac945e929389f7498d2ccaea2"},{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:4","sequence":4,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:2","check":"evidence_digest","ok":true,"expected":"46a12e31b3438de4aecbfcaf41020d3e2d95ad1bcd6713f74bc27afecf494c00","observed":"46a12e31b3438de4aecbfcaf41020d3e2d95ad1bcd6713f74bc27afecf494c00","reason":"evidence digest recomputed","observation_sha256":"8e8daaa15879199fee799b96175b61a98372e173a880075c92c275d87e02fc31"},{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:5","sequence":5,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:2","check":"content_digest","ok":true,"expected":"4b0ea111282df7438cb5c6d3e17d3dd0accf4c0c91e15cd5de0aa1f7f2ec660e","observed":"4b0ea111282df7438cb5c6d3e17d3dd0accf4c0c91e15cd5de0aa1f7f2ec660e","reason":"claimed content digest matches core-computed digest","observation_sha256":"0fc7b7004b3f73b95102a2f738d5627d89ea46288afb57e6215e1cb408bbcfec"}],"proof":{"schema":"osa.proof_receipt.v2","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_landing_copy","run_id":"run_6101dd364aefa2249058d90f","execution_id":"exec_f73d431f-5087-412a-a355-c016bc06353a"},"verdict":"VERIFIED","requirement_verdicts":[{"requirement_id":"artifact_status","verdict":"VERIFIED","evidence_ids":["run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:2"],"reason":"evidence satisfied the explicit acceptance requirement"}],"evidence_ids":["run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:1","run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:2"],"evidence_refs":[{"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:1","evidence_sha256":"b5312892765aa0503e23762e89b48607b637f455501ae16632d9d1154281db66"},{"evidence_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:evidence:2","evidence_sha256":"46a12e31b3438de4aecbfcaf41020d3e2d95ad1bcd6713f74bc27afecf494c00"}],"evidence_root":"6d9b4d9c90731c9101763365f143c6ea99d38ce4cd5ca0319e1d202751be8ddd","observation_refs":[{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:1","observation_sha256":"6f14657889cdf55b2ec43c01b24bec9f287f153380e0aff58ff77c3cee84f747"},{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:2","observation_sha256":"3b60ab2c59a29a99b08693ee2e802477969c70863886dfec71676a4f2b278d16"},{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:3","observation_sha256":"167a52a8750be3fcd328fce68cad18c4cc4ba7fac945e929389f7498d2ccaea2"},{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:4","observation_sha256":"8e8daaa15879199fee799b96175b61a98372e173a880075c92c275d87e02fc31"},{"observation_id":"run_6101dd364aefa2249058d90f:exec_f73d431f-5087-412a-a355-c016bc06353a:observation:5","observation_sha256":"0fc7b7004b3f73b95102a2f738d5627d89ea46288afb57e6215e1cb408bbcfec"}],"final_output_sha256":"ff9481445a64bdb1453610d917d4b3cb3ea0abb20eeb8b856dffa945ee13e663","created_at":"2026-09-28T09:21:00.000Z","verifier":{"name":"osa-proof-deterministic","version":"2"},"proof_id":"proof_75811c7c721e14f4a0dddfee97259da39064852055b151b7dc0f88aead0ed04f","receipt_sha256":"75811c7c721e14f4a0dddfee97259da39064852055b151b7dc0f88aead0ed04f"},"mode":"ok"},{"run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","verdict":"FAILED","final_output":{"artifact":{"title":"Draft the proof receipt API spec","content":"# Draft the proof receipt API spec\n\nArtifact produced by the builder agent."},"objective":"Draft the proof receipt API spec","upstream":{"plan":{"summary":"two steps","steps":["draft","hash"]},"objective":"Draft the proof receipt API spec"}},"events":[{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:1","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":1,"type":"RUN_CREATED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","payload":{"objective":"Draft the proof receipt API spec"}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:2","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":2,"type":"RUN_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","payload":{}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:3","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":3,"type":"AGENT_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","agent_id":"planner","payload":{"role":"planner","executor_ref":"dev.planner.v1","operation_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:op:1:planner"}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:4","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":4,"type":"EVIDENCE_RECORDED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","agent_id":"planner","payload":{"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:1","kind":"plan","evidence_sha256":"1b1ca9fb51cc0930a646b7cb73b227d0f7cf2b0ce08821e9e97a41bd4387d6b9"}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:5","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":5,"type":"AGENT_COMPLETED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","agent_id":"planner","payload":{}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:6","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":6,"type":"HANDOFF_CREATED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","agent_id":"planner","payload":{"from_agent_id":"planner","to_agent_id":"builder"}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:7","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":7,"type":"AGENT_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","agent_id":"builder","payload":{"role":"builder","executor_ref":"dev.builder.v1","operation_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:op:2:builder"}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:8","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":8,"type":"EVIDENCE_RECORDED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","agent_id":"builder","payload":{"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:2","kind":"artifact","evidence_sha256":"c5d98343eb697d25550e45db40580b1fd9319db8a2f340be8a1f942d51d34baf"}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:9","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":9,"type":"AGENT_COMPLETED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","agent_id":"builder","payload":{}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:10","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":10,"type":"VERIFICATION_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","payload":{"requirement_count":1}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:11","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":11,"type":"VERIFICATION_FAILED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","payload":{"proof_id":"proof_5ad0381bdb7370c82158c579d968182d3bef790e2bc946beb40b7451e049554b","verdict":"FAILED"}},{"event_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:event:12","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":12,"type":"RUN_FAILED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","payload":{"proof_id":"proof_5ad0381bdb7370c82158c579d968182d3bef790e2bc946beb40b7451e049554b"}}],"evidence":[{"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:1","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":1,"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","agent_id":"planner","provenance":"EXECUTOR_EVIDENCE","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0"},"producer":{"type":"executor","agent_id":"planner","executor_ref":"dev.planner.v1","operation_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:op:1:planner"},"kind":"plan","data":{"status":"ready","step_count":2,"objective":"Draft the proof receipt API spec","source":"example-executor"},"evidence_sha256":"1b1ca9fb51cc0930a646b7cb73b227d0f7cf2b0ce08821e9e97a41bd4387d6b9"},{"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:2","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","sequence":2,"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","agent_id":"builder","provenance":"EXECUTOR_EVIDENCE","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0"},"producer":{"type":"executor","agent_id":"builder","executor_ref":"dev.builder.v1","operation_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:op:2:builder"},"kind":"artifact","data":{"status":"built","title":"Draft the proof receipt API spec","content_sha256":"9d9d56051b7344b869e54a8ecebf1b39f21fe2449222bbdd135e9a608b216738","bytes":75,"objective":"Draft the proof receipt API spec","source":"example-executor"},"content_sha256":"ead0549310672f65ca5348b81e575f2796ba192f550b5ed7f39cd50efb9a2782","content_bytes":75,"evidence_sha256":"c5d98343eb697d25550e45db40580b1fd9319db8a2f340be8a1f942d51d34baf"}],"observations":[{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:1","sequence":1,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:1","check":"binding","ok":true,"reason":"evidence bound to this execution","observation_sha256":"eee55ec255247f6a98df6f10620596671d773be54c975a0101639cb90c53e6dd"},{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:2","sequence":2,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:1","check":"evidence_digest","ok":true,"expected":"1b1ca9fb51cc0930a646b7cb73b227d0f7cf2b0ce08821e9e97a41bd4387d6b9","observed":"1b1ca9fb51cc0930a646b7cb73b227d0f7cf2b0ce08821e9e97a41bd4387d6b9","reason":"evidence digest recomputed","observation_sha256":"18261f1d0e4ee7646cd0def8a1f703dcc7b26709a4499a14c8e92c3e4bc72052"},{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:3","sequence":3,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:2","check":"binding","ok":true,"reason":"evidence bound to this execution","observation_sha256":"8509383d9356f9d26e83b3f6652bc9a46f2c875215cfdb5019b44237d8fde171"},{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:4","sequence":4,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:2","check":"evidence_digest","ok":true,"expected":"c5d98343eb697d25550e45db40580b1fd9319db8a2f340be8a1f942d51d34baf","observed":"c5d98343eb697d25550e45db40580b1fd9319db8a2f340be8a1f942d51d34baf","reason":"evidence digest recomputed","observation_sha256":"80695bd49bff25cbe1e384cfc3e8ee0c480339e58dfc688cdf580ba32e812781"},{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:5","sequence":5,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:2","check":"content_digest","ok":false,"expected":"9d9d56051b7344b869e54a8ecebf1b39f21fe2449222bbdd135e9a608b216738","observed":"ead0549310672f65ca5348b81e575f2796ba192f550b5ed7f39cd50efb9a2782","reason":"claimed content digest does not match core-computed digest","observation_sha256":"7796e045d2abede017bb9cf0f111a379a56a9b78dbde70b99a14a889feff36a0"}],"proof":{"schema":"osa.proof_receipt.v2","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_api_spec","run_id":"run_713f4465db3a2ab10504a189","execution_id":"exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0"},"verdict":"FAILED","requirement_verdicts":[{"requirement_id":"artifact_status","verdict":"FAILED","evidence_ids":["run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:2"],"reason":"evidence failed integrity checks: content_digest: claimed content digest does not match core-computed digest"}],"evidence_ids":["run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:1","run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:2"],"evidence_refs":[{"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:1","evidence_sha256":"1b1ca9fb51cc0930a646b7cb73b227d0f7cf2b0ce08821e9e97a41bd4387d6b9"},{"evidence_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:evidence:2","evidence_sha256":"c5d98343eb697d25550e45db40580b1fd9319db8a2f340be8a1f942d51d34baf"}],"evidence_root":"b3759b11e449dc5a6c21a6cec489b3c9529f38770e2ff343f9da241df34e561a","observation_refs":[{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:1","observation_sha256":"eee55ec255247f6a98df6f10620596671d773be54c975a0101639cb90c53e6dd"},{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:2","observation_sha256":"18261f1d0e4ee7646cd0def8a1f703dcc7b26709a4499a14c8e92c3e4bc72052"},{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:3","observation_sha256":"8509383d9356f9d26e83b3f6652bc9a46f2c875215cfdb5019b44237d8fde171"},{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:4","observation_sha256":"80695bd49bff25cbe1e384cfc3e8ee0c480339e58dfc688cdf580ba32e812781"},{"observation_id":"run_713f4465db3a2ab10504a189:exec_e5c8d3c4-3140-45ac-931a-98c5fff404a0:observation:5","observation_sha256":"7796e045d2abede017bb9cf0f111a379a56a9b78dbde70b99a14a889feff36a0"}],"final_output_sha256":"d56ea1453bceba570fde237ba11015a40f233e701a6d2661542d71a348b8d277","created_at":"2026-09-28T09:28:00.000Z","verifier":{"name":"osa-proof-deterministic","version":"2"},"proof_id":"proof_5ad0381bdb7370c82158c579d968182d3bef790e2bc946beb40b7451e049554b","receipt_sha256":"5ad0381bdb7370c82158c579d968182d3bef790e2bc946beb40b7451e049554b"},"mode":"tamper"},{"run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","verdict":"FAILED","final_output":{"plan":{"summary":"two steps","steps":["draft","hash"]},"objective":"Prepare release notes for Slice 2"},"events":[{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:1","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":1,"type":"RUN_CREATED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","payload":{"objective":"Prepare release notes for Slice 2"}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:2","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":2,"type":"RUN_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","payload":{}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:3","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":3,"type":"AGENT_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","agent_id":"planner","payload":{"role":"planner","executor_ref":"dev.planner.v1","operation_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378:op:1:planner"}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:4","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":4,"type":"EVIDENCE_RECORDED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","agent_id":"planner","payload":{"evidence_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:evidence:1","kind":"plan","evidence_sha256":"76d98d8013e95735baffe41fdac69600236516cf7438e96c6277879eb051bb67"}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:5","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":5,"type":"AGENT_COMPLETED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","agent_id":"planner","payload":{}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:6","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":6,"type":"HANDOFF_CREATED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","agent_id":"planner","payload":{"from_agent_id":"planner","to_agent_id":"builder"}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:7","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":7,"type":"AGENT_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","agent_id":"builder","payload":{"role":"builder","executor_ref":"dev.builder.v1","operation_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378:op:2:builder"}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:8","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":8,"type":"AGENT_FAILED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","agent_id":"builder","payload":{"error":"builder crashed: upstream tool timeout"}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:9","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":9,"type":"VERIFICATION_STARTED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","payload":{"requirement_count":1}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:10","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":10,"type":"VERIFICATION_FAILED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","payload":{"proof_id":"proof_7eab857fcdd848869613245331cc69f0c143ec8340cf6c0fb47aedeeb71554cc","verdict":"FAILED"}},{"event_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:event:11","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":11,"type":"RUN_FAILED","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","payload":{"proof_id":"proof_7eab857fcdd848869613245331cc69f0c143ec8340cf6c0fb47aedeeb71554cc"}}],"evidence":[{"evidence_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:evidence:1","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","sequence":1,"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","agent_id":"planner","provenance":"EXECUTOR_EVIDENCE","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378"},"producer":{"type":"executor","agent_id":"planner","executor_ref":"dev.planner.v1","operation_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378:op:1:planner"},"kind":"plan","data":{"status":"ready","step_count":2,"objective":"Prepare release notes for Slice 2","source":"example-executor"},"evidence_sha256":"76d98d8013e95735baffe41fdac69600236516cf7438e96c6277879eb051bb67"}],"observations":[{"observation_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:observation:1","sequence":1,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:evidence:1","check":"binding","ok":true,"reason":"evidence bound to this execution","observation_sha256":"4558d1a739678259684f575a4e3232cfd41e2721402ce17e517b3eccd755f9b3"},{"observation_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:observation:2","sequence":2,"provenance":"VERIFIER_OBSERVATION","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378"},"producer":{"type":"verifier","name":"osa-proof-deterministic","version":"2"},"evidence_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:evidence:1","check":"evidence_digest","ok":true,"expected":"76d98d8013e95735baffe41fdac69600236516cf7438e96c6277879eb051bb67","observed":"76d98d8013e95735baffe41fdac69600236516cf7438e96c6277879eb051bb67","reason":"evidence digest recomputed","observation_sha256":"9214dbde824cc914c8e9453ab00df7528255f930e0cc02677731862b0fb1d3b5"}],"proof":{"schema":"osa.proof_receipt.v2","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378","organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","binding":{"organization_id":"org_dev","project_id":"project_dev_live_slice","team_id":"team_dev","team_version":"1","mission_id":"mission_release_notes","run_id":"run_151d05fc9cd9eab8c413e60c","execution_id":"exec_a2bfd23d-2187-4aed-88a2-feb675459378"},"verdict":"FAILED","requirement_verdicts":[{"requirement_id":"artifact_status","verdict":"INCOMPLETE","evidence_ids":[],"reason":"required evidence was not produced"},{"requirement_id":"__runtime_execution__","verdict":"FAILED","evidence_ids":[],"reason":"builder crashed: upstream tool timeout"}],"runtime_failure":"builder crashed: upstream tool timeout","evidence_ids":["run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:evidence:1"],"evidence_refs":[{"evidence_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:evidence:1","evidence_sha256":"76d98d8013e95735baffe41fdac69600236516cf7438e96c6277879eb051bb67"}],"evidence_root":"43696f135a3693e0b4bc8a732e43f1fcb3b8ad70958bbc675e60626228bd19b4","observation_refs":[{"observation_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:observation:1","observation_sha256":"4558d1a739678259684f575a4e3232cfd41e2721402ce17e517b3eccd755f9b3"},{"observation_id":"run_151d05fc9cd9eab8c413e60c:exec_a2bfd23d-2187-4aed-88a2-feb675459378:observation:2","observation_sha256":"9214dbde824cc914c8e9453ab00df7528255f930e0cc02677731862b0fb1d3b5"}],"final_output_sha256":"f9d91eea7efc53de0d9bc2085c8fc6176bdc3531f0d2681a57cb06fc18c38987","created_at":"2026-09-28T09:35:00.000Z","verifier":{"name":"osa-proof-deterministic","version":"2"},"proof_id":"proof_7eab857fcdd848869613245331cc69f0c143ec8340cf6c0fb47aedeeb71554cc","receipt_sha256":"7eab857fcdd848869613245331cc69f0c143ec8340cf6c0fb47aedeeb71554cc"},"mode":"crash"}]}</script>
+<script>
+(function(){
+  "use strict";
+  var DATA = JSON.parse(document.getElementById("osa-data").textContent);
+  var RUNS = DATA.runs, GRAPH = DATA.graph;
+  var state = { view: "runs", run: 0, span: "root", tab: "run", thread: 0, working: null };
+
+  function h(tag, attrs, kids){
+    var e = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function(k){
+      if (k === "class") e.className = attrs[k];
+      else if (k === "text") e.textContent = attrs[k];
+      else if (k.slice(0,2) === "on") e.addEventListener(k.slice(2), attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function(c){ if (c != null) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return e;
+  }
+  function nx(text){ return h("span", { class: "nx", text: text }); }
+  function short(s, n){ s = String(s); return s.length > (n||12) ? s.slice(0, n||12) + "…" : s; }
+  function statusEl(v){ var c = v === "VERIFIED" ? "ok" : v === "FAILED" ? "err" : "warn"; return h("span", { class: "st " + c, text: v === "VERIFIED" ? "Success" : v === "FAILED" ? "Error" : "Warning" }); }
+  function proofBadge(v){ return h("span", { class: "badge " + (v === "VERIFIED" ? "ok" : v === "FAILED" ? "err" : "warn"), text: "Proof " + v }); }
+  function objective(run){ var e = run.events.find(function(x){ return x.type === "RUN_CREATED"; }); return e ? e.payload.objective : ""; }
+  function when(run){ return run.proof.created_at.replace("T", " ").slice(0, 19); }
+  function keyActivate(fn){ return function(ev){ if (ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); fn(); } }; }
+
+  // Canonical JSON + SHA-256, identical to packages/proof-core/src/canonical.ts
+  function canon(v){
+    if (v === null) return "null";
+    var t = typeof v;
+    if (t === "boolean" || t === "string") return JSON.stringify(v);
+    if (t === "number"){ if (!isFinite(v)) throw new Error("non-finite"); return JSON.stringify(v); }
+    if (Array.isArray(v)) return "[" + v.map(function(x){ return x === undefined ? "null" : canon(x); }).join(",") + "]";
+    return "{" + Object.keys(v).sort().filter(function(k){ return v[k] !== undefined; }).map(function(k){ return JSON.stringify(k) + ":" + canon(v[k]); }).join(",") + "}";
+  }
+  async function sha(s){ var b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map(function(x){ return x.toString(16).padStart(2, "0"); }).join(""); }
+  function without(o, f){ var c = Object.assign({}, o); delete c[f]; return c; }
+  async function verify(run){
+    var r = run.proof, out = [];
+    out.push([(await sha(canon(without(without(r, "proof_id"), "receipt_sha256")))) === r.receipt_sha256, "receipt_sha256 matches receipt contents"]);
+    out.push([r.proof_id === "proof_" + r.receipt_sha256, "proof_id commits to receipt_sha256"]);
+    var refs = []; for (var i = 0; i < run.evidence.length; i++) refs.push({ evidence_id: run.evidence[i].evidence_id, evidence_sha256: await sha(canon(without(run.evidence[i], "evidence_sha256"))) });
+    out.push([canon(refs) === canon(r.evidence_refs), "evidence digests match receipt (" + refs.length + ")"]);
+    out.push([(await sha(canon(r.evidence_refs))) === r.evidence_root, "evidence_root matches"]);
+    var ob = []; for (var j = 0; j < run.observations.length; j++) ob.push({ observation_id: run.observations[j].observation_id, observation_sha256: await sha(canon(without(run.observations[j], "observation_sha256"))) });
+    out.push([canon(ob) === canon(r.observation_refs), "verifier observations match (" + ob.length + ")"]);
+    out.push([(await sha(canon(run.final_output))) === r.final_output_sha256, "final output matches final_output_sha256"]);
+    return out;
+  }
+
+  // Trace tree from real runtime events: root run -> agent spans -> evidence leaves.
+  function spans(run){
+    var root = { id: "root", name: "OsaRuntime.run", kind: "chain", status: run.verdict, children: [] };
+    var byAgent = {};
+    run.events.forEach(function(e){
+      if (e.type === "AGENT_STARTED"){ byAgent[e.agent_id] = { id: "agent:" + e.agent_id, name: e.agent_id, kind: "agent", status: "RUNNING", ref: e.payload.executor_ref, op: e.payload.operation_id, children: [], events: [] }; root.children.push(byAgent[e.agent_id]); }
+      var s = byAgent[e.agent_id];
+      if (s){ s.events.push(e); if (e.type === "AGENT_COMPLETED") s.status = "VERIFIED"; if (e.type === "AGENT_FAILED"){ s.status = "FAILED"; s.error = e.payload.error; } }
+    });
+    run.evidence.forEach(function(ev){ var s = byAgent[ev.agent_id]; if (s) s.children.push({ id: "ev:" + ev.evidence_id, name: ev.kind, kind: "evidence", status: "VERIFIED", evidence: ev }); });
+    root.children.push({ id: "verifier", name: "DeterministicProofVerifier", kind: "verifier", status: run.verdict, children: [] });
+    return root;
+  }
+  function flat(node, depth, list){ list.push({ node: node, depth: depth }); (node.children || []).forEach(function(c){ flat(c, depth + 1, list); }); return list; }
+
+  var VIEWS = {};
+
+  VIEWS.projects = function(){
+    var ver = RUNS.filter(function(r){ return r.verdict === "VERIFIED"; }).length;
+    return h("div", { class: "page" }, [
+      h("div", { class: "head" }, [h("h1", { text: "Tracing projects" }), h("p", { class: "sub", text: "Każdy projekt zbiera runy jednej aplikacji." })]),
+      h("div", { class: "toolbar" }, [h("span", { class: "input" }, [nx("Szukaj projektów")]), h("button", { class: "btn primary", type: "button" }, [nx("+ New project")])]),
+      h("div", { class: "card tbl" }, [h("table", null, [
+        h("thead", null, [h("tr", null, ["Name","Run count","Error rate","P50 latency","P99 latency","Total tokens","Total cost","Most recent run","Feedback"].map(function(c, i){ return h("th", null, [i >= 3 && i <= 6 || i === 8 ? nx(c) : c]); }))]),
+        h("tbody", null, [h("tr", { class: "click", tabindex: "0", onclick: function(){ go("runs"); }, onkeydown: keyActivate(function(){ go("runs"); }) }, [
+          h("td", null, [h("b", { text: "team_dev" }), " ", h("span", { class: "muted mono", text: "org_dev/project_dev_live_slice" })]),
+          h("td", { text: String(RUNS.length) }),
+          h("td", { text: Math.round((RUNS.length - ver) / RUNS.length * 100) + "%" }),
+          h("td", null, [nx("—")]), h("td", null, [nx("—")]), h("td", null, [nx("—")]), h("td", null, [nx("—")]),
+          h("td", { class: "mono", text: when(RUNS[RUNS.length - 1]) }),
+          h("td", null, [nx("—")])
+        ])])
+      ])]),
+      h("p", { class: "muted", text: "Error rate liczony w przeglądarce z 3 osadzonych runów; API nie ma listy projektów ani agregacji." })
+    ]);
+  };
+
+  VIEWS.runs = function(){
+    var ver = RUNS.filter(function(r){ return r.verdict === "VERIFIED"; }).length;
+    return h("div", { class: "page" }, [
+      h("div", { class: "head" }, [h("h1", { text: "team_dev" }), h("p", { class: "sub", text: "Runy projektu. Kliknij run, aby otworzyć trace." })]),
+      h("div", { class: "stats" }, [
+        h("div", { class: "card stat" }, [h("div", { class: "v", text: String(RUNS.length) }), h("div", { class: "l", text: "Runs" })]),
+        h("div", { class: "card stat" }, [h("div", { class: "v", text: String(ver) }), h("div", { class: "l", text: "Proof VERIFIED" })]),
+        h("div", { class: "card stat" }, [h("div", { class: "v", text: String(RUNS.length - ver) }), h("div", { class: "l", text: "Proof FAILED" })]),
+        h("div", { class: "card stat" }, [h("div", { class: "v" }, [nx("—")]), h("div", { class: "l" }, [nx("P50 latency")])]),
+        h("div", { class: "card stat" }, [h("div", { class: "v" }, [nx("—")]), h("div", { class: "l" }, [nx("Tokens")])]),
+        h("div", { class: "card stat" }, [h("div", { class: "v" }, [nx("—")]), h("div", { class: "l" }, [nx("Cost")])])
+      ]),
+      h("div", { class: "toolbar" }, [h("span", { class: "input" }, [nx("Filter runs (status, tags, metadata)")]), h("button", { class: "btn", type: "button" }, [nx("Columns")]), h("button", { class: "btn", type: "button" }, [nx("Add to dataset")]), h("button", { class: "btn", type: "button" }, [nx("Add to annotation queue")]), h("button", { class: "btn", type: "button" }, [nx("Export")])]),
+      h("div", { class: "card tbl" }, [h("table", null, [
+        h("thead", null, [h("tr", null, ["Name","Input","Output","Status","Proof","Start time","Latency","Tokens","Cost","Tags","Feedback"].map(function(c, i){ return h("th", null, [i >= 6 ? nx(c) : c]); }))]),
+        h("tbody", null, RUNS.map(function(run, i){
+          function open(){ state.run = i; state.span = "root"; state.tab = "run"; go("trace"); }
+          var out = run.final_output && run.final_output.artifact ? (run.final_output.artifact.title || "artifact") : run.final_output && run.final_output.plan ? "plan only" : "—";
+          return h("tr", { class: "click", tabindex: "0", onclick: open, onkeydown: keyActivate(open) }, [
+            h("td", null, [h("b", { text: run.proof.mission_id })]),
+            h("td", { class: "trunc", text: objective(run) }),
+            h("td", { class: "trunc", text: out }),
+            h("td", null, [statusEl(run.verdict)]),
+            h("td", null, [proofBadge(run.verdict)]),
+            h("td", { class: "mono", text: when(run) }),
+            h("td", null, [nx("—")]), h("td", null, [nx("—")]), h("td", null, [nx("—")]), h("td", null, [nx("—")]), h("td", null, [nx("—")])
+          ]);
+        }))
+      ])])
+    ]);
+  };
+
+  VIEWS.trace = function(){
+    var run = RUNS[state.run];
+    if (!state.working || state.working.proof.proof_id !== run.proof.proof_id) state.working = structuredClone(run);
+    var tree = spans(state.working), list = flat(tree, 0, []);
+    var sel = list.find(function(x){ return x.node.id === state.span; }) || list[0];
+    var nodes = list.map(function(item){
+      var n = item.node;
+      function pick(){ state.span = n.id; render(); }
+      return h("div", { class: "node", role: "treeitem", tabindex: "0", "aria-selected": String(n.id === sel.node.id), style: "padding-left:" + (12 + item.depth * 16) + "px", onclick: pick, onkeydown: keyActivate(pick) }, [
+        h("span", { class: "kind", text: n.kind }), h("span", { text: n.name }),
+        n.status === "FAILED" ? h("span", { class: "st err", text: "" }) : h("span", { class: "st ok", text: "" })
+      ]);
+    });
+    var tabs = [["run","Run"],["proof","Proof"],["feedback","Feedback"],["metadata","Metadata"]];
+    return h("div", { class: "page" }, [
+      h("div", { class: "toolbar", style: "justify-content:space-between" }, [
+        h("div", null, [h("h1", { text: run.proof.mission_id }), h("p", { class: "sub mono", text: run.run_id + " · " + run.execution_id })]),
+        h("div", { class: "toolbar" }, [statusEl(run.verdict), proofBadge(run.verdict), h("button", { class: "btn", type: "button" }, [nx("Open in Playground")]), h("button", { class: "btn", type: "button" }, [nx("Share")]), h("button", { class: "btn", type: "button", onclick: function(){ go("runs"); } }, ["← Runs"])])
+      ]),
+      h("div", { class: "card split" }, [
+        h("div", { class: "tree", role: "tree", "aria-label": "Trace" }, nodes),
+        h("div", { class: "detail" }, [
+          h("div", { class: "tabs", role: "tablist" }, tabs.map(function(t){
+            var label = t[0] === "feedback" ? nx(t[1]) : t[1];
+            return h("button", { type: "button", role: "tab", "aria-selected": String(state.tab === t[0]), onclick: function(){ state.tab = t[0]; render(); } }, [label]);
+          })),
+          detailPane(sel.node, run)
+        ])
+      ])
+    ]);
+  };
+
+  function detailPane(n, run){
+    var w = state.working;
+    if (state.tab === "proof") return proofPane(w);
+    if (state.tab === "feedback") return h("div", { class: "empty" }, [h("p", { class: "muted", text: "Ocena runu przez człowieka lub evaluatora." }), h("ul", null, [h("li", null, [nx("Thumbs up / down")]), h("li", null, [nx("Score i komentarz")]), h("li", null, [nx("Feedback z evaluatorów online")])])]);
+    if (state.tab === "metadata"){
+      var dl = h("dl", { class: "kv" });
+      [["run_id", w.run_id], ["execution_id", w.execution_id], ["organization", w.proof.organization_id], ["project", w.proof.project_id], ["team", w.proof.team_id + " v" + w.proof.team_version], ["mission", w.proof.mission_id], ["created_at", w.proof.created_at]].forEach(function(p){ dl.appendChild(h("dt", { text: p[0] })); dl.appendChild(h("dd", { class: "mono", text: p[1] })); });
+      if (n.op){ dl.appendChild(h("dt", { text: "operation_id" })); dl.appendChild(h("dd", { class: "mono", text: n.op })); }
+      dl.appendChild(h("dt", null, [nx("tags")])); dl.appendChild(h("dd", null, [nx("—")]));
+      dl.appendChild(h("dt", null, [nx("model / tokens")])); dl.appendChild(h("dd", null, [nx("—")]));
+      return dl;
+    }
+    // Run tab: input / output per span
+    if (n.kind === "chain") return h("div", { class: "io" }, [h("h4", { text: "Input" }), h("pre", { text: JSON.stringify({ objective: objective(w) }, null, 2) }), h("h4", { text: "Output" }), h("pre", { text: JSON.stringify(w.final_output, null, 2) })]);
+    if (n.kind === "agent") return h("div", { class: "io" }, [
+      h("dl", { class: "kv" }, [h("dt", { text: "executor_ref" }), h("dd", { class: "mono", text: n.ref }), h("dt", { text: "status" }), h("dd", null, [statusEl(n.status)])]),
+      n.error ? h("div", null, [h("h4", { text: "Error" }), h("pre", { text: n.error })]) : null,
+      h("h4", null, [nx("Input / Output tego kroku")]), h("p", { class: "muted", text: "Runtime nie zapisuje wejścia i wyjścia pojedynczego agenta, tylko wynik końcowy." }),
+      h("h4", { text: "Events" }), h("pre", { text: n.events.map(function(e){ return e.sequence + "  " + e.type; }).join("\n") })
+    ]);
+    if (n.kind === "evidence") return h("div", { class: "io" }, [h("h4", { text: "Evidence record" }), h("pre", { text: JSON.stringify(n.evidence, null, 2) }),
+      h("h4", { text: "Verifier observations" }), h("pre", { text: w.observations.filter(function(o){ return o.evidence_id === n.evidence.evidence_id; }).map(function(o){ return (o.ok ? "✓ " : "✕ ") + o.check + " · " + o.reason; }).join("\n") })]);
+    return proofPane(w);
+  }
+
+  function proofPane(w){
+    var r = w.proof, dl = h("dl", { class: "kv" });
+    [["verdict", r.verdict], ["proof_id", r.proof_id], ["receipt_sha256", r.receipt_sha256], ["evidence_root", r.evidence_root], ["final_output_sha256", r.final_output_sha256], ["runtime_failure", r.runtime_failure || "—"], ["verifier", r.verifier.name + " v" + r.verifier.version]].forEach(function(p){ dl.appendChild(h("dt", { text: p[0] })); dl.appendChild(h("dd", { class: "mono", text: p[1] })); });
+    var reqs = h("pre", { text: r.requirement_verdicts.map(function(v){ return v.verdict.padEnd(10) + v.requirement_id + " · " + v.reason; }).join("\n") });
+    var checks = h("ul", { class: "checks", "aria-live": "polite" });
+    async function run(){
+      checks.textContent = "";
+      var res = await verify(w);
+      res.forEach(function(c){ checks.appendChild(h("li", null, [h("span", { class: c[0] ? "ok-t" : "err-t", text: c[0] ? "✓" : "✕" }), h("span", { text: c[1] })])); });
+      var all = res.every(function(c){ return c[0]; });
+      checks.appendChild(h("li", { class: "seal " + (all ? "ok" : "bad") }, [all ? "Receipt intact · verdict " + r.verdict + " is binding" : "Receipt tampered · verdict is void"]));
+    }
+    var box = h("div", { class: "io" }, [dl, h("h4", { text: "Requirements" }), reqs,
+      h("div", { class: "toolbar", style: "margin-top:12px" }, [
+        h("button", { class: "btn primary", type: "button", onclick: run }, ["Verify receipt in browser"]),
+        h("button", { class: "btn", type: "button", onclick: function(){ r.verdict = r.verdict === "VERIFIED" ? "FAILED" : "VERIFIED"; render(); } }, ["Tamper: flip verdict"]),
+        h("button", { class: "btn", type: "button", onclick: function(){ var a = w.evidence[w.evidence.length - 1]; a.data.status = a.data.status === "built" ? "rejected" : "built"; render(); } }, ["Tamper: edit evidence"]),
+        h("button", { class: "btn", type: "button", onclick: function(){ state.working = structuredClone(RUNS[state.run]); render(); } }, ["Reset"])
+      ]), checks,
+      h("p", { class: "muted" }, [nx("Podpis receipt"), " · ", nx("Niezależny verifier"), " · ", nx("Eksport receipt")])
+    ]);
+    setTimeout(run, 0);
+    return box;
+  }
+
+  VIEWS.studio = function(){
+    var run = RUNS[state.thread];
+    var failedAgent = (run.events.find(function(e){ return e.type === "AGENT_FAILED"; }) || {}).agent_id;
+    function node(id, label){ var cls = "gnode" + (failedAgent === id ? " failed" : " active"); return h("div", { class: cls, text: label }); }
+    return h("div", { class: "page" }, [
+      h("div", { class: "toolbar", style: "justify-content:space-between" }, [
+        h("div", null, [h("h1", { text: "Studio · " + GRAPH.team_id + " v" + GRAPH.version }), h("p", { class: "sub", text: "Graf z Team Graph, wątki to wykonania misji." })]),
+        h("div", { class: "toolbar" }, [h("button", { class: "btn", type: "button" }, [nx("Interrupt before node")]), h("button", { class: "btn", type: "button" }, [nx("Interrupt after node")]), h("button", { class: "btn primary", type: "button" }, [nx("Submit new input")])])
+      ]),
+      h("div", { class: "card studio" }, [
+        h("div", { class: "threads" }, [h("div", { class: "muted", style: "padding:4px 8px 8px", text: "Threads" })].concat(RUNS.map(function(r, i){
+          function pick(){ state.thread = i; render(); }
+          return h("div", { class: "th", tabindex: "0", role: "button", "aria-selected": String(i === state.thread), onclick: pick, onkeydown: keyActivate(pick) }, [h("div", { text: r.proof.mission_id }), h("div", { class: "muted mono", text: short(r.execution_id, 18) })]);
+        }))),
+        h("div", { class: "canvas" }, [h("div", { class: "flow" }, [
+          h("div", { class: "gnode start", text: "__start__" }), h("div", { class: "arrow", text: "↓" }),
+          node("planner", "planner"), h("div", { class: "arrow", text: "↓ handoff" }),
+          node("builder", "builder"), h("div", { class: "arrow" }, [nx("↓ conditional")]),
+          h("div", { class: "gnode planned" }, [nx("reviewer")]), h("div", { class: "arrow", text: "↓" }),
+          h("div", { class: "gnode end", text: "__end__" })
+        ])]),
+        h("div", { class: "state" }, [
+          h("b", { text: "State" }),
+          h("pre", { text: JSON.stringify(run.final_output, null, 2) }),
+          h("div", null, [nx("Edit state and fork")]), h("div", null, [nx("Checkpoints / time travel")]), h("div", null, [nx("Resume from interrupt")]), h("div", null, [nx("Stream tokens")])
+        ])
+      ])
+    ]);
+  };
+
+  function planned(title, sub, items){ return function(){ return h("div", { class: "page" }, [h("div", { class: "head" }, [h("h1", null, [nx(title)]), h("p", { class: "sub", text: sub })]), h("div", { class: "card empty" }, [h("ul", null, items.map(function(t){ return h("li", null, [nx(t)]); }))])]); }; }
+  VIEWS.monitor = planned("Monitoring", "Wykresy dla projektu w czasie.", ["Trace count", "Latency P50 / P99", "Error rate", "Token usage", "Cost", "Feedback scores", "Alerty"]);
+  VIEWS.threads = planned("Threads", "Wieloturowe rozmowy zgrupowane po thread_id.", ["Lista wątków", "Widok rozmowy", "Feedback per turn"]);
+  VIEWS.prompts = planned("Prompts & Playground", "Wersjonowane prompty i testowanie na modelach.", ["Prompt hub z wersjami i tagami", "Playground: prompt × model × input", "Porównanie modeli", "Otwórz run w Playground"]);
+  VIEWS.datasets = planned("Datasets & Experiments", "Zbiory przykładów i porównanie wersji aplikacji.", ["Datasety z przykładów lub runów", "Evaluatory (heurystyki, LLM-as-judge, własne)", "Eksperymenty i porównanie side-by-side", "Regresja w CI", "Receipty OSA jako oczekiwany wynik eksperymentu"]);
+  VIEWS.queues = planned("Annotation queues", "Kolejki runów do oceny przez ludzi.", ["Kolejki z rubrykami", "Przypisanie recenzentów", "Eksport ocen do datasetu"]);
+  VIEWS.deploy = planned("Deployments", "Hostowanie grafów agentów jako API.", ["Deploy z repo", "Rewizje i rollback", "Assistants i konfiguracje", "Cron jobs", "Webhooks", "Skalowanie i kolejki zadań"]);
+  VIEWS.settings = planned("Settings & API keys", "Organizacja, dostęp i klucze.", ["Klucze API", "Członkowie i role", "SSO", "Retencja danych", "Billing"]);
+
+  function go(view){ state.view = view; if (view !== "trace") state.working = null; render(); window.scrollTo(0, 0); }
+
+  function render(){
+    var v = document.getElementById("view"); v.textContent = "";
+    v.appendChild(VIEWS[state.view]());
+    var navView = state.view === "trace" ? "runs" : state.view;
+    document.querySelectorAll(".side button").forEach(function(b){ if (b.dataset.view === navView) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+    var c = document.getElementById("crumbs"); c.textContent = "";
+    var names = { projects: "Tracing projects", runs: "Tracing projects / team_dev", trace: "team_dev / " + RUNS[state.run].proof.mission_id, studio: "Studio", monitor: "Monitoring", threads: "Threads", prompts: "Prompts", datasets: "Datasets & Experiments", queues: "Annotation queues", deploy: "Deployments", settings: "Settings" };
+    c.appendChild(h("span", { text: "org_dev / " })); c.appendChild(h("b", { text: names[state.view] }));
+  }
+
+  function setTheme(name){
+    document.body.classList.toggle("godmode", name === "godmode");
+    document.querySelectorAll(".themes button").forEach(function(b){ b.setAttribute("aria-pressed", String(b.dataset.t === name)); });
+    try { localStorage.setItem("osa-theme", name); } catch (e) {}
+  }
+  var saved = "godmode"; try { saved = localStorage.getItem("osa-theme") || "godmode"; } catch (e) {}
+  setTheme(saved === "proof" ? "proof" : "godmode");
+  document.querySelectorAll(".themes button").forEach(function(b){ b.addEventListener("click", function(){ setTheme(b.dataset.t); }); });
+  document.querySelectorAll(".side button").forEach(function(b){ b.addEventListener("click", function(){ go(b.dataset.view); }); });
+  render();
+})();
+</script>
+</body>
+</html>

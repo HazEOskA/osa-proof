@@ -1,8 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { ApiState, handleApiRequest } from "../apps/api/src/index";
+import { ApiState, handleApiRequest, loadAuthMode } from "../apps/api/src/index";
 import { createDevExecution, DevExecution } from "../apps/api/src/server";
 
-const state = new ApiState();
+// vercel.json sets OSA_AUTH_MODE=open so the preview dashboard runs missions without a login.
+const state = new ApiState(undefined, undefined, undefined, loadAuthMode(process.env));
 let execution: DevExecution | undefined;
 
 function getExecution(): DevExecution {
