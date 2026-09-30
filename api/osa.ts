@@ -1,8 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { ApiState, handleApiRequest, loadAuthMode } from "../apps/api/src/index";
 import { createDevExecution, DevExecution } from "../apps/api/src/server";
+import { vercelApiPath } from "../apps/api/src/vercel";
 
-// vercel.json sets OSA_AUTH_MODE=open so the preview dashboard runs missions without a login.
+// The single Vercel Function for the OSA API. vercel.json rewrites every API path here, so all routes share
+// one process state. vercel.json sets OSA_AUTH_MODE=open so the preview dashboard runs missions without a login.
 const state = new ApiState(undefined, undefined, undefined, loadAuthMode(process.env));
 let execution: DevExecution | undefined;
 
@@ -12,8 +14,7 @@ function getExecution(): DevExecution {
 }
 
 export default async function handler(request: IncomingMessage, response: ServerResponse): Promise<void> {
-  if (request.url?.startsWith("/api/")) {
-    request.url = request.url.slice(4) || "/";
-  }
-  return handleApiRequest(request, response, getExecution().registry, state);
+  request.url = vercelApiPath(request.url);
+  const current = getExecution();
+  return handleApiRequest(request, response, current.registry, state, current.description);
 }
