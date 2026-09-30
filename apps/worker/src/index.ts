@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { timingSafeEqual } from "node:crypto";
+import { posix as pathPosix } from "node:path";
 import {
   createServer,
   type IncomingMessage,
@@ -215,9 +216,17 @@ function assertFileBody(value: unknown): asserts value is {
   }
 
   const body = value as Record<string, unknown>;
-  if (typeof body.path !== "string" || !body.path.startsWith("/workspace/")) {
+  if (typeof body.path !== "string") {
     throw new Error("file path must be inside /workspace");
   }
+  const normalizedPath = pathPosix.normalize(body.path);
+  if (
+    normalizedPath === "/workspace" ||
+    !normalizedPath.startsWith("/workspace/")
+  ) {
+    throw new Error("file path must be inside /workspace");
+  }
+  body.path = normalizedPath;
   if (body.encoding !== "base64" || typeof body.content !== "string") {
     throw new Error("file content must use base64 encoding");
   }
