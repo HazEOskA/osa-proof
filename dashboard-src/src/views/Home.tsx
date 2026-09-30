@@ -3,18 +3,25 @@ import { Status, Mono } from "../ui/primitives";
 import { useState } from "react";
 import { useOsa, type ViewId } from "../ctx";
 import { CARD } from "../brand/icons";
+import { NAV } from "../nav";
+
+const destination = (view: ViewId) => {
+  const item = NAV.flatMap((group) => group.items).find((item) => item.view === view);
+  if (!item) throw new Error(`Missing navigation destination: ${view}`);
+  return { view: item.view, built: item.built };
+};
 
 const LAUNCH: { label: string; icon: string; color: string; view: ViewId; built: boolean; focus?: string }[] = [
   { label: "World", icon: CARD.world, color: "#4d9bff", view: "world", built: true },
-  { label: "Agents", icon: CARD.agents, color: "#f8a541", view: "pending:Agents", built: false },
-  { label: "Minions", icon: CARD.minions, color: "#36d6f5", view: "pending:Minions", built: false },
-  { label: "Workers", icon: CARD.workers, color: "#ff8a3d", view: "pending:Queues", built: false },
+  { label: "Agents", icon: CARD.agents, color: "#f8a541", ...destination("build:agents") },
+  { label: "Minions", icon: CARD.minions, color: "#36d6f5", ...destination("build:agents") },
+  { label: "Workers", icon: CARD.workers, color: "#ff8a3d", ...destination("build:agents") },
   { label: "Missions", icon: CARD.missions, color: "#a57bff", view: "missions", built: true },
-  { label: "Execution", icon: CARD.execution, color: "#2ee07a", view: "trace", built: true },
+  { label: "Execution", icon: CARD.execution, color: "#2ee07a", ...destination("missions") },
   { label: "Knowledge", icon: CARD.knowledge, color: "#4d9bff", view: "world", built: true, focus: "repo" },
   { label: "Repos", icon: CARD.repos, color: "#ff5fdc", view: "world", built: true, focus: "repo" },
-  { label: "Tools", icon: CARD.tools, color: "#ff8a3d", view: "pending:Tools", built: false },
-  { label: "Team Mesh", icon: CARD.teammesh, color: "#a57bff", view: "world", built: true, focus: "team" },
+  { label: "Tools", icon: CARD.tools, color: "#ff8a3d", ...destination("build:tools") },
+  { label: "Team Mesh", icon: CARD.teammesh, color: "#a57bff", ...destination("build:mesh") },
   { label: "Observe", icon: CARD.observe, color: "#4d9bff", view: "trace", built: true },
   { label: "Deploy", icon: CARD.deploy, color: "#f8a541", view: "pending:Deployments", built: false },
 ];
