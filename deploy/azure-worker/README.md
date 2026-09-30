@@ -20,7 +20,7 @@ Defaults:
 ```text
 resource group: rg-osa-worker
 region: northeurope
-VM: Standard_B2ms
+VM: guarded 2-vCPU / 8-GB candidate pool (B2ms -> D2as_v5 -> D2s_v5 -> D2_v5)
 budget: 40 (subscription billing currency)
 auto-shutdown: 01:00 UTC
 ```
@@ -29,7 +29,7 @@ Override with:
 
 ```bash
 export OSA_AZURE_BUDGET_AMOUNT=30
-export OSA_AZURE_VM_SIZE=Standard_B2ms
+export OSA_AZURE_VM_SIZE=Standard_D2as_v5
 export OSA_AZURE_AUTO_SHUTDOWN_UTC=0100
 ```
 
@@ -67,3 +67,21 @@ Do not remove the Azure subscription spending limit for this deployment.
 
 The script aborts before VM creation when the reported spending limit is not
 `On`.
+
+
+## Capacity fallback
+
+Azure can report a SKU as unavailable in a region even when the VM family is
+generally supported. The deploy script therefore tries only a bounded set of
+2-vCPU / 8-GB SKUs and never auto-escalates to a larger VM:
+
+```text
+Standard_B2ms
+Standard_D2as_v5
+Standard_D2s_v5
+Standard_D2_v5
+```
+
+SKUs that Azure marks as restricted for the subscription are skipped. If
+preflight still returns a capacity/allocation error, the next candidate is
+tried. Any non-capacity error stops the deployment immediately.
