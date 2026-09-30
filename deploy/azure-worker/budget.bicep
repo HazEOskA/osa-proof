@@ -26,6 +26,7 @@ resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
         operator: 'GreaterThanOrEqualTo'
         threshold: 50
         thresholdType: 'Actual'
+        contactEmails: []
         contactRoles: [
           'Owner'
         ]
@@ -35,6 +36,7 @@ resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
         operator: 'GreaterThanOrEqualTo'
         threshold: 75
         thresholdType: 'Actual'
+        contactEmails: []
         contactRoles: [
           'Owner'
         ]
@@ -44,6 +46,7 @@ resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
         operator: 'GreaterThanOrEqualTo'
         threshold: 90
         thresholdType: 'Actual'
+        contactEmails: []
         contactRoles: [
           'Owner'
         ]
@@ -53,6 +56,7 @@ resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
         operator: 'GreaterThanOrEqualTo'
         threshold: 100
         thresholdType: 'Forecasted'
+        contactEmails: []
         contactRoles: [
           'Owner'
         ]
