@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useOsa, type ViewId } from "../ctx";
 import { HOME_ITEM, NAV, type NavItem } from "../nav";
+import { ICON } from "../brand/icons";
 import { Icon, Logo, Mono, Status, Empty, ThemeSwitch, OsaIcon } from "../ui/primitives";
 import Palette from "./Palette";
 import Home from "./Home";
@@ -50,6 +51,15 @@ function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void })
           </div>
         );
       })}
+      <div className="mt-3">
+        {compact ? <div className="mx-3 mb-1 h-px bg-line" /> : <div className="label flex h-7 items-center px-2.5">DOCS</div>}
+        {/* Static documentation published next to the dashboard by scripts/build-dashboard.cjs. */}
+        <a href="/docs" title={compact ? "Docs" : undefined}
+          className={`osa-nav-item focus-ring flex w-full items-center gap-3 rounded-md text-left text-[13.5px] text-fg/85 hover:bg-raise/60 hover:text-fg ${compact ? "tap justify-center px-0" : "h-10 px-2.5"}`}>
+          <OsaIcon src={ICON.knowledge} size={compact ? 28 : 24} className="osa-nav-icon" />
+          {!compact && <span className="flex-1 truncate">Docs</span>}
+        </a>
+      </div>
     </nav>
   );
 }
