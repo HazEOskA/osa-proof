@@ -1,0 +1,45 @@
+services:
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/worker/Dockerfile
+    image: osa/worker-host:v0.1
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN}
+      OSA_WORKSPACE_DOCKER_IMAGE: ${OSA_WORKSPACE_DOCKER_IMAGE:-osa/workspace-node22:v0.1}
+      OSA_WORKSPACE_DOCKER_NETWORK: ${OSA_WORKSPACE_DOCKER_NETWORK:-bridge}
+      DOCKER_BIN: docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:8787:8787"
+    networks:
+      - osa-worker
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - worker
+    environment:
+      OSA_WORKER_DOMAIN: ${OSA_WORKER_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - osa-worker
+
+networks:
+  osa-worker:
+
+volumes:
+  caddy_data:
+  caddy_config:
