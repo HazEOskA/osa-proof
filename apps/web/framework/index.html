@@ -6,7 +6,7 @@
 <title>OSA Framework Console</title>
 <meta name="theme-color" content="#060914" />
 <!-- Framework reality map: every feature not present in code on main is underlined.
-     Status is a static snapshot of origin/main @ de91063; update MODULES when backend changes. -->
+     Status is a static snapshot of the code at the docs-audit commit (after PR #6); update MODULES when backend changes. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 /* Layout: control-room grid of module panels under a status header; one dark world like the Choose Your Layer screen. */
@@ -139,24 +139,24 @@ li.no .name{color:var(--dim);text-decoration:underline;text-decoration-color:var
       {t:"Interfejs ModelProvider",y:1,ref:"packages/adapters/src/provider.ts",src:"OSA"},
       {t:"Provider Anthropic (Messages API)",y:1,ref:"packages/adapters/src/anthropic.ts",src:"OSA"},
       {t:"Tryb fixture (deterministyczny, offline)",y:1,ref:"apps/api/src/server.ts",src:"OSA"},
-      {t:"Drugi provider modeli",y:0,src:"OSA"},
+      {t:"Drugi provider modeli (OpenAI)",y:1,ref:"packages/adapters/src/openai.ts",src:"OSA"},
       {t:"Narzędzia przez MCP",y:0,src:"Mastra / MCP"},
       {t:"Evidence wywołań narzędzi",y:0,src:"OSA"},
       {t:"Sandbox wykonania",y:0,src:"OSA"},
       {t:"Pamięć i sesje agentów",y:0,src:"Mastra / OpenAI SDK"},
       {t:"RAG ze źródłami jako evidence",y:0,src:"Mastra"},
-      {t:"Router modeli",y:0,src:"OSA"}
+      {t:"Router modeli (LLM Gateway + Model Mesh z fallbackiem)",y:1,ref:"packages/adapters/src/mesh.ts",src:"LiteLLM"}
     ]},
     {id:"control",title:"CONTROL / POLICY",c:"var(--green)",items:[
       {t:"Konfiguracja fail-closed (tryb, provider, model, klucz)",y:1,ref:"packages/adapters/src/config.ts",src:"OSA"},
       {t:"Redakcja sekretów w błędach i evidence",y:1,ref:"packages/adapters/src/provider.ts",src:"OSA"},
       {t:"Bramka warstw regulowanych (fail closed)",y:1,ref:"packages/access-control/src/index.ts",src:"OSA"},
       {t:"Guardrails z tripwire",y:0,src:"OpenAI Agents SDK"},
-      {t:"Policy engine",y:0,src:"OSA"},
+      {t:"Policy engine (reguły przed uruchomieniem wdrożenia, fail closed)",y:1,ref:"packages/control/src/index.ts",src:"OSA"},
       {t:"Budżety (tokeny, czas, koszt)",y:0,src:"OSA"},
       {t:"Uprawnienia narzędzi",y:0,src:"OSA"},
       {t:"Weryfikacja organizacji dla BANK / FINANCIAL / CYBER / ARMY",y:0,src:"OSA"},
-      {t:"Logowanie i sesja DEV (usunięte z API na main)",y:0,src:"OSA"},
+      {t:"Logowanie i sesja DEV (OSA_AUTH_MODE)",y:1,ref:"apps/api/src/index.ts",src:"OSA"},
       {t:"OAuth GitHub / Google / Microsoft",y:0,src:"OSA"}
     ]},
     {id:"teams",title:"TEAMS / ORCHESTRATION",c:"var(--amber)",items:[
@@ -170,9 +170,9 @@ li.no .name{color:var(--dim);text-decoration:underline;text-decoration-color:var
     {id:"obs",title:"OBSERVABILITY / EVALS",c:"var(--red)",items:[
       {t:"Zdarzenia runu przez API",y:1,ref:"apps/api/src/index.ts",src:"OSA"},
       {t:"Tracing OpenTelemetry",y:0,src:"OpenAI Agents SDK"},
-      {t:"Evals jako zestawy misji z receiptami",y:0,src:"Mastra"},
+      {t:"Evals jako zestawy misji z receiptami (Datasets, Evaluators, Experiments)",y:1,ref:"packages/experiments/src/index.ts",src:"LangSmith"},
       {t:"DEV Studio na żywo",y:0,src:"Mastra"},
-      {t:"Health check systemu",y:0,src:"OSA",claim:"SYSTEM ONLINE"}
+      {t:"Health check systemu (/health)",y:0,src:"OSA",claim:"SYSTEM ONLINE"}
     ]},
     {id:"interop",title:"INTEROP / API",c:"var(--blue)",items:[
       {t:"HTTP API: teams, missions, runs, events, evidence, proof",y:1,ref:"apps/api/src/index.ts",src:"OSA"},
@@ -186,7 +186,9 @@ li.no .name{color:var(--dim);text-decoration:underline;text-decoration-color:var
     {id:"surf",title:"SURFACES",c:"var(--violet)",items:[
       {t:"Ekran Choose Your Layer połączony z bramką backendu",y:1,ref:"apps/web/index.html",src:"OSA"},
       {t:"Strony warstw (statyczne)",y:1,ref:"apps/web/*/index.html",src:"OSA"},
-      {t:"RUN NOW w DEV z UI (klient nie ma runDevMission na main)",y:0,src:"OSA"},
+      {t:"Uruchamianie misji z dashboardu (Missions, Deployments, Queues)",y:1,ref:"dashboard-src/src/data/data.ts",src:"OSA"},
+      {t:"Wdrożenia wersji zespołu (pin sha256, promote, rollback)",y:1,ref:"packages/control/src/index.ts",src:"LangGraph Platform"},
+      {t:"Kolejka i scheduler misji (drain, bez workera w tle)",y:1,ref:"packages/control/src/index.ts",src:"OSA"},
       {t:"Płatności",y:0,src:"OSA",claim:"DEV pay & proof"},
       {t:"Wersja 1.0.0",y:0,src:"OSA",claim:"v1.0.0"},
       {t:"Świat 3D",y:0,src:"OSA"}
