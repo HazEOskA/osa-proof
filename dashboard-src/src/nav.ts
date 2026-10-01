@@ -24,6 +24,12 @@ export const NAV: NavGroup[] = [
     pick("Models", "intel:models", true, I.minions), pick("Model Mesh", "intel:model-mesh", true, I.minionBot), pick("LLM Gateway", "intel:llm-gateway", true, I.workerBot),
     pick("Memory", "intel:memory", false, I.storage), pick("Knowledge", "ops:knowledge", true, I.cube), pick("Context Hub", "intel:context-hub", false, I.knowledge),
     pick("Datasets", "intel:datasets", true, I.logs), pick("Experiments", "ops:experiments", true, I.playground), pick("Evaluators", "intel:evaluators", true, I.target) ] },
+  { title: "WEB3", items: [
+    pick("Web3 Overview", "web3:overview", true, I.planet), pick("Chains", "web3:chains", true, I.world),
+    pick("Wallets", "web3:wallets", true, I.storage), pick("Entities", "web3:entities", true, I.cube),
+    pick("Events", "web3:events", true, I.events), pick("Transactions", "web3:transactions", true, I.execution),
+    pick("Agents", "web3:agents", true, I.agents), pick("Protocols", "web3:protocols", true, I.tools),
+    pick("Risk", "web3:risk", true, I.security), pick("Proof", "web3:proof", true, I.proofs) ] },
   { title: "WORLD", items: [
     pick("World State", "world", true, I.world), pick("Knowledge Graph", "world", true, I.planet), pick("Timeline", "ops:timeline", true, I.events),
     pick("Dependencies", "ops:dependencies", true, I.workflows), pick("Architecture", "ops:architecture", true, I.runtime) ] },

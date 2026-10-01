@@ -297,3 +297,5 @@ export interface LayerEnterResult {
   layer: LayerProfile;
   gate?: LayerAccessGate;
 }
+
+export * from "./web3";

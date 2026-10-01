@@ -1,8 +1,9 @@
+import type { Web3Mission } from "../data/web3";
 import type { Snapshot } from "../data/types";
 import { tok } from "./tok";
 
-export type NodeType = "AGENT" | "MODEL" | "MISSION" | "TOOL" | "MEMORY" | "KNOWLEDGE" | "CODE" | "REPOSITORY" | "SERVICE" | "CLOUD" | "PROOF" | "EVIDENCE" | "POLICY" | "USER" | "WORKSPACE";
-export const NODE_TYPES: NodeType[] = ["AGENT", "MODEL", "MISSION", "TOOL", "MEMORY", "KNOWLEDGE", "CODE", "REPOSITORY", "SERVICE", "CLOUD", "PROOF", "EVIDENCE", "POLICY", "USER", "WORKSPACE"];
+export type NodeType = "WEB3" | "AGENT" | "MODEL" | "MISSION" | "TOOL" | "MEMORY" | "KNOWLEDGE" | "CODE" | "REPOSITORY" | "SERVICE" | "CLOUD" | "PROOF" | "EVIDENCE" | "POLICY" | "USER" | "WORKSPACE";
+export const NODE_TYPES: NodeType[] = ["WEB3","AGENT", "MODEL", "MISSION", "TOOL", "MEMORY", "KNOWLEDGE", "CODE", "REPOSITORY", "SERVICE", "CLOUD", "PROOF", "EVIDENCE", "POLICY", "USER", "WORKSPACE"];
 
 export interface GNode {
   id: string; type: NodeType; label: string; sub?: string;
@@ -136,4 +137,28 @@ export function causalPath(g: Graph, missionId: string): { nodes: Set<string>; e
   };
   walk(start.id);
   return { nodes: ids, edges: eIds };
+}
+
+// Adds only server-projected, evidence-linked Web3 observations to the existing World.
+export function mergeWeb3Graph(base: Graph, mission: Web3Mission | null): Graph {
+  if (!mission?.world || !mission.record.run) return base;
+  const nodes = base.nodes.map(n => ({ ...n })); const edges = [...base.edges]; const run = mission.record.run;
+  const add = (n: Omit<GNode,"x"|"y"|"r">) => { if (!nodes.some(x => x.id === n.id)) nodes.push({ ...n,x:0,y:0,r:7 }); };
+  const link = (from:string,to:string,kind:string) => { const id = `${from}>${to}:${kind}`; if (!edges.some(e => e.id === id)) edges.push({ id,from,to,kind }); };
+  const mid = `web3:mission:${mission.record.mission.mission_id}`;
+  add({ id:mid,type:"MISSION",label:mission.record.mission.mission_id,sub:"Web3 READ",runId:run.run_id,detail:{identity:mission.record.mission.mission_id,kind:"Web3 Mission",state:mission.record.state} });
+  for (const e of run.evidence) {
+    const aid = `web3:agent:${mission.record.mission.organization_id}:${mission.record.mission.project_id}:${e.agent_id}`;
+    add({id:aid,type:"AGENT",label:e.agent_id,sub:e.producer.executor_ref,runId:run.run_id,detail:{identity:e.agent_id,kind:"OSA executor agent",dependencies:e.producer.executor_ref}});
+    add({id:`evidence:${e.evidence_id}`,type:"EVIDENCE",label:e.kind,runId:run.run_id,detail:{identity:e.evidence_id,outputs:e.evidence_sha256}});
+    link(mid,aid,"executed");link(aid,`evidence:${e.evidence_id}`,"produced");
+  }
+  for (const entity of mission.world.entities) {
+    add({id:entity.id,type:"WEB3",label:`${entity.type} · ${entity.identifier.slice(0,12)}`,sub:entity.chain.id,runId:run.run_id,detail:{identity:entity.identifier,kind:entity.type,owner:entity.context.organization_id,version:entity.chain.network,outputs:JSON.stringify(entity.metadata),"last change":entity.updatedAt}});
+    link(mid,entity.id,"observed"); for (const ref of entity.proofRefs) if (nodes.some(n => n.id === `evidence:${ref}`)) link(entity.id,`evidence:${ref}`,"evidence");
+  }
+  for (const rel of mission.world.relations) link(rel.from,rel.to,rel.type);
+  const pid = `proof:${run.proof.proof_id}`; add({id:pid,type:"PROOF",label:run.proof.proof_id,runId:run.run_id,state:run.verdict === "VERIFIED" ? "VERIFIED" : "FAILED",detail:{identity:run.proof.proof_id,kind:"OSA receipt; RPC_VALIDATED",outputs:run.proof.receipt_sha256}});
+  link(mid,pid,"sealed by");for(const e of run.evidence)link(`evidence:${e.evidence_id}`,pid,"verified in");
+  return layout({nodes,edges,byId:new Map()});
 }

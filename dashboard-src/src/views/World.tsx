@@ -1,3 +1,5 @@
+import { useWeb3Data } from "../data/web3";
+import { mergeWeb3Graph, type Graph } from "../lib/graph";
 import { useMemo, useRef, useState } from "react";
 import SolarWorld from "../ui/SolarWorld";
 import { NODE_TYPES, causalPath, typeColor, type GNode } from "../lib/graph";
@@ -7,8 +9,8 @@ import { tok } from "../lib/tok";
 
 const val = (v?: string) => (v && v.length ? <span className="mono break-all text-[12px]">{v}</span> : <Unknown />);
 
-function Inspector({ n, onClose, onSelect }: { n: GNode; onClose: () => void; onSelect: (id: string) => void }) {
-  const { graph, data } = useOsa();
+function Inspector({ n, onClose, onSelect, graph }: { graph: Graph; n: GNode; onClose: () => void; onSelect: (id: string) => void }) {
+  const { data } = useOsa();
   const rel = graph.edges.filter((e) => e.from === n.id || e.to === n.id);
   const proofs = graph.nodes.filter((p) => p.type === "PROOF" && n.runId && p.runId === n.runId && p.id !== n.id);
   const events = n.type === "AGENT" ? data.runs.flatMap((r) => r.events.filter((e) => `agent:${e.agent_id}` === n.id)).length : n.runId ? data.runs.find((r) => r.run_id === n.runId)?.events.length : undefined;
@@ -39,7 +41,9 @@ function Inspector({ n, onClose, onSelect }: { n: GNode; onClose: () => void; on
 }
 
 export default function World() {
-  const { graph, data, focus, go } = useOsa();
+  const { graph: baseGraph, data, focus, go } = useOsa();
+  const web3 = useWeb3Data();
+  const graph = useMemo(() => mergeWeb3Graph(baseGraph,web3.mission),[baseGraph,web3.mission]);
   const [sel, setSel] = useState<string | null>(focus);
   const [q, setQ] = useState("");
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -73,8 +77,8 @@ export default function World() {
         </div>
         {node && (
           <>
-            <div className="fixed inset-x-0 bottom-0 z-30 h-[62dvh] slide-in border-t border-line lg:hidden"><Inspector n={node} onClose={() => setSel(null)} onSelect={setSel} /></div>
-            <div className="slide-in hidden w-[340px] shrink-0 border-l border-line lg:block"><Inspector n={node} onClose={() => setSel(null)} onSelect={setSel} /></div>
+            <div className="fixed inset-x-0 bottom-0 z-30 h-[62dvh] slide-in border-t border-line lg:hidden"><Inspector graph={graph} n={node} onClose={() => setSel(null)} onSelect={setSel} /></div>
+            <div className="slide-in hidden w-[340px] shrink-0 border-l border-line lg:block"><Inspector graph={graph} n={node} onClose={() => setSel(null)} onSelect={setSel} /></div>
           </>
         )}
       </div>

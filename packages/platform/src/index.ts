@@ -1,3 +1,4 @@
+import { Web3Service, installWeb3Executors } from "../../web3/src";
 import { CapabilityCatalog, nativeCapability } from "../../capabilities/src";
 import { BenchmarkStore } from "../../benchmarks/src";
 import { CloudRegistry, DeploymentPlan, verifyDeploymentPlan } from "../../deployment/src";
@@ -8,6 +9,10 @@ export class PlatformControlPlane {
   readonly capabilities = new CapabilityCatalog();
   readonly benchmarks = new BenchmarkStore();
   readonly clouds = new CloudRegistry();
+  web3?: Web3Service;
+  installWeb3(registry: ExecutorRegistry, service: Web3Service): void {
+    this.web3 = service; installWeb3Executors(registry,this.capabilities,service);
+  }
   constructor(readonly fleet: FleetQueue = new FleetQueue()) {}
   registerExecutors(registry: ExecutorRegistry): void {
     for (const ref of registry.refs()) this.capabilities.register(nativeCapability(ref),registry.get(ref));
@@ -17,7 +22,7 @@ export class PlatformControlPlane {
     for (const ref of registry.refs()) if (!known.has(ref)) this.capabilities.register(nativeCapability(ref),registry.get(ref));
   }
   describe(organization_id?: string) {
-    return { version: "0.5-local-review", mode: "PRE_DEPLOY", persistence: "PROCESS_MEMORY", fleet: this.fleet.snapshot().filter(w => !organization_id || w.organization_id === organization_id), capabilities: this.capabilities.list(), benchmark_results: this.benchmarks.list().filter(b => !organization_id || b.organization_id === organization_id).length, cloud_providers: this.clouds.list(), deployment_execution_enabled: false };
+    return { version: "0.5-local-review", mode: "PRE_DEPLOY", persistence: "PROCESS_MEMORY", fleet: this.fleet.snapshot().filter(w => !organization_id || w.organization_id === organization_id), capabilities: this.capabilities.list(), benchmark_results: this.benchmarks.list().filter(b => !organization_id || b.organization_id === organization_id).length, cloud_providers: this.clouds.list(), deployment_execution_enabled: false, web3: this.web3?.describe() ?? null };
   }
   reviewDeployment(plan: DeploymentPlan) {
     verifyDeploymentPlan(plan);

@@ -1,3 +1,4 @@
+import { createConfiguredWeb3 } from "../packages/web3/src";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { ApiState, handleApiRequest, loadAuthMode } from "../apps/api/src/index";
 import { createDevExecution, DevExecution } from "../apps/api/src/server";
@@ -16,6 +17,6 @@ function getExecution(): DevExecution {
 export default async function handler(request: IncomingMessage, response: ServerResponse): Promise<void> {
   request.url = vercelApiPath(request.url);
   const current = getExecution();
-  state ??= new ApiState(undefined, undefined, undefined, loadAuthMode(process.env), undefined, current.brain);
+  state ??= new ApiState(undefined, undefined, undefined, loadAuthMode(process.env), undefined, current.brain, createConfiguredWeb3(process.env));
   return handleApiRequest(request, response, current.registry, state, current.description);
 }

@@ -245,6 +245,8 @@ export function secretStatus(env: Record<string, string | undefined>): Array<{ n
 // OSA_AUTH_MODE=session; tests/control.test.ts checks every "session" row returns 401 without a token.
 export interface PermissionRow { permission: string; method: string; path: string; enforced: "session" | "public" }
 export const PERMISSIONS: ReadonlyArray<PermissionRow> = [
+  { permission: "web3.read", method: "GET", path: "/web3/missions/:id", enforced: "session" },
+  { permission: "web3.monitor", method: "POST", path: "/web3/observe", enforced: "session" },
   { permission: "teams.write", method: "POST", path: "/teams", enforced: "session" },
   { permission: "teams.read", method: "GET", path: "/teams/:id?version=", enforced: "session" },
   { permission: "missions.write", method: "POST", path: "/missions", enforced: "session" },

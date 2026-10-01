@@ -1,3 +1,5 @@
+import { Web3Service } from "../../../packages/web3/src";
+import { handleWeb3Request } from "./web3";
 import { PlatformControlPlane } from "../../../packages/platform/src";
 import { FleetQueue } from "../../../packages/fleet/src";
 import { DeploymentPlan } from "../../../packages/deployment/src";
@@ -76,7 +78,8 @@ export class ApiState {
     evaluators: EvaluatorStore = new EvaluatorStore(),
     readonly authMode: AuthMode = "session",
     missionStore?: MissionStore,
-    brain?: BrainControlPlane
+    brain?: BrainControlPlane,
+    readonly web3: Web3Service = new Web3Service()
   ) {
     this.intelligence = intelligence;
     this.datasets = datasets;
@@ -136,6 +139,7 @@ export async function handleApiRequest(
   state = new ApiState(),
   executionDescription: Record<string, unknown> = { mode: "UNKNOWN" }
 ): Promise<void> {
+  if (!state.platform.web3) state.platform.installWeb3(registry,state.web3);
   state.platform.syncExecutors(registry);
   const runtime = new OsaRuntime(registry);
 
@@ -143,6 +147,7 @@ export async function handleApiRequest(
   // and only after every enabled policy allows it.
   async function runThroughDeployment(deploymentId: string, requested: Mission | undefined) {
     const deployment = state.deployments.get(deploymentId);
+    if (deployment.graph.agents.some(a => a.executor_ref.startsWith("web3."))) throw new ControlError("Web3 requires its scoped MissionKernel path", "forbidden");
     if (deployment.status !== "ACTIVE") throw new ControlError(`deployment ${deployment.deployment_id} is ${deployment.status}, not ACTIVE`, "conflict");
     if (!requested || requested.team_id !== deployment.team_id) throw new ControlError("mission.team_id must match the deployment's team");
     const mission: Mission = { ...structuredClone(requested), team_version: deployment.team_version };
@@ -157,6 +162,12 @@ export async function handleApiRequest(
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+
+      if (parts[0] === "web3") {
+        const session = requireSession(request,response,state);
+        if (!session) return;
+        return handleWeb3Request(request,response,state,registry,session);
+      }
 
       if (parts[0] === "platform") {
         const session = requireSession(request,response,state);
@@ -473,6 +484,7 @@ export async function handleApiRequest(
         if (!session) return;
         const record = await state.missionKernel.get(parts[1]);
         if (!record) return send(response, 404, { error: "mission not found" });
+        if (record.team.agents.some(a => a.executor_ref.startsWith("web3.")) && record.mission.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
         if (method === "GET" && parts.length === 2) return send(response, 200, record);
         if (method === "GET" && parts[2] === "timeline") return send(response, 200, record.timeline);
         if (method === "GET" && parts[2] === "run") return record.run ? send(response, 200, record.run) : send(response, 404, { error: "mission has no run" });
@@ -496,6 +508,7 @@ export async function handleApiRequest(
         if (!session) return;
         const run = state.runs.get(parts[1]);
         if (!run) return send(response, 404, { error: "run not found" });
+        if (run.evidence.some(e => e.kind.startsWith("web3_")) && run.proof.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
         if (parts.length === 2) return send(response, 200, run);
         if (parts[2] === "events") return send(response, 200, run.events);
         if (parts[2] === "evidence") return send(response, 200, run.evidence);

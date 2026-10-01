@@ -1,3 +1,5 @@
+import Web3 from "./Web3";
+import { useWeb3Data, type Web3Page } from "../data/web3";
 import { useState } from "react";
 import { useOsa, type ViewId } from "../ctx";
 import { HOME_ITEM, NAV, type NavItem } from "../nav";
@@ -93,6 +95,7 @@ function LiveRail() {
 
 export default function Shell({ palette, closePalette }: { palette: boolean; closePalette: () => void }) {
   const { view, source, openPalette } = useOsa();
+  const web3 = useWeb3Data();
   const [drawer, setDrawer] = useState(false);
   let body;
   const v: ViewId = view;
@@ -102,6 +105,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   else if (v === "trace") body = <Trace />;
   else if (v === "proofs") body = <Proofs />;
   else if (v === "replay") body = <Replay />;
+  else if (v.startsWith("web3:")) body = <Web3 page={v.slice(5) as Web3Page} />;
   else if (v.startsWith("build:")) body = <BuildWorkspace page={v.slice(6) as BuildPage} />;
   else if (v.startsWith("intel:")) body = <Intelligence id={v.slice(6)} />;
   else if (v.startsWith("ops:") && (OPS_VIEWS[v.slice(4)] || CONTROL_VIEWS[v.slice(4)])) { const View = OPS_VIEWS[v.slice(4)] ?? CONTROL_VIEWS[v.slice(4)]; body = <View />; }
@@ -109,7 +113,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
     const name = v.replace("pending:", "");
     body = <Empty title={`${name.toUpperCase()} · NOT BUILT YET`} body={`${name} has no view in this pass, and osa-proof does not expose the data for it yet. Nothing is shown rather than something invented.`} steps={["Knowledge World", "Missions", "Tracing", "Proofs", "Replay"].map((s) => `${s} is live`)} />;
   }
-  const title = v.startsWith("build:") ? BUILD_LABELS[v.slice(6) as BuildPage] : v.startsWith("intel:") ? `Intelligence · ${v.slice(6)}` : v.startsWith("ops:") ? v.slice(4) : TITLES[v] ?? v.replace("pending:", "");
+  const title = v.startsWith("web3:") ? `Web3 · ${v.slice(5)}` : v.startsWith("build:") ? BUILD_LABELS[v.slice(6) as BuildPage] : v.startsWith("intel:") ? `Intelligence · ${v.slice(6)}` : v.startsWith("ops:") ? v.slice(4) : TITLES[v] ?? v.replace("pending:", "");
   return (
     <div className="flex h-[100dvh] bg-void">
       <aside className="osa-sidebar hidden w-[252px] shrink-0 flex-col border-r border-line bg-ink lg:flex">
@@ -129,11 +133,11 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
             <Icon d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.5-4.5" /><span className="hidden flex-1 truncate sm:inline">Search agents, missions, proofs…</span><span className="flex-1 sm:hidden">Search</span><kbd className="mono hidden rounded border border-line px-1.5 text-[10px] sm:inline">Ctrl K</kbd>
           </button>
           <div className="hidden md:block"><ThemeSwitch /></div>
-          <div className="hidden text-right lg:block"><Status v={source.kind} /><div className="mono max-w-[240px] truncate text-[10px] text-dim">{source.detail}</div></div>
+          <div className="hidden text-right lg:block">{v.startsWith("web3:") ? <><span className="mono text-[10px] text-dim">{web3.status ? "WEB3 · READ ONLY" : "WEB3 · UNKNOWN"}</span><div className="mono text-[10px] text-dim">OSA API · chain assurance: RPC_VALIDATED</div></> : <><Status v={source.kind} /><div className="mono max-w-[240px] truncate text-[10px] text-dim">{source.detail}</div></>}</div>
         </header>
         <div className="flex min-h-0 flex-1">
           <main className="min-w-0 flex-1 overflow-y-auto" key={v}><div className="reveal h-full">{body}</div></main>
-          {!v.startsWith("build:") && <LiveRail />}
+          {!v.startsWith("build:") && !v.startsWith("web3:") && <LiveRail />}
         </div>
       </div>
 
@@ -153,11 +157,13 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
 }
 
 function SidebarTop() {
-  const { data } = useOsa();
+  const { data, view } = useOsa();
+  const web3 = useWeb3Data();
+  const scope = view.startsWith("web3:") ? { organization_id: web3.mission?.record.mission.organization_id ?? web3.status?.organization_id ?? "UNKNOWN", project_id: web3.mission?.record.mission.project_id ?? web3.status?.defaultProject ?? "UNKNOWN" } : data.team;
   return (
     <div className="border-b border-line p-3">
       <div className="mb-3 flex items-center gap-3"><Logo size={48} /><div className="leading-tight"><div className="font-display text-[13px] text-hero">OSA</div><div className="font-display text-[9px] text-dim">FRAMEWORK</div></div></div>
-      <div className="glass rounded-md px-2.5 py-1.5"><div className="label">Workspace</div><Mono className="text-[12px]">{data.team.organization_id} / {data.team.project_id}</Mono></div>
+      <div className="glass rounded-md px-2.5 py-1.5"><div className="label">Workspace</div><Mono className="text-[12px]">{scope.organization_id} / {scope.project_id}</Mono></div>
     </div>
   );
 }
