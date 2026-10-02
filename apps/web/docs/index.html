@@ -210,7 +210,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
     <details open><summary>Reference<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#control">Control plane</a><a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
     <details><summary>Guides<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#guides">All guides</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
+      <a href="#guides">All guides</a><a href="#themes">Workspace themes</a><a href="#community-forum">Debug forum · planned</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
     <details><summary>Releases<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#intelligence">Intelligence · Datasets &amp; Evaluators</a><a href="#" data-nolink>Slice 2 · Proof integrity</a><a href="#" data-nolink>Slice 1 · Real execution</a></details>
   </aside>
@@ -643,6 +643,19 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
       </div>
     </section>
 
+    <section id="themes" aria-labelledby="h-themes">
+      <h2 id="h-themes">Workspace themes</h2>
+      <p>The framework includes five dark palettes (Proof, Graphite, Midnight, Forest, Plum) and five light palettes (Porcelain, Sand, Sky, Mint, Rose). Use the theme selector in the header, mobile navigation or Settings. Themes also update the runtime world colors.</p>
+      <p>Open <strong>Themes</strong> to preview palettes, export the selected palette or import a community JSON file. The format is <code>osa.theme.v1</code>: id, name, mode, optional author and a complete tokens object. Export a built-in palette as your starting template. Only six-digit hex colors are accepted; text contrast must reach 4.5:1. Files are limited to 24 KB and 20 community themes per browser. Importing the same ID updates that community theme.</p>
+      <p>Selection and community palettes are stored in this browser. Removing an active community palette restores Proof. There is no hosted theme marketplace or cross-device sync.</p>
+    </section>
+    <section id="community-forum" aria-labelledby="h-forum">
+      <h2 id="h-forum">Debug forum <span class="label">Planned</span></h2>
+      <p>A community space for reproducible issues, investigation and evidence review is planned. Forum posting, accounts and moderation are not implemented.</p>
+      <p>Proposed report fields: component and version, expected and actual behavior, reproduction steps, mission/run IDs, environment, test coverage and sanitized evidence references. Never include private keys, seed phrases, credentials or sensitive payloads.</p>
+      <p>Reports should distinguish reproduced findings, hypotheses, untested paths and verified fixes. “No issues found in these checks” does not establish that a system has no bugs. A claim of a fix needs reproduction evidence and a regression check.</p>
+    </section>
+
     <footer><span class="label">Build · Verify · Access · Everywhere</span><span class="label">Real worlds. Verified.</span></footer>
   
       </main>
@@ -667,6 +680,8 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
         <a href="#config">Configuration</a>
         <a href="#api">HTTP API</a>
         <a href="#guides">Guides</a>
+        <a href="#themes">Themes</a>
+        <a href="#community-forum">Debug forum (planned)</a>
       </aside>
     </div>
   </div>

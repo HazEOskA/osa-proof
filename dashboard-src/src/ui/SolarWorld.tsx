@@ -68,7 +68,7 @@ function webglOk() { try { const c = document.createElement("canvas"); return !!
 
 export default function SolarWorld(props: Props) {
   const { graph, interactive = true, ambient = false, className } = props;
-  const { theme } = useOsa();
+  const { activeTheme } = useOsa();
   const wrap = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
   const live = useRef(props); live.current = props;
@@ -333,7 +333,7 @@ export default function SolarWorld(props: Props) {
       composer.dispose(); renderer.dispose(); renderer.domElement.remove(); ov.innerHTML = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graph, theme, interactive, ambient, fallback]);
+  }, [graph, activeTheme, interactive, ambient, fallback]);
 
   useEffect(() => { api.current?.dirty(); }, [props.selectedId, props.highlight, props.hiddenTypes, props.query]);
   useEffect(() => { api.current?.select(props.selectedId ?? null); }, [props.selectedId]);

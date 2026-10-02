@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { Verdict } from "../data/types";
-import { useOsa } from "../ctx";
 import { LOGO } from "../brand/icons";
 
 export const Mono = ({ children, className = "" }: { children: ReactNode; className?: string }) => <span className={`mono ${className}`}>{children}</span>;
@@ -58,13 +57,4 @@ export const OsaIcon = ({ src, size = 22, className = "" }: { src: string; size?
   <img src={src} alt="" aria-hidden width={size} height={size} draggable={false} className={`shrink-0 object-contain ${className}`} style={{ width: size, height: size }} />
 );
 
-export function ThemeSwitch() {
-  const { theme, setTheme } = useOsa();
-  return (
-    <div role="radiogroup" aria-label="Theme" className="flex rounded-md border border-line2 bg-panel p-0.5">
-      {(["proof", "godmode"] as const).map((t) => (
-        <button type="button" key={t} role="radio" aria-checked={theme === t} onClick={() => setTheme(t)} className={`focus-ring h-8 rounded-sm px-2.5 text-[10px] font-medium uppercase tracking-[.16em] ${theme === t ? "bg-raise text-fg sel-mark" : "text-dim hover:text-fg"}`}>{t}</button>
-      ))}
-    </div>
-  );
-}
+export { ThemeSwitch } from "./Themes";
