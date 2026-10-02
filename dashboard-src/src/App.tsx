@@ -7,7 +7,7 @@ import Shell from "./views/Shell";
 import { useThemes } from "./useThemes";
 
 export default function App() {
-  const { data, source, runningMission, actionError, runMission, enterLayer } = useOsaData();
+  const { data, source, runningMission, actionError, runMission, enterLayer, inspectExecution } = useOsaData();
   const graph = useMemo(() => buildGraph(data), [data]);
   const [view, setView] = useState<ViewId>("home");
   const [runId, setRunId] = useState(data.runs[0]?.run_id ?? "");
@@ -29,7 +29,7 @@ export default function App() {
   const ctx = {
     data, source, graph, view, go, runId, setRunId, focus,
     openPalette: () => setPalette(true), ...themeSettings,
-    runningMission, actionError, runMission, enterLayer,
+    runningMission, actionError, runMission, enterLayer, inspectExecution,
   };
   return (
     <OsaCtx.Provider value={ctx}>

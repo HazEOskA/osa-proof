@@ -210,7 +210,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
     <details open><summary>Reference<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#control">Control plane</a><a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
     <details><summary>Guides<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#guides">All guides</a><a href="#themes">Workspace themes</a><a href="#community-forum">Debug forum · planned</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
+      <a href="#guides">All guides</a><a href="#themes">Workspace themes</a><a href="#delivery-lab">Delivery Lab</a><a href="#community-forum">Debug forum · planned</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
     <details><summary>Releases<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#intelligence">Intelligence · Datasets &amp; Evaluators</a><a href="#" data-nolink>Slice 2 · Proof integrity</a><a href="#" data-nolink>Slice 1 · Real execution</a></details>
   </aside>
@@ -643,6 +643,17 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
       </div>
     </section>
 
+    <section id="delivery-lab" aria-labelledby="h-delivery-lab">
+      <h2 id="h-delivery-lab">Delivery Lab · one demonstration team</h2>
+      <p>Open Delivery Lab in the framework navigation. One versioned TeamGraph routes an objective through ten sequential roles: intake, planner, producer, inspector, policy gate, sandbox builder, test verifier, delivery gate, coverage reviewer and evidence reporter. It uses the existing MissionKernel, configured NeurOSA planner, runtime, event timeline and proof receipts.</p>
+      <p><strong>Starter</strong> produces actual Markdown scaffold bytes or a working, self-contained task-list HTML starter. It does not interpret arbitrary objectives. <strong>Connected</strong> delegates to the existing provider planner/builder and is BLOCKED when execution mode is fixture. Supported outputs are Markdown documents and standalone HTML; other tasks expose the gap.</p>
+      <p>Artifact delivery validates hashes, document structure and inline JavaScript syntax. Remote sandbox delivery additionally requires the existing server-side worker connection and executes fixed packaging and byte-integrity checks through WorkspaceProvider and buildAndTest. Generated code is never run in the API process. These checks are not functional browser tests, a vulnerability audit or a semantic quality assessment.</p>
+      <p>Azure delivery is BLOCKED: image publishing, scoped cloud grant and live verification are not wired into this template. Missing required gates produce a failed mission without a MissionReceipt. A completed artifact mission means ready for human review under its declared checks, not an arbitrary task proven correct.</p>
+      <p>The result includes per-stage evidence references, measured stage latency, gaps, timeline, artifact download and a JSON proof bundle. Model HTML preview disables scripts; trusted starter preview allows scripts in an opaque sandbox. Team/run indexes remain process-local; capture the bundle before restart. The result can also be opened in the existing OSA Proof verifier, runtime trace and world projection. No distributed fleet, persistent learning, benchmark workload or adaptive routing is implied.</p>
+      <p>API: <code>GET /api/templates/delivery-lab</code>, <code>POST /api/templates/delivery-lab/runs</code> with objective, kind (document/webapp/other), mode (starter/connected) and target (artifact/sandbox/azure). <code>GET /api/templates/delivery-lab/missions/:id</code> retrieves a report in the current process. Existing session authorization applies; open mode is a shared demo environment.</p>
+      <p>Browser regression: build the dashboard and run <code>npm run test:delivery-lab:browser</code> with Playwright available. Optional <code>OSA_PLAYWRIGHT_MODULE</code> and <code>OSA_CHROMIUM_PATH</code> select an existing installation. This tests the starter app interaction, iframe isolation, downloads, blocked gates and the existing browser proof verifier.</p>
+    </section>
+
     <section id="themes" aria-labelledby="h-themes">
       <h2 id="h-themes">Workspace themes</h2>
       <p>The framework includes five dark palettes (Proof, Graphite, Midnight, Forest, Plum) and five light palettes (Porcelain, Sand, Sky, Mint, Rose). Use the theme selector in the header, mobile navigation or Settings. Themes also update the runtime world colors.</p>
@@ -680,6 +691,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
         <a href="#config">Configuration</a>
         <a href="#api">HTTP API</a>
         <a href="#guides">Guides</a>
+        <a href="#delivery-lab">Delivery Lab</a>
         <a href="#themes">Themes</a>
         <a href="#community-forum">Debug forum (planned)</a>
       </aside>

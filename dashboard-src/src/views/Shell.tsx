@@ -1,3 +1,4 @@
+import DeliveryLab from "./DeliveryLab";
 import Web3 from "./Web3";
 import { useWeb3Data, type Web3Page } from "../data/web3";
 import { useState } from "react";
@@ -18,7 +19,7 @@ import Intelligence from "./Intelligence";
 import { OPS_VIEWS } from "./Ops";
 import { CONTROL_VIEWS } from "./Control";
 
-const TITLES: Record<string, string> = { home: "Home", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
+const TITLES: Record<string, string> = { home: "Home", "delivery-lab": "Delivery Lab", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
 
 function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void }) {
   const { view, go } = useOsa();
@@ -99,7 +100,8 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   const [drawer, setDrawer] = useState(false);
   let body;
   const v: ViewId = view;
-  if (v === "home") body = <Home />;
+  if (v === "delivery-lab") body = <DeliveryLab />;
+  else if (v === "home") body = <Home />;
   else if (v === "world") body = <World />;
   else if (v === "missions") body = <Missions />;
   else if (v === "trace") body = <Trace />;

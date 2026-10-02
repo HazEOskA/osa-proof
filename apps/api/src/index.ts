@@ -1,3 +1,5 @@
+import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
+import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 import { Web3Service } from "../../../packages/web3/src";
 import { handleWeb3Request } from "./web3";
 import { PlatformControlPlane } from "../../../packages/platform/src";
@@ -147,7 +149,7 @@ export async function handleApiRequest(
   // and only after every enabled policy allows it.
   async function runThroughDeployment(deploymentId: string, requested: Mission | undefined) {
     const deployment = state.deployments.get(deploymentId);
-    if (deployment.graph.agents.some(a => a.executor_ref.startsWith("web3."))) throw new ControlError("Web3 requires its scoped MissionKernel path", "forbidden");
+    if (deployment.graph.agents.some(a => a.executor_ref.startsWith("web3.") || a.executor_ref.startsWith("demo."))) throw new ControlError("Web3 requires its scoped MissionKernel path", "forbidden");
     if (deployment.status !== "ACTIVE") throw new ControlError(`deployment ${deployment.deployment_id} is ${deployment.status}, not ACTIVE`, "conflict");
     if (!requested || requested.team_id !== deployment.team_id) throw new ControlError("mission.team_id must match the deployment's team");
     const mission: Mission = { ...structuredClone(requested), team_version: deployment.team_version };
@@ -162,6 +164,38 @@ export async function handleApiRequest(
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+
+      if (parts[0] === "templates" && parts[1] === "delivery-lab") {
+        const session = requireSession(request,response,state);
+        if (!session) return;
+        const organization_id = session.identity.organization_id;
+        if (!organization_id) return send(response,403,{error:"DEMO_ORGANIZATION_REQUIRED"});
+        const options = {executionMode:String(executionDescription.mode ?? "UNKNOWN"),
+          workspace:process.env.OSA_WORKER_BASE_URL && process.env.OSA_WORKER_TOKEN ? new RemoteWorkspaceProvider({baseUrl:process.env.OSA_WORKER_BASE_URL,token:process.env.OSA_WORKER_TOKEN}) : undefined};
+        if (method === "GET" && parts.length === 2) return send(response,200,demoTemplate(options));
+        if (method === "POST" && parts.length === 3 && parts[2] === "runs") {
+          const input = validateDemoRequest(await readJson(request));
+          installDemoExecutors(registry,options);
+          state.platform.syncExecutors(registry);
+          const team = demoTeam({organization_id,project_id:"project_delivery_lab"});
+          const mission = demoMission(input,team);
+          await state.missionKernel.create(mission,team);
+          state.teams.set(state.teamKey(team.team_id,team.version),structuredClone(team));
+          state.missions.set(mission.mission_id,structuredClone(mission));
+          await state.missionKernel.plan(mission.mission_id,registry);
+          const run = await state.missionKernel.execute(mission.mission_id,registry);
+          state.runs.set(run.run_id,structuredClone(run));
+          const record = (await state.missionKernel.get(mission.mission_id))!;
+          return send(response,201,{template:demoTemplate(options),report:demoReport(record),record,run});
+        }
+        if (method === "GET" && parts.length === 4 && parts[2] === "missions") {
+          const record = await state.missionKernel.get(parts[3]);
+          if (!record || !record.team.team_id.startsWith("osa.delivery-lab:")) return send(response,404,{error:"DEMO_MISSION_NOT_FOUND"});
+          if (record.mission.organization_id !== organization_id) return send(response,403,{error:"DEMO_SCOPE_DENIED"});
+          return send(response,200,{report:demoReport(record),record});
+        }
+        return send(response,404,{error:"DEMO_ROUTE_NOT_FOUND"});
+      }
 
       if (parts[0] === "web3") {
         const session = requireSession(request,response,state);
@@ -237,6 +271,7 @@ export async function handleApiRequest(
         if (!requireSession(request, response, state)) return;
         const workspace = await readJson<BuildWorkspace>(request);
         validateBuildWorkspace(workspace);
+        if (workspace.team.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         state.buildWorkspace = structuredClone(workspace);
         const graph = workspace.team;
         state.teams.set(state.teamKey(graph.team_id, graph.version), structuredClone(graph));
@@ -455,6 +490,7 @@ export async function handleApiRequest(
         if (!session) return;
         const graph = await readJson<TeamGraph>(request);
         validateTeamGraph(graph);
+        if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         state.teams.set(state.teamKey(graph.team_id, graph.version), structuredClone(graph));
         return send(response, 201, graph);
       }
@@ -465,6 +501,7 @@ export async function handleApiRequest(
         const version = url.searchParams.get("version");
         if (!version) return send(response, 400, { error: "version query parameter is required" });
         const graph = state.teams.get(state.teamKey(parts[1], version));
+        if (graph?.agents.some(a => a.executor_ref.startsWith("demo.")) && graph.organization_id !== session.identity.organization_id) return send(response,403,{error:"DEMO_SCOPE_DENIED"});
         return graph ? send(response, 200, graph) : send(response, 404, { error: "team not found" });
       }
 
@@ -474,6 +511,7 @@ export async function handleApiRequest(
         const mission = await readJson<Mission>(request);
         const graph = state.teams.get(state.teamKey(mission.team_id, mission.team_version));
         if (!graph) return send(response, 404, { error: "team version not found" });
+        if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         await state.missionKernel.create(mission, graph);
         state.missions.set(mission.mission_id, structuredClone(mission));
         return send(response, 201, mission);
@@ -484,7 +522,7 @@ export async function handleApiRequest(
         if (!session) return;
         const record = await state.missionKernel.get(parts[1]);
         if (!record) return send(response, 404, { error: "mission not found" });
-        if (record.team.agents.some(a => a.executor_ref.startsWith("web3.")) && record.mission.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
+        if (record.team.agents.some(a => a.executor_ref.startsWith("web3.") || a.executor_ref.startsWith("demo.")) && record.mission.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
         if (method === "GET" && parts.length === 2) return send(response, 200, record);
         if (method === "GET" && parts[2] === "timeline") return send(response, 200, record.timeline);
         if (method === "GET" && parts[2] === "run") return record.run ? send(response, 200, record.run) : send(response, 404, { error: "mission has no run" });
@@ -508,7 +546,7 @@ export async function handleApiRequest(
         if (!session) return;
         const run = state.runs.get(parts[1]);
         if (!run) return send(response, 404, { error: "run not found" });
-        if (run.evidence.some(e => e.kind.startsWith("web3_")) && run.proof.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
+        if (run.evidence.some(e => e.kind.startsWith("web3_") || e.kind.startsWith("demo_")) && run.proof.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
         if (parts.length === 2) return send(response, 200, run);
         if (parts[2] === "events") return send(response, 200, run.events);
         if (parts[2] === "evidence") return send(response, 200, run.evidence);

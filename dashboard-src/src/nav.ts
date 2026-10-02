@@ -7,6 +7,7 @@ const I = ICON;
 const pick = (label: string, view: ViewId, built: boolean, icon: string): NavItem => ({ label, view, built, icon });
 export const NAV: NavGroup[] = [
   { title: "BUILD", items: [
+    pick("Delivery Lab", "delivery-lab", true, I.agents),
     pick("Agenci", "build:agents", true, I.agents), pick("Agent Mesh", "build:mesh", true, I.bee), pick("Workflowy", "build:workflows", true, I.workflows),
     pick("Narzędzia", "build:tools", true, I.tools), pick("Skille", "build:skills", true, I.skills), pick("MCP / A2A", "build:connections", true, I.robot),
     pick("Prompty", "build:prompts", true, I.code), pick("Studio", "build:studio", true, I.spaceship), pick("Playground", "build:playground", true, I.playground) ] },
