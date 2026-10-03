@@ -5,6 +5,7 @@ import SolarWorld from "../ui/SolarWorld";
 import { NODE_TYPES, causalPath, typeColor, type GNode } from "../lib/graph";
 import { Kv, Section, Status, Unknown } from "../ui/primitives";
 import { useOsa } from "../ctx";
+import { mergeNvidiaGraph, NVIDIA_ROOT } from "../lib/nvidia";
 import { tok } from "../lib/tok";
 
 const val = (v?: string) => (v && v.length ? <span className="mono break-all text-[12px]">{v}</span> : <Unknown />);
@@ -21,6 +22,12 @@ function Inspector({ n, onClose, onSelect, graph }: { graph: Graph; n: GNode; on
         <button onClick={onClose} aria-label="Close inspector" className="focus-ring tap grid w-11 place-items-center text-dim hover:text-fg">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto px-4">
+        {n.id.startsWith("nvidia:") && <Section title="NVIDIA bridge">
+          <p className="text-[12px] text-dim">{n.detail.description}</p>
+          <p className="mono py-2 text-[11px]">{n.detail.execution}</p>
+          {n.detail.url && <a href={n.detail.url} target="_blank" rel="noopener noreferrer" className="focus-ring block py-2 text-cyan">Otwórz zasób NVIDIA ↗</a>}
+          {n.detail.docs && <a href={n.detail.docs} target="_blank" rel="noopener noreferrer" className="focus-ring block py-2 text-cyan">Dokumentacja API ↗</a>}
+        </Section>}
         <Section title="Identity"><Kv k="id">{val(n.detail.identity)}</Kv><Kv k="kind">{val(n.detail.kind)}</Kv></Section>
         <Section title="State"><div className="py-1">{n.detail.state ? (n.state ? <Status v={n.state} /> : <span className="mono text-[12px]">{n.detail.state}</span>) : <Unknown />}</div></Section>
         <Section title={`Relationships · ${rel.length}`}>
@@ -43,8 +50,10 @@ function Inspector({ n, onClose, onSelect, graph }: { graph: Graph; n: GNode; on
 export default function World() {
   const { graph: baseGraph, data, focus, go } = useOsa();
   const web3 = useWeb3Data();
-  const graph = useMemo(() => mergeWeb3Graph(baseGraph,web3.mission),[baseGraph,web3.mission]);
+  const [nvidiaOpen, setNvidiaOpen] = useState(false);
+  const graph = useMemo(() => mergeNvidiaGraph(mergeWeb3Graph(baseGraph,web3.mission), nvidiaOpen),[baseGraph,web3.mission,nvidiaOpen]);
   const [sel, setSel] = useState<string | null>(focus);
+  const select = (id: string | null) => { if (id === NVIDIA_ROOT) setNvidiaOpen((open) => !open); setSel(id); };
   const [q, setQ] = useState("");
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [causal, setCausal] = useState<string>("");
@@ -71,14 +80,14 @@ export default function World() {
       </div>
       <div className="relative flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
-          <SolarWorld graph={graph} selectedId={sel} onSelect={setSel} highlight={hl} hiddenTypes={hidden} query={q} focusId={focus} className="absolute inset-0" />
+          <SolarWorld graph={graph} selectedId={sel} onSelect={select} highlight={hl} hiddenTypes={hidden} query={q} focusId={focus} className="absolute inset-0" />
           {causal && hl && <div className="mono glass absolute left-3 top-3 max-w-[70%] rounded-md px-3 py-2 text-[11px] text-dim">CAUSAL PATH · {hl.nodes.size} entities · only steps present in the run are shown (no model/tool/deploy nodes recorded)</div>}
           <div className="mono pointer-events-none absolute bottom-3 left-3 right-16 text-[10px] text-dim">sun = Team Graph · orbit = node type · planet = entity · drag to orbit · scroll / pinch to zoom · click a planet</div>
         </div>
         {node && (
           <>
-            <div className="fixed inset-x-0 bottom-0 z-30 h-[62dvh] slide-in border-t border-line lg:hidden"><Inspector graph={graph} n={node} onClose={() => setSel(null)} onSelect={setSel} /></div>
-            <div className="slide-in hidden w-[340px] shrink-0 border-l border-line lg:block"><Inspector graph={graph} n={node} onClose={() => setSel(null)} onSelect={setSel} /></div>
+            <div className="fixed inset-x-0 bottom-0 z-30 h-[62dvh] slide-in border-t border-line lg:hidden"><Inspector graph={graph} n={node} onClose={() => setSel(null)} onSelect={select} /></div>
+            <div className="slide-in hidden w-[340px] shrink-0 border-l border-line lg:block"><Inspector graph={graph} n={node} onClose={() => setSel(null)} onSelect={select} /></div>
           </>
         )}
       </div>
