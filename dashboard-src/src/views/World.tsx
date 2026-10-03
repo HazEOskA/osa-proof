@@ -1,3 +1,4 @@
+import NvidiaChat from "../ui/NvidiaChat";
 import { useWeb3Data } from "../data/web3";
 import { mergeWeb3Graph, type Graph } from "../lib/graph";
 import { useMemo, useRef, useState } from "react";
@@ -28,6 +29,7 @@ function Inspector({ n, onClose, onSelect, graph }: { graph: Graph; n: GNode; on
           {n.detail.url && <a href={n.detail.url} target="_blank" rel="noopener noreferrer" className="focus-ring block py-2 text-cyan">Otwórz zasób NVIDIA ↗</a>}
           {n.detail.docs && <a href={n.detail.docs} target="_blank" rel="noopener noreferrer" className="focus-ring block py-2 text-cyan">Dokumentacja API ↗</a>}
         </Section>}
+        {n.id === "nvidia:models" && <Section title="Rozmowa z NVIDIA"><NvidiaChat /></Section>}
         <Section title="Identity"><Kv k="id">{val(n.detail.identity)}</Kv><Kv k="kind">{val(n.detail.kind)}</Kv></Section>
         <Section title="State"><div className="py-1">{n.detail.state ? (n.state ? <Status v={n.state} /> : <span className="mono text-[12px]">{n.detail.state}</span>) : <Unknown />}</div></Section>
         <Section title={`Relationships · ${rel.length}`}>

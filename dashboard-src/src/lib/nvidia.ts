@@ -2,7 +2,7 @@ import { layout, type Graph, type GNode, type NodeType } from "./graph";
 
 export const NVIDIA_ROOT = "nvidia:provider";
 export const NVIDIA_RESOURCES = [
-  { id: "models", label: "Models", type: "MODEL" as NodeType, url: "https://build.nvidia.com/models", description: "Modele i endpointy NVIDIA NIM. Wybierz model i sprawdź dostępność API w katalogu dostawcy.", execution: "API u dostawcy · brak aktywnego połączenia w tej scenie", docs: "https://docs.api.nvidia.com/" },
+  { id: "models", label: "Models", type: "MODEL" as NodeType, url: "https://build.nvidia.com/models", description: "Modele i endpointy NVIDIA NIM. Wybierz model i sprawdź dostępność API w katalogu dostawcy.", execution: "API u dostawcy · wyślij prompt w inspektorze; dostęp zależy od konfiguracji serwera", docs: "https://docs.api.nvidia.com/" },
   { id: "blueprints", label: "Blueprints", type: "CODE" as NodeType, url: "https://build.nvidia.com/blueprints", description: "Gotowe architektury aplikacji AI i kod startowy.", execution: "Kod / instrukcja · wymaga osobnego wdrożenia" },
   { id: "playbooks", label: "Playbooks", type: "KNOWLEDGE" as NodeType, url: "https://build.nvidia.com/station", description: "Instrukcje konfiguracji i uruchamiania na DGX Station.", execution: "Instrukcja · wymaga odpowiedniego sprzętu" },
   { id: "launchables", label: "Launchables", type: "CLOUD" as NodeType, url: "https://build.nvidia.com/models", description: "Wybierz model i dostępną opcję uruchomienia w katalogu NVIDIA.", execution: "Uruchomienie u dostawcy · dostępność i koszty ustala dostawca" },
