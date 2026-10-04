@@ -88,7 +88,7 @@ export function buildGraph(d: Snapshot): Graph {
 }
 
 // Deterministic force layout (seeded ring init; repulsion + springs + centering).
-function layout(g: Graph): Graph {
+export function layout(g: Graph): Graph {
   const { nodes, edges } = g;
   const idx = new Map(nodes.map((n, i) => [n.id, i]));
   const groups = ["WORKSPACE", "REPOSITORY", "CODE", "SERVICE", "KNOWLEDGE", "POLICY", "AGENT", "MISSION", "EVIDENCE", "PROOF"];

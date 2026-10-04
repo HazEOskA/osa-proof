@@ -1,3 +1,4 @@
+import { handleNvidiaRequest } from "./nvidia";
 import { Web3Service } from "../../../packages/web3/src";
 import { handleWeb3Request } from "./web3";
 import { PlatformControlPlane } from "../../../packages/platform/src";
@@ -162,6 +163,11 @@ export async function handleApiRequest(
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+
+      if (parts[0] === "nvidia") {
+        if (!requireSession(request, response, state)) return;
+        return handleNvidiaRequest(request, response, url.pathname);
+      }
 
       if (parts[0] === "web3") {
         const session = requireSession(request,response,state);
