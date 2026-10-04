@@ -34,7 +34,7 @@ export default function NvidiaChat() {
     <form onSubmit={submit} className="space-y-2">
       <label htmlFor={`${promptId}-model`} className="block">Model NVIDIA</label>
       <select id={`${promptId}-model`} value={customModel ? "custom" : model} disabled={busy} onChange={e => { setCustomModel(e.target.value === "custom"); if (e.target.value !== "custom") setModel(e.target.value); }} className="focus-ring tap w-full rounded border border-line bg-panel px-2">
-        {[...new Set([status?.model, "nvidia/nemotron-3-super-120b-a12b", "nvidia/nemotron-3-nano-30b-a3b"].filter((v): v is string => Boolean(v)))].map(id => <option key={id} value={id}>{id}</option>)}
+        {[...new Set([status?.model, "nvidia/nemotron-3-super-120b-a12b", "nvidia/nemotron-3.5-lightning-30b-a3b"].filter((v): v is string => Boolean(v)))].map(id => <option key={id} value={id}>{id}</option>)}
         <option value="custom">Inny model — wpisz ID</option>
       </select>
       {customModel && <><label htmlFor={`${promptId}-custom`} className="block">Identyfikator modelu</label><input id={`${promptId}-custom`} value={model} onChange={e => setModel(e.target.value)} disabled={busy} required maxLength={200} placeholder="dostawca/model" className="focus-ring tap w-full rounded border border-line bg-panel px-2" /></>}
