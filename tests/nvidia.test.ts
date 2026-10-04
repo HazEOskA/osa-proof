@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { nvidiaComplete, nvidiaStatus, NvidiaError } from "../apps/api/src/nvidia";
+import { nvidiaComplete, nvidiaStatus, nvidiaRequestConfig, NvidiaError } from "../apps/api/src/nvidia";
 const env = { NVIDIA_API_KEY: "test-secret", NVIDIA_MODEL: "configured-model" };
 test("NVIDIA: missing configuration and invalid prompt never call provider", async () => {
   const never = (async () => { throw Error("must not call"); }) as typeof fetch;
@@ -48,4 +48,18 @@ test("NVIDIA HTTP: session gate and malformed requests", async () => {
       }
     } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
   }
+});
+
+
+test("NVIDIA: per-request key and model never mutate shared configuration", async () => {
+  const original = { NVIDIA_API_KEY: "server-secret", NVIDIA_MODEL: "server/model" };
+  const config = nvidiaRequestConfig({ apiKey: "personal-test-secret", model: "nvidia/nemotron-3-nano-30b-a3b" }, original);
+  assert.deepEqual(original, { NVIDIA_API_KEY: "server-secret", NVIDIA_MODEL: "server/model" });
+  await nvidiaComplete("hello", config, (async (_url, init) => {
+    assert.equal((init?.headers as Record<string,string>).authorization, "Bearer personal-test-secret");
+    assert.equal(JSON.parse(init?.body as string).model, "nvidia/nemotron-3-nano-30b-a3b");
+    return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }));
+  }) as typeof fetch);
+  for (const options of [{apiKey: "bad\nheader"}, {apiKey: 1}, {model: "https://evil.test"}, {model: null}]) assert.throws(() => nvidiaRequestConfig(options, original), (e: unknown) => e instanceof NvidiaError && e.status === 400);
+  assert.equal(nvidiaRequestConfig({}, original).NVIDIA_API_KEY, "server-secret");
 });
