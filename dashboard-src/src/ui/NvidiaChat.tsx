@@ -17,6 +17,15 @@ export default function NvidiaChat() {
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
   const [customModel, setCustomModel] = useState(false);
+  const [models, setModels] = useState<string[]>(() => { try { const v = JSON.parse(localStorage.getItem("osa.nvidia.models") || "[]"); return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(x)).slice(0, 50) : []; } catch { return []; } });
+  const [modelError, setModelError] = useState("");
+  function addModel() {
+    const id = model.trim();
+    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(id) || id.length > 200) { setModelError("Podaj poprawne ID w formacie dostawca/model."); return; }
+    const next = [...new Set([...models, id])].slice(-50);
+    setModels(next); setModel(id); setCustomModel(false); setModelError("");
+    try { localStorage.setItem("osa.nvidia.models", JSON.stringify(next)); } catch { /* session-only fallback */ }
+  }
   const [status, setStatus] = useState<{ configured: boolean; model: string } | null>(null);
   const [reply, setReply] = useState<Reply | null>(null);
   const [error, setError] = useState("");
@@ -34,10 +43,11 @@ export default function NvidiaChat() {
     <form onSubmit={submit} className="space-y-2">
       <label htmlFor={`${promptId}-model`} className="block">Model NVIDIA</label>
       <select id={`${promptId}-model`} value={customModel ? "custom" : model} disabled={busy} onChange={e => { setCustomModel(e.target.value === "custom"); if (e.target.value !== "custom") setModel(e.target.value); }} className="focus-ring tap w-full rounded border border-line bg-panel px-2">
-        {[...new Set([status?.model, "nvidia/nemotron-3-super-120b-a12b", "nvidia/nemotron-3.5-lightning-30b-a3b"].filter((v): v is string => Boolean(v)))].map(id => <option key={id} value={id}>{id}</option>)}
-        <option value="custom">Inny model — wpisz ID</option>
+        {[...new Set([status?.model, "nvidia/nemotron-3-super-120b-a12b", "nvidia/nemotron-3.5-lightning-30b-a3b", ...models].filter((v): v is string => Boolean(v)))].map(id => <option key={id} value={id}>{id}</option>)}
+        <option value="custom">Dodaj model — wpisz ID</option>
       </select>
-      {customModel && <><label htmlFor={`${promptId}-custom`} className="block">Identyfikator modelu</label><input id={`${promptId}-custom`} value={model} onChange={e => setModel(e.target.value)} disabled={busy} required maxLength={200} placeholder="dostawca/model" className="focus-ring tap w-full rounded border border-line bg-panel px-2" /></>}
+      {customModel && <><label htmlFor={`${promptId}-custom`} className="block">Identyfikator modelu</label><input id={`${promptId}-custom`} value={model} onChange={e => setModel(e.target.value)} disabled={busy} required maxLength={200} placeholder="dostawca/model" className="focus-ring tap w-full rounded border border-line bg-panel px-2" /><button type="button" onClick={addModel} disabled={busy} className="focus-ring tap rounded border border-line px-3">Dodaj model</button>{modelError && <p role="alert">{modelError}</p>}</>}
+      <h3 className="pt-3 text-base font-semibold">Skonfiguruj API</h3>
       <label htmlFor={`${promptId}-key`} className="block">Własny klucz API NVIDIA (opcjonalnie)</label>
       <input id={`${promptId}-key`} type="password" autoComplete="off" value={apiKey} onChange={e => setApiKey(e.target.value)} disabled={busy} maxLength={4096} spellCheck={false} placeholder="Wklej klucz API NVIDIA" className="focus-ring tap w-full rounded border border-line bg-panel px-2" />
       <p className="text-dim">Klucz jest używany tylko w tym panelu i wysyłany do serwera przy rozmowie. Po zamknięciu panelu znika. Puste pole używa klucza z Vercel.</p>

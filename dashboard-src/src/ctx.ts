@@ -7,7 +7,7 @@ import type { Graph } from "./lib/graph";
 
 import type { BuildPage } from "./build";
 
-export type ViewId = `web3:${Web3Page}` | `build:${BuildPage}` | "delivery-lab" | "home" | "world" | "missions" | "trace" | "proofs" | "replay" | `intel:${string}` | `ops:${string}` | `pending:${string}`;
+export type ViewId = "nvidia:models" | `web3:${Web3Page}` | `build:${BuildPage}` | "delivery-lab" | "home" | "world" | "missions" | "trace" | "proofs" | "replay" | `intel:${string}` | `ops:${string}` | `pending:${string}`;
 export interface Ctx {
   data: Snapshot; source: Source; graph: Graph;
   view: ViewId; go: (v: ViewId, opts?: { runId?: string; focus?: string }) => void;

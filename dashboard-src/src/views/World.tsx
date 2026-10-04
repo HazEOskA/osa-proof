@@ -73,7 +73,6 @@ export default function World() {
           {data.runs.map((r) => <option key={r.run_id} value={r.proof.mission_id}>Show causal path · {r.proof.mission_id} ({r.verdict})</option>)}
         </select>
         <button onClick={() => document.fullscreenElement ? document.exitFullscreen() : box.current?.requestFullscreen?.()} className="focus-ring tap mono rounded-md border border-line px-3 text-[12px] text-dim hover:text-fg">Fullscreen</button>
-        <button onClick={() => { setNvidiaOpen(true); setSel("nvidia:models"); }} className="focus-ring tap mono rounded-md border border-line px-3 text-[12px] text-cyan">NVIDIA · modele i API</button>
         <button onClick={() => go("replay")} className="focus-ring tap mono rounded-md border border-line px-3 text-[12px] text-dim hover:text-fg">Time travel → Replay</button>
       </div>
       <div className="flex flex-wrap gap-1.5 border-b border-line bg-ink px-3 py-2 md:px-5" role="group" aria-label="Filter node types">

@@ -1,3 +1,5 @@
+import NvidiaModels from "./NvidiaModels";
+import { NVIDIA_RESOURCES } from "../lib/nvidia";
 import DeliveryLab from "./DeliveryLab";
 import Web3 from "./Web3";
 import { useWeb3Data, type Web3Page } from "../data/web3";
@@ -19,7 +21,7 @@ import Intelligence from "./Intelligence";
 import { OPS_VIEWS } from "./Ops";
 import { CONTROL_VIEWS } from "./Control";
 
-const TITLES: Record<string, string> = { home: "Home", "delivery-lab": "Delivery Lab", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
+const TITLES: Record<string, string> = { "nvidia:models": "NVIDIA · Modele", home: "Home", "delivery-lab": "Delivery Lab", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
 
 function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void }) {
   const { view, go } = useOsa();
@@ -41,6 +43,13 @@ function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void })
   return (
     <nav className="flex-1 overflow-y-auto px-2 pb-4 pt-2" aria-label="Primary">
       {item(HOME_ITEM, "home")}
+      <div className="mt-3">
+        <button type="button" onClick={() => toggle("NVIDIA")} aria-expanded={compact || !closed.has("NVIDIA")} className="focus-ring label flex h-7 w-full items-center gap-2 rounded px-2.5" title="NVIDIA"><span className="flex-1 text-left">{compact ? "NV" : "NVIDIA"}</span><span>▾</span></button>
+        {(compact || !closed.has("NVIDIA")) && <>
+          {item({ label: "Modele", view: "nvidia:models", built: true, icon: ICON.minions }, "nvidia-models")}
+          {NVIDIA_RESOURCES.filter(r => r.id !== "models").map(r => <a key={r.id} href={r.url} target="_blank" rel="noopener noreferrer" title={r.label} className={`osa-nav-item focus-ring flex items-center gap-3 rounded-md text-[13.5px] text-fg/85 hover:bg-raise ${compact ? "tap justify-center" : "h-10 px-2.5"}`}><OsaIcon src={ICON.tools} size={compact ? 28 : 24} className="osa-nav-icon" />{!compact && <><span className="flex-1">{r.label}</span><span aria-hidden="true">↗</span></>}</a>)}
+        </>}
+      </div>
       {NAV.map((g) => {
         const shut = !compact && closed.has(g.title);
         const hasActive = g.items.some((it) => it.view === view && it.built && firstFor.get(view) === it.label);
@@ -100,7 +109,8 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   const [drawer, setDrawer] = useState(false);
   let body;
   const v: ViewId = view;
-  if (v === "delivery-lab") body = <DeliveryLab />;
+  if (v === "nvidia:models") body = <NvidiaModels />;
+  else if (v === "delivery-lab") body = <DeliveryLab />;
   else if (v === "home") body = <Home />;
   else if (v === "world") body = <World />;
   else if (v === "missions") body = <Missions />;
@@ -139,7 +149,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
         </header>
         <div className="flex min-h-0 flex-1">
           <main className="min-w-0 flex-1 overflow-y-auto" key={v}><div className="reveal h-full">{body}</div></main>
-          {!v.startsWith("build:") && !v.startsWith("web3:") && <LiveRail />}
+          {!v.startsWith("nvidia:") && !v.startsWith("build:") && !v.startsWith("web3:") && <LiveRail />}
         </div>
       </div>
 
