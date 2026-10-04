@@ -67,3 +67,27 @@ button { font: inherit; color: inherit; }
 
 .theme-dialog { width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
 .theme-dialog::backdrop { background: rgb(0 0 0 / .55); }
+
+/* Vercel-inspired appearance is scoped to this optional theme. */
+:root[data-osa-theme="vercel"] body,
+:root[data-osa-theme="vercel"] .font-sans,
+:root[data-osa-theme="vercel"] .font-display,
+:root[data-osa-theme="vercel"] .label,
+:root[data-osa-theme="vercel"] .solar-label--sun,
+:root[data-osa-theme="vercel"] .solar-orbit-label { font-family: "Geist Variable", system-ui, sans-serif; }
+:root[data-osa-theme="vercel"] .font-display { letter-spacing: -.035em; text-transform: none; font-weight: 500; line-height: 1.15; }
+:root[data-osa-theme="vercel"] .label { letter-spacing: .06em; }
+:root[data-osa-theme="vercel"] .mono,
+:root[data-osa-theme="vercel"] .font-mono,
+:root[data-osa-theme="vercel"] .solar-label { font-family: "Geist Mono Variable", ui-monospace, monospace; }
+:root[data-osa-theme="vercel"] .osa-sidebar { background: #000; }
+:root[data-osa-theme="vercel"] .osa-nav-item.is-active { box-shadow: none; background: #1a1a1a; }
+:root[data-osa-theme="vercel"] .osa-nav-icon,
+:root[data-osa-theme="vercel"] .osa-nav-item:hover .osa-nav-icon { filter: none; transform: none; }
+:root[data-osa-theme="vercel"] .osa-card { border-color: var(--line) !important; box-shadow: none; border-radius: 8px; }
+:root[data-osa-theme="vercel"] .osa-card:hover { border-color: var(--line2) !important; box-shadow: none; transform: none; }
+:root[data-osa-theme="vercel"] .osa-card > span { color: var(--fg) !important; letter-spacing: .015em; text-transform: none; }
+:root[data-osa-theme="vercel"] .osa-card img { width: 32px; height: 32px; margin: 8px; transform: none; }
+:root[data-osa-theme="vercel"] .osa-logo { filter: grayscale(1) !important; }
+:root[data-osa-theme="vercel"] .glass { border-radius: 8px; }
+:root[data-osa-theme="vercel"] ::selection { background: #444; color: #fff; }

@@ -9,6 +9,7 @@ const light: Record<Token,string> = {void:'#f7f8fc',ink:'#f0f2f8',panel:'#ffffff
 const preset = (id:string,name:string,mode:'dark'|'light',tokens:Partial<Record<Token,string>> = {}):ThemeDefinition => ({schema:'osa.theme.v1',id,name,mode,tokens:{...(mode==='dark'?dark:light),...tokens}});
 export const BUILTIN_THEMES: ThemeDefinition[] = [
  preset('proof','Proof','dark'),
+ preset('vercel','Vercel · czerń','dark',{void:'#000000',ink:'#0a0a0a',panel:'#111111',raise:'#1a1a1a',line:'#2e2e2e',line2:'#444444',fg:'#ededed',hero:'#ffffff',dim:'#a1a1a1',faint:'#a1a1a1',brand:'#ffffff',onbrand:'#000000',cyan:'#ededed',steel:'#ededed',violet:'#b3b3b3',ok:'#50e3c2',warn:'#f5a623',bad:'#ff6369',info:'#3291ff'}),
  preset('graphite','Graphite','dark',{void:'#101113',ink:'#161719',panel:'#1c1e21',raise:'#282b30',line:'#40444d',line2:'#69717e',dim:'#afb7c5',faint:'#afb7c5',brand:'#a9c0ee',onbrand:'#172033',cyan:'#bfd0ef',steel:'#bfd0ef'}),
  preset('midnight','Midnight','dark',{void:'#070919',ink:'#0e1228',panel:'#141a36',raise:'#202847',line:'#394779',brand:'#a393ff',onbrand:'#181333',dim:'#b0bad8',faint:'#b0bad8'}),
  preset('forest','Forest','dark',{void:'#081510',ink:'#0e201a',panel:'#142a22',raise:'#203a30',line:'#355d4e',line2:'#638e7d',dim:'#b2c8bd',faint:'#b2c8bd',brand:'#8cddaf',onbrand:'#12261b',cyan:'#a4d9bf',steel:'#a4d9bf',hero:'#d9f2e5'}),
