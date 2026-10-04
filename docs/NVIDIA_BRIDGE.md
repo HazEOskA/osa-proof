@@ -1,6 +1,6 @@
 # Most NVIDIA w scenie World
 
-W scenie kliknij NVIDIA, następnie Models. Formularz wysyła pojedynczy prompt do modelu na serwerach NVIDIA; pozostałe kategorie prowadzą do katalogów i instrukcji dostawcy.
+W scenie World kliknij przycisk „NVIDIA · modele i API” (lub NVIDIA, następnie Models). Formularz wysyła pojedynczy prompt do modelu na serwerach NVIDIA; pozostałe kategorie prowadzą do katalogów i instrukcji dostawcy.
 
 Konfiguracja serwera:
 
@@ -10,7 +10,7 @@ NVIDIA_API_KEY=klucz_dostawcy
 NVIDIA_MODEL=nvidia/nemotron-3-super-120b-a12b
 ```
 
-Klucz nie używa prefiksu VITE_ i nie trafia do przeglądarki. GET /api/nvidia/status zwraca wyłącznie informację o konfiguracji i model. POST /api/nvidia/chat przyjmuje JSON {"prompt":"..."}; oba endpointy stosują istniejący tryb sesji OSA. W trybie open API jest dostępne bez logowania, zgodnie z konfiguracją podglądu repozytorium; przed publicznym udostępnieniem produkcji należy użyć istniejącego trybu session.
+Klucz serwera nie używa prefiksu VITE_ i nie trafia do przeglądarki. Własny klucz wpisany w panelu jest przechowywany wyłącznie w stanie formularza do zamknięcia panelu; trafia do serwera tylko z wywołaniem rozmowy i nie zmienia konfiguracji innych użytkowników. Nie jest zapisywany w localStorage ani bazie. GET /api/nvidia/status zwraca wyłącznie informację o konfiguracji i model. POST /api/nvidia/chat przyjmuje JSON {"prompt":"...", "model":"dostawca/model", "apiKey":"opcjonalny-własny-klucz"}; oba endpointy stosują istniejący tryb sesji OSA. W trybie open API jest dostępne bez logowania, zgodnie z konfiguracją podglądu repozytorium; przed publicznym udostępnieniem produkcji należy użyć istniejącego trybu session.
 
 Wywołanie: https://integrate.api.nvidia.com/v1/chat/completions, bez streamingu, maksymalnie 1024 tokeny odpowiedzi, 8000 znaków promptu, limit żądania 40000 bajtów, timeout dostawcy 25 sekund. Nie ma automatycznych retry ani fikcyjnej odpowiedzi przy braku klucza. Błędy dostawcy są sanitowane; treść błędu nie zawiera jego surowego body ani klucza.
 

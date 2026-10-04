@@ -9,6 +9,18 @@ export class NvidiaError extends Error {
 export function nvidiaStatus(env: NodeJS.ProcessEnv = process.env) {
   return { provider: "NVIDIA", configured: Boolean(env.NVIDIA_API_KEY?.trim()), model: env.NVIDIA_MODEL?.trim() || NVIDIA_MODEL };
 }
+export function nvidiaRequestConfig(options: { apiKey?: unknown; model?: unknown }, env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const config = { ...env };
+  if (options.apiKey !== undefined) {
+    if (typeof options.apiKey !== "string" || !/^[A-Za-z0-9_.-]{10,4096}$/.test(options.apiKey.trim())) throw new NvidiaError(400, "INVALID_API_KEY", "Nieprawidłowy format klucza API NVIDIA.");
+    config.NVIDIA_API_KEY = options.apiKey.trim();
+  }
+  if (options.model !== undefined) {
+    if (typeof options.model !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*\/[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(options.model) || options.model.length > 200) throw new NvidiaError(400, "INVALID_MODEL", "Wpisz identyfikator modelu w formacie dostawca/model.");
+    config.NVIDIA_MODEL = options.model;
+  }
+  return config;
+}
 export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = process.env, fetcher: typeof fetch = fetch) {
   if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 8000) throw new NvidiaError(400, "INVALID_PROMPT", "Wpisz prompt od 1 do 8000 znaków.");
   const key = env.NVIDIA_API_KEY?.trim();
@@ -36,9 +48,9 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
   try {
     let size = 0; const chunks: Buffer[] = [];
     for await (const chunk of request) { const bytes = Buffer.from(chunk); size += bytes.length; if (size > 40000) throw new NvidiaError(413, "BODY_TOO_LARGE", "Żądanie jest za duże."); chunks.push(bytes); }
-    let body: { prompt?: unknown };
+    let body: { prompt?: unknown; apiKey?: unknown; model?: unknown };
     try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new NvidiaError(400, "INVALID_JSON", "Nieprawidłowy JSON."); }
-    return send(200, await nvidiaComplete(body?.prompt));
+    return send(200, await nvidiaComplete(body?.prompt, nvidiaRequestConfig(body ?? {})));
   } catch (error) {
     if (error instanceof NvidiaError) return send(error.status, { error: error.message, code: error.code });
     return send(500, { error: "Błąd mostu NVIDIA.", code: "NVIDIA_INTERNAL_ERROR" });
