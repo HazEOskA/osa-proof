@@ -4,16 +4,16 @@ import { useOsaData } from "./data/data";
 import { buildGraph } from "./lib/graph";
 import { BuildProvider } from "./build";
 import Shell from "./views/Shell";
+import { useThemes } from "./useThemes";
 
 export default function App() {
-  const { data, source, runningMission, actionError, runMission, enterLayer } = useOsaData();
+  const { data, source, runningMission, actionError, runMission, enterLayer, inspectExecution } = useOsaData();
   const graph = useMemo(() => buildGraph(data), [data]);
   const [view, setView] = useState<ViewId>("home");
   const [runId, setRunId] = useState(data.runs[0]?.run_id ?? "");
   const [focus, setFocus] = useState<string | null>(null);
   const [palette, setPalette] = useState(false);
-  const [theme, setTheme] = useState<"proof" | "godmode">("proof");
-  useEffect(() => { document.documentElement.dataset.osaTheme = theme; }, [theme]);
+  const themeSettings = useThemes();
   useEffect(() => {
     if (!runId && data.runs[0]?.run_id) setRunId(data.runs[0].run_id);
   }, [data.runs, runId]);
@@ -28,8 +28,8 @@ export default function App() {
 
   const ctx = {
     data, source, graph, view, go, runId, setRunId, focus,
-    openPalette: () => setPalette(true), theme, setTheme,
-    runningMission, actionError, runMission, enterLayer,
+    openPalette: () => setPalette(true), ...themeSettings,
+    runningMission, actionError, runMission, enterLayer, inspectExecution,
   };
   return (
     <OsaCtx.Provider value={ctx}>

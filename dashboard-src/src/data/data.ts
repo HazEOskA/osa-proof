@@ -6,7 +6,7 @@ export const snapshot = raw as unknown as Snapshot;
 
 export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const ctl = new AbortController();
-  const timeout = setTimeout(() => ctl.abort(), path.endsWith("/run") ? 660000 : 10000);
+  const timeout = setTimeout(() => ctl.abort(), (path.endsWith("/run") || path === "/templates/delivery-lab/runs") ? 660000 : 10000);
   try {
     const res = await fetch(`/api${path}`, {
       ...init,
@@ -50,6 +50,7 @@ export function useOsaData(): {
   actionError: string | null;
   runMission: (missionId: string) => Promise<Run>;
   enterLayer: (layerId: string) => Promise<LayerEnterResult>;
+  inspectExecution: (team: TeamGraph, mission: Mission, run: Run) => void;
 } {
   const [data, setData] = useState<Snapshot>(snapshot);
   const [source, setSource] = useState<Source>({ kind: "SNAPSHOT", detail: `captured ${snapshot.captured_at.slice(0, 16).replace("T", " ")}Z · ${snapshot.source.mode} mode` });
@@ -67,8 +68,8 @@ export function useOsaData(): {
       const team = await getJson<TeamGraph>(`/teams/${t.team_id}?version=${t.version}`);
       const runs = await Promise.all(snapshot.runs.map(async (r) => (await getJson<Run>(`/runs/${r.run_id}`)) ?? r));
       if (!alive) return;
-      setData({ ...snapshot, layers, team: team ?? snapshot.team, runs });
-      setSource({ kind: "LIVE", detail: "osa-proof API reachable" });
+      setData(current => current.runs.some(run => run.proof.team_id.startsWith("osa.delivery-lab:")) ? {...current,layers} : { ...snapshot, layers, team: team ?? snapshot.team, runs });
+      setSource(current => current.detail.startsWith("Delivery Lab execution") ? current : { kind: "LIVE", detail: "osa-proof API reachable" });
       setChecking(false);
     })();
     return () => { alive = false; };
@@ -83,8 +84,10 @@ export function useOsaData(): {
       // ApiState is intentionally in-memory today. Seed the canonical Team Graph and
       // mission before every execution so a cold serverless instance still has the
       // exact state needed for this run.
+      if (!data.team.agents.some(agent => agent.executor_ref.startsWith("demo."))) {
       await requestJson<TeamGraph>("/teams", { method: "POST", body: JSON.stringify(data.team) });
       await requestJson<Mission>("/missions", { method: "POST", body: JSON.stringify(mission) });
+      }
       const run = await requestJson<Run>(`/missions/${encodeURIComponent(missionId)}/run`, { method: "POST", body: "{}" });
       setData((current) => ({
         ...current,
@@ -114,5 +117,10 @@ export function useOsaData(): {
     }
   }, []);
 
-  return { data, source, checking, runningMission, actionError, runMission, enterLayer };
+  const inspectExecution = useCallback((team: TeamGraph, mission: Mission, run: Run) => {
+    // A scoped projection of the exact API result, not a second execution or invented world state.
+    setData(current => ({...current,team,missions:[mission],runs:[run]}));
+    setSource({kind:"LIVE",detail:`Delivery Lab execution ${run.execution_id}`});
+  }, []);
+  return { data, source, checking, runningMission, actionError, runMission, enterLayer, inspectExecution };
 }
