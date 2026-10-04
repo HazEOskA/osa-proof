@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import type { Verdict } from "../data/types";
+import { useOsa } from "../ctx";
+import { vercelIcon } from "../brand/vercelIcons";
 import { LOGO } from "../brand/icons";
 
 export const Mono = ({ children, className = "" }: { children: ReactNode; className?: string }) => <span className={`mono ${className}`}>{children}</span>;
@@ -51,10 +53,11 @@ export const Icon = ({ d, className = "h-4 w-4" }: { d: string; className?: stri
 );
 export function Logo({ size = 28 }: { size?: number }) {
   // OSA bee mark (brand lock, src/brand/icons.ts). size = height in px.
-  return <img src={LOGO.wings} alt="OSA" height={size} style={{ height: size, width: "auto", filter: "drop-shadow(0 0 6px rgb(var(--brand-rgb) / .35))" }} draggable={false} />;
+  return <img className="osa-logo" src={LOGO.wings} alt="OSA" height={size} style={{ height: size, width: "auto", filter: "drop-shadow(0 0 6px rgb(var(--brand-rgb) / .35))" }} draggable={false} />;
 }
-export const OsaIcon = ({ src, size = 22, className = "" }: { src: string; size?: number; className?: string }) => (
-  <img src={src} alt="" aria-hidden width={size} height={size} draggable={false} className={`shrink-0 object-contain ${className}`} style={{ width: size, height: size }} />
-);
+export function OsaIcon({ src, size = 22, className = "" }: { src: string; size?: number; className?: string }) {
+  const { theme } = useOsa();
+  return <img src={theme === "vercel" ? vercelIcon(src) : src} alt="" aria-hidden width={size} height={size} draggable={false} className={`shrink-0 object-contain ${className}`} style={{ width: size, height: size }} />;
+}
 
 export { ThemeSwitch } from "./Themes";

@@ -1,5 +1,5 @@
 import SolarWorld from "../ui/SolarWorld";
-import { Status, Mono } from "../ui/primitives";
+import { Status, Mono, OsaIcon } from "../ui/primitives";
 import { useState } from "react";
 import { useOsa, type ViewId } from "../ctx";
 import { CARD } from "../brand/icons";
@@ -89,7 +89,7 @@ export default function Home() {
           {LAUNCH.map((c) => (
             <button key={c.label} type="button" onClick={() => go(c.view, c.focus ? { focus: c.focus } : undefined)} title={c.built ? c.label : `${c.label} · not built yet`}
               className="osa-card focus-ring group relative flex flex-col items-center gap-2 rounded-md border bg-panel px-2 pb-2.5 pt-3" style={{ ["--c" as string]: c.color, borderColor: `${c.color}55` }}>
-              <img src={c.icon} alt="" aria-hidden className={`h-12 w-12 object-contain transition-transform group-hover:scale-110 ${c.built ? "" : "opacity-80"}`} draggable={false} />
+              <OsaIcon src={c.icon} size={48} className={`transition-transform group-hover:scale-110 ${c.built ? "" : "opacity-80"}`} />
               <span className="text-[10.5px] font-semibold uppercase tracking-[.12em]" style={{ color: c.built ? c.color : undefined }}>{c.label}</span>
               {!c.built && <span className="absolute right-1.5 top-1.5 text-[8px] font-medium uppercase tracking-[.12em] text-dim/70">soon</span>}
             </button>
