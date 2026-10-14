@@ -1,0 +1,29 @@
+name: Mastra OSA Integration Verification
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/mastra-osa-integration-v1
+    paths:
+      - 'integrations/mastra/**'
+      - 'tests/mastra-osa-adapter.test.mjs'
+      - '.github/workflows/mastra-osa-integration.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Adapter contract tests
+        run: node --test tests/mastra-osa-adapter.test.mjs
+      - name: Install repository dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Compile OSA Proof
+        run: npm run build
+      - name: OSA Proof regression tests
+        run: node --test dist/tests/*.test.js
