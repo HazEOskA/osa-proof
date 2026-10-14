@@ -1,0 +1,53 @@
+name: Fleet HTTP Wire E2E (No Provider Keys)
+on:
+  push:
+    branches: [feature/osa-fleet-chat-slice1-proof]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  fleet-wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout OSA Proof branch
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install OSA Proof
+        run: npm ci
+      - name: Checkout Fleet working branch (public repo)
+        uses: actions/checkout@v4
+        with:
+          repository: HazEOskA/osa-agent-fleet-control-plane
+          ref: feature/osa-fleet-chat-slice1-proof
+          path: fleet-runtime
+      - name: Build real Fleet service
+        run: |
+          npm --prefix fleet-runtime install --no-audit --no-fund
+          npm --prefix fleet-runtime run lint
+          npm --prefix fleet-runtime run build
+      - name: Start keyless Fleet HTTP
+        env:
+          NODE_ENV: production
+          PORT: '39741'
+          OSA_FLEET_SERVICE_TOKEN: ci-only-fleet-service-token-at-least-32-characters
+          OSA_FLEET_OPERATOR_PASSWORD: ci-only-operator-secret-do-not-reuse
+        run: |
+          cd fleet-runtime
+          nohup node dist/server.cjs > /tmp/fleet-http.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:39741/api/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/fleet-http.log
+          exit 1
+      - name: OSA Proof to real Fleet HTTP integration
+        env:
+          OSA_E2E_FLEET_URL: http://127.0.0.1:39741
+          OSA_E2E_FLEET_TOKEN: ci-only-fleet-service-token-at-least-32-characters
+        run: npm test
