@@ -36,7 +36,9 @@ jobs:
           done
           cat /tmp/osa-mobile.log
           exit 1
-      - name: Browser tests at 320px, 390px and desktop
+      - name: Browser test LIVE / BLACK iframe on 320px, 390px and desktop + real protected-alias check
+        env:
+          OSA_REMOTE_BLACK_URL: https://aether-git-feature-jeverson-verc-268688-osabarca-1680s-projects.vercel.app
         run: node scripts/test-jeverson-mobile-layout.mjs
       - name: Upload test screenshots
         if: always()
