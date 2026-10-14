@@ -49,7 +49,38 @@ test("real Mastra SDK tool -> OSA HTTP API -> runtime -> canonical receipt verif
     assert.equal(result.osa_mission_id, "mastra-tool-call-1");
     assert.equal(result.verification, "VERIFIER_CALLBACK_APPROVED");
     assert.ok(result.mission_receipt_sha256);
-    const duplicate = await assert.rejects(
+    // Tamper only with the persisted HTTP record, not the runtime's stored data.
+    // A valid run and receipt must still be rejected when the record is altered in transit.
+    const tamperedFetch = async (url, options) => {
+      const response = await fetchImpl(url, options);
+      if (new URL(url).pathname !== "/missions/mastra-tool-call-tampered" || options.method !== "GET" || !response.ok) return response;
+      const record = await response.json();
+      record.timeline[0].payload.injected = "tampered-in-transit";
+      return new Response(JSON.stringify(record), { status: response.status, headers: { "content-type": "application/json" } });
+    };
+    const tamperTool = createOsaDelegationTool({
+      apiBaseUrl: "https://osa.invalid",
+      token: "fixture-only-not-a-real-credential",
+      fetchImpl: tamperedFetch,
+      missionFactory: ({ toolCallId, input }) => ({
+        organization_id: graph.organization_id, project_id: graph.project_id,
+        mission_id: `mastra-${toolCallId}`, team_id: graph.team_id, team_version: graph.version,
+        entry_agent_id: "plan", objective: input.task, input,
+        requirements: [{ requirement_id: "artifact-built", type: "evidence_field_equals", agent_id: "build", evidence_kind: "artifact", field: "status", expected: "built" }]
+      }),
+      verifyReceipt: async ({ mission, run, receipt, record }) =>
+        verifyMastraOsaMissionRecord(record, {
+          mission_id: mission.mission_id, run_id: run.run_id,
+          execution_id: run.execution_id, receipt_sha256: receipt.receipt_sha256
+        })
+    });
+    await assert.rejects(
+      tamperTool.execute({ task: "Build fixture artifact" }, {
+        requestContext: { get: key => ({ osaMastraRunId: "mastra-run-1", osaToolCallId: "tool-call-tampered" })[key] }
+      }),
+      error => error.code === "VERIFIER_FAILED"
+    );
+    await assert.rejects(
       tool.execute({ task: "Build fixture artifact" }, { requestContext }),
       error => error.code === "DUPLICATE_MISSION"
     );
