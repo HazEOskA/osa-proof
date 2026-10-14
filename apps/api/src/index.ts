@@ -496,6 +496,7 @@ export async function handleApiRequest(
         if (!session) return;
         const graph = await readJson<TeamGraph>(request);
         validateTeamGraph(graph);
+        if (graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         state.teams.set(state.teamKey(graph.team_id, graph.version), structuredClone(graph));
         return send(response, 201, graph);
@@ -507,7 +508,7 @@ export async function handleApiRequest(
         const version = url.searchParams.get("version");
         if (!version) return send(response, 400, { error: "version query parameter is required" });
         const graph = state.teams.get(state.teamKey(parts[1], version));
-        if (graph?.agents.some(a => a.executor_ref.startsWith("demo.")) && graph.organization_id !== session.identity.organization_id) return send(response,403,{error:"DEMO_SCOPE_DENIED"});
+        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         return graph ? send(response, 200, graph) : send(response, 404, { error: "team not found" });
       }
 
@@ -515,7 +516,9 @@ export async function handleApiRequest(
         const session = requireSession(request, response, state);
         if (!session) return;
         const mission = await readJson<Mission>(request);
+        if (mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         const graph = state.teams.get(state.teamKey(mission.team_id, mission.team_version));
+        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (!graph) return send(response, 404, { error: "team version not found" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         await state.missionKernel.create(mission, graph);
@@ -528,7 +531,7 @@ export async function handleApiRequest(
         if (!session) return;
         const record = await state.missionKernel.get(parts[1]);
         if (!record) return send(response, 404, { error: "mission not found" });
-        if (record.team.agents.some(a => a.executor_ref.startsWith("web3.") || a.executor_ref.startsWith("demo.")) && record.mission.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
+        if (record.mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (method === "GET" && parts.length === 2) return send(response, 200, record);
         if (method === "GET" && parts[2] === "timeline") return send(response, 200, record.timeline);
         if (method === "GET" && parts[2] === "run") return record.run ? send(response, 200, record.run) : send(response, 404, { error: "mission has no run" });
@@ -552,7 +555,7 @@ export async function handleApiRequest(
         if (!session) return;
         const run = state.runs.get(parts[1]);
         if (!run) return send(response, 404, { error: "run not found" });
-        if (run.evidence.some(e => e.kind.startsWith("web3_") || e.kind.startsWith("demo_")) && run.proof.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
+        if (run.proof.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (parts.length === 2) return send(response, 200, run);
         if (parts[2] === "events") return send(response, 200, run.events);
         if (parts[2] === "evidence") return send(response, 200, run.evidence);
