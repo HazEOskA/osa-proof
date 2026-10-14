@@ -16,7 +16,7 @@ async function withServer(mode: AuthMode, fn: (base: string) => Promise<void>): 
 }
 
 const graph = {
-  organization_id: "org_auth", project_id: "project_auth", team_id: "team_auth", version: "1",
+  organization_id: "org_dev_local", project_id: "project_auth", team_id: "team_auth", version: "1",
   agents: [{ agent_id: "planner", role: "planner", executor_ref: "dev.planner.v1" }, { agent_id: "builder", role: "builder", executor_ref: "dev.builder.v1" }],
   edges: [{ edge_id: "p_b", from_agent_id: "planner", to_agent_id: "builder", kind: "handoff" }],
 };
