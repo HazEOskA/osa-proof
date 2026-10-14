@@ -8,6 +8,9 @@ on:
       - 'integrations/mastra/**'
       - 'tests/mastra-osa-adapter.test.mjs'
       - 'tests/mastra-osa-sdk.test.mjs'
+      - 'tests/mission-kernel.test.ts'
+      - 'packages/proof-core/**'
+      - 'packages/runtime/**'
       - '.github/workflows/mastra-osa-integration.yml'
 jobs:
   verify:
