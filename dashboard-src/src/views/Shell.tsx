@@ -1,6 +1,7 @@
 import NvidiaModels from "./NvidiaModels";
 import { NVIDIA_RESOURCES } from "../lib/nvidia";
 import DeliveryLab from "./DeliveryLab";
+import JeversonChat from "./JeversonChat";
 import Web3 from "./Web3";
 import { useWeb3Data, type Web3Page } from "../data/web3";
 import { useState } from "react";
@@ -21,7 +22,7 @@ import Intelligence from "./Intelligence";
 import { OPS_VIEWS } from "./Ops";
 import { CONTROL_VIEWS } from "./Control";
 
-const TITLES: Record<string, string> = { "nvidia:models": "NVIDIA · Modele", home: "Home", "delivery-lab": "Delivery Lab", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
+const TITLES: Record<string, string> = { "nvidia:models": "NVIDIA · Modele", home: "Home", "delivery-lab": "Delivery Lab", "jeverson-chat": "Jeverson Chat", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
 
 function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void }) {
   const { view, go } = useOsa();
@@ -111,6 +112,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   const v: ViewId = view;
   if (v === "nvidia:models") body = <NvidiaModels />;
   else if (v === "delivery-lab") body = <DeliveryLab />;
+  else if (v === "jeverson-chat") body = <JeversonChat />;
   else if (v === "home") body = <Home />;
   else if (v === "world") body = <World />;
   else if (v === "missions") body = <Missions />;
