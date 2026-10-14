@@ -26,6 +26,12 @@ try {
         body: "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'></head><body style='background:#080b10;color:#eee;font:16px sans-serif;margin:0;padding:24px'>JEVERSON AGENT WORLD / TEST FRAME</body></html>",
       });
     });
+    await page.route("https://black.ui.test/**", async route => {
+      await route.fulfill({
+        status: 200, contentType: "text/html",
+        body: "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'></head><body style='background:#000;color:#eee;font:16px sans-serif;padding:20px'>VERCEL BLACK / TEST FRAME</body></html>",
+      });
+    });
     const response = await page.goto(base, { waitUntil: "domcontentloaded", timeout: 30000 });
     assert.equal(response?.status(), 200, `${name}: dashboard HTTP 200`);
     if (width < 768) {
@@ -61,11 +67,47 @@ try {
     assert.ok(metrics.footer.bottom <= height + 1, `${name}: footer overflows viewport`);
     assert.ok(metrics.frame.y >= metrics.toolbar.bottom - 1, `${name}: toolbar overlaps iframe`);
     if (width < 768) {
-      await page.getByRole("link", { name: "Motyw ↗" }).waitFor();
-      await page.getByRole("link", { name: "Otwórz Jeverson w pełnym ekranie" }).waitFor();
+      await page.getByRole("link", { name: "Otwórz aktualnego Jeversona w pełnym ekranie" }).waitFor();
     }
-    await page.screenshot({ path: path.join(dir, `${name}.png`), fullPage: true });
-    console.log(JSON.stringify({ name, status: "PASS", metrics }));
+    const liveButton = page.getByRole("button", { name: "LIVE", exact: true });
+    const blackButton = page.getByRole("button", { name: "BLACK", exact: true });
+    await liveButton.waitFor();
+    await blackButton.waitFor();
+    assert.equal(await liveButton.getAttribute("aria-pressed"), "true");
+    await page.screenshot({ path: path.join(dir, `${name}-live.png`), fullPage: true });
+
+    await blackButton.click();
+    assert.equal(await blackButton.getAttribute("aria-pressed"), "true", `${name}: active BLACK mode`);
+    await frame.getByText("VERCEL BLACK / TEST FRAME").waitFor();
+    assert.match(await page.getByTestId("jeverson-iframe").getAttribute("src"), /black\.ui\.test/);
+    const previewFrameBox = await page.getByTestId("jeverson-iframe").boundingBox();
+    assert.ok(previewFrameBox && previewFrameBox.height >= height * .6,
+      `${name}: BLACK preview frame must keep full height`);
+    await page.screenshot({ path: path.join(dir, `${name}-black.png`), fullPage: true });
+    await liveButton.click();
+    await frame.getByText("JEVERSON AGENT WORLD / TEST FRAME").waitFor();
+    assert.equal(await liveButton.getAttribute("aria-pressed"), "true", `${name}: back to LIVE`);
+
+    console.log(JSON.stringify({ name, status: "PASS", modes: ["LIVE","BLACK","LIVE"], metrics }));
+    await page.close();
+  }
+  // An actual uncredentialed browser loads the LIVE Vercel Black branch alias,
+  // so Vercel Authentication cannot silently return a protected login screen.
+  if (process.env.OSA_REMOTE_BLACK_URL) {
+    const page = await browser.newPage({viewport:{width:390,height:844},reducedMotion:"reduce"});
+    const target = process.env.OSA_REMOTE_BLACK_URL;
+    const response = await page.goto(target, { waitUntil: "domcontentloaded", timeout: 45000 });
+    assert.equal(response?.status(), 200, "Uncredentialed Jeverson alias HTTP 200");
+    await page.locator(".osa-app .composer").waitFor({state:"visible",timeout:40000});
+    assert.match(await page.title(), /Jeverson/, "No Vercel protection login");
+    const tokens = await page.locator(".osa-app").evaluate(el=>({
+      bg:getComputedStyle(el).backgroundColor,
+      composer:getComputedStyle(el.querySelector(".composer")).backgroundColor,
+    }));
+    assert.equal(tokens.bg,"rgb(0, 0, 0)");
+    assert.equal(tokens.composer,"rgb(17, 17, 17)");
+    await page.screenshot({path:path.join(dir,"public-alias-black-real-390x844.png"),fullPage:true});
+    console.log(JSON.stringify({name:"REAL ALIAS 390x844",status:"PASS",tokens}));
     await page.close();
   }
 } finally {
