@@ -1,37 +1,48 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createMastraOsaTool, OsaAdapterError } from "../integrations/mastra/adapter.mjs";
+import { createMastraOsaTool } from "../integrations/mastra/adapter.mjs";
 const mission = { mission_id: "m-1", team_id: "t-1" };
-const args = { mastraRunId: "mastra-1", toolCallId: "call-1", toolName: "osa_execute", input: { task: "fixture" } };
-const make = (overrides = {}) => {
+const args = { mastraRunId: "mr", toolCallId: "tc", toolName: "osa", input: { task: "fixture" } };
+function make({ overrides = {}, verifyReceipt = async () => true } = {}) {
   const calls = [];
-  const handler = async (url, init) => {
-    calls.push({ url, init });
-    const path = new URL(url).pathname;
-    const body = path === "/missions" ? mission : path.endsWith("/receipt")
-      ? { schema: "osa.mission_receipt.v1", mission_id: "m-1", receipt_sha256: "sha256:fixture" }
-      : { run_id: "run-1", execution_id: "exec-1", verdict: "VERIFIED", final_output: "ok" };
-    const chosen = overrides[path] ?? body;
-    return { ok: true, status: 200, json: async () => chosen };
+  const fetchImpl = async (url, opts) => {
+    const p = new URL(url).pathname; calls.push(p);
+    const data = overrides[p] ?? (p === "/missions" ? mission : p.endsWith("/receipt")
+      ? { schema: "osa.mission_receipt.v1", mission_id: "m-1", receipt_sha256: "sha256:mission", verification_receipt_sha256: "sha256:proof" }
+      : { run_id: "r", execution_id: "e", verdict: "VERIFIED", proof: { run_id: "r", execution_id: "e", mission_id: "m-1", verdict: "VERIFIED", receipt_sha256: "sha256:proof" }, final_output: "ok" });
+    return data?.status ? { ok: false, status: data.status } : { ok: true, status: 200, json: async () => data };
   };
-  return { calls, execute: createMastraOsaTool({ apiBaseUrl: "https://osa.invalid", token: "test-token", fetchImpl: handler, missionFactory: () => mission }) };
-};
-test("correlates one authorized fixture mission without claiming independent verification", async () => {
-  const { calls, execute } = make();
-  const result = await execute(args);
-  assert.equal(result.osa_execution_id, "exec-1");
-  assert.equal(result.verification, "CORRELATED_NOT_INDEPENDENTLY_VERIFIED");
-  assert.deepEqual(calls.map(c => new URL(c.url).pathname), ["/missions", "/missions/m-1/run", "/missions/m-1/receipt"]);
-  assert.ok(calls.every(c => c.init.headers.authorization === "Bearer test-token"));
+  return { calls, run: createMastraOsaTool({ apiBaseUrl: "https://osa.invalid", token: "t", fetchImpl, missionFactory: () => mission, verifyReceipt }) };
+}
+test("valid bound receipt and external verifier callback", async () => {
+  const x = make(); const r = await x.run(args);
+  assert.equal(r.verification, "VERIFIER_CALLBACK_APPROVED");
+  assert.deepEqual(x.calls, ["/missions", "/missions/m-1/run", "/missions/m-1/receipt"]);
 });
-test("fails closed for non-verified run", async () => {
-  const { execute } = make({ "/missions/m-1/run": { run_id: "r", execution_id: "e", verdict: "FAILED" } });
-  await assert.rejects(execute(args), e => e instanceof OsaAdapterError && e.code === "RUN_NOT_VERIFIED");
+test("rejects failed run", async () => {
+  const x = make({ overrides: { "/missions/m-1/run": { verdict: "FAILED" } } });
+  await assert.rejects(x.run(args), e => e.code === "RUN_NOT_VERIFIED");
 });
-test("fails closed for receipt bound to another mission", async () => {
-  const { execute } = make({ "/missions/m-1/receipt": { schema: "osa.mission_receipt.v1", mission_id: "other" } });
-  await assert.rejects(execute(args), e => e.code === "RECEIPT_MISMATCH");
+test("rejects cross-mission receipt", async () => {
+  const x = make({ overrides: { "/missions/m-1/receipt": { schema: "osa.mission_receipt.v1", mission_id: "other" } } });
+  await assert.rejects(x.run(args), e => e.code === "RECEIPT_MISMATCH");
 });
-test("rejects non-HTTPS OSA endpoint", () => {
-  assert.throws(() => createMastraOsaTool({ apiBaseUrl: "http://localhost", token: "t", missionFactory: () => mission }), e => e.code === "CONFIG");
+test("rejects proof execution mismatch", async () => {
+  const x = make({ overrides: { "/missions/m-1/run": { run_id: "r", execution_id: "e", verdict: "VERIFIED", proof: { run_id: "r", execution_id: "wrong", mission_id: "m-1", verdict: "VERIFIED" } } } });
+  await assert.rejects(x.run(args), e => e.code === "RUN_NOT_VERIFIED");
 });
+test("fails closed when verifier denies", async () => {
+  const x = make({ verifyReceipt: async () => false });
+  await assert.rejects(x.run(args), e => e.code === "VERIFIER_FAILED");
+});
+test("fails closed when verifier throws", async () => {
+  const x = make({ verifyReceipt: async () => { throw Error("bad"); } });
+  await assert.rejects(x.run(args), e => e.code === "VERIFIER_FAILED");
+});
+test("409 duplicate mission never reexecutes", async () => {
+  const x = make({ overrides: { "/missions": { status: 409 } } });
+  await assert.rejects(x.run(args), e => e.code === "DUPLICATE_MISSION");
+  assert.deepEqual(x.calls, ["/missions"]);
+});
+test("rejects non-HTTPS", () => assert.throws(() => createMastraOsaTool({ apiBaseUrl: "http://localhost", token: "t", missionFactory: () => mission, verifyReceipt: () => true }), e => e.code === "CONFIG"));
+test("requires verifier callback", () => assert.throws(() => createMastraOsaTool({ apiBaseUrl: "https://osa.invalid", token: "t", missionFactory: () => mission }), e => e.code === "CONFIG"));
