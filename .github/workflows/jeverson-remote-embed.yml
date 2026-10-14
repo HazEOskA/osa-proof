@@ -1,0 +1,31 @@
+name: Jeverson Real Embedded Preview QA
+on:
+  push:
+    branches: [feature/osa-fleet-chat-slice1-proof]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  mobile-embed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --no-audit --no-fund playwright@1.63.0
+      - run: npx playwright install --with-deps chromium
+      - name: Verify actual HTTPS iframe with LIVE and BLACK at mobile / desktop widths
+        env:
+          OSA_REMOTE_PROOF_URL: https://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app
+        run: node scripts/test-jeverson-deployed-iframe.mjs
+      - name: Save browser proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jeverson-embedded-osa-proof-real-browser
+          path: artifacts/jeverson-remote-embed/
+          if-no-files-found: ignore
+          retention-days: 14
