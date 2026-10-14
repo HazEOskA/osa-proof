@@ -12,6 +12,7 @@ function approvedUrl(value: string | undefined): string | null {
 }
 
 const jeversonUrl = approvedUrl(import.meta.env.VITE_OSA_JEVERSON_URL as string | undefined);
+const themePreviewUrl = approvedUrl(import.meta.env.VITE_OSA_JEVERSON_THEME_PREVIEW_URL as string | undefined);
 
 export default function JeversonChat() {
   const [iframeError, setIframeError] = useState(false);
@@ -22,9 +23,19 @@ export default function JeversonChat() {
           <h2 className="text-[15px] font-semibold">Jeverson · istniejący Chat / Agent World</h2>
           <p className="mt-1 text-[11px] text-dim">Osadzona istniejąca aplikacja. Bez kopiowania prywatnego UI i bez drugiego runtime’u.</p>
         </div>
-        {jeversonUrl && <a href={jeversonUrl} target="_blank" rel="noopener noreferrer"
-          className="focus-ring rounded border border-line px-3 py-2 text-[12px] text-fg">Otwórz Jeverson ↗</a>}
+        <div className="flex flex-wrap items-center gap-2">
+          {themePreviewUrl && <a href={themePreviewUrl} target="_blank" rel="noopener noreferrer"
+            className="focus-ring rounded border border-line2 bg-panel px-3 py-2 text-[12px] text-fg">
+            Testuj Vercel Black ↗
+          </a>}
+          {jeversonUrl && <a href={jeversonUrl} target="_blank" rel="noopener noreferrer"
+            className="focus-ring rounded border border-line px-3 py-2 text-[12px] text-fg">Otwórz Jeverson ↗</a>}
+        </div>
       </div>
+      {themePreviewUrl && <p className="border-b border-line bg-panel px-4 py-2 text-[11px] leading-relaxed text-dim">
+        Czat poniżej korzysta z działającego Jeversona. Nowy motyw Vercel Black jest chronionym
+        preview i otwiera się osobno, aby logowanie Vercel nie blokowało iframe na telefonie.
+      </p>}
       {!jeversonUrl ? (
         <div className="grid flex-1 place-items-center p-6">
           <div className="max-w-xl space-y-3 rounded-lg border border-line bg-panel p-6">
