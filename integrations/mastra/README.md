@@ -22,3 +22,12 @@
 - Production use: NOT APPROVED.
 
 To repeat adapter tests after checkout: `node --test tests/mastra-osa-adapter.test.mjs`.
+
+
+## Phase 10 audit — BLOCKED, no verifier falsely certified
+- Full checkout unavailable: `git ls-remote https://github.com/HazEOskA/osa-proof.git HEAD` failed with `Could not resolve host: github.com`.
+- SDK package resolution unavailable: `npm view @mastra/core version --fetch-retries=0 --fetch-timeout=4000` failed with `EAI_AGAIN`.
+- Contract inspection: `packages/contracts/src/mission-kernel.ts` defines `MissionReceipt.verification_receipt_sha256` and `receipt_sha256`; `packages/contracts/src/index.ts` defines `ProofReceipt` with execution binding and evidence references.
+- This is NOT enough to reimplement the canonical receipt hash safely without inspecting the source canonicalizer and verifier. Do not treat the current `verifyReceipt` callback as a shipped independent verifier.
+- Before claiming PASS: identify canonical serialization and receipt hashing implementation; validate digest against immutable evidence, execution binding and trusted verifier identity; test tampering/replay; run real Mastra SDK and authenticated end-to-end fixture.
+- The earlier 9/9 mocked-test claim must not be treated as full checkout/SDK proof; no full checkout or SDK tests were run in Phase 10.
