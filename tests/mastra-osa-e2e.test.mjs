@@ -27,6 +27,23 @@ test("real Mastra SDK tool -> OSA HTTP API -> runtime -> canonical receipt verif
   try {
     const teamResponse = await fetch(localBase + "/teams", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(graph) });
     assert.equal(teamResponse.status, 201);
+    const foreignGraph = { ...graph, organization_id: "other-tenant", team_id: "foreign-team" };
+    const deniedTeam = await fetch(localBase + "/teams", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(foreignGraph)
+    });
+    assert.equal(deniedTeam.status, 403);
+    assert.equal((await deniedTeam.json()).error, "TENANT_SCOPE_DENIED");
+    const foreignMission = {
+      organization_id: "other-tenant", project_id: graph.project_id,
+      mission_id: "foreign-mission", team_id: graph.team_id, team_version: graph.version,
+      entry_agent_id: "plan", objective: "forbidden", input: {},
+      requirements: []
+    };
+    const deniedMission = await fetch(localBase + "/missions", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(foreignMission)
+    });
+    assert.equal(deniedMission.status, 403);
+    assert.equal((await deniedMission.json()).error, "TENANT_SCOPE_DENIED");
     const tool = createOsaDelegationTool({
       apiBaseUrl: "https://osa.invalid",
       token: "fixture-only-not-a-real-credential",
