@@ -26,6 +26,9 @@ export function createMastraOsaTool({ apiBaseUrl, token, fetchImpl = fetch, miss
     const mission = await missionFactory({ mastraRunId, toolCallId, toolName, input });
     if (!mission || typeof mission !== "object") throw new OsaAdapterError("INVALID_MISSION", "missionFactory returned no mission");
     const id = required(mission.mission_id, "mission_id");
+    const org = required(mission.organization_id, "organization_id");
+    const session = await request("GET", "/session");
+    if (session?.identity?.organization_id !== org) throw new OsaAdapterError("TENANT_SCOPE_DENIED", "OSA session tenant does not match mission");
     const created = await request("POST", "/missions", mission);
     if (created.mission_id !== id) throw new OsaAdapterError("BINDING_MISMATCH", "mission creation ID mismatch");
     const run = await request("POST", "/missions/" + encodeURIComponent(id) + "/run");
