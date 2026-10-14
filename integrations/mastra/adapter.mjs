@@ -31,8 +31,10 @@ export function createMastraOsaTool({ apiBaseUrl, token, fetchImpl = fetch, miss
     if (!run.run_id || !run.execution_id || run.verdict !== "VERIFIED" || run.proof?.run_id !== run.run_id || run.proof?.execution_id !== run.execution_id || run.proof?.mission_id !== id || run.proof?.verdict !== "VERIFIED") throw new OsaAdapterError("RUN_NOT_VERIFIED", "run/proof missing, mismatched or not verified");
     const receipt = await request("GET", "/missions/" + encodeURIComponent(id) + "/receipt");
     if (receipt.schema !== "osa.mission_receipt.v1" || receipt.mission_id !== id || !receipt.receipt_sha256 || receipt.verification_receipt_sha256 !== run.proof.receipt_sha256) throw new OsaAdapterError("RECEIPT_MISMATCH", "mission receipt and proof binding mismatch");
+    const record = await request("GET", "/missions/" + encodeURIComponent(id));
+    if (record?.mission?.mission_id !== id || record?.run?.run_id !== run.run_id || record?.run?.execution_id !== run.execution_id || record?.mission_receipt?.receipt_sha256 !== receipt.receipt_sha256) throw new OsaAdapterError("RECORD_MISMATCH", "persisted mission record mismatch");
     let independentlyVerified = false;
-    try { independentlyVerified = await verifyReceipt({ mission, run, receipt }); }
+    try { independentlyVerified = await verifyReceipt({ mission, run, receipt, record }); }
     catch { throw new OsaAdapterError("VERIFIER_FAILED", "independent verification failed"); }
     if (independentlyVerified !== true) throw new OsaAdapterError("VERIFIER_FAILED", "independent verification did not approve");
     return { schema: "osa.mastra.binding.v1", mastra_run_id: mastraRunId, mastra_tool_call_id: toolCallId, tool_name: toolName, input_sha256: hash(input), osa_mission_id: id, osa_run_id: run.run_id, osa_execution_id: run.execution_id, osa_verdict: run.verdict, mission_receipt_sha256: receipt.receipt_sha256, verification: "VERIFIER_CALLBACK_APPROVED", output: run.final_output };
