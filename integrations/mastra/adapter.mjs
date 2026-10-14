@@ -22,6 +22,7 @@ export function createMastraOsaTool({ apiBaseUrl, token, fetchImpl = fetch, miss
   };
   return async function execute({ mastraRunId, toolCallId, toolName, input }) {
     required(mastraRunId, "mastraRunId"); required(toolCallId, "toolCallId"); required(toolName, "toolName");
+    if (input === undefined) throw new OsaAdapterError("INVALID_INPUT", "input required");
     const mission = await missionFactory({ mastraRunId, toolCallId, toolName, input });
     if (!mission || typeof mission !== "object") throw new OsaAdapterError("INVALID_MISSION", "missionFactory returned no mission");
     const id = required(mission.mission_id, "mission_id");
