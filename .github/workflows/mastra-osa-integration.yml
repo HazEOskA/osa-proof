@@ -8,6 +8,7 @@ on:
       - 'integrations/mastra/**'
       - 'tests/mastra-osa-adapter.test.mjs'
       - 'tests/mastra-osa-sdk.test.mjs'
+      - 'tests/mastra-osa-e2e.test.mjs'
       - 'tests/mission-kernel.test.ts'
       - 'packages/proof-core/**'
       - 'packages/runtime/**'
@@ -34,4 +35,4 @@ jobs:
       - name: Install real Mastra SDK (CI only)
         run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @mastra/core zod
       - name: Real Mastra SDK contract smoke tests
-        run: node --test tests/mastra-osa-sdk.test.mjs
+        run: node --test tests/mastra-osa-sdk.test.mjs tests/mastra-osa-e2e.test.mjs
