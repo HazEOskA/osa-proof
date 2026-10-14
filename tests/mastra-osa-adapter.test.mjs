@@ -51,3 +51,9 @@ test("rejects persisted record with wrong execution id", async () => {
   const x = make({ overrides: { "/missions/m-1": { mission, run: { run_id: "r", execution_id: "foreign" }, mission_receipt: { receipt_sha256: "sha256:mission" } } } });
   await assert.rejects(x.run(args), e => e.code === "RECORD_MISMATCH");
 });
+
+test("missing input fails before any network request", async () => {
+  const x = make();
+  await assert.rejects(x.run({ mastraRunId: "mr", toolCallId: "tc", toolName: "osa" }), e => e.code === "INVALID_INPUT");
+  assert.deepEqual(x.calls, []);
+});
