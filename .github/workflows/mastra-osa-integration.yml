@@ -12,6 +12,7 @@ on:
       - 'tests/mission-kernel.test.ts'
       - 'packages/proof-core/**'
       - 'packages/runtime/**'
+      - 'apps/api/src/index.ts'
       - '.github/workflows/mastra-osa-integration.yml'
 jobs:
   verify:
