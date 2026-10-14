@@ -7,7 +7,7 @@ function make({ overrides = {}, verifyReceipt = async () => true } = {}) {
   const calls = [];
   const fetchImpl = async (url, opts) => {
     const p = new URL(url).pathname; calls.push(p);
-    const data = overrides[p] ?? (p === "/missions" ? mission : p.endsWith("/receipt")
+    const data = overrides[p] ?? (p === "/missions" ? mission : p === "/missions/m-1" ? { mission, run: { run_id: "r", execution_id: "e" }, mission_receipt: { receipt_sha256: "sha256:mission" } } : p.endsWith("/receipt")
       ? { schema: "osa.mission_receipt.v1", mission_id: "m-1", receipt_sha256: "sha256:mission", verification_receipt_sha256: "sha256:proof" }
       : { run_id: "r", execution_id: "e", verdict: "VERIFIED", proof: { run_id: "r", execution_id: "e", mission_id: "m-1", verdict: "VERIFIED", receipt_sha256: "sha256:proof" }, final_output: "ok" });
     return data?.status ? { ok: false, status: data.status } : { ok: true, status: 200, json: async () => data };
@@ -17,7 +17,7 @@ function make({ overrides = {}, verifyReceipt = async () => true } = {}) {
 test("valid bound receipt and external verifier callback", async () => {
   const x = make(); const r = await x.run(args);
   assert.equal(r.verification, "VERIFIER_CALLBACK_APPROVED");
-  assert.deepEqual(x.calls, ["/missions", "/missions/m-1/run", "/missions/m-1/receipt"]);
+  assert.deepEqual(x.calls, ["/missions", "/missions/m-1/run", "/missions/m-1/receipt", "/missions/m-1"]);
 });
 test("rejects failed run", async () => {
   const x = make({ overrides: { "/missions/m-1/run": { verdict: "FAILED" } } });
@@ -46,3 +46,8 @@ test("409 duplicate mission never reexecutes", async () => {
 });
 test("rejects non-HTTPS", () => assert.throws(() => createMastraOsaTool({ apiBaseUrl: "http://localhost", token: "t", missionFactory: () => mission, verifyReceipt: () => true }), e => e.code === "CONFIG"));
 test("requires verifier callback", () => assert.throws(() => createMastraOsaTool({ apiBaseUrl: "https://osa.invalid", token: "t", missionFactory: () => mission }), e => e.code === "CONFIG"));
+
+test("rejects persisted record with wrong execution id", async () => {
+  const x = make({ overrides: { "/missions/m-1": { mission, run: { run_id: "r", execution_id: "foreign" }, mission_receipt: { receipt_sha256: "sha256:mission" } } } });
+  await assert.rejects(x.run(args), e => e.code === "RECORD_MISMATCH");
+});
