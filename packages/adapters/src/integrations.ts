@@ -43,7 +43,7 @@ export interface OsaAgentConfig {
 
 export interface FleetConfig {
   baseUrl: string;
-  apiKey?: string;
+  apiKey: string;
   model?: string;
   temperature?: number;
   timeoutMs: number;
@@ -123,6 +123,9 @@ export function loadIntegrationConfig(env: Env): IntegrationConfig {
   if (fleetApiKey && !fleetBaseUrl) {
     throw new IntegrationConfigError("OSA_FLEET_BASE_URL is required when OSA_FLEET_API_KEY is configured");
   }
+  if (fleetBaseUrl && (!fleetApiKey || fleetApiKey.length < 32)) {
+    throw new IntegrationConfigError("OSA_FLEET_API_KEY must be configured with a 32+ character service token");
+  }
 
   return {
     enabled: true,
@@ -159,7 +162,7 @@ export function loadIntegrationConfig(env: Env): IntegrationConfig {
     fleet: fleetBaseUrl
       ? {
           baseUrl: normalizedBaseUrl(fleetBaseUrl, "OSA_FLEET_BASE_URL"),
-          apiKey: fleetApiKey || undefined,
+          apiKey: fleetApiKey!,
           model: env.OSA_FLEET_MODEL?.trim() || undefined,
           temperature: optionalFiniteNumber(
             env.OSA_FLEET_TEMPERATURE,
@@ -595,6 +598,43 @@ export function createOsaAgentControlExecutor(
   };
 }
 
+// Parse a complete SSE response only after its terminal event. A provider failure
+// must never become normal assistant text / a successful proof artifact.
+export function parseFleetSse(raw: string): { text: string; grounding: unknown[] } {
+  if (raw.length > 1_048_576) throw new Error("FLEET_SSE_TOO_LARGE");
+  let text = "";
+  const grounding: unknown[] = [];
+  let finished = false;
+  const normalized = raw.replace(/\r\n/g, "\n");
+  for (const block of normalized.split(/\n\n+/)) {
+    for (const line of block.split("\n")) {
+      if (!line.startsWith("data:")) continue; // SSE comments / keep-alive
+      const payload = line.slice(5).trim();
+      if (!payload) continue;
+      if (payload === "[DONE]") { finished = true; continue; }
+      let value: unknown;
+      try { value = JSON.parse(payload); }
+      catch { throw new Error("FLEET_SSE_INVALID_JSON"); }
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new Error("FLEET_SSE_INVALID_EVENT");
+      }
+      const chunk = value as Record<string, unknown>;
+      if (chunk.type === "error") throw new Error("FLEET_GENERATION_FAILED");
+      if (chunk.type === "done") { finished = true; continue; }
+      if (finished) throw new Error("FLEET_SSE_AFTER_TERMINAL");
+      if (chunk.text !== undefined) {
+        if (typeof chunk.text !== "string") throw new Error("FLEET_SSE_INVALID_TEXT");
+        text += chunk.text;
+        if (text.length > 1_048_576) throw new Error("FLEET_SSE_TOO_LARGE");
+      }
+      if (chunk.grounding !== undefined) grounding.push(chunk.grounding);
+    }
+  }
+  if (!finished) throw new Error("FLEET_SSE_INCOMPLETE");
+  if (!text.trim()) throw new Error("FLEET_SSE_EMPTY");
+  return { text, grounding };
+}
+
 async function fleetSseResponse(
   fetchImpl: FetchLike,
   url: string,
@@ -607,44 +647,12 @@ async function fleetSseResponse(
     const response = await fetchImpl(url, { ...init, signal: controller.signal });
     const raw = await response.text();
     if (!response.ok) {
-      let detail = `HTTP ${response.status}`;
-      try {
-        const body = JSON.parse(raw) as Record<string, unknown>;
-        detail = stringField(body, "message", "error", "detail") || detail;
-      } catch {
-        if (raw.trim()) detail = raw.trim().slice(0, 500);
-      }
-      throw new Error(`osa-agent-fleet-control-plane request failed: ${detail}`);
+      throw new Error(`FLEET_HTTP_${response.status}`);
     }
-
-    let text = "";
-    const grounding: unknown[] = [];
-    for (const block of raw.split(/\n\n+/)) {
-      const dataLine = block
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .find((line) => line.startsWith("data:"));
-      if (!dataLine) continue;
-      const payload = dataLine.slice("data:".length).trim();
-      if (!payload || payload === "[DONE]") continue;
-      try {
-        const chunk = JSON.parse(payload) as Record<string, unknown>;
-        if (typeof chunk.text === "string") text += chunk.text;
-        if (chunk.grounding !== undefined) grounding.push(chunk.grounding);
-      } catch {
-        throw new Error("osa-agent-fleet-control-plane returned invalid SSE JSON");
-      }
-    }
-
-    if (!text.trim()) {
-      throw new Error("osa-agent-fleet-control-plane completed without text output");
-    }
-    return { text, grounding };
+    return parseFleetSse(raw);
   } catch (error) {
     if (controller.signal.aborted) {
-      throw new Error(
-        `osa-agent-fleet-control-plane request timed out after ${timeoutMs}ms`
-      );
+      throw new Error(`FLEET_TIMEOUT_${timeoutMs}`);
     }
     throw error;
   } finally {
