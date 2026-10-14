@@ -46,12 +46,12 @@ test("Fleet failure event never becomes completed execution evidence", async () 
     'data: {"text":"partial"}\n\ndata: {"type":"error","error":{"code":"GENERATION_FAILED"}}\n\n',
     { status: 200, headers: { "content-type": "text/event-stream" } }
   ));
-  await assert.rejects(executor(context()), /FLEET_GENERATION_FAILED/);
+  await assert.rejects(Promise.resolve().then(() => executor(context())), /FLEET_GENERATION_FAILED/);
 });
 
 test("Fleet unauthorized response never becomes verified evidence", async () => {
   const executor = createFleetChatExecutor(config, async () => new Response(
     '{"error":"UNAUTHORIZED"}', { status: 401, headers: { "content-type": "application/json" } }
   ));
-  await assert.rejects(executor(context()), /FLEET_HTTP_401/);
+  await assert.rejects(Promise.resolve().then(() => executor(context())), /FLEET_HTTP_401/);
 });
