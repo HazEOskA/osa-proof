@@ -1,3 +1,4 @@
+import { verifyMastraOsaMissionRecord } from "../integrations/mastra/verify-mission";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
@@ -175,4 +176,26 @@ test("restart refuses to re-execute an unresolved active mission", async () => {
   let executions = 0;
   await assert.rejects(restarted.execute(mission().mission_id, registry("built", () => executions++)), /illegal/);
   assert.equal(executions, 0);
+});
+
+test("Mastra bridge verifies a real completed MissionRecord and rejects tampering", async () => {
+  const kernel = new MissionKernel();
+  const id = "mastra-real-verifier-fixture";
+  await kernel.create(mission(id), graph);
+  const run = await kernel.execute(id, registry());
+  const record = (await kernel.get(id))!;
+  const expected = {
+    mission_id: id,
+    run_id: run.run_id,
+    execution_id: run.execution_id,
+    receipt_sha256: record.mission_receipt!.receipt_sha256,
+  };
+  assert.equal(verifyMastraOsaMissionRecord(record, expected), true);
+  assert.throws(() => verifyMastraOsaMissionRecord(record, { ...expected, execution_id: "foreign" }), /MASTRA_OSA_BINDING_MISMATCH/);
+  const tampered = structuredClone(record);
+  tampered.timeline[0].payload.injected = true;
+  assert.throws(() => verifyMastraOsaMissionRecord(tampered, expected), /MissionReceipt rejected/);
+  const changedEvidence = structuredClone(record);
+  changedEvidence.run!.evidence[0].data.status = "wrong";
+  assert.throws(() => verifyMastraOsaMissionRecord(changedEvidence, expected), /VerificationReceipt rejected/);
 });
