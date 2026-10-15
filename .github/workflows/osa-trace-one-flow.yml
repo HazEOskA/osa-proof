@@ -1,0 +1,55 @@
+name: OSA TRACE-001 — one observable browser task
+on:
+  push:
+    branches: [feature/osa-fleet-chat-slice1-proof]
+    paths:
+      - 'apps/api/src/trace-probe.ts'
+      - 'apps/api/src/index.ts'
+      - 'dashboard-src/src/views/JeversonChat.tsx'
+      - 'dashboard-src/src/data/data.ts'
+      - 'scripts/osa-trace-e2e-server.cjs'
+      - 'scripts/test-osa-trace-one-flow.mjs'
+      - '.github/workflows/osa-trace-one-flow.yml'
+permissions:
+  contents: read
+jobs:
+  one-flow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install and compile OSA Proof API
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Install browser and build OSA Proof frontend
+        env:
+          VITE_OSA_JEVERSON_URL: https://jeverson.ui.test
+          VITE_OSA_JEVERSON_THEME_PREVIEW_URL: https://black.ui.test
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          node scripts/build-dashboard.cjs
+          npx playwright install --with-deps chromium
+      - name: Boot real OSA Runtime / HTTP API with two controlled upstream fixtures
+        run: |
+          nohup node scripts/osa-trace-e2e-server.cjs > /tmp/osa-trace-one-flow.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:3100/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/osa-trace-one-flow.log
+          exit 1
+      - name: Verify actual Android and desktop user flow through runtime, evidence, Tracing and Proofs
+        run: node scripts/test-osa-trace-one-flow.mjs
+      - name: Preserve mobile and desktop proof screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osa-trace-001-one-flow-android-desktop
+          path: artifacts/osa-trace-one-flow/
+          if-no-files-found: ignore
+          retention-days: 14
