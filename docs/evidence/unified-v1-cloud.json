@@ -1,0 +1,48 @@
+{
+  "preview": "https://osa-proof-git-feature-osa-unifie-785394-osabarca-1680s-projects.vercel.app/",
+  "osa_deployment": "dpl_HZhabxpeVNJNUGRGNkqiEtMu4y9C",
+  "osa_source_commit": "d68d9e6db14eae74a1edeaec5b85fbe9e00aceed",
+  "jeverson_deployment": "dpl_3UG5V926CbXbyr6Qhg2dxRMe2kvL",
+  "jeverson_source_commit": "b768993a74ecb058f50506f3f7fa8b204c9eb28c",
+  "browser": {
+    "normal_chat": true,
+    "task": "Sprawdź status runtime OSA Proof",
+    "tool": "osa.runtime.inspect.v1",
+    "execution_id": "exec_b288585e-573f-43ad-8217-d33fb6b0be72",
+    "run_id": "run_c82cc07311b21facca1511ca",
+    "mission_id": "unified_d08031dc-6886-4f5e-8df3-92c6ad325dc7",
+    "tool_http_statuses": [
+      200,
+      200
+    ],
+    "receipt_sha256": "fb4514a394beede2e6a03e48af776c1474e9efad9761b99db51f139a089ddfbe",
+    "independent_browser_checks": "9/9 MATCH",
+    "tracing": true,
+    "proofs": true
+  },
+  "blocked_browser_case": {
+    "task": "Pokaż status workera",
+    "execution_id": "exec_6737d51f-45df-421f-bf1f-d49c600f4190",
+    "status": "BLOCKED",
+    "reason": "WORKER_NOT_CONFIGURED",
+    "receipt_integrity": true
+  },
+  "tests": {
+    "backend_pass": 219,
+    "backend_fail": 0,
+    "backend_skip": 3,
+    "mastra_pass": 15,
+    "jeverson_pass": 25,
+    "local_browser": [
+      "1440x900",
+      "390x844"
+    ]
+  },
+  "cloud_blockers": [
+    "WORKER_NOT_CONFIGURED",
+    "MODEL_PROVIDERS_NOT_CONFIGURED",
+    "NEUROSA_PREVIEW_NOT_CONFIGURED",
+    "NATIVE_BUILDER_EXECUTION_DISABLED"
+  ],
+  "paid_provider_calls": 0
+}

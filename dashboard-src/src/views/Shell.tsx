@@ -81,9 +81,10 @@ function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void })
 }
 
 function LiveRail() {
-  const { data, runId } = useOsa();
+  const { data, runId, source } = useOsa();
   const run = data.runs.find((r) => r.run_id === runId) ?? data.runs[0];
   const [open, setOpen] = useState<number | null>(null);
+  if (source.kind === "SNAPSHOT") return <aside className="hidden w-[210px] shrink-0 border-l border-line bg-ink p-4 text-[11px] text-dim xl:block" aria-label="Live system rail">Brak nowego wykonania. Dane archiwalne oznaczono jako SNAPSHOT; wyślij zadanie w czacie.</aside>;
   if (!run) return null;
   return (
     <aside className="hidden w-[210px] shrink-0 flex-col border-l border-line bg-ink xl:flex" aria-label="Live system rail">

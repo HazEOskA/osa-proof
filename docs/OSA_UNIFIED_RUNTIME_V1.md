@@ -38,3 +38,15 @@ NeurOSA i Hermes nie są zastępowane. Ich zdalne działanie wymaga istniejącej
 ## Lokalne sprawdzenie
 
 `npm test`, `npm run worker:build`, testy adaptera Mastra. Dla browser E2E zbuduj dashboard z `VITE_OSA_LOCAL_E2E=1 VITE_OSA_JEVERSON_URL=http://127.0.0.1:3101`, Jeversona z `NEXT_PUBLIC_OSA_PROOF_ORIGIN=http://127.0.0.1:3100`, następnie uruchom `npm run test:unified:browser`. `JEV_ROOT` wskazuje checkout integracyjny, a `OSA_CHROMIUM_PATH` lokalne Chromium. Test sam uruchamia oba serwery w tej samej sieci lokalnej.
+
+## Potwierdzone preview w chmurze
+
+Preview: https://osa-proof-git-feature-osa-unifie-785394-osabarca-1680s-projects.vercel.app/
+
+Normalny czat → `osa.runtime.inspect.v1` → dwa rzeczywiste HTTP 200 → Tracing → Proofs: potwierdzone w przeglądarce. Execution `exec_b288585e-573f-43ad-8217-d33fb6b0be72`, niezależne przeliczenie 9/9 MATCH. Brak worker hosta został sprawdzony osobno w normalnym czacie: BLOCKED / WORKER_NOT_CONFIGURED, bez fałszywego sukcesu.
+
+Backend: 219 PASS / 0 FAIL / 3 SKIP. Mastra: 15 PASS / 0 FAIL. Jeverson, Hermes, NeurOSA i nowe gate: 25 PASS / 0 FAIL. Build backendu, worker hosta, dashboardu i Next.js: PASS. Mobile to lokalny test przeglądarki 390×844; chmura została sprawdzona dodatkowo w przeglądarce desktop.
+
+Preview Jeversona nie ma providerów JEV/NVIDIA/OpenRouter ani konfiguracji NeurOSA; zwykłe rozmowy generatywne, Hermes z modelem i workerzy LLM pozostają bez aktywnego providera. To rzeczywiste blokady pełnego mandatu. Deterministyczne narzędzia OSA działają bez modelu. Backend nadal zawiera historyczny tryb fixture dla istniejących scenariuszy; snapshot jest wyraźnie oznaczony i nie jest przedstawiany jako nowe wykonanie.
+
+Konfiguracja połączenia dotyczy wyłącznie `preview` oraz `feature/osa-unified-runtime-v1`. Dostęp publiczny jest wyjątkiem przypiętym do nowego wdrożenia Jeversona, nie zmianą globalnych zabezpieczeń projektu. Produkcja i main pozostają bez zmian. Szczegóły: `docs/evidence/unified-v1-cloud.json`, obraz: `docs/evidence/unified-v1-cloud-proof.jpg`.
