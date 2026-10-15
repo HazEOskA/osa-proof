@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useOsa } from "../ctx";
+import { requestJson } from "../data/data";
+import type { TeamGraph, Mission, Run } from "../data/types";
 
 // Existing private Jeverson runtime is reused; no secrets, message content,
 // proof receipts or provider calls are forwarded by OSA Proof.
@@ -11,6 +14,26 @@ function approvedUrl(value: string | undefined): string | null {
   } catch { return null; }
 }
 
+const traceTargets = [
+  "https://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app/api/layers",
+  "https://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app/api/build/status",
+];
+const defaultTracePrompt = [
+  "OSA-TRACE-001 — wykonaj dokładnie dwa rzeczywiste żądania HTTP GET:",
+  ...traceTargets,
+  "Pokaż kod HTTP, faktyczne kroki i evidence. Niczego nie zapisuj ani nie wdrażaj.",
+].join("\n");
+type TraceOutcome = {
+  task_status: "EXECUTED" | "BLOCKED";
+  execution_id: string;
+  run_id: string;
+  proof_id: string;
+  proof_verdict: string;
+  provider: string;
+  steps: Array<{step:number;url:string;http_status:number|null;status:string;response_sha256:string|null;response_excerpt:string;error_code?:string}>;
+  team: TeamGraph; mission: Mission; run: Run;
+};
+
 const liveUrl = approvedUrl(import.meta.env.VITE_OSA_JEVERSON_URL as string | undefined);
 const blackPreviewUrl = approvedUrl(import.meta.env.VITE_OSA_JEVERSON_THEME_PREVIEW_URL as string | undefined);
 
@@ -18,6 +41,30 @@ export default function JeversonChat() {
   // Remain operational by default: Vercel Black branch preview has no AI keys.
   const [mode, setMode] = useState<"live" | "black">("live");
   const [frameProblem, setFrameProblem] = useState(false);
+  const { inspectExecution, go } = useOsa();
+  const [tracePrompt, setTracePrompt] = useState(defaultTracePrompt);
+  const [tracePending, setTracePending] = useState(false);
+  const [traceError, setTraceError] = useState("");
+  const [traceOutcome, setTraceOutcome] = useState<TraceOutcome | null>(null);
+  const [traceOpen, setTraceOpen] = useState(false);
+  async function executeTrace() {
+    if (tracePending) return;
+    setTracePending(true);
+    setTraceError("");
+    setTraceOutcome(null);
+    try {
+      const result = await requestJson<TraceOutcome>("/trace-probe", {
+        method: "POST", body: JSON.stringify({task_id:"OSA-TRACE-001",prompt:tracePrompt})
+      });
+      setTraceOutcome(result);
+      inspectExecution(result.team,result.mission,result.run);
+    } catch(error) {
+      setTraceError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setTracePending(false);
+    }
+  }
+
   const canPreview = !!blackPreviewUrl && blackPreviewUrl !== liveUrl;
   const previewActive = mode === "black" && canPreview;
   const activeUrl = previewActive ? blackPreviewUrl : liveUrl;
@@ -62,6 +109,43 @@ export default function JeversonChat() {
           </a>}
         </nav>
       </header>
+      <div className="shrink-0 border-b border-line bg-ink px-3 py-2 sm:px-5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-fg">OSA Proof · zadanie monitorowane</div>
+            <p className="text-[10px] text-dim">OSA-TRACE-001 · dwa dozwolone GET · wykonanie w OSA Runtime, nie w iframe</p>
+          </div>
+          <button type="button" aria-expanded={traceOpen} onClick={()=>setTraceOpen(v=>!v)}
+            className="focus-ring rounded border border-line px-3 py-1.5 text-[11px] text-fg">
+            {traceOpen ? "Zwiń" : "Otwórz test"}
+          </button>
+        </div>
+        {traceOpen && <div className="mt-2 space-y-2">
+          <label htmlFor="osa-trace-task" className="block text-[11px] text-dim">Prompt dla agenta HTTP (tylko dozwolone endpointy)</label>
+          <textarea id="osa-trace-task" aria-label="Monitorowane zadanie OSA-TRACE-001"
+            className="w-full resize-y rounded border border-line bg-panel px-3 py-2 font-mono text-[11px] text-fg"
+            rows={5} maxLength={5000} value={tracePrompt} onChange={e=>setTracePrompt(e.target.value)}/>
+          <button type="button" disabled={tracePending} onClick={()=>void executeTrace()}
+            className="focus-ring rounded border border-line bg-raise px-4 py-2 text-[12px] font-semibold text-fg disabled:opacity-40">
+            {tracePending ? "Wykonuję GET i zbieram evidence…" : "Wykonaj monitorowane zadanie"}
+          </button>
+          {traceError && <p role="alert" className="text-[11px] text-bad">BLOCKED · {traceError}</p>}
+          {traceOutcome && <div aria-label="OSA Proof Trace Result" className="space-y-1 rounded border border-line bg-panel p-3 text-[11px]">
+            <div className="font-semibold text-fg">{traceOutcome.task_status} · APR {traceOutcome.proof_verdict}</div>
+            <div className="break-all font-mono text-dim">execution_id: {traceOutcome.execution_id}</div>
+            {traceOutcome.steps.map(step=><div key={step.step} className="break-all font-mono text-dim">
+              {step.step}. GET {step.url} · HTTP {step.http_status ?? "BRAK"} · {step.status}{step.error_code ? " · "+step.error_code : ""}
+            </div>)}
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button type="button" className="focus-ring rounded border border-line px-3 py-2 text-fg"
+                onClick={()=>go("trace",{runId:traceOutcome.run_id})}>Tracing →</button>
+              <button type="button" className="focus-ring rounded border border-line px-3 py-2 text-fg"
+                onClick={()=>go("proofs",{runId:traceOutcome.run_id})}>Proofs →</button>
+            </div>
+            <p className="text-dim">Proof zawiera rzeczywiste evidence HTTP; nie potwierdza wykonania narzędzi przez model Jeversona.</p>
+          </div>}
+        </div>}
+      </div>
       {!activeUrl ? (
         <div className="grid min-h-0 flex-1 place-items-center p-4">
           <div className="max-w-xl space-y-2 rounded-lg border border-line bg-panel p-5">
