@@ -86,3 +86,19 @@ test("oversized HTTP response cannot be accepted as proof",async()=>{
   assert.deepEqual(x.steps.map(s=>s.error_code),["RESPONSE_TOO_LARGE","RESPONSE_TOO_LARGE"]);
   assert.equal(x.run.evidence.length,2);
 });
+
+test("HTTP 200 login page or structurally unrelated JSON never creates a VERIFIED proof",async()=>{
+  let calls = 0;
+  const fake:typeof fetch = async()=>{
+    calls++;
+    return calls===1
+      ? new Response("<html>Sign in</html>",{status:200,headers:{"content-type":"text/html"}})
+      : new Response(JSON.stringify({ok:true}),{status:200,headers:{"content-type":"application/json"}});
+  };
+  const result = await runTraceProbe(request,"org_dev_local",fake);
+  assert.equal(result.task_status,"BLOCKED");
+  assert.equal(result.proof_verdict,"FAILED");
+  assert.deepEqual(result.steps.map(s=>s.error_code),["NOT_JSON","UNEXPECTED_RESPONSE_SCHEMA"]);
+  assert.equal(verifyProofReceipt({receipt:result.run.proof,evidence:result.run.evidence,
+    observations:result.run.observations,final_output:result.run.final_output}).ok,true);
+});
