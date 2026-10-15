@@ -75,7 +75,7 @@ export default function JeversonChat() {
   };
 
   return (
-    <section aria-label="Jeverson Chat" className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-void">
+    <section aria-label="Jeverson Chat" className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-void">
       <header data-testid="jeverson-toolbar"
         className="flex min-h-[56px] shrink-0 items-center justify-between gap-2 border-b border-line bg-ink px-2 py-2 sm:min-h-[68px] sm:px-5">
         <div className="min-w-0 flex-1">
@@ -88,6 +88,11 @@ export default function JeversonChat() {
           </p>
         </div>
         <nav aria-label="Jeverson links" className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <button type="button" aria-label="OSA-TRACE-001 — monitorowane zadanie"
+            aria-expanded={traceOpen} onClick={()=>setTraceOpen(v=>!v)}
+            className="focus-ring inline-flex h-8 shrink-0 items-center rounded border border-line px-2 text-[11px] text-fg sm:h-9">
+            <span className="sm:hidden">T</span><span className="hidden sm:inline">OSA TRACE</span>
+          </button>
           {canPreview && (
             <div role="group" aria-label="Wersja Jeversona"
               className="flex shrink-0 items-center gap-0.5 rounded-md border border-line bg-panel p-0.5">
@@ -109,18 +114,18 @@ export default function JeversonChat() {
           </a>}
         </nav>
       </header>
-      <div className="shrink-0 border-b border-line bg-ink px-3 py-2 sm:px-5">
+      {traceOpen && <div role="dialog" aria-label="Monitorowane zadanie OSA Proof"
+        className="absolute inset-x-2 top-[56px] z-40 max-h-[calc(100%-88px)] overflow-y-auto rounded-b-lg border border-line bg-ink p-3 shadow-2xl sm:inset-x-4 sm:top-[68px] sm:max-h-[calc(100%-102px)] sm:p-4">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="text-[11px] font-semibold text-fg">OSA Proof · zadanie monitorowane</div>
             <p className="text-[10px] text-dim">OSA-TRACE-001 · dwa dozwolone GET · wykonanie w OSA Runtime, nie w iframe</p>
           </div>
-          <button type="button" aria-expanded={traceOpen} onClick={()=>setTraceOpen(v=>!v)}
-            className="focus-ring rounded border border-line px-3 py-1.5 text-[11px] text-fg">
-            {traceOpen ? "Zwiń" : "Otwórz test"}
-          </button>
+          <button type="button" onClick={()=>setTraceOpen(false)}
+            aria-label="Zamknij zadanie OSA-TRACE-001"
+            className="focus-ring shrink-0 rounded border border-line px-3 py-1.5 text-[11px] text-fg">Zamknij</button>
         </div>
-        {traceOpen && <div className="mt-2 space-y-2">
+        <div className="mt-2 space-y-2">
           <label htmlFor="osa-trace-task" className="block text-[11px] text-dim">Prompt dla agenta HTTP (tylko dozwolone endpointy)</label>
           <textarea id="osa-trace-task" aria-label="Monitorowane zadanie OSA-TRACE-001"
             className="w-full resize-y rounded border border-line bg-panel px-3 py-2 font-mono text-[11px] text-fg"
@@ -144,8 +149,8 @@ export default function JeversonChat() {
             </div>
             <p className="text-dim">Proof zawiera rzeczywiste evidence HTTP; nie potwierdza wykonania narzędzi przez model Jeversona.</p>
           </div>}
-        </div>}
-      </div>
+        </div>
+      </div>}
       {!activeUrl ? (
         <div className="grid min-h-0 flex-1 place-items-center p-4">
           <div className="max-w-xl space-y-2 rounded-lg border border-line bg-panel p-5">
