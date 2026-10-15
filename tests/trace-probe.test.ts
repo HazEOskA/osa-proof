@@ -49,7 +49,7 @@ test("actual bounded GETs produce two ordered evidence items, native event trace
   assert.ok(x.run.events.some(e=>e.type==="EVIDENCE_RECORDED"));
   assert.ok(x.run.events.some(e=>e.type==="RUN_VERIFIED"));
   assert.ok(x.run.events.every(e=>e.execution_id===x.execution_id));
-  assert.equal(verifyProofReceipt(x.run.proof).ok,true);
+  assert.equal(verifyProofReceipt({receipt:x.run.proof,evidence:x.run.evidence,observations:x.run.observations,final_output:x.run.final_output}).ok,true);
 });
 
 test("missing tool or blocked endpoint fails closed with truthful evidence and proof FAILED",async()=>{
@@ -68,7 +68,7 @@ test("missing tool or blocked endpoint fails closed with truthful evidence and p
   assert.deepEqual(x.steps.map(x=>x.error_code),["HTTP_REQUEST_FAILED","HTTP_403"]);
   assert.equal(x.run.proof.requirement_verdicts.filter(x=>x.verdict==="FAILED").length,2);
   assert.ok(!x.run.events.some(e=>e.type==="RUN_VERIFIED"));
-  assert.equal(verifyProofReceipt(x.run.proof).ok,true);
+  assert.equal(verifyProofReceipt({receipt:x.run.proof,evidence:x.run.evidence,observations:x.run.observations,final_output:x.run.final_output}).ok,true);
 });
 
 test("unapproved task never calls HTTP or produces fabricated receipt",async()=>{
