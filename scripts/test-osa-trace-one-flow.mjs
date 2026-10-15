@@ -37,7 +37,8 @@ for(const [name,width,height] of [["android-390x844",390,844],["desktop-1440x900
  await page.getByRole("tab",{name:"TIMELINE"}).waitFor();
  await page.getByText("EVIDENCE_RECORDED").first().waitFor();
  await page.screenshot({path:screenshots+"/"+name+"-trace.png",fullPage:false});
- await page.getByRole("button",{name:"Proofs"}).click();
+ await page.getByRole("tab",{name:"PROOF VIEW"}).click();
+ await page.getByRole("button",{name:"Recompute & verify →"}).click();
  await page.getByText("RUN VERIFIED").waitFor();
  await page.getByText(/receipt_sha256/).waitFor();
  await page.screenshot({path:screenshots+"/"+name+"-proof.png",fullPage:false});
