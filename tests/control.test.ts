@@ -102,7 +102,7 @@ test("HTTP: deploy, run through the pinned deployment, policy blocks with 403, r
     assert.equal(((await (await fetch(base + "/deployments")).json()) as unknown[]).length, 2);
     assert.equal((await post(base, "/deployments", { team_id: "nope", version: "1", environment: "preview" })).status, 404);
     const orgs = await (await fetch(base + "/organizations")).json() as Array<{ organization_id: string }>;
-    assert.ok(orgs.some((o) => o.organization_id === "org_c"), "organizations observed from teams and runs");
+    assert.ok(orgs.some((o) => o.organization_id === "org_dev_local"), "organizations observed from teams and runs");
   });
 });
 
