@@ -21,6 +21,7 @@ import { ExperimentError, ExperimentStore } from "../../../packages/experiments/
 import { KnowledgeError, KnowledgeStore } from "../../../packages/knowledge/src";
 import { BuildWorkspace, validateBuildWorkspace } from "./build";
 import { BrainControlPlane, verifyBrainPlan } from "../../../packages/brain/src";
+import { runTraceProbe, TraceInputError } from "./trace-probe";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
 // "open": no login, for the Vercel preview dashboard; every open-mode request acts as OPEN_MODE_SESSION.
@@ -165,6 +166,33 @@ export async function handleApiRequest(
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+
+      if (url.pathname === "/trace-probe" && method === "POST") {
+        const session = requireSession(request, response, state);
+        if (!session) return;
+        if (!session.identity.organization_id) return send(response, 403, {task_status:"BLOCKED", code:"ORGANIZATION_REQUIRED"});
+        const length = Number(request.headers["content-length"] ?? 0);
+        if (!Number.isSafeInteger(length) || length < 0 || length > 7000)
+          return send(response,413,{task_status:"BLOCKED",code:"BODY_TOO_LARGE"});
+        const buffers: Buffer[] = [];
+        let size = 0;
+        for await (const chunk of request) {
+          size += Buffer.byteLength(chunk);
+          if (size > 7000) return send(response,413,{task_status:"BLOCKED",code:"BODY_TOO_LARGE"});
+          buffers.push(Buffer.from(chunk));
+        }
+        let body: unknown;
+        try { body = JSON.parse(Buffer.concat(buffers).toString("utf8")); }
+        catch { return send(response,400,{task_status:"BLOCKED",code:"BAD_JSON"}); }
+        try {
+          const result = await runTraceProbe(body, session.identity.organization_id);
+          state.runs.set(result.run.run_id, structuredClone(result.run));
+          return send(response,200,result);
+        } catch (error) {
+          if (error instanceof TraceInputError) return send(response,422,{task_status:"BLOCKED",code:error.code});
+          throw error;
+        }
+      }
 
       if (parts[0] === "nvidia") {
         if (!requireSession(request, response, state)) return;
