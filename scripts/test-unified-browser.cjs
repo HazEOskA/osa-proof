@@ -39,6 +39,14 @@ async function main(){
       const output=await frame.locator(".message.assistant").last().innerText();
       assert.ok(output.includes(require("node:crypto").createHash("sha256").update("OSA Unified Runtime V1").digest("hex")));
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+      const jevFrame=page.frames().find(f=>f.url().startsWith("http://127.0.0.1:3101"));
+      const bundle=await jevFrame.evaluate(()=>{
+        const h=JSON.parse(localStorage.getItem("osa-jeverson-history-v1"));
+        return h.conversations.flatMap(c=>c.messages).filter(m=>m.receipt?.osa_execution).at(-1).receipt.osa_execution;
+      });
+      assert.equal(bundle.execution_id,executionId);
+      assert.equal(require(path.join(jev,"lib/osa-unified.cjs")).verifyBundle(bundle,executionId),true);
+      fs.writeFileSync(path.join(out,name+"-execution.json"),JSON.stringify(bundle,null,2));
       await page.screenshot({path:path.join(out,name+"-chat.png"),fullPage:true});
       // An unrelated window message must not be accepted as an execution.
       await page.evaluate(()=>window.postMessage({type:"osa.unified.result.v1",execution:{status:"EXECUTED"}},location.origin));

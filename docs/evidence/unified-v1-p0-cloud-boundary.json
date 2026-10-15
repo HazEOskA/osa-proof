@@ -1,0 +1,29 @@
+{
+  "checks": [
+    {
+      "url": "https://osa-proof-git-feature-osa-unifie-785394-osabarca-1680s-projects.vercel.app/api/unified/execute",
+      "status": 401,
+      "denied": true,
+      "method": "POST",
+      "credentials_sent": false,
+      "android_user_agent": true
+    },
+    {
+      "url": "https://aether-git-feature-osa-unified-r-1ab806-osabarca-1680s-projects.vercel.app/api/cockpit",
+      "status": 401,
+      "denied": true,
+      "method": "POST",
+      "credentials_sent": false,
+      "android_user_agent": true
+    },
+    {
+      "url": "https://aether-git-feature-osa-unified-r-1ab806-osabarca-1680s-projects.vercel.app/api/hermes",
+      "status": 401,
+      "denied": true,
+      "method": "POST",
+      "credentials_sent": false,
+      "android_user_agent": true
+    }
+  ],
+  "paid_calls": 0
+}

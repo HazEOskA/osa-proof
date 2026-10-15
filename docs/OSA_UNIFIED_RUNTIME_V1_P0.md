@@ -27,7 +27,13 @@ All entries below are **Preview**, filtered to `feature/osa-unified-runtime-v1`.
 ## Acceptance and evidence
 
 - Latest local real browser runs: `docs/evidence/unified-v1-p0-browser.json`. No replaced network requests or provider simulations in browser E2E. Desktop and Android-emulated 390×844: normal Jeverson chat → actual Node SHA-256 → OSA Runtime → Tracing → Proofs, then reload and reverify the stored bundle.
-- Backend suite: 223 passed, 3 pre-existing skips. Jeverson/Hermes/NeurOSA/security contracts: 29 passed. New negatives cover foreign/missing Origin, rate exhaustion, paid model denial before a completion, absent pricing, missing preview brain identity, unsigned builder approval, unauthorized model dispatch and proof tampering. A fresh API state verifies an exported bundle after in-memory run loss.
+- Backend suite: 223 passed, 3 pre-existing skips. Jeverson/Hermes/NeurOSA/security contracts: 30 passed. New negatives cover foreign/missing Origin, rate exhaustion, paid model denial before a completion, absent pricing, missing preview brain identity, unsigned builder approval, unauthorized model dispatch and proof tampering. A fresh API state verifies an exported bundle after in-memory run loss.
 - Backend, worker host, dashboard and Next.js builds passed. Physical Android and authenticated cloud model/tool E2E are **not yet accepted**.
 - Historical cloud receipts in `unified-v1-cloud.json` are from the previous native-only run, not evidence of a model call in this P0 run.
 - Overall remains **PARTIAL/BLOCKED** until a real preview model response, actual model tool call, authenticated iframe/mobile flow, preview memory persistence and isolated worker execution are evidenced. A green unit suite does not meet that gate.
+
+## Deployed P0 boundary check
+
+OSA deployment `dpl_9jzEnFi5cK3neFmY7Y11NAW7Prco` (source `d5fec6379eef0f06936b6ccaeb67e72848af277a`) and Jeverson `dpl_HcoLTSprCCMZVT8H16mwXtsoftJf` (source `b3ec45ac5dadda4091c7090dafe6c6d3c3f4c9f1`) deployed successfully. Authenticated connector GET of the actual Jeverson API reports `ZERO_COST_ONLY`, both provider keys false, and NeurOSA/runtime transport/Builder BLOCKED. Anonymous Android-UA POST to cockpit, Hermes and OSA unified execution returned HTTP 401. See `unified-v1-p0-cloud-boundary.json`. The cloud browser confirms a Vercel login wall; no authenticated cloud model or physical phone run is claimed.
+
+Complete native-only executed bundles and the mobile Proofs screenshot are committed beside the browser summary. Mobile execution: `exec_1635481e-f065-4ff1-9301-b629e0958292`; desktop: `exec_18e92432-e42c-4805-a75a-dcb8f1f9698f`. The screenshot shows the native crypto receipt, not generative model execution.
