@@ -123,8 +123,20 @@ export async function runTraceProbe(
         content = await boundedResponse(response);
         step.response_sha256 = digest(content);
         step.response_excerpt = content.slice(0, 900);
-        if (response.status === 200) step.status = "OK";
-        else step.error_code = "HTTP_"+response.status;
+        if (response.status !== 200) {
+          step.error_code = "HTTP_"+response.status;
+        } else if (!response.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+          step.error_code = "NOT_JSON";
+        } else {
+          let parsed: unknown;
+          try { parsed = JSON.parse(content); } catch { parsed = null; }
+          const valid = target.key === "layers"
+            ? Array.isArray(parsed)
+            : !!parsed && typeof parsed === "object" && !Array.isArray(parsed) &&
+              ["fixture","provider"].includes(String((parsed as Record<string,unknown>).mode));
+          if (valid) step.status = "OK";
+          else step.error_code = "UNEXPECTED_RESPONSE_SCHEMA";
+        }
       } catch (error) {
         step.error_code = reason(error);
       }
