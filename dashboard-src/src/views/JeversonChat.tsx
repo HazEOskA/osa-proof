@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { verifyRun } from "../lib/verify";
+import { canon, sha256, verifyRun } from "../lib/verify";
 import { useOsa } from "../ctx";
 import { requestJson } from "../data/data";
 import type { TeamGraph, Mission, Run } from "../data/types";
@@ -43,13 +43,18 @@ export default function JeversonChat() {
   // Remain operational by default: Vercel Black branch preview has no AI keys.
   const [mode, setMode] = useState<"live" | "black">("live");
   const [frameProblem, setFrameProblem] = useState(false);
+  const [frameReady,setFrameReady]=useState(false);
+  const [frameVersion,setFrameVersion]=useState(0);
   const { inspectExecution, go } = useOsa();
   const frame = useRef<HTMLIFrameElement>(null);
-  const [unified, setUnified] = useState<{status:string;execution_id:string;run:Run}|null>(null);
+  const [unified, setUnified] = useState<{status:string;execution_id:string;run:Run;restored:boolean}|null>(null);
   const [bridgeError,setBridgeError] = useState("");
+  useEffect(()=>{const timer=setTimeout(()=>setFrameProblem(true),10000);return ()=>clearTimeout(timer);},[frameVersion]);
   useEffect(()=>{
     const receive = async (event:MessageEvent) => {
-      if (event.origin !== liveUrl || event.source !== frame.current?.contentWindow || event.data?.type !== "osa.unified.result.v1") return;
+      if(event.origin!==liveUrl||event.source!==frame.current?.contentWindow)return;
+      if(event.data?.type==="osa.unified.ready.v1"){setFrameReady(true);setFrameProblem(false);return;}
+      if(event.data?.type!=="osa.unified.result.v1")return;
       try {
         const x = event.data.execution;
         if (x?.schema !== "osa.unified.execution.v1" || x.execution_id !== x.run?.execution_id ||
@@ -57,12 +62,17 @@ export default function JeversonChat() {
           x.run.evidence.length !== x.run.proof.evidence_refs.length ||
           x.run.observations.length !== x.run.proof.observation_refs.length ||
           !x.run.events.every((e:{execution_id:string})=>e.execution_id===x.execution_id)) throw Error("UNIFIED_BINDING_MISMATCH");
+        if(x.mission?.input?.selection){
+          const ev=x.run.evidence.find((e:{kind:string})=>e.kind==="model_dispatch");
+          if(!ev||canon(ev.data.selection)!==canon(x.mission.input.selection)||ev.data.arguments_sha256!==await sha256(canon(x.mission.input.args))||
+            ev.producer.executor_ref!==x.tool||x.mission.input.tool!==x.tool)throw Error("MODEL_DISPATCH_PROVENANCE_MISMATCH");
+        }
         const checks = await verifyRun(x.run);
         if (!checks.length || !checks.every(check=>check.ok)) throw Error("UNIFIED_INTEGRITY_FAILED");
         const status = x.run.verdict === "VERIFIED" ? "EXECUTED" : x.run.final_output?.status === "BLOCKED" ? "BLOCKED" : "FAILED";
         if (x.status !== status) throw Error("UNIFIED_STATUS_MISMATCH");
         inspectExecution(x.team,x.mission,x.run);
-        setUnified({status,execution_id:x.execution_id,run:x.run});
+        setUnified({status,execution_id:x.execution_id,run:x.run,restored:event.data.restored===true});
         setBridgeError("");
       } catch { setBridgeError("BLOCKED · Nieprawidłowe powiązanie lub integralność receipt z Jeversona."); }
     };
@@ -182,7 +192,7 @@ export default function JeversonChat() {
       {bridgeError && <p role="alert" className="shrink-0 px-3 py-2 text-[11px] text-bad">{bridgeError}</p>}
       {unified && <div data-testid="unified-result" className="shrink-0 border-b border-line bg-panel px-3 py-2 text-[11px]">
         <p className="break-all font-mono">{unified.status} · {unified.execution_id}</p>
-        <p className="text-dim">{unified.run.events.length} zdarzeń · {unified.run.evidence.length} evidence · receipt: integralność potwierdzona</p>
+        <p className="text-dim">{unified.restored?"Zapisany bundle · ponownie zweryfikowany · ":""}{unified.run.events.length} zdarzeń · {unified.run.evidence.length} evidence · receipt: integralność potwierdzona</p>
         <div className="mt-1 flex gap-2">
           <button className="focus-ring rounded border border-line px-3 py-1" onClick={()=>go("trace",{runId:unified.run.run_id})}>Tracing wykonania →</button>
           <button className="focus-ring rounded border border-line px-3 py-1" onClick={()=>go("proofs",{runId:unified.run.run_id})}>Proof Receipt →</button>
@@ -197,10 +207,11 @@ export default function JeversonChat() {
         </div>
       ) : (
         <>
-          {frameProblem && <div role="status" className="shrink-0 border-b border-line px-3 py-1.5 text-[11px] text-dim">
-            Nie udało się załadować osadzonej strony. Spróbuj przycisku ↗.
+          {frameProblem && !frameReady && <div role="status" className="shrink-0 border-b border-line px-3 py-1.5 text-[11px] text-dim">
+            Czat nie potwierdził połączenia. Otwórz ↗, zaloguj się do Vercel i wróć tutaj.
+            <button type="button" className="ml-2 underline" onClick={()=>{setFrameProblem(false);setFrameReady(false);setFrameVersion(v=>v+1);}}>Wczytaj czat ponownie</button>
           </div>}
-          <iframe ref={frame} key={activeUrl} title="Jeverson Chat" src={activeUrl}
+          <iframe ref={frame} key={activeUrl+frameVersion} title="Jeverson Chat" src={activeUrl}
             data-testid="jeverson-iframe"
             className="block min-h-0 min-w-0 w-full flex-1 border-0 bg-void"
             sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"

@@ -1,0 +1,34 @@
+{
+  "network_replacements": 0,
+  "paid_provider_calls": 0,
+  "reports": [
+    {
+      "restored_bundle": true,
+      "emulated_android": false,
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "execution_id": "exec_6838d2ee-13ba-451b-8676-bfc9297a92af",
+      "status": "PASS",
+      "normal_chat": true,
+      "actual_crypto": true,
+      "trace": true,
+      "receipt": true,
+      "page_errors": []
+    },
+    {
+      "restored_bundle": true,
+      "emulated_android": true,
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "execution_id": "exec_0e9806d7-333d-4a68-bf7d-666032d93d73",
+      "status": "PASS",
+      "normal_chat": true,
+      "actual_crypto": true,
+      "trace": true,
+      "receipt": true,
+      "page_errors": []
+    }
+  ]
+}

@@ -11,13 +11,16 @@ import type {
 export interface NativeBuilderOptions {
   workspaceProvider: WorkspaceProvider;
   agentRunner?: BuilderAgentRunner;
+  authorizeMutation?: (request:BuilderRequest)=>boolean;
 }
 
 export class NativeBuilder {
   private readonly workspaceProvider: WorkspaceProvider;
   private readonly agentRunner: BuilderAgentRunner;
+  private readonly authorizeMutation: (request:BuilderRequest)=>boolean;
 
   constructor(options: NativeBuilderOptions) {
+    this.authorizeMutation=options.authorizeMutation??(()=>false);
     this.workspaceProvider = options.workspaceProvider;
     this.agentRunner = options.agentRunner ?? new CommandBuilderAgentRunner();
   }
@@ -26,6 +29,7 @@ export class NativeBuilder {
     request: BuilderRequest,
     emit?: BuilderEventSink
   ): Promise<NativeBuilderResult> {
+    if(!this.authorizeMutation(request))throw Error("BUILDER_EXPLICIT_APPROVAL_REQUIRED");
     let workspaceId: string | undefined;
     let branchName: string | undefined;
     let changed = false;
@@ -115,6 +119,8 @@ export class NativeBuilder {
         selectedAgent: request.selectedAgent,
         selectedModel: request.selectedModel,
         validation: git.validation,
+        patch:git.patch,
+        patch_sha256:git.patch_sha256,
         changed,
         pushed,
         agent,

@@ -83,6 +83,8 @@ export interface NativeBuilderResult {
   validation?: ValidationResult;
   changed: boolean;
   pushed: boolean;
+  patch?: string;
+  patch_sha256?: string;
   agent?: BuilderAgentResult;
   error?: string;
 }

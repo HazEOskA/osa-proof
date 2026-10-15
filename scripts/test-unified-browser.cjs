@@ -20,7 +20,7 @@ async function main(){
   const reports=[];
   try{
     for(const [name,width,height] of [["desktop",1440,900],["mobile",390,844]]){
-      const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce"});
+      const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce",...(name==="mobile"?{isMobile:true,hasTouch:true,deviceScaleFactor:2,userAgent:"Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"}:{})});
       const errors=[];page.on("pageerror",e=>errors.push(e.message));
       await page.goto(base,{waitUntil:"domcontentloaded"});
       if(!await page.getByTestId("jeverson-iframe").isVisible()){
@@ -51,7 +51,10 @@ async function main(){
       else {if(width<768)await page.getByRole("button",{name:"Open navigation"}).click();await page.getByRole("button",{name:"Proofs",exact:true}).click();}
       await page.getByText("receipt_sha256 = digest(receipt body)",{exact:true}).waitFor();
       await page.screenshot({path:path.join(out,name+"-proof.png"),fullPage:true});
-      reports.push({viewport:name,width,height,execution_id:executionId,status:"PASS",normal_chat:true,actual_crypto:true,trace:true,receipt:true,page_errors:errors});
+      await page.reload({waitUntil:"domcontentloaded"});
+      await page.getByTestId("unified-result").filter({hasText:executionId}).waitFor({timeout:35000});
+      assert.match(await page.getByTestId("unified-result").innerText(),/Zapisany bundle/);
+      reports.push({restored_bundle:true,emulated_android:name==="mobile",viewport:name,width,height,execution_id:executionId,status:"PASS",normal_chat:true,actual_crypto:true,trace:true,receipt:true,page_errors:errors});
       assert.deepEqual(errors,[]);await page.close();
     }
   }finally{await browser.close();}

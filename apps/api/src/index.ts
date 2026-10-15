@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
@@ -178,6 +179,13 @@ export async function handleApiRequest(
           if(url.pathname === "/unified/verify") {
             try {return send(response,200,verifyUnifiedBundle(body as Parameters<typeof verifyUnifiedBundle>[0]));}
             catch {return send(response,400,{ok:false,errors:["UNIFIED_INVALID_BUNDLE"]});}
+          }
+          if((body as {tool?:unknown})?.tool!==undefined){
+            const configured=process.env.OSA_UNIFIED_RUNTIME_TOKEN;
+            const supplied=String(request.headers.authorization||"").replace(/^Bearer /,"");
+            if(!configured||configured.length<32||Buffer.byteLength(supplied)!==Buffer.byteLength(configured)||
+              !timingSafeEqual(Buffer.from(supplied),Buffer.from(configured)))
+              return send(response,403,{status:"BLOCKED",error:"MODEL_DISPATCH_SERVICE_AUTH_REQUIRED"});
           }
           if(!session.identity.organization_id)return send(response,403,{status:"BLOCKED",error:"UNIFIED_ORGANIZATION_REQUIRED"});
           installUnifiedTools(registry);

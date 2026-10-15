@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { digest, canonicalJson } from "../../proof-core/src";
 import type {
   AgentExecutionResult,
   AgentExecutor,
@@ -93,6 +95,23 @@ export function createNativeBuilderExecutor(
       );
     }
 
+    let repo:URL;
+    try{repo=new URL(repoUrl);}catch{throw Error("BUILDER_REPO_URL_INVALID");}
+    const allowed=(env.OSA_BUILDER_ALLOWED_REPOSITORIES||"HazEOskA/osa-proof,HazEOskA/Jeverson").split(",");
+    if(repo.protocol!=="https:"||repo.hostname!=="github.com"||repo.username||repo.password||repo.search||repo.hash||
+      !allowed.includes(repo.pathname.slice(1).replace(/\.git$/,"")))throw Error("BUILDER_REPOSITORY_DENIED");
+    // Signed per-execution grant is issued by a trusted operator service, never
+    // by an LLM or a request boolean. The environment switch alone is insufficient.
+    const approval=objectInput(data.builder_approval);
+    const secret=env.OSA_BUILDER_APPROVAL_SECRET;
+    const expires=Number(approval.expires_at);
+    const prompt=stringField(data,"prompt","task")||mission.objective;
+    const grant={action:"BUILD_PATCH",execution_id,repo_url:repoUrl,prompt_sha256:digest(prompt),branch:stringField(data,"branch","branch_name","branchName")||null,agent:stringField(data,"selected_agent","selectedAgent")||env.OSA_BUILDER_AGENT||"claude",model:stringField(data,"selected_model","selectedModel")||env.OSA_BUILDER_MODEL||null,install_dependencies:Boolean(data.install_dependencies??data.installDependencies??false),expires_at:expires};
+    const expected=secret&&secret.length>=32?createHmac("sha256",secret).update(canonicalJson(grant)).digest("hex"):"";
+    const signature=String(approval.signature||"");
+    if(!expected||!Number.isSafeInteger(expires)||expires<=Date.now()||expires>Date.now()+300000||
+       !/^[a-f0-9]{64}$/.test(signature)||!timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))
+      throw Error("BUILDER_EXPLICIT_APPROVAL_REQUIRED");
     const provider = resolveWorkspaceProvider(env, options.workspaceProvider);
     const selectedAgent = parseBuilderAgent(
       stringField(data, "selected_agent", "selectedAgent") ||
@@ -126,15 +145,15 @@ export function createNativeBuilderExecutor(
     };
 
     const events: BuilderEvent[] = [];
-    const builder = new NativeBuilder({ workspaceProvider: provider });
+    const builder = new NativeBuilder({ workspaceProvider: provider,authorizeMutation:()=>true });
     const result = await builder.run(request, (event) => {
       events.push(event);
     });
 
     const completed = result.status === "completed";
     const artifactStatus =
-      completed && result.pushed
-        ? "built"
+      completed && !!result.patch_sha256
+        ? "patch_ready"
         : completed && !result.changed
           ? "no_changes"
           : "rejected";
@@ -173,12 +192,12 @@ export function createNativeBuilderExecutor(
             branch_name: result.branchName,
             workspace_provider: result.workspaceProvider,
             reason:
-              artifactStatus === "built"
+              artifactStatus === "patch_ready"
                 ? undefined
                 : result.error ||
                   (artifactStatus === "no_changes"
                     ? "builder completed without repository changes"
-                    : "native builder did not produce a pushed artifact"),
+                    : "native builder did not produce a reviewable patch"),
           },
           content,
         },

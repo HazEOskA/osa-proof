@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import type { WorkspaceHandle } from "../../workspace-runtime/src";
 import { PROJECT_DIR, runInProject, sanitizeBranchSegment } from "./commands";
@@ -169,6 +170,8 @@ export async function validateCommitAndPush(
   changed: boolean;
   pushed: boolean;
   validation: ValidationResult;
+  patch?: string;
+  patch_sha256?: string;
 }> {
   const status = await runInProject(workspace, "git", ["status", "--porcelain"]);
   if (status.exitCode !== 0) {
@@ -202,35 +205,12 @@ export async function validateCommitAndPush(
   const add = await runInProject(workspace, "git", ["add", "."]);
   if (add.exitCode !== 0) throw new Error("BUILDER_GIT_ADD_FAILED");
 
-  const commitMessage = `build(osa): ${request.prompt
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 72) || request.taskId}`;
+  // A build produces a reviewable patch. It never commits or pushes, even
+  // when the caller has supplied GitHub credentials for a private clone.
+  const diff=await runInProject(workspace,"git",["diff","--cached","--binary","--no-ext-diff"]);
+  if(diff.exitCode!==0)throw Error("BUILDER_PATCH_EXPORT_FAILED");
+  if(Buffer.byteLength(diff.stdout)>512000)throw Error("BUILDER_PATCH_TOO_LARGE");
+  await emit(emitEvent,{stage:"git",status:"completed",data:{branch_name:branchName,pushed:false,artifact:"reviewable_patch"}});
+  return {changed:true,pushed:false,validation,patch:diff.stdout,patch_sha256:createHash("sha256").update(diff.stdout).digest("hex")};
 
-  const commit = await runInProject(
-    workspace,
-    "git",
-    ["commit", "-m", commitMessage]
-  );
-  if (commit.exitCode !== 0) {
-    throw new Error("BUILDER_GIT_COMMIT_FAILED");
-  }
-
-  const push = await runInProject(
-    workspace,
-    "git",
-    ["push", "-u", "origin", branchName],
-    { env: gitEnv }
-  );
-  if (push.exitCode !== 0) {
-    throw new Error("BUILDER_GIT_PUSH_FAILED");
-  }
-
-  await emit(emitEvent, {
-    stage: "git",
-    status: "completed",
-    data: { branch_name: branchName },
-  });
-
-  return { changed: true, pushed: true, validation };
 }
