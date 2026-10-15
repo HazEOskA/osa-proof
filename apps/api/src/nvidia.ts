@@ -23,6 +23,8 @@ export function nvidiaRequestConfig(options: { apiKey?: unknown; model?: unknown
 }
 export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = process.env, fetcher: typeof fetch = fetch) {
   if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 8000) throw new NvidiaError(400, "INVALID_PROMPT", "Wpisz prompt od 1 do 8000 znaków.");
+  if(env.OSA_ZERO_COST_ONLY==="true"&&env.OSA_NVIDIA_FREE_TIER_ACK!=="true")
+    throw new NvidiaError(403,"NVIDIA_COST_POLICY_BLOCKED","NVIDIA: wymagane potwierdzenie bezpłatnego dostępu przed wywołaniem modelu.");
   const key = env.NVIDIA_API_KEY?.trim();
   if (!key) throw new NvidiaError(503, "NVIDIA_NOT_CONFIGURED", "Dodaj NVIDIA_API_KEY w środowisku serwera.");
   const model = nvidiaStatus(env).model;

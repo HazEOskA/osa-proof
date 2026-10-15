@@ -63,3 +63,9 @@ test("NVIDIA: per-request key and model never mutate shared configuration", asyn
   for (const options of [{apiKey: "bad\nheader"}, {apiKey: 1}, {model: "https://evil.test"}, {model: null}]) assert.throws(() => nvidiaRequestConfig(options, original), (e: unknown) => e instanceof NvidiaError && e.status === 400);
   assert.equal(nvidiaRequestConfig({}, original).NVIDIA_API_KEY, "server-secret");
 });
+
+test("production zero-cost policy blocks NVIDIA before a provider request",async()=>{
+  let calls=0;
+  await assert.rejects(()=>nvidiaComplete("test",{NVIDIA_API_KEY:"unit-test-placeholder",OSA_ZERO_COST_ONLY:"true"},(async()=>{calls++;throw Error("unexpected");}) as typeof fetch),/potwierdzenie bezpłatnego/);
+  assert.equal(calls,0);
+});
