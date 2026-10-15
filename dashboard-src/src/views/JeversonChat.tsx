@@ -131,7 +131,7 @@ export default function JeversonChat() {
           </button>
           {traceError && <p role="alert" className="text-[11px] text-bad">BLOCKED · {traceError}</p>}
           {traceOutcome && <div aria-label="OSA Proof Trace Result" className="space-y-1 rounded border border-line bg-panel p-3 text-[11px]">
-            <div className="font-semibold text-fg">{traceOutcome.task_status} · APR {traceOutcome.proof_verdict}</div>
+            <div className="font-semibold text-fg">{traceOutcome.task_status} · OSA Proof {traceOutcome.proof_verdict}</div>
             <div className="break-all font-mono text-dim">execution_id: {traceOutcome.execution_id}</div>
             {traceOutcome.steps.map(step=><div key={step.step} className="break-all font-mono text-dim">
               {step.step}. GET {step.url} · HTTP {step.http_status ?? "BRAK"} · {step.status}{step.error_code ? " · "+step.error_code : ""}
