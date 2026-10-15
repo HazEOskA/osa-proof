@@ -4,7 +4,7 @@ import { AddressInfo } from 'node:net';
 import { ApiState, createApiServer } from '../apps/api/src';
 import { validateBuildWorkspace, BuildWorkspace } from '../apps/api/src/build';
 import { createDevFixtureRegistry } from '../apps/api/src/server';
-const workspace = (): BuildWorkspace => ({ team:{organization_id:'org',project_id:'project',team_id:'build',version:'1',agents:[{agent_id:'builder',role:'Builder',executor_ref:'dev.builder.v1'}],edges:[]},resources:[{id:'prompt',kind:'prompts',name:'Instrukcja',description:'',config:{text:'Zadanie {{cel}}',variables:{cel:'test'}},revisions:[]}] });
+const workspace = (): BuildWorkspace => ({ team:{organization_id:'org_dev_local',project_id:'project',team_id:'build',version:'1',agents:[{agent_id:'builder',role:'Builder',executor_ref:'dev.builder.v1'}],edges:[]},resources:[{id:'prompt',kind:'prompts',name:'Instrukcja',description:'',config:{text:'Zadanie {{cel}}',variables:{cel:'test'}},revisions:[]}] });
 test('Build rejects cycles, unknown agents and credential material in revisions',()=>{
  const w=workspace();validateBuildWorkspace(w);
  w.team.edges.push({edge_id:'cycle',kind:'handoff',from_agent_id:'builder',to_agent_id:'builder'});assert.throws(()=>validateBuildWorkspace(w));
@@ -20,7 +20,7 @@ test('Build config roundtrip and mission to canonical receipt in fixture mode',a
   const w=workspace();const saved=await post('/build/workspace',w);assert.equal(saved.status,201);assert.equal((await saved.json()).persistence,'PROCESS_MEMORY');
   assert.deepEqual(await (await fetch(base+'/build/workspace')).json(),w);
   const status=await (await fetch(base+'/build/status')).json();assert.equal(status.mode,'fixture');assert.equal(status.protocols.MCP,'UNSUPPORTED');
-  const mission={organization_id:'org',project_id:'project',team_id:'build',team_version:'1',mission_id:'build-test',entry_agent_id:'builder',objective:'Sprawdź fixture',input:{capability:'AGENT_TASK'},requirements:[{requirement_id:'artifact',type:'evidence_field_equals',evidence_kind:'artifact',field:'status',expected:'built'}]};
+  const mission={organization_id:'org_dev_local',project_id:'project',team_id:'build',team_version:'1',mission_id:'build-test',entry_agent_id:'builder',objective:'Sprawdź fixture',input:{capability:'AGENT_TASK'},requirements:[{requirement_id:'artifact',type:'evidence_field_equals',evidence_kind:'artifact',field:'status',expected:'built'}]};
   assert.equal((await post('/missions',mission)).status,201);
   const response=await post('/missions/build-test/run',{});assert.equal(response.status,201);const result=await response.json();assert.equal(result.verdict,'VERIFIED');assert.equal(result.proof.schema,'osa.proof_receipt.v2');assert.ok(result.evidence.length);assert.ok(result.events.some((e:{type:string})=>e.type==='RUN_VERIFIED'));
   assert.deepEqual(await (await fetch(base+`/runs/${result.run_id}/proof`)).json(),result.proof);

@@ -1,3 +1,6 @@
+import { createNativeBuilderExecutor } from "../../../packages/builder-core/src";
+import { registerBuiltInWorkspaceProviders } from "../../../packages/workspace-runtime/src";
+import { installUnifiedTools } from "./unified";
 import { createConfiguredWeb3 } from "../../../packages/web3/src";
 import { Server } from "node:http";
 import { ApiState, createApiServer, loadAuthMode } from "./index";
@@ -104,13 +107,22 @@ function installIntegrationRouter(
   fallbackBuilder: AgentExecutor
 ): Record<string, unknown> {
   const integration = loadIntegrationConfig(env);
+  const native = createNativeBuilderExecutor({ env });
+  // Preserve every existing integration. Native Builder is an explicit registered
+  // capability; paid CLI execution stays disabled in this preview.
+  const nativeGated: AgentExecutor = async context => {
+    if (env.OSA_NATIVE_BUILDER_EXECUTION !== "enabled") throw new Error("BUILD_CODE integration is not configured for execution: NATIVE_BUILDER_BLOCKED");
+    return native(context);
+  };
+  registry.register("osa.native-builder.v1", nativeGated);
   if (!integration.enabled) return {};
 
   registry.register(
     DEV_BUILDER_REF,
     createCapabilityRouterExecutor({
       fallback: fallbackBuilder,
-      builder: integration.builder ? createBuilderBridgeExecutor(integration.builder) : undefined,
+      builder: integration.builder ? createBuilderBridgeExecutor(integration.builder) : nativeGated,
+      builderTarget: integration.builder ? "coding-agent-platform" : "osa-native-builder",
       executionForce: integration.executionForce
         ? createExecutionForceExecutor(integration.executionForce)
         : undefined,
@@ -122,6 +134,7 @@ function installIntegrationRouter(
   );
 
   return {
+    native_builder: { registered: true, execution: env.OSA_NATIVE_BUILDER_EXECUTION === "enabled" ? "ENABLED" : "BLOCKED" },
     integration: "v0.1",
     registry: describeIntegrationRegistry(integration),
   };
@@ -137,9 +150,11 @@ export interface DevExecution {
 
 // Fails closed on missing/unknown mode and on incomplete provider configuration.
 export function createDevExecution(env: Env): DevExecution {
+  registerBuiltInWorkspaceProviders(env);
   const mode = loadExecutionMode(env);
   if (mode === "fixture") {
     const registry = createDevFixtureRegistry();
+    installUnifiedTools(registry,env);
     const integration = installIntegrationRouter(registry, env, fixtureBuilder);
     return { mode, registry, brain: createConfiguredBrain(env), description: { mode, ...integration } };
   }
@@ -147,6 +162,7 @@ export function createDevExecution(env: Env): DevExecution {
   const [primary, ...fallbacks] = targets;
   const provider = createModelMesh(targets);
   const registry = createDevProviderRegistry(provider);
+  installUnifiedTools(registry,env);
   const integration = installIntegrationRouter(registry, env, createProviderBuilderExecutor(provider));
   return {
     mode,

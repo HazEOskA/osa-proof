@@ -1,3 +1,4 @@
+import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
@@ -166,6 +167,30 @@ export async function handleApiRequest(
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+
+      if (parts[0] === "unified") {
+        const session = requireSession(request,response,state);
+        if (!session) return;
+        if (method === "POST" && ["/unified/execute","/unified/verify"].includes(url.pathname)) {
+          const chunks:Buffer[]=[];let size=0;
+          for await (const chunk of request) { size+=Buffer.byteLength(chunk); if(size>512000)return send(response,413,{status:"BLOCKED",error:"UNIFIED_BODY_TOO_LARGE"});chunks.push(Buffer.from(chunk)); }
+          let body:unknown;try {body=JSON.parse(Buffer.concat(chunks).toString("utf8"));} catch {return send(response,400,{status:"BLOCKED",error:"UNIFIED_INVALID_JSON"});}
+          if(url.pathname === "/unified/verify") {
+            try {return send(response,200,verifyUnifiedBundle(body as Parameters<typeof verifyUnifiedBundle>[0]));}
+            catch {return send(response,400,{ok:false,errors:["UNIFIED_INVALID_BUNDLE"]});}
+          }
+          if(!session.identity.organization_id)return send(response,403,{status:"BLOCKED",error:"UNIFIED_ORGANIZATION_REQUIRED"});
+          installUnifiedTools(registry);
+          let result;
+          try {result = await executeUnified(body,session.identity.organization_id,registry);}
+          catch {return send(response,400,{status:"BLOCKED",error:"UNIFIED_INVALID_INPUT"});}
+          state.runs.set(result.run.run_id,structuredClone(result.run));
+          state.teams.set(state.teamKey(result.team.team_id,result.team.version),result.team);
+          state.missions.set(result.mission.mission_id,result.mission);
+          return send(response,200,result);
+        }
+        return send(response,404,{status:"BLOCKED",error:"UNIFIED_ROUTE_NOT_FOUND"});
+      }
 
       if (url.pathname === "/trace-probe" && method === "POST") {
         const session = requireSession(request, response, state);
@@ -524,6 +549,7 @@ export async function handleApiRequest(
         if (!session) return;
         const graph = await readJson<TeamGraph>(request);
         validateTeamGraph(graph);
+        if (graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         state.teams.set(state.teamKey(graph.team_id, graph.version), structuredClone(graph));
         return send(response, 201, graph);
@@ -535,7 +561,7 @@ export async function handleApiRequest(
         const version = url.searchParams.get("version");
         if (!version) return send(response, 400, { error: "version query parameter is required" });
         const graph = state.teams.get(state.teamKey(parts[1], version));
-        if (graph?.agents.some(a => a.executor_ref.startsWith("demo.")) && graph.organization_id !== session.identity.organization_id) return send(response,403,{error:"DEMO_SCOPE_DENIED"});
+        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         return graph ? send(response, 200, graph) : send(response, 404, { error: "team not found" });
       }
 
@@ -543,7 +569,9 @@ export async function handleApiRequest(
         const session = requireSession(request, response, state);
         if (!session) return;
         const mission = await readJson<Mission>(request);
+        if (mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         const graph = state.teams.get(state.teamKey(mission.team_id, mission.team_version));
+        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (!graph) return send(response, 404, { error: "team version not found" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         await state.missionKernel.create(mission, graph);
@@ -556,7 +584,7 @@ export async function handleApiRequest(
         if (!session) return;
         const record = await state.missionKernel.get(parts[1]);
         if (!record) return send(response, 404, { error: "mission not found" });
-        if (record.team.agents.some(a => a.executor_ref.startsWith("web3.") || a.executor_ref.startsWith("demo.")) && record.mission.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
+        if (record.mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (method === "GET" && parts.length === 2) return send(response, 200, record);
         if (method === "GET" && parts[2] === "timeline") return send(response, 200, record.timeline);
         if (method === "GET" && parts[2] === "run") return record.run ? send(response, 200, record.run) : send(response, 404, { error: "mission has no run" });
@@ -580,7 +608,7 @@ export async function handleApiRequest(
         if (!session) return;
         const run = state.runs.get(parts[1]);
         if (!run) return send(response, 404, { error: "run not found" });
-        if (run.evidence.some(e => e.kind.startsWith("web3_") || e.kind.startsWith("demo_")) && run.proof.organization_id !== session.identity.organization_id) return send(response,403,{ error: "WEB3_SCOPE_DENIED" });
+        if (run.proof.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (parts.length === 2) return send(response, 200, run);
         if (parts[2] === "events") return send(response, 200, run.events);
         if (parts[2] === "evidence") return send(response, 200, run.evidence);

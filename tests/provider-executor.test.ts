@@ -19,7 +19,7 @@ import { OsaRuntime } from "../packages/runtime/src";
 const SECRET = "sk-ant-test-SECRET-7f3c9a";
 
 const graph: TeamGraph = {
-  organization_id: "org_dev",
+  organization_id: "org_dev_local",
   project_id: "project_dev_live_slice",
   team_id: "team_dev",
   version: "1",

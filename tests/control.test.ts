@@ -9,13 +9,13 @@ import { ControlError, DeploymentStore, OrganizationStore, PERMISSIONS, PolicySt
 const CLOCK = () => new Date("2026-09-30T12:00:00.000Z");
 function team(version = "1", builderRef = "dev.builder.v1"): TeamGraph {
   return {
-    organization_id: "org_c", project_id: "project_c", team_id: "team_c", version,
+    organization_id: "org_dev_local", project_id: "project_c", team_id: "team_c", version,
     agents: [{ agent_id: "planner", role: "planner", executor_ref: "dev.planner.v1" }, { agent_id: "builder", role: "builder", executor_ref: builderRef }],
     edges: [{ edge_id: "p_b", from_agent_id: "planner", to_agent_id: "builder", kind: "handoff" }],
   };
 }
 const mission: Mission = {
-  organization_id: "org_c", project_id: "project_c", mission_id: "m_c", team_id: "team_c", team_version: "1", objective: "Ship notes",
+  organization_id: "org_dev_local", project_id: "project_c", mission_id: "m_c", team_id: "team_c", team_version: "1", objective: "Ship notes",
   entry_agent_id: "planner", input: { request: "notes" },
   requirements: [{ requirement_id: "artifact_status", type: "evidence_field_equals", evidence_kind: "artifact", agent_id: "builder", field: "status", expected: "built" }],
 };
@@ -102,7 +102,7 @@ test("HTTP: deploy, run through the pinned deployment, policy blocks with 403, r
     assert.equal(((await (await fetch(base + "/deployments")).json()) as unknown[]).length, 2);
     assert.equal((await post(base, "/deployments", { team_id: "nope", version: "1", environment: "preview" })).status, 404);
     const orgs = await (await fetch(base + "/organizations")).json() as Array<{ organization_id: string }>;
-    assert.ok(orgs.some((o) => o.organization_id === "org_c"), "organizations observed from teams and runs");
+    assert.ok(orgs.some((o) => o.organization_id === "org_dev_local"), "organizations observed from teams and runs");
   });
 });
 

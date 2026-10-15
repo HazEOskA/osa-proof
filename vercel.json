@@ -5,7 +5,8 @@
   "git": {
     "deploymentEnabled": {
       "feature/platform-v03-v05-review": false,
-      "feature/osa-fleet-chat-slice1-proof": false
+      "feature/osa-fleet-chat-slice1-proof": false,
+      "feature/osa-unified-runtime-v1": false
     }
   },
   "cleanUrls": true,

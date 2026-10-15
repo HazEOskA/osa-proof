@@ -50,7 +50,7 @@ test("HTTP S2: NeurOSA context -> model gateway -> pinned plan -> restart -> age
     const memoryBase = await listen(memory), providerBase = await listen(provider);
     const env = { OSA_EXECUTION_MODE: "provider", OSA_PROVIDER: "openai", OSA_MODEL: "test-brain", OPENAI_API_KEY: "TEST_PROVIDER_SECRET",
       OSA_PROVIDER_BASE_URL: providerBase, OSA_PROVIDER_MAX_RETRIES: "0", OSA_BRAIN_MODE: "model",
-      OSA_NEUROSA_BASE_URL: memoryBase, OSA_NEUROSA_TOKEN: "TEST_MEMORY_SECRET_TOKEN_123456", OSA_NEUROSA_BRAIN_ID: "brain", OSA_NEUROSA_ORGANIZATION_ID: "org", OSA_NEUROSA_PROJECT_ID: "project" };
+      OSA_NEUROSA_BASE_URL: memoryBase, OSA_NEUROSA_TOKEN: "TEST_MEMORY_SECRET_TOKEN_123456", OSA_NEUROSA_BRAIN_ID: "brain", OSA_NEUROSA_ORGANIZATION_ID: "org_dev_local", OSA_NEUROSA_PROJECT_ID: "project" };
     function makeApi(): Server {
       const execution = createDevExecution(env);
       return createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, "session", new FileMissionStore(directory), execution.brain), execution.description);
@@ -62,10 +62,10 @@ test("HTTP S2: NeurOSA context -> model gateway -> pinned plan -> restart -> age
     }
     api = makeApi(); let base = await listen(api), headers = await login(base);
     const post = (path: string, data: unknown) => fetch(`${base}${path}`, { method: "POST", headers, body: JSON.stringify(data) });
-    const graph: TeamGraph = { organization_id: "org", project_id: "project", team_id: "team", version: "1",
+    const graph: TeamGraph = { organization_id: "org_dev_local", project_id: "project", team_id: "team", version: "1",
       agents: [{ agent_id: "planner", role: "planner", executor_ref: DEV_PLANNER_REF }, { agent_id: "builder", role: "builder", executor_ref: DEV_BUILDER_REF }],
       edges: [{ edge_id: "handoff", from_agent_id: "planner", to_agent_id: "builder", kind: "handoff" }] };
-    const mission: Mission = { organization_id: "org", project_id: "project", mission_id: "mission", team_id: "team", team_version: "1", objective: "Build an app", entry_agent_id: "planner", input: {},
+    const mission: Mission = { organization_id: "org_dev_local", project_id: "project", mission_id: "mission", team_id: "team", team_version: "1", objective: "Build an app", entry_agent_id: "planner", input: {},
       budget: { max_tasks: 2, max_context_chars: 512 }, policy: { allowed_executor_refs: [DEV_PLANNER_REF, DEV_BUILDER_REF], allowed_model_refs: ["openai:test-brain"] },
       requirements: [{ requirement_id: "built", type: "evidence_field_equals", evidence_kind: "artifact", field: "status", expected: "built" }] };
     assert.equal((await post("/teams", graph)).status, 201);
@@ -108,7 +108,7 @@ test("NeurOSA adapter aborts a stalled real HTTP request within its configured t
   const server = createServer((_req, _res) => { /* no response */ });
   try {
     const base = await listen(server);
-    const adapter = new NeurosaMemoryAdapter({ baseUrl: base, token: "x".repeat(24), brainId: "brain", organizationId: "org", projectId: "project", timeoutMs: 30 });
-    await assert.rejects(adapter.recall({ organization_id: "org", project_id: "project", mission_id: "mission" }, "objective", 512), /NEUROSA_UNAVAILABLE/);
+    const adapter = new NeurosaMemoryAdapter({ baseUrl: base, token: "x".repeat(24), brainId: "brain", organizationId: "org_dev_local", projectId: "project", timeoutMs: 30 });
+    await assert.rejects(adapter.recall({ organization_id: "org_dev_local", project_id: "project", mission_id: "mission" }, "objective", 512), /NEUROSA_UNAVAILABLE/);
   } finally { server.closeAllConnections(); await close(server); }
 });

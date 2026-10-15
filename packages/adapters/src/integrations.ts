@@ -735,6 +735,7 @@ export function createFleetChatExecutor(
 }
 
 export interface CapabilityRouterOptions {
+  builderTarget?: string;
   fallback: AgentExecutor;
   builder?: AgentExecutor;
   executionForce?: AgentExecutor;
@@ -750,7 +751,7 @@ export function createCapabilityRouterExecutor(options: CapabilityRouterOptions)
 
     if (capability === "BUILD_CODE") {
       if (!options.builder) throw new IntegrationConfigError("BUILD_CODE integration is not configured");
-      target = "coding-agent-platform";
+      target = options.builderTarget ?? "coding-agent-platform";
       executor = options.builder;
     } else if (capability === "RUN_TOOL") {
       if (!options.executionForce) throw new IntegrationConfigError("RUN_TOOL integration is not configured");

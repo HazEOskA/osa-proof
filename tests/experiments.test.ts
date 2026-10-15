@@ -9,7 +9,7 @@ import { Comparison, Experiment, verifyExperiment } from "../packages/experiment
 
 function team(version: string, builder: string): TeamGraph {
   return {
-    organization_id: "org_x", project_id: "project_x", team_id: "team_x", version,
+    organization_id: "org_dev_local", project_id: "project_x", team_id: "team_x", version,
     agents: [{ agent_id: "planner", role: "planner", executor_ref: "dev.planner.v1" }, { agent_id: "builder", role: "builder", executor_ref: builder }],
     edges: [{ edge_id: "p_b", from_agent_id: "planner", to_agent_id: "builder", kind: "handoff" }],
   };

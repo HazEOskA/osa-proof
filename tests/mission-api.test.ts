@@ -14,8 +14,8 @@ test("HTTP Mission Kernel persists proof and timeline across API restarts withou
   const registry = new ExecutorRegistry();
   let executions = 0;
   registry.register("builder", () => { executions++; return { output: { built: true }, evidence: [{ kind: "build", data: { passed: true } }] }; });
-  const graph: TeamGraph = { organization_id: "org", project_id: "project", team_id: "team", version: "1", agents: [{ agent_id: "builder", role: "builder", executor_ref: "builder" }], edges: [] };
-  const mission: Mission = { organization_id: "org", project_id: "project", mission_id: "mission", team_id: "team", team_version: "1", entry_agent_id: "builder", objective: "build", input: {}, requirements: [{ requirement_id: "build", type: "evidence_field_equals", evidence_kind: "build", field: "passed", expected: true }] };
+  const graph: TeamGraph = { organization_id: "org_dev_local", project_id: "project", team_id: "team", version: "1", agents: [{ agent_id: "builder", role: "builder", executor_ref: "builder" }], edges: [] };
+  const mission: Mission = { organization_id: "org_dev_local", project_id: "project", mission_id: "mission", team_id: "team", team_version: "1", entry_agent_id: "builder", objective: "build", input: {}, requirements: [{ requirement_id: "build", type: "evidence_field_equals", evidence_kind: "build", field: "passed", expected: true }] };
   const makeServer = () => createApiServer(registry, new ApiState(undefined, undefined, undefined, "session", new FileMissionStore(directory)));
   let server = makeServer();
   async function start(): Promise<string> {

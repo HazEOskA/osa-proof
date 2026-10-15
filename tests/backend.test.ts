@@ -12,7 +12,7 @@ import { ExecutorRegistry, OsaRuntime } from "../packages/runtime/src";
 import { TeamGraphValidationError, validateTeamGraph } from "../packages/team-graph/src";
 
 const graph: TeamGraph = {
-  organization_id: "org_local",
+  organization_id: "org_dev_local",
   project_id: "project_slice_1",
   team_id: "team_builder",
   version: "1",
@@ -32,7 +32,7 @@ const graph: TeamGraph = {
 
 function mission(expected = "built"): Mission {
   return {
-    organization_id: "org_local",
+    organization_id: "org_dev_local",
     project_id: "project_slice_1",
     mission_id: `mission_${expected}`,
     team_id: graph.team_id,
@@ -204,7 +204,7 @@ test("minimal HTTP API exposes team, run, events, evidence and proof", async () 
 
 test("DEV production fixture registry completes Team Graph -> Mission -> RUN -> Events -> Evidence -> Proof", async () => {
   const devGraph: TeamGraph = {
-    organization_id: "org_dev_fixture",
+    organization_id: "org_dev_local",
     project_id: "project_dev_live_slice",
     team_id: "team_dev_fixture",
     version: "1",

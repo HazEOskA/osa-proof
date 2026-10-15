@@ -120,7 +120,7 @@ export function useOsaData(): {
   const inspectExecution = useCallback((team: TeamGraph, mission: Mission, run: Run) => {
     // A scoped projection of the exact API result, not a second execution or invented world state.
     setData(current => ({...current,team,missions:[mission],runs:[run]}));
-    setSource({kind:"LIVE",detail:`${mission.mission_id.startsWith("osa-trace-") ? "OSA TRACE" : "Delivery Lab"} execution ${run.execution_id}`});
+    setSource({kind:"LIVE",detail:`${mission.mission_id.startsWith("unified_") ? "OSA Unified" : mission.mission_id.startsWith("osa-trace-") ? "OSA TRACE" : "Delivery Lab"} execution ${run.execution_id}`});
   }, []);
   return { data, source, checking, runningMission, actionError, runMission, enterLayer, inspectExecution };
 }
