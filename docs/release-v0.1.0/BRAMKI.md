@@ -43,3 +43,7 @@ Pełna ścieżka modelowa ma zapis skrótu odpowiedzi dostawcy, a nie kryptograf
 Brak zgody na merge, tag i GitHub Release przed zamknięciem obowiązkowych bramek. Produkcyjny deploy oraz zmiana ochrony produkcji wymagają osobnego zatwierdzenia dokładnego commitu i konfiguracji. Macierz możliwości: [MACIERZ.md](MACIERZ.md). Instrukcja operatora: [OPERATOR.md](OPERATOR.md).
 
 Historia rozmów, szkic Buildera i lokalny bundle w chronionym środowisku mają osobne klucze storage dla organizacji/projektu potwierdzonych przez sesję. Stare zapisy bez zakresu pozostają na urządzeniu; nie są kasowane ani automatycznie importowane do chronionego projektu. To rozdzielenie widoków lokalnych, nie szyfrowany magazyn ani granica bezpieczeństwa między osobami korzystającymi z tego samego profilu przeglądarki.
+
+## Odbiór PR i nowego Preview
+
+[PR #16](https://github.com/HazEOskA/osa-proof/pull/16), kod `724c078`, ma trzy kontrole CI PASS. Nowe Preview jest READY, ale jawnie zamknięte: auth/access raportuje brak konfiguracji operatora, a prywatne API odmawia 503 OPERATOR_ACCESS_NOT_CONFIGURED. Anonimowy test narzędzia otrzymał 401. Szczegóły i granice dowodów: [WERYFIKACJA.md](WERYFIKACJA.md). Nie zaliczono tej odmowy jako pełnego przepływu modelowego.

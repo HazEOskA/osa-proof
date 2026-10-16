@@ -72,5 +72,10 @@
     "Brak live połączenia NeurOSA"
   ],
   "android_emulation": "Pixel 7 UA + mobile/touch at 320/390; not physical Android hardware",
-  "source_manifest_sha256": "1d3c5cf4ab25c50b68257c917915c300f07976a207d92cb17e66be77171c5e0f"
+  "source_manifest_sha256": "1d3c5cf4ab25c50b68257c917915c300f07976a207d92cb17e66be77171c5e0f",
+  "code_commit": "724c078cd9a7bec0206021646351f2fdb42418ff",
+  "pull_request": "https://github.com/HazEOskA/osa-proof/pull/16",
+  "ci": "3/3 PASS on code commit",
+  "preview": "READY / OPERATOR_ACCESS_NOT_CONFIGURED",
+  "cloud_evidence": "cloud-preview-boundary.json"
 }

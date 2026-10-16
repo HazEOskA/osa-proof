@@ -41,6 +41,18 @@ Bundle są ponownie sprawdzane przez backendowy verifyUnifiedBundle i niezależn
 
 Manifest źródeł: `1d3c5cf4ab25c50b68257c917915c300f07976a207d92cb17e66be77171c5e0f` ([pliki i skróty](../evidence/release-v0.1.0/source-manifest.json)). Weryfikowane źródła obejmują kod, testy, konfigurację i workflow; dokumentacja nie jest częścią tego skrótu.
 
-Wyniki GitHub Actions oraz stan nowego Preview zostaną dopisane po wypchnięciu gałęzi wydawniczej. Nie uznano starego CI z innego commitu za dowód tego kandydata.
+Kod opublikowano w commicie `724c078cd9a7bec0206021646351f2fdb42418ff`; jego tree `d9d0c5b026d5057b85afabe0b80cdeb44b0beaaa` jest identyczne z lokalnie przetestowanym drzewem. PR wydawniczy: [#16](https://github.com/HazEOskA/osa-proof/pull/16). Kolejny commit uzupełnia wyłącznie dokumentację i dowody.
+
+| CI kodu 724c078 | Wynik |
+|---|---|
+| [Testy, backend, worker, dashboard i kontrola diffu](https://github.com/HazEOskA/osa-proof/actions/runs/38980249753) | PASS |
+| [Przeglądarka Android/desktop, przewodnik, izolacja historii, receipt i Replay](https://github.com/HazEOskA/osa-proof/actions/runs/38980249823) | PASS |
+| [Kontrakty Fleet HTTP/SSE bez modelu](https://github.com/HazEOskA/osa-proof/actions/runs/38980249810) | PASS |
+
+Nowe [Preview](https://osa-proof-fesbid6j8-osabarca-1680s-projects.vercel.app), deployment `dpl_BeWxx5Zjwn2ThJGLnE5TzqCWxpC4`, commit `724c078`, jest READY. Rzeczywisty GET przez Vercel MCP potwierdził `/api/auth/access` → `required=true`, `configured=false`, `authenticated=false`, a `/api/nvidia/status` i `/api/build/status` → **503 OPERATOR_ACCESS_NOT_CONFIGURED**. To działająca blokada braku konfiguracji, nie awaria modelu i nie pełny E2E.
+
+Publiczny, anonimowy POST do narzędzia SHA-256 na tym Preview otrzymał **401**, bez wywołania trasy modelu. Sam ten wynik nie rozstrzyga warstwy odmowy; aplikacyjny gate potwierdzają osobne odczyty powyżej. [Surowe wyniki](../evidence/release-v0.1.0/cloud-preview-boundary.json).
+
+Produkcja pozostaje READY na `512a6e1` / `dpl_dwH79xqLhkcSn5zzwjzmStPwMKmJ`; nie zmieniono jej konfiguracji, ochrony ani deploymentu. Pełna ścieżka NVIDIA i trwałość serverless nadal są BLOCKED.
 
 Zakres Security Gate: przegląd źródeł i regresje API, sesji, kosztów, sekretów oraz uprawnień narzędzi. Nie jest to deklaracja pełnego audytu penetracyjnego ani raportu z formalnego skanera Codex Security.

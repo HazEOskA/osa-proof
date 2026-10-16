@@ -1,0 +1,77 @@
+{
+  "code_commit": "724c078cd9a7bec0206021646351f2fdb42418ff",
+  "deployment_id": "dpl_BeWxx5Zjwn2ThJGLnE5TzqCWxpC4",
+  "preview_url": "https://osa-proof-fesbid6j8-osabarca-1680s-projects.vercel.app",
+  "deployment_state": "READY",
+  "release_status": "BLOCKED",
+  "reads": [
+    {
+      "key": "preview-access",
+      "http_status": 200,
+      "body": {
+        "required": true,
+        "configured": false,
+        "mode": "SCOPED_OPERATOR",
+        "authenticated": false,
+        "scope": null
+      },
+      "cache_control": "no-store",
+      "date": "Fri, 16 Oct 2026 23:14:08 GMT"
+    },
+    {
+      "key": "preview-model",
+      "http_status": 503,
+      "body": {
+        "code": "OPERATOR_ACCESS_NOT_CONFIGURED",
+        "error": "Dostęp operatora wymaga konfiguracji po stronie serwera."
+      },
+      "cache_control": "no-store",
+      "date": "Fri, 16 Oct 2026 23:14:10 GMT"
+    },
+    {
+      "key": "preview-state",
+      "http_status": 503,
+      "body": {
+        "code": "OPERATOR_ACCESS_NOT_CONFIGURED",
+        "error": "Dostęp operatora wymaga konfiguracji po stronie serwera."
+      },
+      "cache_control": "no-store",
+      "date": "Fri, 16 Oct 2026 23:14:06 GMT"
+    }
+  ],
+  "anonymous_tool_post": {
+    "path": "/api/unified/execute",
+    "http_status": 401,
+    "authenticated": false,
+    "model_route_called": false,
+    "layer": "Nie rozstrzygnięto warstwy odmowy; osobny GET przez Vercel MCP potwierdza aplikacyjny gate 503."
+  },
+  "ci": [
+    {
+      "name": "Testy, backend, worker, dashboard, kontrola diffu",
+      "id": 38980249753,
+      "conclusion": "success",
+      "url": "https://github.com/HazEOskA/osa-proof/actions/runs/38980249753"
+    },
+    {
+      "name": "Przeglądarka Android/desktop, przewodnik, Replay",
+      "id": 38980249823,
+      "conclusion": "success",
+      "url": "https://github.com/HazEOskA/osa-proof/actions/runs/38980249823"
+    },
+    {
+      "name": "Kontrakty Fleet HTTP/SSE, bez dostawcy",
+      "id": 38980249810,
+      "conclusion": "success",
+      "url": "https://github.com/HazEOskA/osa-proof/actions/runs/38980249810"
+    }
+  ],
+  "production": {
+    "commit": "512a6e17048db549f8b515396b2d7710b40af781",
+    "deployment_id": "dpl_dwH79xqLhkcSn5zzwjzmStPwMKmJ",
+    "state": "READY",
+    "changed": false
+  },
+  "live_nvidia_tool_calls": "NOT_TESTED",
+  "cloud_persistence": "BLOCKED"
+}
