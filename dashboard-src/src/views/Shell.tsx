@@ -22,7 +22,7 @@ import Intelligence from "./Intelligence";
 import { OPS_VIEWS } from "./Ops";
 import { CONTROL_VIEWS } from "./Control";
 
-const TITLES: Record<string, string> = { "nvidia:models": "NVIDIA · Modele", home: "Home", "delivery-lab": "Delivery Lab", "jeverson-chat": "Jeverson Chat", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
+const TITLES: Record<string, string> = { "nvidia:models": "NVIDIA · Modele", home: "Home", "delivery-lab": "Delivery Lab", "jeverson-chat": "Agent Chat Fleet", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
 
 function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void }) {
   const { view, go } = useOsa();
@@ -109,7 +109,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   const { view, source, openPalette } = useOsa();
   const web3 = useWeb3Data();
   const [drawer, setDrawer] = useState(false);
-  // The chat is the primary command surface: no second dashboard rail, header or nav.
+  // Optional Agent Chat Fleet module retains its immersive layout; Home stays the framework entry point.
   if (view === "jeverson-chat") return <div className="h-[100dvh] min-h-0 min-w-0 overflow-hidden bg-void"><JeversonChat /></div>;
   let body;
   const v: ViewId = view;
