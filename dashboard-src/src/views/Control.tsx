@@ -72,23 +72,23 @@ export function Deployments() {
     setResult({ deployment_id: out.deployment_id, verdict: out.run.verdict, proof_id: out.run.proof.proof_id, team_version: out.run.proof.team_version });
   });
   return (
-    <Page eyebrow="RUNTIME · DEPLOYMENTS" title="Deployments" lead="A deployment pins one Team Graph version (by sha256) to preview or production. One is active per team and environment; deploying again supersedes it, rollback restores the previous one, and runs through a deployment always use the pinned graph after policies allow it.">
+    <Page eyebrow="WYKONANIE · DEPLOYMENTS" title="Wdrożenia" lead="Wdrożenie przypina wersję grafu zespołu (SHA-256) do podglądu lub produkcji. W zespole aktywne jest jedno wdrożenie na środowisko; następne je zastępuje, a cofnięcie przywraca poprzednie.">
       <Section title="Platform v0.3–v0.5 · przegląd lokalny">
         <Err msg={platform.error} />
         {platform.data && <div className="text-[13px] space-y-2">
           <p><Mono>{platform.data.version}</Mono> · {platform.data.mode}</p>
-          <p>Workers: {platform.data.fleet.length} · Capability: {platform.data.capabilities.length} · Cloud providers: {platform.data.cloud_providers.join(', ') || 'brak konfiguracji'}</p>
+          <p>Workery: {platform.data.fleet.length} · Możliwości: {platform.data.capabilities.length} · Dostawcy chmury: {platform.data.cloud_providers.join(', ') || 'brak konfiguracji'}</p>
           <p>Deployment aplikacji jest zatrzymany przed wykonaniem. Poniższe operacje przypinają wersję TeamGraph.</p>
           <Btn onClick={platform.reload}>Odśwież stan runtime</Btn>
         </div>}
       </Section>
       <div className="flex flex-wrap items-center gap-3">
-        <Btn onClick={deploy} disabled={act.busy}>Deploy {team.team_id} v{team.version} to preview</Btn>
-        <Btn onClick={() => act.run(async () => { await post("/deployments/rollback", { team_id: team.team_id, environment: "preview" }); list.reload(); })} disabled={act.busy}>Roll back preview</Btn>
-        <Btn onClick={() => act.run(async () => { await post("/deployments/rollback", { team_id: team.team_id, environment: "production" }); list.reload(); })} disabled={act.busy}>Roll back production</Btn>
+        <Btn onClick={deploy} disabled={act.busy}>Wdróż {team.team_id} v{team.version} do podglądu</Btn>
+        <Btn onClick={() => act.run(async () => { await post("/deployments/rollback", { team_id: team.team_id, environment: "preview" }); list.reload(); })} disabled={act.busy}>Cofnij podgląd</Btn>
+        <Btn onClick={() => act.run(async () => { await post("/deployments/rollback", { team_id: team.team_id, environment: "production" }); list.reload(); })} disabled={act.busy}>Cofnij produkcję</Btn>
       </div>
       <Err msg={act.error || list.error} />
-      {result && <p className="text-[13px]">Run through <Mono>{short(result.deployment_id)}</Mono> on pinned v{result.team_version}: <Status v={result.verdict} /> <Mono className="text-dim">{short(result.proof_id)}</Mono></p>}
+      {result && <p className="text-[13px]">Wykonanie przez <Mono>{short(result.deployment_id)}</Mono> na przypiętej wersji {result.team_version}: <Status v={result.verdict} /> <Mono className="text-dim">{short(result.proof_id)}</Mono></p>}
       <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full text-left text-[12px]">
           <thead className="bg-panel text-dim"><tr><th className="px-3 py-2">Deployment</th><th className="px-3 py-2">Team</th><th className="px-3 py-2">Env</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">graph_sha256</th><th className="px-3 py-2">Actions</th></tr></thead>
@@ -102,8 +102,8 @@ export function Deployments() {
                 <td className="px-3 py-2"><Status v={d.status === "ACTIVE" ? "LIVE" : d.status} label={d.status} /></td>
                 <td className="mono px-3 py-2">{short(d.graph_sha256)}</td>
                 <td className="flex flex-wrap gap-2 px-3 py-2">
-                  {d.status === "ACTIVE" && <Btn onClick={() => runOn(d)} disabled={act.busy}>Run mission</Btn>}
-                  {d.status === "ACTIVE" && d.environment === "preview" && <Btn onClick={() => act.run(async () => { await post(`/deployments/${d.deployment_id}/promote`, {}); list.reload(); })} disabled={act.busy}>Promote</Btn>}
+                  {d.status === "ACTIVE" && <Btn onClick={() => runOn(d)} disabled={act.busy}>Uruchom misję</Btn>}
+                  {d.status === "ACTIVE" && d.environment === "preview" && <Btn onClick={() => act.run(async () => { await post(`/deployments/${d.deployment_id}/promote`, {}); list.reload(); })} disabled={act.busy}>Przenieś na produkcję</Btn>}
                 </td>
               </tr>
             ))}
@@ -132,27 +132,27 @@ export function Policies() {
     setEvaluation(await requestJson<Evaluation>("/policies/evaluate", { method: "POST", body: JSON.stringify({ team_id: data.team.team_id, version: data.team.version, mission: data.missions[0] }) }));
   });
   return (
-    <Page eyebrow="CONTROL · POLICIES" title="Policies" lead="Declarative rules checked before a deployment runs a mission. Every enabled policy must pass or the run is refused with 403 (fail closed). Unknown rule types are refused when added.">
+    <Page eyebrow="KONTROLA · POLICIES" title="Zasady" lead="Reguły sprawdzane przed uruchomieniem misji. Wszystkie aktywne zasady muszą zostać spełnione, inaczej system odrzuca wykonanie kodem 403. Nieznane typy reguł są odrzucane.">
       <div className="flex flex-wrap gap-2">
-        {presets.map((p) => <Btn key={p.label} disabled={act.busy} onClick={() => act.run(async () => { await requestJson("/policies", { method: "POST", body: JSON.stringify(p.body) }); list.reload(); })}>Add: {p.label}</Btn>)}
-        <Btn disabled={act.busy} onClick={evaluate}>Evaluate {data.team.team_id} v{data.team.version}</Btn>
+        {presets.map((p) => <Btn key={p.label} disabled={act.busy} onClick={() => act.run(async () => { await requestJson("/policies", { method: "POST", body: JSON.stringify(p.body) }); list.reload(); })}>Dodaj: {p.label}</Btn>)}
+        <Btn disabled={act.busy} onClick={evaluate}>Oceń {data.team.team_id} v{data.team.version}</Btn>
       </div>
       <Err msg={act.error || list.error} />
       <div className="grid gap-8 lg:grid-cols-2">
         <Section title={`Policies · ${list.data?.length ?? 0}`}>
-          {list.data?.length === 0 && <p className="text-[13px] text-dim">No policies. Add one of the presets above.</p>}
+          {list.data?.length === 0 && <p className="text-[13px] text-dim">Brak zasad. Dodaj jedną z przygotowanych reguł.</p>}
           {list.data?.map((p) => (
             <div key={p.policy_id} className="py-1.5">
               <div className="flex items-center justify-between gap-3"><Mono className="text-[12px]">{p.policy_id}</Mono>
-                <button className="focus-ring text-[11px] text-dim hover:text-bad" onClick={() => act.run(async () => { await requestJson(`/policies/${p.policy_id}`, { method: "DELETE" }); list.reload(); })}>remove</button></div>
+                <button className="focus-ring text-[11px] text-dim hover:text-bad" onClick={() => act.run(async () => { await requestJson(`/policies/${p.policy_id}`, { method: "DELETE" }); list.reload(); })}>usuń</button></div>
               <div className="mono text-[11px] text-dim">{JSON.stringify(p.rule)} · {short(p.policy_sha256)}</div>
             </div>
           ))}
         </Section>
-        <Section title="Last evaluation">
-          {!evaluation ? <p className="text-[13px] text-dim">Evaluate the current team and its first mission against every enabled policy.</p> : <>
+        <Section title="Ostatnia ocena">
+          {!evaluation ? <p className="text-[13px] text-dim">Sprawdź bieżący zespół i pierwszą misję względem wszystkich aktywnych zasad.</p> : <>
             <div className="mb-2"><Status v={evaluation.allowed ? "PASS" : "FAILED"} label={evaluation.allowed ? "allowed" : "blocked"} /></div>
-            {evaluation.decisions.length === 0 && <p className="text-[13px] text-dim">No enabled policy: allowed.</p>}
+            {evaluation.decisions.length === 0 && <p className="text-[13px] text-dim">Brak aktywnych zasad: wykonanie dozwolone.</p>}
             {evaluation.decisions.map((d) => <div key={d.policy_id} className="flex items-center justify-between gap-3 py-1"><span className="text-[12px]"><Mono>{d.policy_id}</Mono> · <span className="text-dim">{d.reason}</span></span><Status v={d.ok ? "PASS" : "FAILED"} /></div>)}
             <div className="mono mt-2 text-[11px] text-dim">evaluation_sha256 {short(evaluation.evaluation_sha256)}</div>
           </>}
@@ -169,17 +169,17 @@ export function Organizations() {
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   return (
-    <Page eyebrow="CONTROL · ORGANIZATIONS" title="Organizations" lead="Registered organizations plus every organization and project the API has seen in teams, missions and runs.">
+    <Page eyebrow="KONTROLA · ORGANIZATIONS" title="Organizacje" lead="Zarejestrowane organizacje i projekty z API, wykryte w zespołach, misjach i wykonaniach.">
       <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); act.run(async () => { await requestJson("/organizations", { method: "POST", body: JSON.stringify({ organization_id: id, name }) }); setId(""); setName(""); list.reload(); }); }}>
         <label className="sr-only" htmlFor="org-id">Organization id</label>
         <input id="org-id" value={id} onChange={(e) => setId(e.target.value)} placeholder="organization_id" className="focus-ring glass mono rounded-md px-3 py-2 text-[12px]" />
         <label className="sr-only" htmlFor="org-name">Name</label>
         <input id="org-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="focus-ring glass rounded-md px-3 py-2 text-[13px]" />
-        <button type="submit" disabled={act.busy || !id || !name} className="focus-ring tap rounded-md border border-cyan/40 bg-cyan/10 px-3 text-[12px] text-cyan disabled:opacity-40">Register</button>
+        <button type="submit" disabled={act.busy || !id || !name} className="focus-ring tap rounded-md border border-cyan/40 bg-cyan/10 px-3 text-[12px] text-cyan disabled:opacity-40">Zarejestruj</button>
       </form>
       <Err msg={act.error || list.error} />
       <Section title={`Organizations · ${list.data?.length ?? 0}`}>
-        {list.data?.length === 0 && <p className="text-[13px] text-dim">None yet in this API process. Run a mission or register one.</p>}
+        {list.data?.length === 0 && <p className="text-[13px] text-dim">Brak wpisów w bieżącym procesie API. Uruchom misję lub zarejestruj organizację.</p>}
         {list.data?.map((o) => <Kv key={o.organization_id} k={`${o.organization_id} · ${o.source}`}>{o.name}{o.projects.length ? ` · ${o.projects.join(", ")}` : ""}</Kv>)}
       </Section>
     </Page>
@@ -190,7 +190,7 @@ export function Organizations() {
 export function Secrets() {
   const list = useLoad<Secret[]>("/secrets");
   return (
-    <Page eyebrow="CONTROL · SECRETS" title="Secrets" lead="Secrets live in the deployment's environment variables. This page shows only their names and whether they are set: never a value, a length, a prefix or a hash.">
+    <Page eyebrow="KONTROLA · SECRETS" title="Sekrety" lead="Sekrety znajdują się w zmiennych środowiskowych wdrożenia. Strona pokazuje wyłącznie ich nazwy i stan konfiguracji, nigdy wartości ani ich fragmentów.">
       <Err msg={list.error} />
       <Section title="Environment">
         {list.data?.map((s) => <div key={s.name} className="flex items-center justify-between gap-3 py-1.5"><span className="text-[12px]"><Mono>{s.name}</Mono> · <span className="text-dim">{s.used_by}</span></span><Status v={s.set ? "PASS" : "UNKNOWN"} label={s.set ? "set" : "not set"} /></div>)}
@@ -203,7 +203,7 @@ export function Secrets() {
 export function PermissionsView() {
   const p = useLoad<Permissions>("/permissions");
   return (
-    <Page eyebrow="CONTROL · PERMISSIONS" title="Permissions" lead="What the API enforces today, route by route. A test calls every 'session' route without a token and expects 401, so this table cannot drift from the code.">
+    <Page eyebrow="KONTROLA · PERMISSIONS" title="Uprawnienia" lead="Uprawnienia egzekwowane przez API dla poszczególnych tras. Test wywołuje trasę sesji bez tokenu i oczekuje HTTP 401.">
       <Err msg={p.error} />
       {p.data && <>
         <div className="flex flex-wrap gap-6 text-[13px]"><span>Auth mode <Mono>{p.data.auth_mode}</Mono></span><span>Identity <Mono>{p.data.identity ? `${p.data.identity.identity_id} · ${p.data.identity.roles.join(", ")}` : "none (no session)"}</Mono></span></div>
@@ -228,10 +228,10 @@ export function Notifications() {
   for (const m of intel.data ?? []) if (m.version && m.status !== "LIVE") items.push({ level: "INCOMPLETE", text: `${m.label} is ${m.status}: failing proofs ${m.proofs.filter((p) => !p.ok).map((p) => p.proof_id).join(", ")}` });
   for (const d of deps.data ?? []) if (d.status === "ROLLED_BACK") items.push({ level: "INCOMPLETE", text: `Deployment ${short(d.deployment_id)} (${d.team_id} v${d.team_version}, ${d.environment}) was rolled back` });
   return (
-    <Page eyebrow="SYSTEM · NOTIFICATIONS" title="Notifications" lead="Things that need attention, derived when this page opens from runs, Intelligence reports and deployments. Nothing is stored or pushed yet.">
+    <Page eyebrow="SYSTEM · NOTIFICATIONS" title="Powiadomienia" lead="Zdarzenia wymagające uwagi wykryte przy otwarciu strony na podstawie wykonań, modułów inteligencji i wdrożeń. Powiadomienia nie są jeszcze trwale zapisywane.">
       <Err msg={intel.error || deps.error} />
-      {items.length === 0 ? <p className="text-[14px] text-dim">Nothing needs attention: every run verified, every implemented module is LIVE, no rollbacks.</p> :
-        <ul className="space-y-2">{items.map((n, i) => <li key={i} className="flex items-start gap-3 rounded-md border border-line bg-panel px-3 py-2 text-[13px]"><Status v={n.level} label={n.level === "FAILED" ? "alert" : "notice"} /><span>{n.text}</span></li>)}</ul>}
+      {items.length === 0 ? <p className="text-[14px] text-dim">Brak nowych alertów: wykonania zweryfikowano, wdrożone moduły są aktywne i nie odnotowano cofnięć.</p> :
+        <ul className="space-y-2">{items.map((n, i) => <li key={i} className="flex items-start gap-3 rounded-md border border-line bg-panel px-3 py-2 text-[13px]"><Status v={n.level} label={n.level === "FAILED" ? "alert" : "powiadomienie"} /><span>{n.text}</span></li>)}</ul>}
     </Page>
   );
 }
@@ -266,15 +266,15 @@ export function Experiments() {
     setCmp(await requestJson<Comparison>(`/experiments/compare?a=${rows[1].experiment_id}&b=${rows[0].experiment_id}`));
   });
   return (
-    <Page eyebrow="INTELLIGENCE · EXPERIMENTS" title="Experiments" lead="Run every example of a pinned dataset version against one Team Graph version, score each run with evaluators, and seal the outcome. Compare two experiments to see which examples regressed.">
+    <Page eyebrow="INTELIGENCJA · EXPERIMENTS" title="Eksperymenty" lead="Uruchom przykłady z ustalonej wersji zbioru danych względem jednej wersji grafu zespołu, oceń wyniki i zapieczętuj dowody. Porównaj eksperymenty, aby wykryć regresje.">
       {report.data && <div className="flex flex-wrap items-center gap-3 text-[13px]"><Status v={report.data.status} framed />{report.data.proofs.map((p) => <span key={p.proof_id} className="text-dim"><Mono>{p.proof_id}</Mono> {p.ok ? "✓" : "✗"}</span>)}</div>}
       <div className="flex flex-wrap gap-2">
-        <Btn onClick={prepare} disabled={act.busy}>1 · Prepare dataset + evaluators from dashboard missions</Btn>
-        <Btn onClick={runExp} disabled={act.busy}>2 · Run experiment on {data.team.team_id} v{data.team.version}</Btn>
-        <Btn onClick={compareLatest} disabled={act.busy}>3 · Compare the latest two</Btn>
+        <Btn onClick={prepare} disabled={act.busy}>1 · Przygotuj zbiór danych i ewaluatory z misji</Btn>
+        <Btn onClick={runExp} disabled={act.busy}>2 · Uruchom eksperyment dla {data.team.team_id} v{data.team.version}</Btn>
+        <Btn onClick={compareLatest} disabled={act.busy}>3 · Porównaj dwa ostatnie</Btn>
       </div>
       <Err msg={act.error || list.error} />
-      {cmp && <Section title="Comparison (older → newer)">
+      {cmp && <Section title="Porównanie (starsze → nowsze)">
         <div className="text-[13px]">{cmp.same_outcome ? "Same outcome on every example." : `${cmp.changed.length} example(s) changed · verified Δ ${cmp.verified_delta}`}</div>
         {Object.entries(cmp.mean_score_deltas).map(([k, v]) => <Kv key={k} k={`mean ${k} Δ`}>{v}</Kv>)}
         {cmp.changed.map((c) => <div key={c.example_id} className="mono text-[12px] text-dim">{c.example_id}: {c.verdict ? `${c.verdict.a} → ${c.verdict.b}` : "same verdict"} {JSON.stringify(c.score_deltas)}</div>)}
@@ -306,7 +306,7 @@ function JobsTable({ jobs, onCancel }: { jobs: Job[]; onCancel: (id: string) => 
   return (
     <div className="overflow-x-auto rounded-lg border border-line">
       <table className="w-full text-left text-[12px]">
-        <thead className="bg-panel text-dim"><tr><th className="px-3 py-2">Job</th><th className="px-3 py-2">Mission</th><th className="px-3 py-2">Run at (UTC)</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Result</th><th className="px-3 py-2" /></tr></thead>
+        <thead className="bg-panel text-dim"><tr><th className="px-3 py-2">Job</th><th className="px-3 py-2">Misja</th><th className="px-3 py-2">Run at (UTC)</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Result</th><th className="px-3 py-2" /></tr></thead>
         <tbody>
           {jobs.length === 0 && <tr><td colSpan={6} className="px-3 py-4 text-dim">No jobs.</td></tr>}
           {jobs.map((j) => (
@@ -316,7 +316,7 @@ function JobsTable({ jobs, onCancel }: { jobs: Job[]; onCancel: (id: string) => 
               <td className="mono px-3 py-2">{j.run_at.replace("T", " ").slice(0, 19)}</td>
               <td className="px-3 py-2"><Status v={j.status === "DONE" ? "PASS" : j.status === "FAILED" ? "FAILED" : "UNKNOWN"} label={j.status} /></td>
               <td className="mono px-3 py-2 text-dim">{j.verdict ? `${j.verdict} · ${short(j.run_id ?? "")}` : j.error ?? ""}</td>
-              <td className="px-3 py-2">{j.status === "QUEUED" && <button className="focus-ring text-[11px] text-dim hover:text-bad" onClick={() => onCancel(j.job_id)}>cancel</button>}</td>
+              <td className="px-3 py-2">{j.status === "QUEUED" && <button className="focus-ring text-[11px] text-dim hover:text-bad" onClick={() => onCancel(j.job_id)}>anuluj</button>}</td>
             </tr>
           ))}
         </tbody>
@@ -340,10 +340,10 @@ function useQueue() {
 export function Queues() {
   const q = useQueue();
   return (
-    <Page eyebrow="RUNTIME · QUEUES" title="Queues" lead="Missions waiting to run. A serverless API has no background worker, so due jobs run when the queue is drained (a cron can call POST /queue/drain). Each finished job points at its run and sealed receipt.">
+    <Page eyebrow="WYKONANIE · QUEUES" title="Kolejki" lead="Misje oczekujące w kolejce. API serverless nie ma stałego workera, więc zadania są wykonywane po opróżnieniu kolejki (np. przez cron). Ukończone zadania wskazują wykonanie i potwierdzenie.">
       <div className="flex flex-wrap gap-2">
-        {q.data.missions.map((m) => <Btn key={m.mission_id} disabled={q.act.busy} onClick={() => q.enqueue(m.mission_id)}>Queue {m.mission_id} now</Btn>)}
-        <Btn disabled={q.act.busy} onClick={q.drain}>Drain due jobs</Btn>
+        {q.data.missions.map((m) => <Btn key={m.mission_id} disabled={q.act.busy} onClick={() => q.enqueue(m.mission_id)}>Dodaj {m.mission_id} do kolejki</Btn>)}
+        <Btn disabled={q.act.busy} onClick={q.drain}>Wykonaj gotowe zadania</Btn>
       </div>
       <Err msg={q.act.error || q.list.error} />
       <JobsTable jobs={q.list.data ?? []} onCancel={q.cancel} />
@@ -357,16 +357,16 @@ export function Scheduler() {
   const [at, setAt] = useState("");
   const future = (q.list.data ?? []).filter((j) => j.status === "QUEUED" && new Date(j.run_at).getTime() > Date.now());
   return (
-    <Page eyebrow="RUNTIME · SCHEDULER" title="Scheduler" lead="Schedule a mission for a later time. It waits in the queue until run_at has passed and the queue is drained.">
+    <Page eyebrow="WYKONANIE · SCHEDULER" title="Harmonogram" lead="Zaplanuj uruchomienie misji na później. Misja oczekuje w kolejce do wskazanej godziny i jej przetworzenia.">
       <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); q.enqueue(mission, new Date(at).toISOString()); }}>
-        <label className="sr-only" htmlFor="sch-mission">Mission</label>
+        <label className="sr-only" htmlFor="sch-mission">Misja</label>
         <select id="sch-mission" value={mission} onChange={(e) => setMission(e.target.value)} className="focus-ring glass rounded-md px-3 py-2 text-[13px]">{q.data.missions.map((m) => <option key={m.mission_id} value={m.mission_id}>{m.mission_id}</option>)}</select>
         <label className="sr-only" htmlFor="sch-at">Run at</label>
         <input id="sch-at" type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} className="focus-ring glass rounded-md px-3 py-2 text-[13px]" />
-        <button type="submit" disabled={q.act.busy || !at || !mission} className="focus-ring tap rounded-md border border-cyan/40 bg-cyan/10 px-3 text-[12px] text-cyan disabled:opacity-40">Schedule</button>
+        <button type="submit" disabled={q.act.busy || !at || !mission} className="focus-ring tap rounded-md border border-cyan/40 bg-cyan/10 px-3 text-[12px] text-cyan disabled:opacity-40">Zaplanuj</button>
       </form>
       <Err msg={q.act.error || q.list.error} />
-      <Section title={`Scheduled for later · ${future.length}`}><JobsTable jobs={future} onCancel={q.cancel} /></Section>
+      <Section title={`Zaplanowane · ${future.length}`}><JobsTable jobs={future} onCancel={q.cancel} /></Section>
     </Page>
   );
 }
@@ -398,7 +398,7 @@ export function Knowledge() {
     setChecks(Object.fromEntries(entries));
   });
   return (
-    <Page eyebrow="INTELLIGENCE · KNOWLEDGE" title="Knowledge" lead="Retrieval over your sources where every hit cites a content-addressed chunk. Search is lexical BM25: deterministic, no model, so the same query gives the same sealed retrieval.">
+    <Page eyebrow="INTELIGENCJA · KNOWLEDGE" title="Knowledge" lead="Retrieval over your sources where every hit cites a content-addressed chunk. Search is lexical BM25: deterministic, no model, so the same query gives the same sealed retrieval.">
       <div className="grid gap-8 lg:grid-cols-2">
         <Section title="Add a document">
           <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
