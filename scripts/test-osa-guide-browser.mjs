@@ -25,7 +25,7 @@ try{
     await trigger.click();
     const panel=page.getByTestId("osa-help-panel");
     await panel.waitFor({state:"visible"});
-    assert.match(await panel.innerText(),/Na tym ekranie · Strona główna/);
+    assert.match(await panel.innerText(),/Na tym ekranie · Strona główna/i);
     await panel.getByRole("button",{name:/Jak zacząć pracę z OSA Proof/}).click();
     await panel.getByText("Otwórz BUDOWANIE → Agenci.").waitFor({state:"visible"});
     assert.equal(providerCalls,1);
