@@ -20,7 +20,7 @@ export function BuildProvider({children}: {children: ReactNode}) {
   return <Context.Provider value={{workspace, update, save, message, saving, runtimeInfo}}>{children}</Context.Provider>;
 }
 export const useBuild = () => useContext(Context);
-export const BUILD_LABELS: Record<BuildPage,string> = {agents:'Agenci', mesh:'Agent Mesh', workflows:'Workflowy', tools:'Narzędzia', skills:'Skille', connections:'MCP / A2A', prompts:'Prompty', studio:'Studio', playground:'Playground'};
+export const BUILD_LABELS: Record<BuildPage,string> = {agents:'Agenci', mesh:'Sieć agentów', workflows:'Przepływy pracy', tools:'Narzędzia', skills:'Umiejętności', connections:'MCP / A2A', prompts:'Prompty', studio:'Studio', playground:'Plac testowy'};
 export function compilePrompt(text: string, variables: Record<string,unknown>): string { return text.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_,name:string) => { if (!(name in variables)) throw new Error(`Brak zmiennej: ${name}`); return String(variables[name]); }); }
 export function validateLinear(team: TeamGraph): string[] {
   const errors:string[] = []; const ids = new Set(team.agents.map(a=>a.agent_id));
