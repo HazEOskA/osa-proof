@@ -21,10 +21,10 @@ async function main(){
       page.on("request",r=>{if(r.url().includes("/api/unified/"))requests.push({method:r.method(),url:r.url()});});
       const loaded=await page.goto(base,{waitUntil:"domcontentloaded"});
       assert.equal(loaded?.status(),200);
-      const home=page.locator('section[aria-label="Launch"]');
+      const home=page.locator('section[aria-label="Uruchamianie"]');
       await home.waitFor({state:"visible"});
       assert.equal(await page.getByTestId("osa-native-chat").count(),0,"Framework Home must load first");
-      await home.getByRole("button",{name:"Agent Chat Fleet",exact:true}).click();
+      await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
       await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
       assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0);
       const input="OSA Unified Runtime V1";
@@ -33,7 +33,7 @@ async function main(){
       await page.getByTestId("osa-send").click();
       const answer=page.getByTestId("osa-message").filter({hasText:expectedHash});
       await answer.waitFor({state:"visible",timeout:25000});
-      assert.match(await answer.innerText(),/VERIFIED/);
+      assert.match(await answer.innerText(),/ZWERYFIKOWANO/);
       const execution=await answer.innerText();
       assert.match(execution,/exec_[a-f0-9-]{36}/);
       assert.equal(requests.filter(r=>r.url.endsWith("/api/unified/execute")).length,1);
@@ -42,10 +42,10 @@ async function main(){
       await page.getByRole("button",{name:"Inspektor"}).click();
       const inspect=page.getByTestId("osa-inspector");
       await inspect.waitFor({state:"visible"});
-      assert.match(await inspect.innerText(),/VERIFIED/);
-      assert.match(await inspect.innerText(),/Evidence: [1-9]/);
-      await inspect.getByRole("button",{name:/Replay/}).click();
-      await page.getByRole("slider",{name:"Replay position"}).waitFor({state:"visible"});
+      assert.match(await inspect.innerText(),/ZWERYFIKOWANO/);
+      assert.match(await inspect.innerText(),/Materiały: [1-9]/);
+      await inspect.getByRole("button",{name:/Odtwarzanie/}).click();
+      await page.getByRole("slider",{name:"Pozycja odtwarzania"}).waitFor({state:"visible"});
       await page.screenshot({path:path.join(out,name+"-replay.png"),fullPage:true});
       const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
       assert.ok(overflow<=1,"Native Runtime chat overflow: "+overflow);
