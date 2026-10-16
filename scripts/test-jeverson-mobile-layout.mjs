@@ -74,7 +74,7 @@ try {
     await page.route("**/api/nvidia/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({provider:"NVIDIA",configured:true,model:"nvidia/test-model"})}));
     await page.route("**/api/nvidia/fleet-chat",route=>{
       const body=route.request().postDataJSON();
-      assert.equal(body.agent,"leader","Chosen AI persona travels to backend");
+      assert.equal(body.agent,"coding","Chosen AI persona travels to backend");
       assert.equal(body.prompt,"Cześć OSA","User text travels to provider route");
       assert.ok(Array.isArray(body.history),"History is sent as structured messages");
       providerRequests++;
