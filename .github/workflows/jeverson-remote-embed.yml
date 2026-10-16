@@ -1,13 +1,15 @@
-name: Jeverson Real Embedded Preview QA
+name: OSA Native Chat Remote Acceptance (Manual)
 on:
-  push:
-    branches: [feature/osa-fleet-chat-slice1-proof]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: "Zatwierdzony URL wdrożenia native OSA Chat (HTTPS)"
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
-  mobile-embed:
+  remote-native-chat:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -17,15 +19,15 @@ jobs:
           node-version: '24'
       - run: npm install --no-save --no-audit --no-fund playwright@1.63.0
       - run: npx playwright install --with-deps chromium
-      - name: Verify actual HTTPS iframe with LIVE and BLACK at mobile / desktop widths
+      - name: Validate approved native chat deployment on mobile and desktop
         env:
-          OSA_REMOTE_PROOF_URL: https://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app
+          OSA_REMOTE_PROOF_URL: ${{ inputs.preview_url }}
         run: node scripts/test-jeverson-deployed-iframe.mjs
-      - name: Save browser proof
+      - name: Save browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jeverson-embedded-osa-proof-real-browser
-          path: artifacts/jeverson-remote-embed/
+          name: osa-native-chat-remote-acceptance
+          path: artifacts/osa-native-chat-remote/
           if-no-files-found: ignore
           retention-days: 14
