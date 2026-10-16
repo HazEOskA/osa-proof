@@ -1,230 +1,167 @@
-import { useState, useEffect, useRef } from "react";
-import { canon, sha256, verifyRun } from "../lib/verify";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import { useOsa } from "../ctx";
-import { requestJson } from "../data/data";
-import type { TeamGraph, Mission, Run } from "../data/types";
+import { verifyRun } from "../lib/verify";
+import type { Mission, Run, TeamGraph } from "../data/types";
 
-// Existing private Jeverson runtime is reused; no secrets, message content,
-// proof receipts or provider calls are forwarded by OSA Proof.
-function approvedUrl(value: string | undefined): string | null {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    const localTest = import.meta.env.VITE_OSA_LOCAL_E2E === "1" && url.protocol === "http:" && ["127.0.0.1","localhost"].includes(url.hostname);
-    if ((url.protocol !== "https:" && !localTest) || url.username || url.password || url.search || url.hash) return null;
-    return url.origin;
-  } catch { return null; }
-}
-
-const traceTargets = [
-  "https://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app/api/layers",
-  "https://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app/api/build/status",
+// Native OSA surface. No iframe, no client secrets, no pretend model execution.
+type AgentId = "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
+type ModelId = "auto" | "nvidia" | "openrouter";
+type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"; executionId?:string; runId?:string };
+type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
+type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
+type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{url:string;http_status:number|null;status:string}> };
+type StatusInfo = { mode?:string; auth_mode?:string; persistence?:string };
+const KEY = "osa.native-chat.v1";
+const ACTIVE = "osa.native-chat.active.v1";
+const AGENTS: Array<{id:AgentId;name:string;purpose:string;state:string;icon:string}> = [
+  {id:"leader",name:"Leader",purpose:"Team Graph · delegowanie · plan",state:"GATED",icon:"◇"},
+  {id:"coding",name:"Coding Agent",purpose:"Kod · repo · testy · review",state:"GATED",icon:"⌘"},
+  {id:"commerce",name:"E-commerce",purpose:"Sklep · produkty · integracje",state:"PLANNED",icon:"▣"},
+  {id:"hermes",name:"Hermes",purpose:"Analiza · samodoskonalenie (propozycje)",state:"PROPOSE ONLY",icon:"✦"},
+  {id:"security",name:"Security",purpose:"Uprawnienia · audyt · policy",state:"GATED",icon:"⬡"},
+  {id:"research",name:"Research",purpose:"OSINT · badania · weryfikacja",state:"GATED",icon:"⌕"},
+  {id:"runtime",name:"Runtime / Proof",purpose:"Dozwolone narzędzia · tracing · replay",state:"API",icon:"◎"}
 ];
-const defaultTracePrompt = [
-  "OSA-TRACE-001 — wykonaj dokładnie dwa rzeczywiste żądania HTTP GET:",
-  ...traceTargets,
-  "Pokaż kod HTTP, faktyczne kroki i evidence. Niczego nie zapisuj ani nie wdrażaj.",
-].join("\n");
-type TraceOutcome = {
-  task_status: "EXECUTED" | "BLOCKED";
-  execution_id: string;
-  run_id: string;
-  proof_id: string;
-  proof_verdict: string;
-  provider: string;
-  steps: Array<{step:number;url:string;http_status:number|null;status:string;response_sha256:string|null;response_excerpt:string;error_code?:string}>;
-  team: TeamGraph; mission: Mission; run: Run;
-};
-
-const liveUrl = approvedUrl(import.meta.env.VITE_OSA_JEVERSON_URL as string | undefined);
-const blackPreviewUrl = approvedUrl(import.meta.env.VITE_OSA_JEVERSON_THEME_PREVIEW_URL as string | undefined);
-
-export default function JeversonChat() {
-  // Remain operational by default: Vercel Black branch preview has no AI keys.
-  const [mode, setMode] = useState<"live" | "black">("live");
-  const [frameProblem, setFrameProblem] = useState(false);
-  const [frameReady,setFrameReady]=useState(false);
-  const [frameVersion,setFrameVersion]=useState(0);
-  const { inspectExecution, go } = useOsa();
-  const frame = useRef<HTMLIFrameElement>(null);
-  const [unified, setUnified] = useState<{status:string;execution_id:string;run:Run;restored:boolean}|null>(null);
-  const [bridgeError,setBridgeError] = useState("");
-  useEffect(()=>{const timer=setTimeout(()=>setFrameProblem(true),10000);return ()=>clearTimeout(timer);},[frameVersion]);
-  useEffect(()=>{
-    const receive = async (event:MessageEvent) => {
-      if(event.origin!==liveUrl||event.source!==frame.current?.contentWindow)return;
-      if(event.data?.type==="osa.unified.ready.v1"){setFrameReady(true);setFrameProblem(false);return;}
-      if(event.data?.type!=="osa.unified.result.v1")return;
-      try {
-        const x = event.data.execution;
-        if (x?.schema !== "osa.unified.execution.v1" || x.execution_id !== x.run?.execution_id ||
-          x.run.proof?.execution_id !== x.execution_id || x.run.proof?.verdict !== x.run.verdict ||
-          x.run.evidence.length !== x.run.proof.evidence_refs.length ||
-          x.run.observations.length !== x.run.proof.observation_refs.length ||
-          !x.run.events.every((e:{execution_id:string})=>e.execution_id===x.execution_id)) throw Error("UNIFIED_BINDING_MISMATCH");
-        if(x.mission?.input?.selection){
-          const ev=x.run.evidence.find((e:{kind:string})=>e.kind==="model_dispatch");
-          if(!ev||canon(ev.data.selection)!==canon(x.mission.input.selection)||ev.data.arguments_sha256!==await sha256(canon(x.mission.input.args))||
-            ev.producer.executor_ref!==x.tool||x.mission.input.tool!==x.tool)throw Error("MODEL_DISPATCH_PROVENANCE_MISMATCH");
-        }
-        const checks = await verifyRun(x.run);
-        if (!checks.length || !checks.every(check=>check.ok)) throw Error("UNIFIED_INTEGRITY_FAILED");
-        const status = x.run.verdict === "VERIFIED" ? "EXECUTED" : x.run.final_output?.status === "BLOCKED" ? "BLOCKED" : "FAILED";
-        if (x.status !== status) throw Error("UNIFIED_STATUS_MISMATCH");
-        inspectExecution(x.team,x.mission,x.run);
-        setUnified({status,execution_id:x.execution_id,run:x.run,restored:event.data.restored===true});
-        setBridgeError("");
-      } catch { setBridgeError("BLOCKED · Nieprawidłowe powiązanie lub integralność receipt z Jeversona."); }
-    };
-    const listener = (event:MessageEvent)=>{void receive(event);};
-    window.addEventListener("message",listener);
-    return ()=>window.removeEventListener("message",listener);
-  },[inspectExecution]);
-  const [tracePrompt, setTracePrompt] = useState(defaultTracePrompt);
-  const [tracePending, setTracePending] = useState(false);
-  const [traceError, setTraceError] = useState("");
-  const [traceOutcome, setTraceOutcome] = useState<TraceOutcome | null>(null);
-  const [traceOpen, setTraceOpen] = useState(false);
-  async function executeTrace() {
-    if (tracePending) return;
-    setTracePending(true);
-    setTraceError("");
-    setTraceOutcome(null);
-    try {
-      const result = await requestJson<TraceOutcome>("/trace-probe", {
-        method: "POST", body: JSON.stringify({task_id:"OSA-TRACE-001",prompt:tracePrompt})
-      });
-      setTraceOutcome(result);
-      inspectExecution(result.team,result.mission,result.run);
-    } catch(error) {
-      setTraceError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setTracePending(false);
+const id = () => crypto.randomUUID();
+const stamp = () => new Date().toISOString();
+const empty = ():Session => ({id:id(),title:"Nowa rozmowa",agent:"leader",model:"auto",updated:stamp(),messages:[]});
+function restore():Session[] {
+  try {
+    const value:unknown = JSON.parse(localStorage.getItem(KEY)||"null");
+    if (!Array.isArray(value)) return [empty()];
+    const valid:Session[] = [];
+    for (const item of value.slice(0,50)) {
+      if (!item || typeof item.id!=="string" || typeof item.title!=="string" || !Array.isArray(item.messages) ||
+          !AGENTS.some(a=>a.id===item.agent) || !["auto","nvidia","openrouter"].includes(item.model)) continue;
+      const messages:Msg[] = item.messages.filter((m:Msg)=>m && typeof m.id==="string" && typeof m.text==="string" && ["user","assistant"].includes(m.role)).slice(-100).map((m:Msg)=>({...m,text:m.text.slice(0,20000)}));
+      valid.push({id:item.id,title:item.title.slice(0,100),agent:item.agent,model:item.model,updated:item.updated,messages});
     }
+    return valid.length?valid:[empty()];
+  } catch { return [empty()]; }
+}
+const command = (text:string) =>
+  /^(?:oblicz|policz|wylicz)\s+sha-?256\s+(?:tekstu\s*)?:/i.test(text) ||
+  /(?:status|zdrowie|health)\s+(?:workera|worker|hosta)/i.test(text) ||
+  /(?:sprawdź|sprawdz|pokaż|pokaz|zbadaj|status|diagnostyka).*(?:runtime|osa proof|narzędzi|narzedzi|api)/is.test(text);
+async function api<T>(path:string,body?:unknown,signal?:AbortSignal):Promise<T> {
+  const res = await fetch("/api"+path,{method:body===undefined?"GET":"POST",signal,cache:"no-store",
+    headers:{"content-type":"application/json"},...(body===undefined?{}:{body:JSON.stringify(body)})});
+  let data:unknown;try{data=await res.json();}catch{throw Error("HTTP "+res.status+" · INVALID_JSON");}
+  if(!res.ok){const err=data as {error?:string;code?:string};throw Error(err?.error||err?.code||("HTTP "+res.status));}
+  return data as T;
+}
+const TRACE_PROMPT = "OSA-TRACE-001 — wykonaj dokładnie dwa rzeczywiste żądania HTTP GET:\nhttps://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app/api/layers\nhttps://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app/api/build/status\nPokaż kod HTTP, faktyczne kroki i evidence. Niczego nie zapisuj ani nie wdrażaj.";
+export default function JeversonChat() {
+  const {go,inspectExecution} = useOsa();
+  const [sessions,setSessions] = useState<Session[]>(restore);
+  const [activeId,setActiveId] = useState(()=>{try{return localStorage.getItem(ACTIVE)||"";}catch{return "";}});
+  const [draft,setDraft] = useState("");
+  const [search,setSearch] = useState("");
+  const [mobileHistory,setMobileHistory] = useState(false);
+  const [agentOpen,setAgentOpen] = useState(false);
+  const [inspector,setInspector] = useState(false);
+  const [busy,setBusy] = useState(false);
+  const [error,setError] = useState("");
+  const [storageProblem,setStorageProblem] = useState(false);
+  const [status,setStatus] = useState<StatusInfo|null>(null);
+  const [lastRun,setLastRun] = useState<{sessionId:string;run:Run;verified:boolean}|null>(null);
+  const seq = useRef(0), controller = useRef<AbortController|null>(null), bottom = useRef<HTMLDivElement>(null);
+  const current = sessions.find(s=>s.id===activeId)||sessions[0];
+  const agent = AGENTS.find(a=>a.id===current.agent)||AGENTS[0];
+  const activeRun = lastRun && lastRun.sessionId===current.id && lastRun.verified?lastRun.run:null;
+  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(sessions.slice(0,50)));localStorage.setItem(ACTIVE,current.id);}catch{setStorageProblem(true);}},[sessions,current.id]);
+  useEffect(()=>{bottom.current?.scrollIntoView({block:"end"});},[current.id,current.messages.length,busy]);
+  useEffect(()=>{void api<StatusInfo>("/build/status").then(setStatus).catch(()=>setStatus(null));
+    return ()=>{seq.current++;controller.current?.abort();};
+  },[]);
+  function cancel(){seq.current++;controller.current?.abort();controller.current=null;setBusy(false);}
+  function openSession(sessionId:string){cancel();setActiveId(sessionId);setMobileHistory(false);setAgentOpen(false);setInspector(false);setError("");}
+  function createChat(){const next=empty();setSessions(old=>[next,...old].slice(0,50));openSession(next.id);setDraft("");}
+  function update(sessionId:string,fn:(s:Session)=>Session){setSessions(old=>old.map(s=>s.id===sessionId?fn(s):s));}
+  function addMessage(sessionId:string,role:Msg["role"],text:string,msgStatus:Msg["status"],extra:Partial<Msg>={}) {
+    const msg:Msg={id:id(),role,text,at:stamp(),status:msgStatus,...extra};
+    update(sessionId,s=>({...s,updated:stamp(),title:s.messages.length===0&&role==="user"?text.slice(0,48):s.title,messages:[...s.messages,msg].slice(-100)}));
   }
-
-  const canPreview = !!blackPreviewUrl && blackPreviewUrl !== liveUrl;
-  const previewActive = mode === "black" && canPreview;
-  const activeUrl = previewActive ? blackPreviewUrl : liveUrl;
-
-  const changeMode = (next: "live" | "black") => {
-    setFrameProblem(false);
-    setMode(next);
-  };
-
-  return (
-    <section aria-label="Jeverson Chat" className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-void">
-      <header data-testid="jeverson-toolbar"
-        className="flex min-h-[56px] shrink-0 items-center justify-between gap-2 border-b border-line bg-ink px-2 py-2 sm:min-h-[68px] sm:px-5">
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[12px] font-semibold tracking-[.06em] text-fg sm:text-[15px]">
-            <span className="sm:hidden">JEV / CHAT</span>
-            <span className="hidden sm:inline">Jeverson Chat</span>
-          </h2>
-          <p className="mt-0.5 truncate text-[9px] tracking-wide text-dim sm:text-[11px]">
-            {previewActive ? "BLACK · UI ONLY" : "OSA AGENT WORLD · LIVE"}
-          </p>
-        </div>
-        <nav aria-label="Jeverson links" className="flex shrink-0 items-center gap-1 sm:gap-2">
-          <button type="button" aria-label="OSA-TRACE-001 — monitorowane zadanie"
-            aria-expanded={traceOpen} onClick={()=>setTraceOpen(v=>!v)}
-            className="focus-ring inline-flex h-8 shrink-0 items-center rounded border border-line px-2 text-[11px] text-fg sm:h-9">
-            <span className="sm:hidden">T</span><span className="hidden sm:inline">OSA TRACE</span>
-          </button>
-          {canPreview && (
-            <div role="group" aria-label="Wersja Jeversona"
-              className="flex shrink-0 items-center gap-0.5 rounded-md border border-line bg-panel p-0.5">
-              <button type="button" aria-pressed={!previewActive} onClick={() => changeMode("live")}
-                className={`focus-ring h-8 shrink-0 rounded px-2 text-[11px] sm:h-9 sm:px-3 sm:text-[12px] ${!previewActive ? "bg-raise text-fg" : "text-dim hover:text-fg"}`}>
-                LIVE
-              </button>
-              <button type="button" aria-pressed={previewActive} onClick={() => changeMode("black")}
-                className={`focus-ring h-8 shrink-0 rounded px-2 text-[11px] sm:h-9 sm:px-3 sm:text-[12px] ${previewActive ? "bg-raise text-fg" : "text-dim hover:text-fg"}`}>
-                BLACK
-              </button>
-            </div>
-          )}
-          {activeUrl && <a href={activeUrl} target="_blank" rel="noopener noreferrer"
-            aria-label="Otwórz aktualnego Jeversona w pełnym ekranie"
-            title="Otwórz aktualną wersję w nowej karcie"
-            className="focus-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line text-[15px] text-fg hover:bg-raise sm:h-10 sm:w-auto sm:px-3">
-            <span aria-hidden="true">↗</span><span className="hidden sm:inline"> Pełny ekran</span>
-          </a>}
-        </nav>
+  function selectAgent(agentId:AgentId){update(current.id,s=>({...s,agent:agentId}));setAgentOpen(false);}
+  function selectModel(model:ModelId){update(current.id,s=>({...s,model}));}
+  async function verify(bundle:Bundle,sessionId:string) {
+    if(!bundle || bundle.execution_id!==bundle.run?.execution_id || bundle.run?.proof?.execution_id!==bundle.execution_id)throw Error("EXECUTION_BINDING_INVALID");
+    const [checks,remote]=await Promise.all([verifyRun(bundle.run),api<{ok:boolean}>("/unified/verify",bundle)]);
+    if(!checks.length||!checks.every(check=>check.ok)||remote.ok!==true)throw Error("PROOF_VERIFICATION_FAILED");
+    inspectExecution(bundle.team,bundle.mission,bundle.run);
+    setLastRun({sessionId,run:bundle.run,verified:true});
+  }
+  async function submit(e?:FormEvent) {
+    e?.preventDefault();const text=draft.trim();if(!text||busy)return;
+    const sessionId=current.id;setDraft("");setError("");addMessage(sessionId,"user",text,"USER");
+    if(!command(text)){
+      setError("MODEL GATED · Model NVIDIA/OpenRouter nie ma jeszcze bezpiecznego transportu operatora. Nie wykonano wywołania. Dostępne: 'pokaż status runtime', 'status workera', 'oblicz SHA-256 tekstu: ...' lub OSA TRACE.");
+      return;
+    }
+    const request=++seq.current,abort=new AbortController();controller.current=abort;setBusy(true);
+    try {
+      const bundle=await api<Bundle>("/unified/execute",{message:text,execution_id:"exec_"+id()},abort.signal);
+      if(request!==seq.current)return;await verify(bundle,sessionId);
+      if(request!==seq.current)return;
+      const output=bundle.run.final_output as Record<string,unknown>;
+      const body=output&&typeof output.sha256==="string"?"SHA-256: "+output.sha256:JSON.stringify(output,null,2).slice(0,8000);
+      addMessage(sessionId,"assistant",body,bundle.status==="EXECUTED"?"VERIFIED":"BLOCKED",{executionId:bundle.execution_id,runId:bundle.run.run_id});
+    } catch(e) { if(request===seq.current&&!abort.signal.aborted)setError("BLOCKED · "+(e instanceof Error?e.message:String(e))); }
+    finally {if(request===seq.current){controller.current=null;setBusy(false);}}
+  }
+  async function trace() {
+    if(busy)return;setError("");const sessionId=current.id,request=++seq.current,abort=new AbortController();controller.current=abort;setBusy(true);
+    try {
+      const result=await api<Trace>("/trace-probe",{task_id:"OSA-TRACE-001",prompt:TRACE_PROMPT},abort.signal);
+      if(request!==seq.current)return;
+      const checks=await verifyRun(result.run);
+      if(result.run.execution_id!==result.execution_id||!checks.length||!checks.every(c=>c.ok))throw Error("TRACE_INTEGRITY_UNVERIFIED");
+      inspectExecution(result.team,result.mission,result.run);setLastRun({sessionId,run:result.run,verified:true});
+      const detail=result.steps.map(s=>"GET "+s.url+" → "+(s.http_status||"BRAK")+" · "+s.status).join("\n");
+      addMessage(sessionId,"assistant","OSA TRACE · "+result.task_status+" · "+result.proof_verdict+"\n"+detail,result.task_status==="EXECUTED"?"VERIFIED":"BLOCKED",{executionId:result.execution_id,runId:result.run.run_id});
+    }catch(e){if(request===seq.current&&!abort.signal.aborted)setError("TRACE BLOCKED · "+(e instanceof Error?e.message:String(e)));}
+    finally{if(request===seq.current){controller.current=null;setBusy(false);}}
+  }
+  function key(e:KeyboardEvent<HTMLTextAreaElement>){if(e.key==="Enter"&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void submit();}}
+  return <section aria-label="OSA Unified Chat" data-testid="osa-native-chat" className="relative flex h-full min-h-0 min-w-0 overflow-hidden bg-[#070b13] text-fg">
+    {mobileHistory&&<button onClick={()=>setMobileHistory(false)} aria-label="Zamknij historię" className="absolute inset-0 z-30 bg-black/75 md:hidden"/>}
+    <aside aria-label="Historia rozmów" className={(mobileHistory?"translate-x-0":"-translate-x-full")+" absolute inset-y-0 left-0 z-40 flex w-[min(85vw,290px)] shrink-0 flex-col border-r border-white/10 bg-[#0b111c] transition-transform md:static md:w-[238px] md:translate-x-0"}>
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-4"><div><div className="text-xs font-bold tracking-[.16em] text-cyan">OSA / COMPANY</div><div className="mt-1 text-[10px] text-dim">AGENT COMMAND CENTER</div></div><button onClick={()=>setMobileHistory(false)} className="md:hidden" aria-label="Zamknij menu">✕</button></div>
+      <button data-testid="osa-new-chat" onClick={createChat} className="focus-ring mx-3 mt-3 rounded-xl border border-cyan/50 bg-cyan/10 p-3 text-left text-sm font-semibold text-cyan">＋ Nowa rozmowa</button>
+      <label className="mx-3 mt-4 block text-[10px] uppercase tracking-wider text-dim">Historia<input aria-label="Szukaj rozmów" placeholder="Szukaj rozmów..." value={search} onChange={e=>setSearch(e.target.value)} className="mt-2 block w-full rounded-lg border border-line bg-panel px-3 py-2 text-xs text-fg"/></label>
+      <div className="mt-3 min-h-0 flex-1 overflow-y-auto px-2">
+        {sessions.filter(s=>s.title.toLowerCase().includes(search.toLowerCase())).map(s=><button key={s.id} data-testid="osa-session" aria-current={s.id===current.id?"page":undefined} onClick={()=>openSession(s.id)} className={(s.id===current.id?"bg-white/10 text-white":"text-dim hover:bg-white/5")+" mb-1 block w-full rounded-lg px-3 py-3 text-left text-xs"}><span className="block truncate font-medium">{s.title}</span><span className="mt-1 block text-[10px] opacity-70">{AGENTS.find(a=>a.id===s.agent)?.name} · {s.messages.length} wiadomości</span></button>)}
+      </div><p className="border-t border-white/10 p-3 text-[10px] text-dim">HISTORIA LOKALNA · BEZ SYNCHRONIZACJI</p>
+    </aside>
+    <div className="relative flex min-w-0 flex-1 flex-col">
+      <header className="flex min-h-[60px] shrink-0 items-center gap-2 border-b border-white/10 bg-[#0b111c] px-3 sm:px-5">
+        <button onClick={()=>setMobileHistory(true)} aria-label="Otwórz historię" className="p-2 md:hidden">☰</button>
+        <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-semibold">OSA Unified Chat</h1><div className="truncate text-[10px] text-dim">Agenci · Runtime · APR · Proof</div></div>
+        <button aria-label="Wybierz agenta" aria-expanded={agentOpen} onClick={()=>setAgentOpen(!agentOpen)} className="focus-ring max-w-[125px] truncate rounded-lg border border-line bg-panel px-2 py-2 text-xs sm:max-w-[195px]">{agent.icon} {agent.name} ▾</button>
+        <button onClick={()=>setInspector(!inspector)} aria-expanded={inspector} className="focus-ring rounded-lg border border-line px-2 py-2 text-xs">{inspector?"Zamknij":"Inspektor"}</button>
       </header>
-      {traceOpen && <div role="dialog" aria-label="Monitorowane zadanie OSA Proof"
-        className="absolute inset-x-2 top-[56px] z-40 max-h-[calc(100%-88px)] overflow-y-auto rounded-b-lg border border-line bg-ink p-3 shadow-2xl sm:inset-x-4 sm:top-[68px] sm:max-h-[calc(100%-102px)] sm:p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-fg">OSA Proof · zadanie monitorowane</div>
-            <p className="text-[10px] text-dim">OSA-TRACE-001 · dwa dozwolone GET · wykonanie w OSA Runtime, nie w iframe</p>
-          </div>
-          <button type="button" onClick={()=>setTraceOpen(false)}
-            aria-label="Zamknij zadanie OSA-TRACE-001"
-            className="focus-ring shrink-0 rounded border border-line px-3 py-1.5 text-[11px] text-fg">Zamknij</button>
-        </div>
-        <div className="mt-2 space-y-2">
-          <label htmlFor="osa-trace-task" className="block text-[11px] text-dim">Prompt dla agenta HTTP (tylko dozwolone endpointy)</label>
-          <textarea id="osa-trace-task" aria-label="Monitorowane zadanie OSA-TRACE-001"
-            className="w-full resize-y rounded border border-line bg-panel px-3 py-2 font-mono text-[11px] text-fg"
-            rows={5} maxLength={5000} value={tracePrompt} onChange={e=>setTracePrompt(e.target.value)}/>
-          <button type="button" disabled={tracePending} onClick={()=>void executeTrace()}
-            className="focus-ring rounded border border-line bg-raise px-4 py-2 text-[12px] font-semibold text-fg disabled:opacity-40">
-            {tracePending ? "Wykonuję GET i zbieram evidence…" : "Wykonaj monitorowane zadanie"}
-          </button>
-          {traceError && <p role="alert" className="text-[11px] text-bad">BLOCKED · {traceError}</p>}
-          {traceOutcome && <div aria-label="OSA Proof Trace Result" className="space-y-1 rounded border border-line bg-panel p-3 text-[11px]">
-            <div className="font-semibold text-fg">{traceOutcome.task_status} · OSA Proof {traceOutcome.proof_verdict}</div>
-            <div className="break-all font-mono text-dim">execution_id: {traceOutcome.execution_id}</div>
-            {traceOutcome.steps.map(step=><div key={step.step} className="break-all font-mono text-dim">
-              {step.step}. GET {step.url} · HTTP {step.http_status ?? "BRAK"} · {step.status}{step.error_code ? " · "+step.error_code : ""}
-            </div>)}
-            <div className="flex flex-wrap gap-2 pt-1">
-              <button type="button" className="focus-ring rounded border border-line px-3 py-2 text-fg"
-                onClick={()=>go("trace",{runId:traceOutcome.run_id})}>Tracing →</button>
-              <button type="button" className="focus-ring rounded border border-line px-3 py-2 text-fg"
-                onClick={()=>go("proofs",{runId:traceOutcome.run_id})}>Proofs →</button>
-            </div>
-            <p className="text-dim">Proof zawiera rzeczywiste evidence HTTP; nie potwierdza wykonania narzędzi przez model Jeversona.</p>
-          </div>}
-        </div>
+      {agentOpen&&<div data-testid="osa-agent-picker" className="absolute inset-x-2 top-[62px] z-20 max-h-[min(75dvh,530px)] overflow-y-auto rounded-xl border border-line2 bg-[#101b2a] p-3 shadow-2xl sm:left-auto sm:right-3 sm:w-[350px]">
+        <div className="mb-2 flex items-center justify-between text-xs"><strong>Wybór agenta</strong><button onClick={()=>setAgentOpen(false)} aria-label="Zamknij wybór">✕</button></div>
+        {AGENTS.map(a=><button key={a.id} onClick={()=>selectAgent(a.id)} aria-pressed={a.id===current.agent} className={(a.id===current.agent?"bg-cyan/10":"hover:bg-white/5")+" mb-1 w-full rounded-lg p-3 text-left"}><span className="flex items-center justify-between text-xs"><strong>{a.icon} {a.name}</strong><span className="text-[9px] text-dim">{a.state}</span></span><span className="mt-1 block text-[11px] text-dim">{a.purpose}</span></button>)}
+        <p className="mt-2 text-[10px] text-warn">Widoczność agenta nie oznacza uruchomionego runtime. Mutacje wymagają Approval Gate.</p>
       </div>}
-      {bridgeError && <p role="alert" className="shrink-0 px-3 py-2 text-[11px] text-bad">{bridgeError}</p>}
-      {unified && <div data-testid="unified-result" className="shrink-0 border-b border-line bg-panel px-3 py-2 text-[11px]">
-        <p className="break-all font-mono">{unified.status} · {unified.execution_id}</p>
-        <p className="text-dim">{unified.restored?"Zapisany bundle · ponownie zweryfikowany · ":""}{unified.run.events.length} zdarzeń · {unified.run.evidence.length} evidence · receipt: integralność potwierdzona</p>
-        <div className="mt-1 flex gap-2">
-          <button className="focus-ring rounded border border-line px-3 py-1" onClick={()=>go("trace",{runId:unified.run.run_id})}>Tracing wykonania →</button>
-          <button className="focus-ring rounded border border-line px-3 py-1" onClick={()=>go("proofs",{runId:unified.run.run_id})}>Proof Receipt →</button>
-        </div>
-      </div>}
-      {!activeUrl ? (
-        <div className="grid min-h-0 flex-1 place-items-center p-4">
-          <div className="max-w-xl space-y-2 rounded-lg border border-line bg-panel p-5">
-            <div className="label">JEVERSON · DISCONNECTED</div>
-            <p className="text-[13px]">Nie ustawiono adresu istniejącej aplikacji Jeverson.</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          {frameProblem && !frameReady && <div role="status" className="shrink-0 border-b border-line px-3 py-1.5 text-[11px] text-dim">
-            Czat nie potwierdził połączenia. Otwórz ↗, zaloguj się do Vercel i wróć tutaj.
-            <button type="button" className="ml-2 underline" onClick={()=>{setFrameProblem(false);setFrameReady(false);setFrameVersion(v=>v+1);}}>Wczytaj czat ponownie</button>
-          </div>}
-          <iframe ref={frame} key={activeUrl+frameVersion} title="Jeverson Chat" src={activeUrl}
-            data-testid="jeverson-iframe"
-            className="block min-h-0 min-w-0 w-full flex-1 border-0 bg-void"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
-            referrerPolicy="no-referrer" onError={() => setFrameProblem(true)} />
-        </>
-      )}
-      <footer className="mono flex h-7 shrink-0 items-center border-t border-line bg-ink px-2 text-[9px] text-dim sm:h-8 sm:px-5 sm:text-[10px]">
-        <span className="truncate sm:hidden">{previewActive ? "BLACK UI PREVIEW · MODEL OFF" : "JEV · OSA NATIVE TOOLS · RECEIPT"}</span>
-        <span className="hidden truncate sm:inline">
-          {previewActive ? "VERCEL BLACK · UI PREVIEW ONLY · providers not configured" :
-            "JEV → OSA RUNTIME · NARZĘDZIA NATIVE · EVIDENCE + WERYFIKACJA RECEIPT"}
-        </span>
-      </footer>
-    </section>
-  );
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-3 py-2"><span className="flex min-w-0 items-center gap-2 text-[11px] text-dim"><span aria-hidden className="inline-flex h-7 w-7 animate-pulse items-center justify-center rounded-full border border-cyan/40 bg-cyan/10 text-cyan">✦</span><span className="truncate">Hermes · propozycje pod kontrolą operatora</span></span><span className="shrink-0 rounded-full border border-warn/40 px-2 py-1 text-[9px] text-warn">{status?.mode==="fixture"?"FIXTURE · MODEL GATED":"MODEL GATED"}</span></div>
+      {inspector?
+        <div data-testid="osa-inspector" aria-label="Inspektor wykonania" className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"><div className="mx-auto max-w-3xl"><h2 className="text-lg font-semibold">Tracing / Evidence / Proof / Replay</h2><p className="mt-2 text-xs text-dim">Tylko rzeczywiste wykonania; żadnych fikcyjnych dowodów.</p>
+          <div className="mt-4 rounded-xl border border-line bg-panel p-4 text-xs">Runtime: {status?.mode||"UNKNOWN"} · Auth: {status?.auth_mode||"UNKNOWN"}<div className="mt-2">Persistence: {status?.persistence||"UNKNOWN"}</div><div className="mt-2 break-all font-mono">Execution: {activeRun?.execution_id||"BRAK ZWERYFIKOWANEGO WYKONANIA"}</div><div className="mt-2">Proof: {activeRun?.verdict||"UNVERIFIED"} · Evidence: {activeRun?.evidence.length||0} · Events: {activeRun?.events.length||0}</div></div>
+          {activeRun?<><div className="mt-4 grid grid-cols-3 gap-2">{([["trace","Tracing"],["proofs","Evidence / Proof"],["replay","Replay"]] as const).map(([v,label])=><button key={v} onClick={()=>go(v,{runId:activeRun.run_id})} className="rounded-lg border border-cyan/40 bg-cyan/10 p-3 text-xs text-cyan">{label} ↗</button>)}</div><ol className="mt-4 space-y-2">{activeRun.events.map(e=><li key={e.event_id} className="rounded-lg border border-line p-3 text-xs">#{e.sequence} · {e.type}</li>)}</ol></>:<p className="mt-4 text-xs text-dim">Uruchom dozwolone narzędzie albo OSA TRACE, aby pojawiło się prawdziwe wykonanie.</p>}
+        </div></div>:
+        <div aria-label="Wiadomości" className="min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6"><div className="mx-auto flex min-h-full max-w-[820px] flex-col">
+          {!current.messages.length&&<div className="flex flex-1 flex-col items-center justify-center py-8 text-center"><div className="mb-4 text-5xl text-cyan">✦</div><h2 className="text-2xl font-semibold">Czym zajmiemy się dzisiaj?</h2><p className="mt-3 max-w-xl text-sm text-dim">{agent.name} · {agent.purpose}. Jedna rozmowa i dowody z prawdziwego Runtime.</p><div className="mt-6 flex flex-wrap justify-center gap-2">{["Pokaż status runtime","Oblicz SHA-256 tekstu: OSA Proof","Status workera"].map(t=><button key={t} onClick={()=>setDraft(t)} className="rounded-full border border-line bg-panel px-3 py-2 text-xs">{t}</button>)}</div></div>}
+          {current.messages.map(m=><article data-testid="osa-message" key={m.id} className={(m.role==="user"?"justify-end":"justify-start")+" mb-5 flex"}><div className={(m.role==="user"?"bg-[#19314b] text-white":"border border-white/10 bg-[#111b2a]")+" max-w-[min(92%,730px)] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13px] leading-6"}><div className="mb-1 text-[10px] uppercase tracking-wide text-dim">{m.role==="user"?"Ty":"OSA Runtime · "+m.status}</div>{m.text}{m.executionId&&<div className="mt-2 break-all border-t border-white/10 pt-2 font-mono text-[9px] text-dim">{m.executionId}</div>}</div></article>)}
+          {busy&&<div role="status" className="text-xs text-dim">OSA Runtime · trwa żądanie...</div>}<div ref={bottom}/></div></div>}
+      {error&&<div role="alert" data-testid="osa-chat-notice" className="mx-3 mb-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-[11px] text-warn">{error}<button className="ml-2 underline" onClick={()=>setError("")}>Zamknij</button></div>}
+      {storageProblem&&<p role="alert" className="px-3 text-[11px] text-warn">Zapis historii na urządzeniu jest zablokowany.</p>}
+      <div className="shrink-0 border-t border-white/10 bg-[#0b111c] px-3 py-3 sm:px-6"><form onSubmit={e=>void submit(e)} className="mx-auto max-w-[820px] rounded-2xl border border-line2 bg-[#101b2a] p-3 focus-within:border-cyan/50">
+        <textarea aria-label="Wiadomość do OSA" data-testid="osa-composer" placeholder={"Wiadomość do "+agent.name+"..."} rows={2} maxLength={20000} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={key} className="block max-h-[160px] min-h-[52px] w-full resize-y bg-transparent text-sm outline-none placeholder:text-dim"/>
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/5 pt-2"><label className="text-[10px] text-dim">Model <select aria-label="Wybierz model" value={current.model} onChange={e=>selectModel(e.target.value as ModelId)} className="rounded border border-line bg-panel p-1 text-[11px] text-fg"><option value="auto">AUTO</option><option value="nvidia">NVIDIA</option><option value="openrouter">OpenRouter</option></select></label><button type="button" onClick={()=>void trace()} disabled={busy} className="rounded border border-line p-2 text-[10px] text-cyan disabled:opacity-50">OSA TRACE</button><span className="ml-auto text-[9px] text-dim">NO PAID CALLS</span>{busy?<button type="button" onClick={()=>{cancel();setError("Żądanie anulowano. Wynik niezweryfikowany.");}} className="rounded-lg border border-line px-3 py-2 text-xs text-warn">Przerwij</button>:<button data-testid="osa-send" disabled={!draft.trim()} className="rounded-lg bg-cyan px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Wyślij ↑</button>}</div>
+      </form><p className="mx-auto mt-2 max-w-[820px] text-center text-[10px] text-dim">P0: agent selection + bezpieczne narzędzia; swobodny LLM chat zablokowany do Security Gate.</p></div>
+    </div>
+  </section>;
 }
