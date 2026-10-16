@@ -48,6 +48,7 @@ async function main(){
       await page.getByRole("slider",{name:"Pozycja odtwarzania"}).waitFor({state:"visible"});
       await page.screenshot({path:path.join(out,name+"-replay.png"),fullPage:true});
       const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+      if(overflow>1){const elements=await page.evaluate(()=>Array.from(document.querySelectorAll("*")).filter(el=>{const r=el.getBoundingClientRect();return r.right>innerWidth+1&&r.width>0;}).slice(0,12).map(el=>({tag:el.tagName,classes:String(el.className).slice(0,110),text:(el.textContent||"").slice(0,70),right:Math.round(el.getBoundingClientRect().right)})));console.error(JSON.stringify({name,overflow,elements}));}
       assert.ok(overflow<=1,"Native Runtime chat overflow: "+overflow);
       assert.deepEqual(failures,[]);
       const row={name,result:"PASS",execution_id:execution.match(/exec_[a-f0-9-]{36}/)[0],crypto_sha256:expectedHash,real_runtime:true,verified_receipt:true,replay_ui:true,provider_model_tool_call:"NOT_TESTED",paid_calls:0};
