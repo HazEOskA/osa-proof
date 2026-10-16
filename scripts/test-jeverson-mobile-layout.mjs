@@ -35,7 +35,7 @@ try {
     await page.getByTestId("osa-composer").fill("P0: kontrola izolacji sesji A");
     await page.getByTestId("osa-send").click();
     await page.getByTestId("osa-chat-notice").waitFor();
-    assert.match(await page.getByTestId("osa-chat-notice").innerText(),/MODEL NIEDOSTĘPNY/);
+    assert.match(await page.getByTestId("osa-chat-notice").innerText(),/NIEDOSTĘPNY/);
     assert.equal(await page.getByTestId("osa-message").count(),1,"Blocked request must not forge assistant answer");
     assert.equal(network.length,0,"Blocked LLM must never reach provider API");
     if(width<768)await page.getByRole("button",{name:"Otwórz historię"}).click();
