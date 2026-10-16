@@ -1,7 +1,7 @@
 name: OSA Native Chat Mobile Regression
 on:
   push:
-    branches: [feature/osa-fleet-chat-slice1-proof]
+    branches: [feature/osa-fleet-chat-slice1-proof, feature/osa-unified-runtime-v1]
   pull_request:
     branches: [main]
 permissions:
