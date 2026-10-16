@@ -1,115 +1,59 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import path from "node:path";
 import { chromium } from "playwright";
 
 const base = process.env.OSA_UI_TEST_BASE || "http://127.0.0.1:3100";
-const dir = "artifacts/jeverson-container";
-fs.mkdirSync(dir, { recursive: true });
-const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+const out = "artifacts/osa-native-chat";
+fs.mkdirSync(out,{recursive:true});
+const browser = await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
 try {
-  for (const [name, width, height] of [
-    ["mobile-320x640", 320, 640],
-    ["mobile-390x844", 390, 844],
-    ["desktop-1440x900", 1440, 900],
-  ]) {
-    const page = await browser.newPage({
-      viewport: { width, height },
-      deviceScaleFactor: 1,
-      reducedMotion: "reduce",
-    });
-    // Visual-only test, no external Jeverson runtime or model requests.
-    await page.route("https://jeverson.ui.test/**", async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: "text/html",
-        body: "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'></head><body style='background:#080b10;color:#eee;font:16px sans-serif;margin:0;padding:24px'>JEVERSON AGENT WORLD / TEST FRAME</body></html>",
-      });
-    });
-    await page.route("https://black.ui.test/**", async route => {
-      await route.fulfill({
-        status: 200, contentType: "text/html",
-        body: "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'></head><body style='background:#000;color:#eee;font:16px sans-serif;padding:20px'>VERCEL BLACK / TEST FRAME</body></html>",
-      });
-    });
-    const response = await page.goto(base, { waitUntil: "domcontentloaded", timeout: 30000 });
-    assert.equal(response?.status(), 200, `${name}: dashboard HTTP 200`);
-    if (width < 768) {
-      await page.getByRole("button", { name: "Open navigation" }).click();
-    }
-    await page.getByRole("button", { name: "Jeverson Chat" }).click();
-    const section = page.getByRole("region", { name: "Jeverson Chat" });
-    const bar = page.getByTestId("jeverson-toolbar");
-    const frame = page.frameLocator('iframe[title="Jeverson Chat"]');
-    await bar.waitFor({ state: "visible" });
-    await frame.getByText("JEVERSON AGENT WORLD / TEST FRAME").waitFor();
-    const metrics = await page.evaluate(() => {
-      const select = (sel) => {
-        const el = document.querySelector(sel);
-        if (!el) throw new Error("Missing " + sel);
-        const r = el.getBoundingClientRect();
-        return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom };
-      };
-      return {
-        viewport: { w: innerWidth, h: innerHeight },
-        scrollWidth: document.documentElement.scrollWidth,
-        toolbar: select('[data-testid="jeverson-toolbar"]'),
-        frame: select('iframe[title="Jeverson Chat"]'),
-        footer: select('section[aria-label="Jeverson Chat"] footer'),
-        section: select('section[aria-label="Jeverson Chat"]'),
-      };
-    });
-    assert.ok(metrics.scrollWidth <= width + 1, `${name}: horizontal body scroll`);
-    assert.ok(metrics.toolbar.height <= 76, `${name}: oversized toolbar ${metrics.toolbar.height}`);
-    assert.ok(metrics.frame.height >= height * 0.60, `${name}: iframe too short ${metrics.frame.height}`);
-    assert.ok(metrics.frame.y <= (width < 768 ? 140 : 160), `${name}: iframe starts too low ${metrics.frame.y}`);
-    assert.ok(metrics.frame.bottom <= height + 1, `${name}: frame overflows viewport`);
-    assert.ok(metrics.footer.bottom <= height + 1, `${name}: footer overflows viewport`);
-    assert.ok(metrics.frame.y >= metrics.toolbar.bottom - 1, `${name}: toolbar overlaps iframe`);
-    if (width < 768) {
-      await page.getByRole("link", { name: "Otwórz aktualnego Jeversona w pełnym ekranie" }).waitFor();
-    }
-    const liveButton = page.getByRole("button", { name: "LIVE", exact: true });
-    const blackButton = page.getByRole("button", { name: "BLACK", exact: true });
-    await liveButton.waitFor();
-    await blackButton.waitFor();
-    assert.equal(await liveButton.getAttribute("aria-pressed"), "true");
-    await page.screenshot({ path: path.join(dir, `${name}-live.png`), fullPage: true });
-
-    await blackButton.click();
-    assert.equal(await blackButton.getAttribute("aria-pressed"), "true", `${name}: active BLACK mode`);
-    await frame.getByText("VERCEL BLACK / TEST FRAME").waitFor();
-    assert.match(await page.getByTestId("jeverson-iframe").getAttribute("src"), /black\.ui\.test/);
-    const previewFrameBox = await page.getByTestId("jeverson-iframe").boundingBox();
-    assert.ok(previewFrameBox && previewFrameBox.height >= height * .6,
-      `${name}: BLACK preview frame must keep full height`);
-    await page.screenshot({ path: path.join(dir, `${name}-black.png`), fullPage: true });
-    await liveButton.click();
-    await frame.getByText("JEVERSON AGENT WORLD / TEST FRAME").waitFor();
-    assert.equal(await liveButton.getAttribute("aria-pressed"), "true", `${name}: back to LIVE`);
-
-    console.log(JSON.stringify({ name, status: "PASS", modes: ["LIVE","BLACK","LIVE"], metrics }));
+  for (const [name,width,height] of [["android-320",320,640],["android-390",390,844],["desktop",1440,900]]) {
+    const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce"});
+    const pageErrors=[],network=[];
+    page.on("pageerror",error=>pageErrors.push(error.message));
+    page.on("request",request=>{if(/\/api\/(nvidia\/chat|unified\/execute|chat\/complete)/.test(request.url()))network.push(request.url());});
+    await page.route("**/api/build/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({mode:"fixture",auth_mode:"open",persistence:"PROCESS_MEMORY"})}));
+    const opened=await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+    assert.equal(opened?.status(),200,"Dashboard HTTP 200");
+    const shell=page.getByTestId("osa-native-chat");await shell.waitFor({state:"visible",timeout:15000});
+    assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
+    assert.equal(await page.getByTestId("osa-session").count(),1,"Exactly one initial session");
+    await page.getByRole("button",{name:"Wybierz agenta"}).click();
+    await page.getByTestId("osa-agent-picker").getByRole("button",{name:/Coding Agent/}).click();
+    assert.match(await page.getByRole("button",{name:"Wybierz agenta"}).innerText(),/Coding Agent/);
+    await page.getByRole("combobox",{name:"Wybierz model"}).selectOption("openrouter");
+    assert.equal(await page.getByRole("combobox",{name:"Wybierz model"}).inputValue(),"openrouter");
+    await page.getByTestId("osa-composer").fill("P0: kontrola izolacji sesji A");
+    await page.getByTestId("osa-send").click();
+    await page.getByTestId("osa-chat-notice").waitFor();
+    assert.match(await page.getByTestId("osa-chat-notice").innerText(),/MODEL GATED/);
+    assert.equal(await page.getByTestId("osa-message").count(),1,"Blocked request must not forge assistant answer");
+    assert.equal(network.length,0,"Blocked LLM must never reach provider API");
+    if(width<768)await page.getByRole("button",{name:"Otwórz historię"}).click();
+    await page.getByTestId("osa-new-chat").click();
+    assert.equal(await page.getByTestId("osa-session").count(),2,"New chat creates exactly one session");
+    assert.equal(await page.getByTestId("osa-message").count(),0,"New chat must not reuse previous messages");
+    assert.equal(await page.getByTestId("osa-composer").inputValue(),"");
+    await page.getByTestId("osa-composer").fill("P0: kontrola izolacji sesji B");
+    await page.getByTestId("osa-send").click();
+    assert.equal(await page.getByTestId("osa-message").count(),1);
+    if(width<768)await page.getByRole("button",{name:"Otwórz historię"}).click();
+    await page.getByTestId("osa-session").filter({hasText:"kontrola izolacji sesji A"}).click();
+    assert.match(await page.getByTestId("osa-message").innerText(),/sesji A/);
+    assert.doesNotMatch(await page.getByTestId("osa-message").innerText(),/sesji B/);
+    await page.getByRole("button",{name:"Inspektor"}).click();
+    await page.getByTestId("osa-inspector").waitFor({state:"visible"});
+    assert.match(await page.getByTestId("osa-inspector").innerText(),/BRAK ZWERYFIKOWANEGO WYKONANIA/);
+    await page.getByRole("button",{name:"Zamknij",exact:true}).first().click();
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.getByTestId("osa-native-chat").waitFor();
+    assert.match(await page.getByTestId("osa-message").innerText(),/sesji A/);
+    assert.equal(await page.getByTestId("osa-session").count(),2,"Session persists after refresh");
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+    assert.ok(overflow<=1,name+" horizontal overflow "+overflow);
+    assert.deepEqual(pageErrors,[],"No browser uncaught exceptions");
+    await page.screenshot({path:out+"/"+name+".png",fullPage:true});
+    console.log(JSON.stringify({name,result:"PASS",sessions:2,agent_selector:true,model_selector:true,blocked_model_requests:network.length,verified_proof:"NOT_TESTED",overflow,page_errors:pageErrors.length}));
     await page.close();
   }
-  // An actual uncredentialed browser loads the LIVE Vercel Black branch alias,
-  // so Vercel Authentication cannot silently return a protected login screen.
-  if (process.env.OSA_REMOTE_BLACK_URL) {
-    const page = await browser.newPage({viewport:{width:390,height:844},reducedMotion:"reduce"});
-    const target = process.env.OSA_REMOTE_BLACK_URL;
-    const response = await page.goto(target, { waitUntil: "domcontentloaded", timeout: 45000 });
-    assert.equal(response?.status(), 200, "Uncredentialed Jeverson alias HTTP 200");
-    await page.locator(".osa-app .composer").waitFor({state:"visible",timeout:40000});
-    assert.match(await page.title(), /Jeverson/, "No Vercel protection login");
-    const tokens = await page.locator(".osa-app").evaluate(el=>({
-      bg:getComputedStyle(el).backgroundColor,
-      composer:getComputedStyle(el.querySelector(".composer")).backgroundColor,
-    }));
-    assert.equal(tokens.bg,"rgb(0, 0, 0)");
-    assert.equal(tokens.composer,"rgb(17, 17, 17)");
-    await page.screenshot({path:path.join(dir,"public-alias-black-real-390x844.png"),fullPage:true});
-    console.log(JSON.stringify({name:"REAL ALIAS 390x844",status:"PASS",tokens}));
-    await page.close();
-  }
-} finally {
-  await browser.close();
-}
+}finally{await browser.close();}
