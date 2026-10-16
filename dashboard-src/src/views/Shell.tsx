@@ -22,7 +22,7 @@ import Intelligence from "./Intelligence";
 import { OPS_VIEWS } from "./Ops";
 import { CONTROL_VIEWS } from "./Control";
 
-const TITLES: Record<string, string> = { "nvidia:models": "NVIDIA · Modele", home: "Home", "delivery-lab": "Delivery Lab", "jeverson-chat": "Agent Chat Fleet", world: "Knowledge World", missions: "Missions", trace: "Tracing", proofs: "Proofs", replay: "Replay" };
+const TITLES: Record<string, string> = { "nvidia:models": "NVIDIA · Modele", home: "Strona główna", "delivery-lab": "Laboratorium wdrożeń", "jeverson-chat": "Czat floty agentów", world: "Świat wiedzy", missions: "Misje", trace: "Śledzenie", proofs: "Dowody", replay: "Odtwarzanie" };
 
 function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void }) {
   const { view, go } = useOsa();
@@ -34,10 +34,10 @@ function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void })
   const item = (it: NavItem, k: string) => {
     const active = it.view === view && it.built && firstFor.get(view) === it.label;
     return (
-      <button key={k} onClick={() => { go(it.view); onPick?.(); }} title={compact ? it.label : it.built ? undefined : `${it.label} · not built yet`} aria-current={active ? "page" : undefined}
+      <button key={k} onClick={() => { go(it.view); onPick?.(); }} title={compact ? it.label : it.built ? undefined : `${it.label} · jeszcze niedostępne`} aria-current={active ? "page" : undefined}
         className={`osa-nav-item focus-ring group relative flex w-full items-center gap-3 rounded-md text-left text-[13.5px] ${compact ? "tap justify-center px-0" : "h-10 px-2.5"} ${active ? "is-active bg-raise text-fg sel-mark" : it.built ? "text-fg/85 hover:bg-raise/60 hover:text-fg" : "text-dim hover:bg-raise/40"}`}>
         <OsaIcon src={it.icon} size={compact ? 28 : 24} className={`osa-nav-icon ${it.built ? "" : "opacity-80"}`} />
-        {!compact && <><span className="flex-1 truncate">{it.label}</span>{!it.built && <span className="text-[9px] font-medium uppercase tracking-[.14em] text-dim/70">soon</span>}</>}
+        {!compact && <><span className="flex-1 truncate">{it.label}</span>{!it.built && <span className="text-[9px] font-medium uppercase tracking-[.14em] text-dim/70">wkrótce</span>}</>}
       </button>
     );
   };
@@ -68,7 +68,7 @@ function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void })
         );
       })}
       <div className="mt-3">
-        {compact ? <div className="mx-3 mb-1 h-px bg-line" /> : <div className="label flex h-7 items-center px-2.5">DOCS</div>}
+        {compact ? <div className="mx-3 mb-1 h-px bg-line" /> : <div className="label flex h-7 items-center px-2.5">DOKUMENTACJA</div>}
         {/* Static documentation published next to the dashboard by scripts/build-dashboard.cjs. */}
         <a href="/docs" title={compact ? "Docs" : undefined}
           className={`osa-nav-item focus-ring flex w-full items-center gap-3 rounded-md text-left text-[13.5px] text-fg/85 hover:bg-raise/60 hover:text-fg ${compact ? "tap justify-center px-0" : "h-10 px-2.5"}`}>
@@ -88,7 +88,7 @@ function LiveRail() {
   if (!run) return null;
   return (
     <aside className="hidden w-[210px] shrink-0 flex-col border-l border-line bg-ink xl:flex" aria-label="Live system rail">
-      <div className="flex h-11 items-center justify-between border-b border-line px-3"><span className="label">System rail</span><Status v={run.verdict} /></div>
+      <div className="flex h-11 items-center justify-between border-b border-line px-3"><span className="label">Zdarzenia systemowe</span><Status v={run.verdict} /></div>
       <div className="mono border-b border-line px-3 py-1.5 text-[10px] text-dim">{run.proof.mission_id} · order by sequence (events carry no timestamps)</div>
       <ol className="flex-1 overflow-y-auto py-1">
         {run.events.map((e) => (
@@ -127,7 +127,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   else if (v.startsWith("ops:") && (OPS_VIEWS[v.slice(4)] || CONTROL_VIEWS[v.slice(4)])) { const View = OPS_VIEWS[v.slice(4)] ?? CONTROL_VIEWS[v.slice(4)]; body = <View />; }
   else {
     const name = v.replace("pending:", "");
-    body = <Empty title={`${name.toUpperCase()} · NOT BUILT YET`} body={`${name} has no view in this pass, and osa-proof does not expose the data for it yet. Nothing is shown rather than something invented.`} steps={["Knowledge World", "Missions", "Tracing", "Proofs", "Replay"].map((s) => `${s} is live`)} />;
+    body = <Empty title={`${name.toUpperCase()} · W PRZYGOTOWANIU`} body={`${name} nie ma jeszcze gotowego widoku ani danych z API OSA Proof. Nie pokazujemy fikcyjnych wyników.`} steps={["Świat wiedzy", "Misje", "Śledzenie", "Dowody", "Odtwarzanie"].map((s) => `${s} is live`)} />;
   }
   const title = v.startsWith("web3:") ? `Web3 · ${v.slice(5)}` : v.startsWith("build:") ? BUILD_LABELS[v.slice(6) as BuildPage] : v.startsWith("intel:") ? `Intelligence · ${v.slice(6)}` : v.startsWith("ops:") ? v.slice(4) : TITLES[v] ?? v.replace("pending:", "");
   return (
@@ -143,10 +143,10 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-ink px-3 md:px-5">
-          <button className="focus-ring tap grid w-11 place-items-center text-dim md:hidden" aria-label="Open navigation" onClick={() => setDrawer(true)}><Icon d="M4 7h16M4 12h16M4 17h16" className="h-5 w-5" /></button>
+          <button className="focus-ring tap grid w-11 place-items-center text-dim md:hidden" aria-label="Otwórz nawigację" onClick={() => setDrawer(true)}><Icon d="M4 7h16M4 12h16M4 17h16" className="h-5 w-5" /></button>
           <h1 className="text-[13px] font-bold uppercase tracking-[.14em]">{title}</h1>
           <button onClick={openPalette} className="focus-ring tap glass ml-auto flex max-w-[380px] flex-1 items-center gap-2 rounded-md px-3 text-left text-[13px] text-dim hover:text-dim md:ml-6 md:mr-auto">
-            <Icon d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.5-4.5" /><span className="hidden flex-1 truncate sm:inline">Search agents, missions, proofs…</span><span className="flex-1 sm:hidden">Search</span><kbd className="mono hidden rounded border border-line px-1.5 text-[10px] sm:inline">Ctrl K</kbd>
+            <Icon d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.5-4.5" /><span className="hidden flex-1 truncate sm:inline">Szukaj agentów, misji i dowodów…</span><span className="flex-1 sm:hidden">Szukaj</span><kbd className="mono hidden rounded border border-line px-1.5 text-[10px] sm:inline">Ctrl K</kbd>
           </button>
           <div className="hidden md:block"><ThemeSwitch /></div>
           <div className="hidden text-right lg:block">{v.startsWith("web3:") ? <><span className="mono text-[10px] text-dim">{web3.status ? "WEB3 · READ ONLY" : "WEB3 · UNKNOWN"}</span><div className="mono text-[10px] text-dim">OSA API · chain assurance: RPC_VALIDATED</div></> : <><Status v={source.kind} /><div className="mono max-w-[240px] truncate text-[10px] text-dim">{source.detail}</div></>}</div>
@@ -158,11 +158,11 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
       </div>
 
       {drawer && (
-        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Nawigacja">
           <div className="absolute inset-0 bg-black/60" onClick={() => setDrawer(false)} />
           <div className="slide-in absolute inset-y-0 left-0 flex w-[84vw] max-w-[320px] flex-col border-r border-line bg-ink">
             <SidebarTop />
-            <div className="mx-3 mb-3 flex flex-col gap-2"><button onClick={() => { setDrawer(false); openPalette(); }} className="focus-ring tap glass rounded-md px-3 text-left text-[13px] text-dim">Search / commands</button><ThemeSwitch /></div>
+            <div className="mx-3 mb-3 flex flex-col gap-2"><button onClick={() => { setDrawer(false); openPalette(); }} className="focus-ring tap glass rounded-md px-3 text-left text-[13px] text-dim">Szukaj / polecenia</button><ThemeSwitch /></div>
             <NavList compact={false} onPick={() => setDrawer(false)} />
           </div>
         </div>
@@ -178,8 +178,8 @@ function SidebarTop() {
   const scope = view.startsWith("web3:") ? { organization_id: web3.mission?.record.mission.organization_id ?? web3.status?.organization_id ?? "UNKNOWN", project_id: web3.mission?.record.mission.project_id ?? web3.status?.defaultProject ?? "UNKNOWN" } : data.team;
   return (
     <div className="border-b border-line p-3">
-      <div className="mb-3 flex items-center gap-3"><Logo size={48} /><div className="leading-tight"><div className="font-display text-[13px] text-hero">OSA</div><div className="font-display text-[9px] text-dim">FRAMEWORK</div></div></div>
-      <div className="glass rounded-md px-2.5 py-1.5"><div className="label">Workspace</div><Mono className="text-[12px]">{scope.organization_id} / {scope.project_id}</Mono></div>
+      <div className="mb-3 flex items-center gap-3"><Logo size={48} /><div className="leading-tight"><div className="font-display text-[13px] text-hero">OSA</div><div className="font-display text-[9px] text-dim">SYSTEM AGENTÓW</div></div></div>
+      <div className="glass rounded-md px-2.5 py-1.5"><div className="label">Środowisko pracy</div><Mono className="text-[12px]">{scope.organization_id} / {scope.project_id}</Mono></div>
     </div>
   );
 }
