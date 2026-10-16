@@ -4,9 +4,9 @@ Modele NVIDIA oraz Czat floty agentów korzystają z tego samego serwerowego mos
 
 Klucz `NVIDIA_API_KEY` jest przechowywany wyłącznie w środowisku serwera. Panel nie przyjmuje własnego klucza dostawcy. HTTP odrzuca pole `apiKey` i ID modelu inne niż skonfigurowane na serwerze. Nie zapisuj sekretów w promptach ani zasobach Buildera.
 
-W chmurze każda trasa wymaga podpisanej sesji operatora ograniczonej do organizacji, projektu i originu. `OSA_AUTH_MODE=open` i `/auth/dev-login` nie obchodzą ochrony. Vercel SSO Preview jest dodatkową granicą i nie dowodzi ochrony produkcji.
+Panel i natywne wykonania Vercel Preview w trybie `OSA_AUTH_MODE=open` działają bez obowiązkowego logowania. Wywołania NVIDIA nadal wymagają podpisanej sesji operatora oraz zgodnego originu; wyjątek Preview nie wyłącza ochrony produkcji ani polityki kosztowej. `/auth/dev-login` pozostaje wyłączone w chmurze. Vercel SSO jest osobnym ustawieniem i nie zostało zmienione.
 
-`GET /api/nvidia/status` po uwierzytelnieniu zwraca `configured`, `available`, `gate` i rodzaj limitu. Obecny klucz nie oznacza udanego wykonania. Model jest blokowany bez aktywnej polityki zerowych kosztów, aktualnego potwierdzenia bezpłatnego modelu i współdzielonego limitu. Pełna konfiguracja: [instrukcja operatora](release-v0.1.0/OPERATOR.md).
+`GET /api/nvidia/status` w otwartym Preview jest dostępne bez logowania i zwraca `configured`, `available`, `gate` i rodzaj limitu. Obecny klucz nie oznacza udanego wykonania. Model jest blokowany bez aktywnej polityki zerowych kosztów, aktualnego potwierdzenia bezpłatnego modelu i współdzielonego limitu. Pełna konfiguracja: [instrukcja operatora](release-v0.1.0/OPERATOR.md).
 
 `POST /api/nvidia/chat` przyjmuje prompt; `POST /api/nvidia/fleet-chat` dodatkowo profil, ograniczoną historię i allowlistowany kontekst przewodnika. Maksymalnie 8000 znaków promptu, 40000 bajtów żądania, 1024 tokeny odpowiedzi, 25 sekund połączenia. Brak automatycznych retry i płatnego zamiennika. Odpowiedź dostawcy jest ograniczona do 256000 bajtów, a błędy są sanitowane.
 

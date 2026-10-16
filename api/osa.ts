@@ -5,7 +5,7 @@ import { createDevExecution, DevExecution } from "../apps/api/src/server";
 import { vercelApiPath } from "../apps/api/src/vercel";
 
 // The single Vercel Function for the OSA API. vercel.json rewrites every API path here, so all routes share
-// process-local state only. Cloud requests require the scoped operator boundary, independently of OSA_AUTH_MODE.
+// process-local state only. Open Preview skips the panel login; production and cloud model calls keep operator authorization.
 let state: ApiState | undefined;
 let execution: DevExecution | undefined;
 

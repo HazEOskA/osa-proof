@@ -5,7 +5,7 @@
 Status wydania: **BLOCKED**. Nie utworzono tagu ani GitHub Release.
 
 - Włączono zakres globalnego przewodnika „Zapytaj OSĘ” z PR #15, zachowując osobny Czat floty agentów i istniejący polski interfejs.
-- Przygotowano ochronę wszystkich tras API w chmurze, sesję pojedynczego operatora z zakresem organizacji/projektu i blokadę deweloperskiego logowania.
+- Na życzenie operatora Preview działa bez obowiązkowego logowania (`OSA_AUTH_MODE=open`). Produkcyjna granica operatora, autoryzacja wywołań NVIDIA i ograniczenia kosztów pozostają w kodzie.
 - Klucz NVIDIA pozostał wyłącznie na serwerze; dodano politykę bezpłatnego modelu z terminem ważności i współdzielony limit żądań, bez tworzenia infrastruktury.
 - Dodano transport walidowanych modelowych tool_calls do istniejącego Runtime dla odczytowego SHA-256. Testy z symulowanym dostawcą nie są dowodem działania NVIDIA.
 - Dodano weryfikowany lokalny eksport wyniku po odświeżeniu oraz jawne ograniczenia PROCESS_MEMORY.

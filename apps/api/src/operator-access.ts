@@ -8,6 +8,9 @@ const TTL = 30 * 60;
 export function protectedRuntime(env: Env = process.env): boolean {
   return env.VERCEL === "1" || env.NODE_ENV === "production";
 }
+export function openPreview(env: Env): boolean {
+  return env.VERCEL === "1" && env.VERCEL_ENV === "preview" && env.OSA_AUTH_MODE?.trim() === "open";
+}
 function config(env: Env) {
   const token = env.OSA_OPERATOR_TOKEN?.trim();
   const organization = env.OSA_OPERATOR_ORGANIZATION_ID?.trim();
@@ -28,7 +31,8 @@ function signature(value: string, key: string): string {
   return createHmac("sha256", key).update("osa.operator.v1:" + value).digest("base64url");
 }
 export function operatorAccessStatus(env: Env) {
-  return {required:protectedRuntime(env), configured:Boolean(config(env)), mode:protectedRuntime(env)?"SCOPED_OPERATOR":"LOCAL_DEVELOPMENT"};
+  const required = protectedRuntime(env) && !openPreview(env);
+  return {required, configured:Boolean(config(env)), mode:required?"SCOPED_OPERATOR":openPreview(env)?"OPEN_PREVIEW":"LOCAL_DEVELOPMENT"};
 }
 export function operatorProject(env: Env): string | undefined { return config(env)?.project; }
 export function operatorSession(request: IncomingMessage, env: Env, now = Date.now()): SessionRecord | undefined {

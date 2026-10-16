@@ -1,6 +1,6 @@
 # Weryfikacja kandydata v0.1.0
 
-**Stan wydania: BLOCKED.** Poniższe wyniki dotyczą lokalnego drzewa kodu i jawnie określonych kontraktów.
+**Stan wydania: BLOCKED.** Poniższe wyniki opisują bazowy audyt kodu `724c078`. Późniejsza korekta usuwa obowiązkowe logowanie panelu w otwartym Preview; nie zmienia historycznych wyników poniżej. Manifest i stare zrzuty granicy operatora dotyczą wcześniejszej polityki. Aktualne wyniki korekty znajdują się w sekcji na końcu dokumentu.
 
 | Kontrola | Wynik | Dowód |
 |---|---|---|
@@ -56,3 +56,21 @@ Publiczny, anonimowy POST do narzędzia SHA-256 na tym Preview otrzymał **401**
 Produkcja pozostaje READY na `512a6e1` / `dpl_dwH79xqLhkcSn5zzwjzmStPwMKmJ`; nie zmieniono jej konfiguracji, ochrony ani deploymentu. Pełna ścieżka NVIDIA i trwałość serverless nadal są BLOCKED.
 
 Zakres Security Gate: przegląd źródeł i regresje API, sesji, kosztów, sekretów oraz uprawnień narzędzi. Nie jest to deklaracja pełnego audytu penetracyjnego ani raportu z formalnego skanera Codex Security.
+
+## Korekta: Preview bez obowiązkowego logowania
+
+Na życzenie operatora usunięto blokadę całego panelu w otwartym Vercel Preview. Warunki: `VERCEL=1`, `VERCEL_ENV=preview`, `OSA_AUTH_MODE=open`. Produkcja i wywołania modelu zachowują osobną autoryzację. Konfiguracja modelu, zerowy koszt i wspólny limit pozostają bramkami. Ustawienia Vercel SSO nie były zmieniane.
+
+- `npm test`: **236 PASS, 0 FAIL, 3 SKIP z 239**; [pełny log](../evidence/release-v0.1.0/preview-open-npm-test.txt).
+- Backend, dashboard i worker host: kompilacja PASS.
+- Rzeczywisty lokalny backend z polityką otwartego Preview: brak ekranu logowania, natywne SHA-256, weryfikacja receipt, Replay do końca, odświeżenie i odmowa zmienionego dowodu — PASS na 320/390/1440. [Wyniki](../evidence/release-v0.1.0/preview-open-results.json), [log](../evidence/release-v0.1.0/preview-open-native-browser.txt).
+- Test API odrzuca anonimowy model, modelowy dispatch klienta i wykonania Web3; wyjątek Preview nie działa dla produkcji ani nieznanego środowiska.
+- Kontrakty floty, przewodnika i chronionego dostępu: [PASS](../evidence/release-v0.1.0/preview-open-ui-contracts.txt); transport modelu i auth w tych kontraktach pozostają symulowane.
+
+| Widok | execution_id | Natywny bundle |
+|---|---|---|
+| android-320 | `exec_c519f688-a55c-4f29-9b35-f5d925a7e4ac` | [dowód](../evidence/release-v0.1.0/preview-open-android-320-bundle.json) |
+| android-390 | `exec_7ffbaff5-c91e-4812-b12c-8d0500a6f53e` | [dowód](../evidence/release-v0.1.0/preview-open-android-390-bundle.json) |
+| desktop | `exec_6927de50-2ced-436b-97c1-13784263530b` | [dowód](../evidence/release-v0.1.0/preview-open-desktop-bundle.json) |
+
+Bieżący commit, CI i odczyt wdrożonego Preview są powiązane w [PR #16](https://github.com/HazEOskA/osa-proof/pull/16). Nie wykonano płatnego testu modelu ani wdrożenia produkcyjnego. Stan wydania pozostaje BLOCKED.

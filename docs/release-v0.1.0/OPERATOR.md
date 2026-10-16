@@ -9,9 +9,13 @@ npm run worker:build
 node scripts/build-dashboard.cjs
 ```
 
-Tryb `OSA_EXECUTION_MODE=fixture` jest jawnie testowy. `OSA_AUTH_MODE=open` jest dopuszczony wyłącznie dla lokalnego środowiska deweloperskiego; w chmurze nie omija sesji operatora. Host workerów bez Docker i prawdziwej izolacji pozostaje GATED.
+Tryb `OSA_EXECUTION_MODE=fixture` jest jawnie testowy. `OSA_AUTH_MODE=open` udostępnia środowisko lokalne i Vercel Preview bez obowiązkowego logowania. Wyjątek wymaga jednocześnie `VERCEL=1` oraz `VERCEL_ENV=preview`; nie obejmuje produkcji ani autoryzacji wywołań NVIDIA. Host workerów bez Docker i prawdziwej izolacji pozostaje GATED.
 
-## Wymagana konfiguracja Preview
+## Preview bez logowania
+
+Panel otwiera się bez kodu operatora. `GET /api/auth/access` ma zwracać `required=false`, `mode=OPEN_PREVIEW`, a `/api/build/status` — HTTP 200 i `auth_mode=open`. Działają natywne wykonania i weryfikacja dowodów. Jest to wspólne środowisko testowe z tożsamością `org_dev_local`, bez izolacji danych różnych odwiedzających. Vercel SSO jest osobnym ustawieniem; ta korekta go nie zmienia.
+
+## Konfiguracja chronionych wywołań modelu
 
 Zmienne należy wpisać w bezpiecznym panelu Vercel, z targetem **Preview** i ograniczeniem do gałęzi `release/osa-proof-v0.1.0`. Nie wklejaj wartości sekretów do czatu, kodu, testów, logów ani promptów. Ten PR nie ustawia zmiennych projektu i nie zmienia produkcji.
 
@@ -32,9 +36,9 @@ Zmienne należy wpisać w bezpiecznym panelu Vercel, z targetem **Preview** i og
 
 Nie twórz automatycznie bazy, nie włączaj płatnego planu i nie kopiuj sekretów między targetami. Wymagany jest test rzeczywistego licznika przez dwie niezależne instancje; sama obecność zmiennych nie dowodzi działania.
 
-Po wdrożeniu Preview `/api/auth/access` powinno raportować `required=true`, `configured=true`, `authenticated=false` bez sesji. Panel prosi o osobny kod operatora; kod nie jest utrwalany w storage, a sesja jest HttpOnly. Należy użyć dokładnie skonfigurowanego originu. Kod inicjalizujący nie działa jako Bearer do API.
+Otwarty panel nie wymaga zmiennych operatora. Są one nadal potrzebne do autoryzowanego testu NVIDIA. Sesję wydaje istniejące `POST /api/auth/operator-login` po sprawdzeniu kodu i dokładnie skonfigurowanego originu. Cookie jest HttpOnly; kod inicjalizujący nie działa jako Bearer do API. Aby przywrócić ekran logowania w Preview, ustaw `OSA_AUTH_MODE=session` wyłącznie dla tej gałęzi i wykonaj redeploy Preview.
 
-`GET /api/nvidia/status` po logowaniu pokazuje `configured`, `available`, `gate` i rodzaj limitu. `available=true` oznacza przejście preflightu konfiguracji, nie udany test dostawcy ani potwierdzenie dostępnego salda.
+`GET /api/nvidia/status` w otwartym Preview bez logowania pokazuje `configured`, `available`, `gate` i rodzaj limitu. `available=true` oznacza przejście preflightu konfiguracji, nie udany test dostawcy ani potwierdzenie dostępnego salda.
 
 ## Test prawdziwego przepływu
 

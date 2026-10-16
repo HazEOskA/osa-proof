@@ -5,7 +5,7 @@ import {createServer,type Server} from "node:http";
 import type {AddressInfo} from "node:net";
 import {ApiState,createApiServer} from "../apps/api/src";
 import {createDevExecution} from "../apps/api/src/server";
-import {operatorSession} from "../apps/api/src/operator-access";
+import {operatorAccessStatus,operatorSession} from "../apps/api/src/operator-access";
 import {handleNvidiaRequest,nvidiaComplete,nvidiaCostGate} from "../apps/api/src/nvidia";
 import {takeModelQuota,MODEL_QUOTA_LUA} from "../apps/api/src/model-quota";
 import {executeUnified,verifyUnifiedBundle} from "../apps/api/src/unified";
@@ -59,6 +59,38 @@ test("chmura: brak konfiguracji operatora zatrzymuje żądanie mimo OSA_AUTH_MOD
   const server=createApiServer(runtime.registry,new ApiState(undefined,undefined,undefined,"open",undefined,undefined,undefined,{VERCEL:"1"}));
   const base=await listen(server);
   try{const r=await fetch(base+"/nvidia/status");assert.equal(r.status,503);assert.equal((await r.json()).code,"OPERATOR_ACCESS_NOT_CONFIGURED");}finally{await close(server);}
+});
+test("Preview open: panel i natywny dowód działają bez operatora, model nadal wymaga autoryzacji",async()=>{
+  const env={VERCEL:"1",VERCEL_ENV:"preview",OSA_AUTH_MODE:"open"};
+  const runtime=createDevExecution({OSA_EXECUTION_MODE:"fixture"});
+  const server=createApiServer(runtime.registry,new ApiState(undefined,undefined,undefined,"open",undefined,undefined,undefined,env),runtime.description);
+  const base=await listen(server);
+  try{
+    const access=await (await fetch(base+"/auth/access")).json();
+    assert.deepEqual(access,{required:false,configured:false,mode:"OPEN_PREVIEW",authenticated:false,scope:null});
+    const status=await fetch(base+"/build/status");assert.equal(status.status,200);assert.equal((await status.json()).auth_mode,"open");
+    assert.equal((await fetch(base+"/nvidia/status")).status,200);
+    const json={"content-type":"application/json"};
+    const result=await fetch(base+"/unified/execute",{method:"POST",headers:json,body:JSON.stringify({message:"Oblicz SHA-256 tekstu: OSA Proof",execution_id:"exec_"+randomUUID()})});
+    assert.equal(result.status,200);const bundle=await result.json();assert.equal(bundle.status,"EXECUTED");assert.equal(verifyUnifiedBundle(bundle).ok,true);
+    const verified=await fetch(base+"/unified/verify",{method:"POST",headers:json,body:JSON.stringify(bundle)});
+    assert.equal(verified.status,200);assert.equal((await verified.json()).ok,true);
+    for(const path of ["/nvidia/chat","/nvidia/fleet-chat"]){
+      const denied=await fetch(base+path,{method:"POST",headers:json,body:JSON.stringify({prompt:"test"})});
+      assert.equal(denied.status,401);assert.equal((await denied.json()).code,"MODEL_OPERATOR_SESSION_REQUIRED");
+    }
+    assert.equal((await fetch(base+"/unified/execute",{method:"POST",headers:json,body:JSON.stringify({tool:"osa.crypto.sha256.v1"})})).status,403);
+    assert.equal((await fetch(base+"/web3/execute",{method:"POST",headers:json,body:"{}"})).status,403);
+  }finally{await close(server);}
+});
+test("wyjątek bez logowania dotyczy wyłącznie jawnego Vercel Preview open",()=>{
+  for(const env of [
+    {VERCEL:"1",VERCEL_ENV:"production",OSA_AUTH_MODE:"open"},
+    {VERCEL:"1",OSA_AUTH_MODE:"open"},
+    {VERCEL:"1",VERCEL_ENV:"development",OSA_AUTH_MODE:"open"},
+    {NODE_ENV:"production",VERCEL_ENV:"preview",OSA_AUTH_MODE:"open"},
+    {VERCEL:"1",VERCEL_ENV:"preview",OSA_AUTH_MODE:"session"}
+  ])assert.equal(operatorAccessStatus(env).required,true);
 });
 test("koszty: brak polityki, zgody, modelu lub świeżej weryfikacji blokuje wywołanie",async()=>{
   const env={VERCEL:"1",NVIDIA_API_KEY:randomBytes(32).toString("hex"),NVIDIA_MODEL:"nvidia/test-model"};

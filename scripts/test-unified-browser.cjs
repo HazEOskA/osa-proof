@@ -12,6 +12,8 @@ async function main(){
   const log=fs.openSync(path.join(out,"local-runtime.log"),"w");
   children.push(spawn(process.execPath,["scripts/unified-e2e-server.cjs"],{cwd:root,stdio:["ignore",log,log],env:{...process.env,OSA_E2E_API_PORT:"3199",OSA_EXECUTION_MODE:"fixture",NVIDIA_API_KEY:"",OPENROUTER_API_KEY:""}}));
   await ready(base+"/api/build/status");
+  const access=await (await fetch(base+"/api/auth/access")).json();
+  assert.equal(access.required,false);assert.equal(access.mode,"OPEN_PREVIEW");assert.equal(access.authenticated,false);
   const browser=await chromium.launch({executablePath:process.env.OSA_CHROMIUM_EXECUTABLE||undefined,headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
   const report=[];
   try {
@@ -23,6 +25,7 @@ async function main(){
       assert.equal(loaded?.status(),200);
       const home=page.locator('section[aria-label="Uruchamianie"]');
       await home.waitFor({state:"visible"});
+      assert.equal(await page.getByRole("heading",{name:"Dostęp operatora"}).count(),0);
       assert.equal(await page.getByTestId("osa-native-chat").count(),0,"Framework Home must load first");
       await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
       await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
@@ -64,7 +67,7 @@ async function main(){
       await page.evaluate(()=>{const key="osa.execution.bundle.v1",b=JSON.parse(localStorage.getItem(key));b.run.evidence[0].data.status="TAMPERED";localStorage.setItem(key,JSON.stringify(b));});
       await page.reload({waitUntil:"domcontentloaded"});
       await page.getByText("Zapisany lokalnie dowód nie przeszedł weryfikacji lub API jest niedostępne.",{exact:false}).first().waitFor({state:"visible"});
-      const row={name,android_emulation:width<768,result:"PASS",refresh_restored:true,tampered_restore_rejected:true,cloud_persistence:false,execution_id:execution.match(/exec_[a-f0-9-]{36}/)[0],crypto_sha256:expectedHash,real_runtime:true,verified_receipt:true,replay_ui:true,replay_to_final_event:true,provider_model_tool_call:"NOT_TESTED",paid_calls:0};
+      const row={name,android_emulation:width<768,result:"PASS",access_mode:access.mode,login_required:false,refresh_restored:true,tampered_restore_rejected:true,cloud_persistence:false,execution_id:execution.match(/exec_[a-f0-9-]{36}/)[0],crypto_sha256:expectedHash,real_runtime:true,verified_receipt:true,replay_ui:true,replay_to_final_event:true,provider_model_tool_call:"NOT_TESTED",paid_calls:0};
       console.log(JSON.stringify(row));report.push(row);await page.close();
     }
   }finally{await browser.close();}

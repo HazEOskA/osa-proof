@@ -18,7 +18,7 @@ PR-y źródłowe pozostają bez zmian. Zamknięcie ich jako zastąpionych należ
 
 ## Naprawy przygotowane w kodzie
 
-1. Wszystkie trasy API w Vercel lub `NODE_ENV=production` wymagają sesji operatora. `open` oraz deweloperskie logowanie nie obchodzą tej ochrony. Brak konfiguracji kończy się 503; anonimowe żądanie przy skonfigurowanym dostępie — 401. Prywatne odpowiedzi mają `Cache-Control: no-store`.
+1. Na życzenie operatora panel i natywne API Vercel Preview działają bez obowiązkowego logowania: wymagane są `VERCEL=1`, `VERCEL_ENV=preview` i `OSA_AUTH_MODE=open`. `/api/auth/access` raportuje wtedy `required=false`, `mode=OPEN_PREVIEW`. Poza tym dokładnym zakresem chmurowe API nadal wymaga sesji operatora; brak konfiguracji kończy się 503, brak sesji — 401. Wywołania NVIDIA w otwartym Preview nadal wymagają autoryzacji. Odpowiedzi mają `Cache-Control: no-store`.
 2. Sesja operatora jest podpisana, ograniczona do jednego originu, organizacji i projektu; działa między instancjami bez `SessionStore`. Cookie: `__Host-osa-operator`, HttpOnly, Secure, SameSite=Strict, 30 minut. Żądania zmieniające stan wymagają zgodnego `Origin`. To dostęp jednego operatora, **nie pełny wieloużytkownikowy IAM/OIDC/RBAC**. Rotacja klucza unieważnia wszystkie sesje; wylogowanie usuwa cookie, nie cofa kopii wcześniej skradzionego cookie przed jego wygaśnięciem.
 3. Klucze NVIDIA są konfigurowane wyłącznie na serwerze. HTTP odrzuca `apiKey` i zmianę modelu poza konfigurację. Formularz klucza dostawcy usunięto z przeglądarki.
 4. W chmurze obowiązuje `OSA_ZERO_COST_ONLY=true`, jawne potwierdzenie bezpłatnego dostępu do konkretnego modelu z ważnością maksymalnie 24 godziny i współdzielony licznik. Brak któregokolwiek warunku blokuje żądanie; brak automatycznego płatnego zamiennika i retry.
@@ -30,7 +30,7 @@ Zmiany te nie zabezpieczają jeszcze działającej produkcji: do produkcji nie w
 
 ## Niespełnione warunki obowiązkowe
 
-Pierwszy warunek dla nowego Preview: skonfigurowany dostęp operatora na gałęzi wydawniczej. Następnie: potwierdzona bezpłatność konta/modelu NVIDIA i działający, współdzielony limit żądań. Samo `configured=true` dla klucza nie spełnia tych warunków.
+Wejście do panelu Preview nie wymaga konfiguracji operatora. Pierwszy bloker rzeczywistego przepływu modelowego: potwierdzona bezpłatność konta/modelu NVIDIA i działający, współdzielony limit żądań. Wywołanie modelu dodatkowo wymaga autoryzacji operatora; samo `configured=true` dla klucza nie spełnia tych warunków.
 
 Po ich spełnieniu trzeba wykonać rzeczywisty test NVIDIA → modelowe `tool_calls` → Runtime → Evidence → ProofReceipt → niezależna weryfikacja → Replay na Preview w 320/390/1440 px i test odmowy dostępu. Nie ma zweryfikowanego cloud `execution_id` z tej sesji. Symulowanego dostawcy nie wolno zaliczyć do tej bramki.
 
@@ -46,4 +46,4 @@ Historia rozmów, szkic Buildera i lokalny bundle w chronionym środowisku mają
 
 ## Odbiór PR i nowego Preview
 
-[PR #16](https://github.com/HazEOskA/osa-proof/pull/16), kod `724c078`, ma trzy kontrole CI PASS. Nowe Preview jest READY, ale jawnie zamknięte: auth/access raportuje brak konfiguracji operatora, a prywatne API odmawia 503 OPERATOR_ACCESS_NOT_CONFIGURED. Anonimowy test narzędzia otrzymał 401. Szczegóły i granice dowodów: [WERYFIKACJA.md](WERYFIKACJA.md). Nie zaliczono tej odmowy jako pełnego przepływu modelowego.
+[PR #16](https://github.com/HazEOskA/osa-proof/pull/16) zawiera także późniejszą korektę dostępu: otwarte Preview nie zatrzymuje już całego panelu przy braku konfiguracji operatora. Wyniki kodu `724c078`, w tym wcześniejsze odmowy 503/401, pozostają historycznymi dowodami poprzedniej polityki. Aktualna kontrola i granice dowodów: [WERYFIKACJA.md](WERYFIKACJA.md).

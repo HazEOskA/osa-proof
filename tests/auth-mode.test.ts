@@ -58,7 +58,7 @@ test("open mode: no login needed, identity is the explicit OPEN MODE identity, s
   });
 });
 
-test("Vercel defaults to session; cloud boundary remains independent of open mode", () => {
+test("Vercel Preview opens without login; production keeps its operator boundary", () => {
   const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as { env: Record<string, string> };
-  assert.equal(vercel.env.OSA_AUTH_MODE, "session");
+  assert.equal(vercel.env.OSA_AUTH_MODE, "open");
 });
