@@ -1,4 +1,4 @@
-name: Jeverson Mobile Container Proof
+name: OSA Native Chat Mobile Regression
 on:
   push:
     branches: [feature/osa-fleet-chat-slice1-proof]
@@ -20,10 +20,7 @@ jobs:
         run: |
           npm ci
           npm install --no-save --no-audit --no-fund playwright@1.63.0
-      - name: Build isolated OSA Proof with inert Jeverson URL
-        env:
-          VITE_OSA_JEVERSON_URL: https://jeverson.ui.test
-          VITE_OSA_JEVERSON_THEME_PREVIEW_URL: https://black.ui.test
+      - name: Build OSA Proof native chat
         run: node scripts/build-dashboard.cjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -36,15 +33,13 @@ jobs:
           done
           cat /tmp/osa-mobile.log
           exit 1
-      - name: Browser test LIVE / BLACK iframe on 320px, 390px and desktop + real protected-alias check
-        env:
-          OSA_REMOTE_BLACK_URL: https://aether-git-feature-jeverson-verc-268688-osabarca-1680s-projects.vercel.app
+      - name: Verify native chat sessions, agent selection, no iframe, mobile and desktop
         run: node scripts/test-jeverson-mobile-layout.mjs
       - name: Upload test screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jeverson-osa-proof-mobile-layout
-          path: artifacts/jeverson-container/
+          name: osa-native-chat-mobile-regression
+          path: artifacts/osa-native-chat/
           if-no-files-found: ignore
           retention-days: 14
