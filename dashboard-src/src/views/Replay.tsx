@@ -41,7 +41,7 @@ export default function Replay() {
   const diverge = other ? run.events.findIndex((e, i) => e.type !== other.events[i]?.type) + 1 : 0;
 
   return (
-    <div className="mx-auto flex max-w-[1100px] flex-col gap-5 px-4 py-6 md:px-8">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1100px] flex-col gap-5 overflow-x-hidden px-4 py-6 md:px-8">
       <RunPicker />
       <section className="glass rounded-xl p-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -56,15 +56,15 @@ export default function Replay() {
         <p className="mono text-[10.5px] text-dim">pozycja = kolejność zdarzeń. Brak znaczników czasu, więc odtwarzamy kolejność, nie czas trwania. Stan pochodzi wyłącznie z zapisanych zdarzeń.</p>
       </section>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        <div>
-          <Section title="INSPECT STATE"><Kv k="last event">{st.last ? `#${st.last.sequence} ${st.last.type}` : "— (before RUN_CREATED)"}</Kv><Kv k="evidence recorded">{st.evidence}</Kv><Kv k="verdict"><Status v={st.verdict === "PENDING" ? "UNKNOWN" : st.verdict} label={st.verdict} /></Kv><Kv k="memory changes"><Unknown /></Kv></Section>
-          <Section title="AGENTS">{Object.entries(st.agents).map(([a, s]) => <Kv key={a} k={a}><span className={aTone(s)}>{s}</span></Kv>)}</Section>
+      <div className="grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2">
+        <div className="min-w-0">
+          <Section title="STAN WYKONANIA"><Kv k="ostatnie zdarzenie">{st.last ? `#${st.last.sequence} ${st.last.type}` : "— (before RUN_CREATED)"}</Kv><Kv k="zapisane dowody">{st.evidence}</Kv><Kv k="wynik weryfikacji"><Status v={st.verdict === "PENDING" ? "UNKNOWN" : st.verdict} label={st.verdict} /></Kv><Kv k="zmiany pamięci"><Unknown /></Kv></Section>
+          <Section title="AGENCI">{Object.entries(st.agents).map(([a, s]) => <Kv key={a} k={a}><span className={aTone(s)}>{s}</span></Kv>)}</Section>
         </div>
-        <div>
-          <Section title="EVENTS UP TO NOW">
+        <div className="min-w-0">
+          <Section title="DOTYCHCZASOWE ZDARZENIA">
             <ol className="max-h-[320px] overflow-y-auto">{run.events.map((e) => (
-              <li key={e.event_id} className={`mono flex gap-3 py-1 text-[12px] ${e.sequence <= step ? "" : "opacity-25"}`}><span className="w-6 text-dim">#{e.sequence}</span><span style={{ color: txt(e.type) }}>{e.type}</span>{e.agent_id && <span className="text-dim">{e.agent_id}</span>}</li>))}</ol>
+              <li key={e.event_id} className={`mono flex min-w-0 flex-wrap gap-3 break-all py-1 text-[12px] ${e.sequence <= step ? "" : "opacity-25"}`}><span className="w-6 text-dim">#{e.sequence}</span><span style={{ color: txt(e.type) }}>{e.type}</span>{e.agent_id && <span className="text-dim">{e.agent_id}</span>}</li>))}</ol>
           </Section>
         </div>
       </div>
