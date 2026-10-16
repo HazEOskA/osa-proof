@@ -45,15 +45,15 @@ export default function Replay() {
       <RunPicker />
       <section className="glass rounded-xl p-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <button onClick={() => { if (step >= n) setStep(0); setPlay((p) => !p); }} className="focus-ring tap mono rounded-md border border-cyan/50 bg-cyan/10 px-4 text-[12px] text-cyan">{play ? "PAUSE" : step >= n ? "REPLAY" : "REPLAY ▸"}</button>
-          <button onClick={() => { setStep(0); setPlay(false); }} className="focus-ring tap mono rounded-md border border-line px-3 text-[12px] text-dim hover:text-fg">NOW ⟲ 0</button>
-          <button onClick={() => setCmp((c) => !c)} aria-pressed={cmp} className={`focus-ring tap mono rounded-md border px-3 text-[12px] ${cmp ? "border-cyan/50 text-cyan" : "border-line text-dim hover:text-fg"}`}>COMPARE</button>
-          <button disabled title="osa-proof has no fork endpoint" className="tap mono cursor-not-allowed rounded-md border border-line/40 px-3 text-[12px] text-dim/50">FORK</button>
-          <span className="mono ml-auto text-[11px] text-dim">step {step} / {n}</span>
+          <button onClick={() => { if (step >= n) setStep(0); setPlay((p) => !p); }} className="focus-ring tap mono rounded-md border border-cyan/50 bg-cyan/10 px-4 text-[12px] text-cyan">{play ? "PAUZA" : step >= n ? "ODTWÓRZ" : "ODTWÓRZ ▸"}</button>
+          <button onClick={() => { setStep(0); setPlay(false); }} className="focus-ring tap mono rounded-md border border-line px-3 text-[12px] text-dim hover:text-fg">OD POCZĄTKU ⟲ 0</button>
+          <button onClick={() => setCmp((c) => !c)} aria-pressed={cmp} className={`focus-ring tap mono rounded-md border px-3 text-[12px] ${cmp ? "border-cyan/50 text-cyan" : "border-line text-dim hover:text-fg"}`}>PORÓWNAJ</button>
+          <button disabled title="OSA Proof nie ma endpointu do odgałęziania" className="tap mono cursor-not-allowed rounded-md border border-line/40 px-3 text-[12px] text-dim/50">ODGAŁĘŹ</button>
+          <span className="mono ml-auto text-[11px] text-dim">krok {step} / {n}</span>
         </div>
-        <input type="range" min={0} max={n} value={step} onChange={(e) => { setPlay(false); setStep(Number(e.target.value)); }} aria-label="Replay position" className="tap h-11 w-full" style={{ accentColor: tok("brand") }} />
+        <input type="range" min={0} max={n} value={step} onChange={(e) => { setPlay(false); setStep(Number(e.target.value)); }} aria-label="Pozycja odtwarzania" className="tap h-11 w-full" style={{ accentColor: tok("brand") }} />
         <div className="relative mt-1 h-6" aria-hidden>{run.events.map((e) => <span key={e.event_id} className="absolute top-0 h-2 w-2 -translate-x-1/2 rounded-full" style={{ left: `${(e.sequence / n) * 100}%`, background: e.sequence <= step ? tone(e.type) : tok("line2") }} />)}</div>
-        <p className="mono text-[10.5px] text-dim">position = event sequence. Events carry no timestamps, so this replays order, not duration. State is derived only from recorded events.</p>
+        <p className="mono text-[10.5px] text-dim">pozycja = kolejność zdarzeń. Brak znaczników czasu, więc odtwarzamy kolejność, nie czas trwania. Stan pochodzi wyłącznie z zapisanych zdarzeń.</p>
       </section>
 
       <div className="grid gap-8 md:grid-cols-2">
@@ -70,17 +70,17 @@ export default function Replay() {
       </div>
 
       {cmp && (
-        <section aria-label="Compare runs">
-          <div className="label mb-2">COMPARE</div>
-          {!other ? <Unknown why="only one run captured" /> : (
+        <section aria-label="Porównaj wykonania">
+          <div className="label mb-2">PORÓWNAJ</div>
+          {!other ? <Unknown why="zarejestrowano tylko jedno wykonanie" /> : (
             <div className="grid gap-4 md:grid-cols-2">
               {[run, other].map((r) => (
                 <div key={r.run_id} className="rounded-lg border border-line"><div className="flex items-center justify-between border-b border-line bg-panel px-3 py-2"><span className="mono text-[12px]">{r.proof.mission_id}</span><Status v={r.verdict} /></div>
                   <ol>{r.events.map((e, i) => (<li key={e.event_id} className={`mono flex gap-3 px-3 py-1 text-[11.5px] ${i + 1 >= diverge && diverge > 0 && e.type !== (r === run ? other : run).events[i]?.type ? "bg-bad/10" : ""}`}><span className="w-6 text-dim">#{e.sequence}</span><span style={{ color: txt(e.type) }}>{e.type}</span></li>))}</ol></div>))}
             </div>
           )}
-          {other && diverge > 0 && <p className="mono mt-2 text-[11px] text-dim">first divergence at step #{diverge}: {run.events[diverge - 1]?.type ?? "—"} vs {other.events[diverge - 1]?.type ?? "—"}</p>}
-          <button onClick={() => go("proofs")} className="focus-ring tap mono mt-2 text-[12px] text-cyan">Inspect proofs →</button>
+          {other && diverge > 0 && <p className="mono mt-2 text-[11px] text-dim">pierwsza różnica przy kroku #{diverge}: {run.events[diverge - 1]?.type ?? "—"} wobec {other.events[diverge - 1]?.type ?? "—"}</p>}
+          <button onClick={() => go("proofs")} className="focus-ring tap mono mt-2 text-[12px] text-cyan">Zobacz dowody →</button>
         </section>
       )}
     </div>
