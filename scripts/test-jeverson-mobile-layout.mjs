@@ -69,6 +69,27 @@ try {
     assert.ok(overflow<=1,name+" horizontal overflow "+overflow);
     assert.deepEqual(pageErrors,[],"No browser uncaught exceptions");
     await page.screenshot({path:out+"/"+name+".png",fullPage:true});
+    // Contract simulation only; the real NVIDIA provider is never mocked in application code.
+    let providerRequests=0;
+    await page.route("**/api/nvidia/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({provider:"NVIDIA",configured:true,model:"nvidia/test-model"})}));
+    await page.route("**/api/nvidia/fleet-chat",route=>{
+      const body=route.request().postDataJSON();
+      assert.equal(body.agent,"leader","Chosen AI persona travels to backend");
+      assert.equal(body.prompt,"Cześć OSA","User text travels to provider route");
+      assert.ok(Array.isArray(body.history),"History is sent as structured messages");
+      providerRequests++;
+      return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({text:"Witaj, jestem asystentem OSA.",model:"nvidia/test-model",provider_response_id:"synthetic-contract-id",request_id:"synthetic-contract-request",latency_ms:1,status:"PROVIDER_RESPONSE"})});
+    });
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+    await page.getByText("NVIDIA · POŁĄCZONO").waitFor({state:"visible",timeout:15000});
+    await page.getByTestId("osa-composer").fill("Cześć OSA");
+    await page.getByTestId("osa-send").click();
+    await page.getByText("Witaj, jestem asystentem OSA.").waitFor({state:"visible"});
+    assert.equal(providerRequests,1,"AI transport contract called exactly once");
+    assert.match(await page.getByTestId("osa-message").last().innerText(),/ODPOWIEDŹ MODELU AI/);
+    console.log(JSON.stringify({name,ai_transport_contract:"PASS",real_provider:"NOT_TESTED",intercepted_responses:providerRequests}));
+
     console.log(JSON.stringify({name,result:"PASS",sessions:2,agent_selector:true,model_selector:true,blocked_model_requests:network.length,verified_proof:"NOT_TESTED",overflow,page_errors:pageErrors.length}));
     await page.close();
   }
