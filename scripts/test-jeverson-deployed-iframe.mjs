@@ -13,15 +13,15 @@ try {
     const errors=[];page.on("pageerror",error=>errors.push(error.message));
     const response=await page.goto(target,{waitUntil:"domcontentloaded",timeout:45000});
     assert.equal(response?.status(),200,"OSA native preview HTTP 200");
-    const home=page.locator('section[aria-label="Launch"]');await home.waitFor({state:"visible",timeout:20000});
-    await home.getByRole("button",{name:"Agent Chat Fleet",exact:true}).click();
+    const home=page.locator('section[aria-label="Uruchamianie"]');await home.waitFor({state:"visible",timeout:20000});
+    await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     await page.getByTestId("osa-native-chat").waitFor({state:"visible",timeout:20000});
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No legacy iframe");
     if(width<768)await page.getByRole("button",{name:"Otwórz historię"}).click();
     await page.getByTestId("osa-new-chat").click();
     await page.getByTestId("osa-composer").fill("Kontrola bezpiecznej blokady modelu");
     await page.getByTestId("osa-send").click();
-    assert.match(await page.getByTestId("osa-chat-notice").innerText(),/MODEL GATED/);
+    assert.match(await page.getByTestId("osa-chat-notice").innerText(),/MODEL NIEDOSTĘPNY/);
     assert.equal(await page.getByTestId("osa-message").count(),1,"No forged assistant answer");
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
     assert.ok(overflow<=1,"No horizontal overflow: "+name);
