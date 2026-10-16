@@ -15,7 +15,7 @@ export default function App() {
   const [palette, setPalette] = useState(false);
   const themeSettings = useThemes();
   useEffect(() => {
-    if (!runId && data.runs[0]?.run_id) setRunId(data.runs[0].run_id);
+    if ((!runId || !data.runs.some(r=>r.run_id===runId)) && data.runs[0]?.run_id) setRunId(data.runs[0].run_id);
   }, [data.runs, runId]);
 
   const go = useCallback((v: ViewId, o?: { runId?: string; focus?: string }) => {

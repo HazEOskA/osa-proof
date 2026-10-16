@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Section, Status, Kv, Unknown } from "../ui/primitives";
+import { Section, Status, Kv, Unknown, statusText } from "../ui/primitives";
 import RunPicker from "../ui/RunPicker";
 import { useOsa } from "../ctx";
 import { useRun } from "../lib/hooks";
@@ -21,6 +21,7 @@ function stateAt(run: Run, step: number) {
   }
   return { agents, evidence, verdict, last: evs[evs.length - 1] };
 }
+const aLabel:Record<string,string>={IDLE:"OCZEKUJE",EXECUTING:"WYKONUJE",COMPLETE:"UKOŃCZONO",FAILED:"BŁĄD"};
 const aTone = (s: string) => s === "EXECUTING" ? "text-fg" : s === "COMPLETE" ? "text-cyan" : s === "FAILED" ? "text-bad" : "text-dim";
 
 export default function Replay() {
@@ -58,8 +59,8 @@ export default function Replay() {
 
       <div className="grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2">
         <div className="min-w-0">
-          <Section title="STAN WYKONANIA"><Kv k="ostatnie zdarzenie">{st.last ? `#${st.last.sequence} ${st.last.type}` : "— (before RUN_CREATED)"}</Kv><Kv k="zapisane dowody">{st.evidence}</Kv><Kv k="wynik weryfikacji"><Status v={st.verdict === "PENDING" ? "UNKNOWN" : st.verdict} label={st.verdict} /></Kv><Kv k="zmiany pamięci"><Unknown /></Kv></Section>
-          <Section title="AGENCI">{Object.entries(st.agents).map(([a, s]) => <Kv key={a} k={a}><span className={aTone(s)}>{s}</span></Kv>)}</Section>
+          <Section title="STAN WYKONANIA"><Kv k="ostatnie zdarzenie">{st.last ? `#${st.last.sequence} ${st.last.type}` : "— (przed RUN_CREATED)"}</Kv><Kv k="zapisane dowody">{st.evidence}</Kv><Kv k="wynik weryfikacji"><Status v={st.verdict === "PENDING" ? "UNKNOWN" : st.verdict} label={st.verdict==="PENDING"?"OCZEKUJE":statusText(st.verdict)} /></Kv><Kv k="zmiany pamięci"><Unknown /></Kv></Section>
+          <Section title="AGENCI">{Object.entries(st.agents).map(([a, s]) => <Kv key={a} k={a}><span className={aTone(s)}>{aLabel[s]||s}</span></Kv>)}</Section>
         </div>
         <div className="min-w-0">
           <Section title="DOTYCHCZASOWE ZDARZENIA">

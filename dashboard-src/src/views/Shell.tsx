@@ -2,6 +2,7 @@ import NvidiaModels from "./NvidiaModels";
 import { NVIDIA_RESOURCES } from "../lib/nvidia";
 import DeliveryLab from "./DeliveryLab";
 import JeversonChat from "./JeversonChat";
+import OsaHelpDock from "./OsaHelpDock";
 import Web3 from "./Web3";
 import { useWeb3Data, type Web3Page } from "../data/web3";
 import { useState } from "react";
@@ -73,7 +74,7 @@ function NavList({ compact, onPick }: { compact: boolean; onPick?: () => void })
         <a href="/docs" title={compact ? "Docs" : undefined}
           className={`osa-nav-item focus-ring flex w-full items-center gap-3 rounded-md text-left text-[13.5px] text-fg/85 hover:bg-raise/60 hover:text-fg ${compact ? "tap justify-center px-0" : "h-10 px-2.5"}`}>
           <OsaIcon src={ICON.knowledge} size={compact ? 28 : 24} className="osa-nav-icon" />
-          {!compact && <span className="flex-1 truncate">Docs</span>}
+          {!compact && <span className="flex-1 truncate">Dokumentacja</span>}
         </a>
       </div>
     </nav>
@@ -89,7 +90,7 @@ function LiveRail() {
   return (
     <aside className="hidden w-[210px] shrink-0 flex-col border-l border-line bg-ink xl:flex" aria-label="Live system rail">
       <div className="flex min-h-[72px] min-w-0 flex-col items-start justify-center gap-2 overflow-hidden border-b border-line px-3 py-2"><span className="label">Zdarzenia systemowe</span><Status v={run.verdict} /></div>
-      <div className="mono border-b border-line px-3 py-1.5 text-[10px] text-dim">{run.proof.mission_id} · order by sequence (events carry no timestamps)</div>
+      <div className="mono border-b border-line px-3 py-1.5 text-[10px] text-dim">{run.proof.mission_id} · kolejność zdarzeń (bez znaczników czasu)</div>
       <ol className="flex-1 overflow-y-auto py-1">
         {run.events.map((e) => (
           <li key={e.event_id}>
@@ -106,11 +107,11 @@ function LiveRail() {
 }
 
 export default function Shell({ palette, closePalette }: { palette: boolean; closePalette: () => void }) {
-  const { view, source, openPalette } = useOsa();
+  const { view, source, openPalette, actionError } = useOsa();
   const web3 = useWeb3Data();
   const [drawer, setDrawer] = useState(false);
   // Optional Agent Chat Fleet module retains its immersive layout; Home stays the framework entry point.
-  if (view === "jeverson-chat") return <div className="h-[100dvh] min-h-0 min-w-0 overflow-hidden bg-void"><JeversonChat /></div>;
+  if (view === "jeverson-chat") return <><div className="h-[100dvh] min-h-0 min-w-0 overflow-hidden bg-void"><JeversonChat /></div><OsaHelpDock /></>;
   let body;
   const v: ViewId = view;
   if (v === "nvidia:models") body = <NvidiaModels />;
@@ -127,7 +128,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   else if (v.startsWith("ops:") && (OPS_VIEWS[v.slice(4)] || CONTROL_VIEWS[v.slice(4)])) { const View = OPS_VIEWS[v.slice(4)] ?? CONTROL_VIEWS[v.slice(4)]; body = <View />; }
   else {
     const name = v.replace("pending:", "");
-    body = <Empty title={`${name.toUpperCase()} · W PRZYGOTOWANIU`} body={`${name} nie ma jeszcze gotowego widoku ani danych z API OSA Proof. Nie pokazujemy fikcyjnych wyników.`} steps={["Świat wiedzy", "Misje", "Śledzenie", "Dowody", "Odtwarzanie"].map((s) => `${s} is live`)} />;
+    body = <Empty title={`${name.toUpperCase()} · W PRZYGOTOWANIU`} body={`${name} nie ma jeszcze gotowego widoku ani danych z API OSA Proof. Nie pokazujemy fikcyjnych wyników.`} steps={["Świat wiedzy", "Misje", "Śledzenie", "Dowody", "Odtwarzanie"].map((s) => `${s} · przejdź do modułu`)} />;
   }
   const title = v.startsWith("web3:") ? `Web3 · ${v.slice(5)}` : v.startsWith("build:") ? BUILD_LABELS[v.slice(6) as BuildPage] : v.startsWith("intel:") ? `Intelligence · ${v.slice(6)}` : v.startsWith("ops:") ? v.slice(4) : TITLES[v] ?? v.replace("pending:", "");
   return (
@@ -149,8 +150,9 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
             <Icon d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.5-4.5" /><span className="hidden flex-1 truncate sm:inline">Szukaj agentów, misji i dowodów…</span><span className="flex-1 sm:hidden">Szukaj</span><kbd className="mono hidden rounded border border-line px-1.5 text-[10px] sm:inline">Ctrl K</kbd>
           </button>
           <div className="hidden md:block"><ThemeSwitch /></div>
-          <div className="hidden text-right lg:block">{v.startsWith("web3:") ? <><span className="mono text-[10px] text-dim">{web3.status ? "WEB3 · READ ONLY" : "WEB3 · UNKNOWN"}</span><div className="mono text-[10px] text-dim">OSA API · chain assurance: RPC_VALIDATED</div></> : <><Status v={source.kind} /><div className="mono max-w-[240px] truncate text-[10px] text-dim">{source.detail}</div></>}</div>
+          <div className="hidden text-right lg:block">{v.startsWith("web3:") ? <><span className="mono text-[10px] text-dim">{web3.status ? "WEB3 · TYLKO ODCZYT" : "WEB3 · NIEZWERYFIKOWANO"}</span><div className="mono text-[10px] text-dim">OSA API · wynik RPC wymaga dowodów</div></> : <><Status v={source.kind} /><div className="mono max-w-[240px] truncate text-[10px] text-dim">{source.detail}</div></>}</div>
         </header>
+        {actionError&&<p role="alert" className="shrink-0 break-words border-b border-warn/30 bg-warn/10 px-4 py-2 text-xs text-warn">{actionError}</p>}
         <div className="flex min-h-0 flex-1">
           <main className="min-w-0 flex-1 overflow-y-auto" key={v}><div className="reveal h-full">{body}</div></main>
           {!v.startsWith("nvidia:") && !v.startsWith("build:") && !v.startsWith("web3:") && <LiveRail />}
@@ -168,6 +170,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
         </div>
       )}
       {palette && <Palette onClose={closePalette} />}
+      <OsaHelpDock />
     </div>
   );
 }

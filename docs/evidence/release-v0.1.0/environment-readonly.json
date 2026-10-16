@@ -1,0 +1,54 @@
+{
+  "observed_on_utc": "2026-10-16",
+  "source": "Vercel MCP read + public GET; no model invocation",
+  "production": {
+    "commit": "512a6e17048db549f8b515396b2d7710b40af781",
+    "deployment_id": "dpl_dwH79xqLhkcSn5zzwjzmStPwMKmJ",
+    "state": "READY",
+    "alias": "https://osa-proof-three.vercel.app",
+    "public_gets": {
+      "/api/nvidia/status": {
+        "http": 200,
+        "configured": true,
+        "provider": "NVIDIA",
+        "model": "nvidia/nemotron-3-super-120b-a12b"
+      },
+      "/api/build/status": {
+        "http": 200,
+        "auth_mode": "open",
+        "mode": "fixture",
+        "persistence": "PROCESS_MEMORY",
+        "mission_persistence": "PROCESS_MEMORY",
+        "brain_memory": "NONE"
+      },
+      "/api/permissions": {
+        "http": 200,
+        "auth_mode": "open"
+      }
+    },
+    "sso_protection": "preview only",
+    "mutated": false
+  },
+  "env_metadata": {
+    "NVIDIA_API_KEY": {
+      "type": "sensitive",
+      "targets": [
+        "production",
+        "preview"
+      ],
+      "value": "NOT_READ"
+    },
+    "OSA_ZERO_COST_ONLY": {
+      "type": "plain",
+      "targets": [
+        "production"
+      ],
+      "value": "true"
+    },
+    "OSA_OPERATOR_TOKEN": "ABSENT",
+    "OSA_QUOTA_REDIS_REST_URL": "ABSENT",
+    "OSA_NVIDIA_FREE_TIER_ACK": "ABSENT",
+    "OSA_NEUROSA_BASE_URL": "ABSENT",
+    "OSA_WORKER_BASE_URL": "ABSENT"
+  }
+}

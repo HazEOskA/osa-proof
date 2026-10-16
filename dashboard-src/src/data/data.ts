@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import raw from "./snapshot.json";
+import { verifyRun } from "../lib/verify";
+import { scopedStorageKey, useAccessScope } from "../AccessBoundary";
 import type { Snapshot, Source, Run, TeamGraph, LayerProfile, Mission } from "./types";
 
 export const snapshot = raw as unknown as Snapshot;
@@ -52,6 +54,7 @@ export function useOsaData(): {
   enterLayer: (layerId: string) => Promise<LayerEnterResult>;
   inspectExecution: (team: TeamGraph, mission: Mission, run: Run) => void;
 } {
+  const storageKey=scopedStorageKey("osa.execution.bundle.v1",useAccessScope());
   const liveExecution = useRef(false);
   const [data, setData] = useState<Snapshot>(snapshot);
   const [source, setSource] = useState<Source>({ kind: "SNAPSHOT", detail: `captured ${snapshot.captured_at.slice(0, 16).replace("T", " ")}Z · ${snapshot.source.mode} mode` });
@@ -65,6 +68,20 @@ export function useOsaData(): {
       const layers = await getJson<LayerProfile[]>("/layers");
       if (!alive) return;
       if (!Array.isArray(layers)) { setChecking(false); return; }
+      try {
+        const raw=localStorage.getItem(storageKey);
+        if(raw && raw.length<=512000){
+          const saved=JSON.parse(raw) as {team:TeamGraph;mission:Mission;run:Run};
+          const checks=await verifyRun(saved.run);
+          const remote=await requestJson<{ok:boolean}>("/unified/verify",{method:"POST",body:JSON.stringify(saved)});
+          if(!checks.length||!checks.every(c=>c.ok)||!remote.ok)throw Error("INVALID_LOCAL_PROOF");
+          if(!alive)return;
+          liveExecution.current=true;
+          setData({...snapshot,layers,team:saved.team,missions:[saved.mission],runs:[saved.run]});
+          setSource({kind:"SNAPSHOT",detail:"Zweryfikowany zapis lokalny · "+saved.run.execution_id+" · bez gwarancji zapisu w chmurze"});
+          setChecking(false);return;
+        }
+      } catch { if(alive)setActionError("Zapisany lokalnie dowód nie przeszedł weryfikacji lub API jest niedostępne."); }
       const t = snapshot.team;
       const team = await getJson<TeamGraph>(`/teams/${t.team_id}?version=${t.version}`);
       const retrieved = await Promise.all(snapshot.runs.map(r => getJson<Run>(`/runs/${r.run_id}`)));
@@ -77,7 +94,7 @@ export function useOsaData(): {
       setChecking(false);
     })();
     return () => { alive = false; };
-  }, []);
+  }, [storageKey]);
 
   const runMission = useCallback(async (missionId: string): Promise<Run> => {
     const mission = data.missions.find((item) => item.mission_id === missionId);
@@ -124,9 +141,10 @@ export function useOsaData(): {
 
   const inspectExecution = useCallback((team: TeamGraph, mission: Mission, run: Run) => {
     liveExecution.current = true;
+    try {const raw=JSON.stringify({team,mission,run});if(raw.length<=512000)localStorage.setItem(storageKey,raw);}catch{/* Local export is optional and never cloud persistence. */}
     // A scoped projection of the exact API result, not a second execution or invented world state.
     setData(current => ({...current,team,missions:[mission],runs:[run]}));
     setSource({kind:"LIVE",detail:`${mission.mission_id.startsWith("unified_") ? "OSA Unified" : mission.mission_id.startsWith("osa-trace-") ? "OSA TRACE" : "Delivery Lab"} execution ${run.execution_id}`});
-  }, []);
+  }, [storageKey]);
   return { data, source, checking, runningMission, actionError, runMission, enterLayer, inspectExecution };
 }

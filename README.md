@@ -1,5 +1,7 @@
 # OSA Proof
 
+**Kandydat v0.1.0: BLOCKED.** Bieżący zakres, dowody, ograniczenia i instrukcje po polsku: [bramki wydania](docs/release-v0.1.0/BRAMKI.md), [macierz możliwości](docs/release-v0.1.0/MACIERZ.md), [obsługa operatora](docs/release-v0.1.0/OPERATOR.md). Numer pakietu nie potwierdza wydania. Poniższa dokumentacja techniczna zawiera również opisy historycznych etapów; w kwestii gotowości obowiązuje macierz.
+
 **The proof layer for AI agents.**
 
 OSA Proof is a proof-first platform for building, running, observing, and verifying agentic systems.
@@ -100,7 +102,7 @@ Optional: `OSA_PROVIDER_BASE_URL`, `OSA_PROVIDER_TIMEOUT_MS` (default 120000),
 `OSA_PROVIDER_MAX_TOKENS` (default 16000), `OSA_PROVIDER_MAX_RETRIES` (default 2),
 `OSA_PROVIDER_RETRY_BASE_MS` (default 500), `OSA_MODEL_FALLBACKS` (ordered `provider:model` list
 for the model mesh). `OSA_AUTH_MODE` is `session` (default: DEV login required for
-teams, missions and runs) or `open` (no login; set only for the Vercel preview in `vercel.json`). Retries follow the official SDK rules; see
+teams, missions and runs) or `open` (local development only; cloud requests always require the scoped operator session). Retries follow the official SDK rules; see
 `docs/INTELLIGENCE_LAYER_V1.md`.
 
 Team Graphs reference only the stable executor refs `dev.planner.v1` and `dev.builder.v1`;

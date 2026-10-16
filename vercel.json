@@ -13,7 +13,7 @@
   "trailingSlash": false,
   "env": {
     "OSA_EXECUTION_MODE": "fixture",
-    "OSA_AUTH_MODE": "open",
+    "OSA_AUTH_MODE": "session",
     "OSA_WEB3_SOLANA_RPC_URL": "https://api.devnet.solana.com"
   },
   "rewrites": [

@@ -12,11 +12,17 @@ jobs:
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Kompilacja hosta workerów
+        run: npm run worker:build
+      - name: Kontrola znanych formatów sekretów w zmianach
+        run: node scripts/check-release-diff.cjs origin/main
       - name: Validate dashboard build
         run: node scripts/build-dashboard.cjs

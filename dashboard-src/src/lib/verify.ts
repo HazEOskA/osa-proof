@@ -34,6 +34,14 @@ export async function verifyRun(run: Run): Promise<Check[]> {
   push("root", "evidence_root = digest(evidence_refs)", p.evidence_root, await dig(p.evidence_refs));
   for (const o of run.observations) push(`ob:${o.observation_id}`, `observation #${o.sequence} · ${o.check}`, p.observation_refs.find((r) => r.observation_id === o.observation_id)?.observation_sha256 ?? "missing", await dig(without(o, "observation_sha256")));
   push("final", "final_output_sha256 = digest(final_output)", String(p.final_output_sha256), await dig(run.final_output));
+  push("ordered_evidence_refs", "kolejność referencji dowodów", canon(p.evidence_refs), canon(run.evidence.map(e=>({evidence_id:e.evidence_id,evidence_sha256:e.evidence_sha256}))));
+  push("ordered_observation_refs", "kolejność referencji obserwacji", canon(p.observation_refs), canon(run.observations.map(o=>({observation_id:o.observation_id,observation_sha256:o.observation_sha256}))));
+  push("evidence_count", "kompletność dowodów", String(p.evidence_refs.length), String(run.evidence.length));
+  push("observation_count", "kompletność obserwacji", String(p.observation_refs.length), String(run.observations.length));
+  push("unique_evidence", "unikalne identyfikatory dowodów", String(run.evidence.length), String(new Set(run.evidence.map(e=>e.evidence_id)).size));
+  push("unique_observations", "unikalne identyfikatory obserwacji", String(run.observations.length), String(new Set(run.observations.map(o=>o.observation_id)).size));
+  push("run_binding", "powiązanie wykonania", canon([p.run_id,p.execution_id,p.verdict]), canon([run.run_id,run.execution_id,run.verdict]));
+  push("event_binding", "powiązanie zdarzeń odtwarzania", "true", String(run.events.every((e,i)=>e.execution_id===run.execution_id&&e.run_id===run.run_id&&e.sequence===i+1)));
   const bound = run.evidence.every((e) => canon(e.binding) === canon(p.binding));
   push("binding", "every evidence record bound to receipt binding", "true", String(bound));
   return out;

@@ -100,7 +100,7 @@ if (process.env.OSA_DASHBOARD_EXTRACT_ONLY === "1") {
 }
 
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-run(npm, ["install", "--no-audit", "--no-fund"], work);
+run(npm, [fs.existsSync(path.join(work,"package-lock.json")) ? "ci" : "install", "--no-audit", "--no-fund"], work);
 run(npm, ["run", "build"], work);
 
 const built = path.join(work, "dist");

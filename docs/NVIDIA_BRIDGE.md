@@ -1,21 +1,21 @@
-# Most NVIDIA w scenie World
+# Most NVIDIA w OSA Proof
 
-W scenie World kliknij przycisk „NVIDIA · modele i API” (lub NVIDIA, następnie Models). Formularz wysyła pojedynczy prompt do modelu na serwerach NVIDIA; pozostałe kategorie prowadzą do katalogów i instrukcji dostawcy.
+Modele NVIDIA oraz Czat floty agentów korzystają z tego samego serwerowego mostu. Globalny przewodnik „Zapytaj OSĘ” ma osobny, allowlistowany kontekst modułu i nie wykonuje narzędzi.
 
-Konfiguracja serwera:
+Klucz `NVIDIA_API_KEY` jest przechowywany wyłącznie w środowisku serwera. Panel nie przyjmuje własnego klucza dostawcy. HTTP odrzuca pole `apiKey` i ID modelu inne niż skonfigurowane na serwerze. Nie zapisuj sekretów w promptach ani zasobach Buildera.
 
-```dotenv
-NVIDIA_API_KEY=klucz_dostawcy
-# Opcjonalnie: model dostępny dla tego klucza
-NVIDIA_MODEL=nvidia/nemotron-3-super-120b-a12b
-```
+W chmurze każda trasa wymaga podpisanej sesji operatora ograniczonej do organizacji, projektu i originu. `OSA_AUTH_MODE=open` i `/auth/dev-login` nie obchodzą ochrony. Vercel SSO Preview jest dodatkową granicą i nie dowodzi ochrony produkcji.
 
-Klucz serwera nie używa prefiksu VITE_ i nie trafia do przeglądarki. Własny klucz wpisany w panelu jest przechowywany wyłącznie w stanie formularza do zamknięcia panelu; trafia do serwera tylko z wywołaniem rozmowy i nie zmienia konfiguracji innych użytkowników. Nie jest zapisywany w localStorage ani bazie. GET /api/nvidia/status zwraca wyłącznie informację o konfiguracji i model. POST /api/nvidia/chat przyjmuje JSON {"prompt":"...", "model":"dostawca/model", "apiKey":"opcjonalny-własny-klucz"}; oba endpointy stosują istniejący tryb sesji OSA. W trybie open API jest dostępne bez logowania, zgodnie z konfiguracją podglądu repozytorium; przed publicznym udostępnieniem produkcji należy użyć istniejącego trybu session.
+`GET /api/nvidia/status` po uwierzytelnieniu zwraca `configured`, `available`, `gate` i rodzaj limitu. Obecny klucz nie oznacza udanego wykonania. Model jest blokowany bez aktywnej polityki zerowych kosztów, aktualnego potwierdzenia bezpłatnego modelu i współdzielonego limitu. Pełna konfiguracja: [instrukcja operatora](release-v0.1.0/OPERATOR.md).
 
-Wywołanie: https://integrate.api.nvidia.com/v1/chat/completions, bez streamingu, maksymalnie 1024 tokeny odpowiedzi, 8000 znaków promptu, limit żądania 40000 bajtów, timeout dostawcy 25 sekund. Nie ma automatycznych retry ani fikcyjnej odpowiedzi przy braku klucza. Błędy dostawcy są sanitowane; treść błędu nie zawiera jego surowego body ani klucza.
+`POST /api/nvidia/chat` przyjmuje prompt; `POST /api/nvidia/fleet-chat` dodatkowo profil, ograniczoną historię i allowlistowany kontekst przewodnika. Maksymalnie 8000 znaków promptu, 40000 bajtów żądania, 1024 tokeny odpowiedzi, 25 sekund połączenia. Brak automatycznych retry i płatnego zamiennika. Odpowiedź dostawcy jest ograniczona do 256000 bajtów, a błędy są sanitowane.
 
-Odpowiedź zawiera model, tekst, ID żądania, ID dostawcy (jeśli dostępne) i czas. Status PROVIDER_RESPONSE oznacza otrzymaną odpowiedź API, nie kryptograficzny proof ani wykonanie operacji przez agenta.
+Tryb `execute_tools=true` floty wymaga poprawnego `execution_id`. Do modelu trafia wyłącznie definicja odczytowego `osa_sha256`. Tylko rzeczywiste `tool_calls` z poprawnym narzędziem, argumentami i metadanymi dostawcy uruchamiają istniejący Runtime i tworzą bundle dowodów. Zwykła odpowiedź modelu ma status `PROVIDER_RESPONSE` i nie jest proof. Deterministyczne natywne polecenia są oddzielnym trybem i nie zaliczają modelowego E2E.
 
-Dokumentacja dostawcy: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-super-120b-a12b-infer
+Dowód wiąże żądany/raportowany model, ID odpowiedzi i skróty. To obserwacja serwera i integralność bundle, nie poświadczenie kryptograficzne wystawione przez NVIDIA. Testy symulowanego transportu potwierdzają kontrakt, nie działanie rzeczywistego konta.
 
-Ta zmiana nie wdraża aplikacji, nie zmienia ENV na Vercel i nie uruchamia GPU. Testy używają kontrolowanego dostawcy; test live wymaga klucza w środowisku docelowym.
+Dokumentacja dostawcy:
+- https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-super-120b-a12b
+- https://docs.api.nvidia.com/nim/docs/product
+
+Rzeczywisty ONE FLOW na Preview pozostaje obowiązkową bramką wydania. Aktualny stan: [bramki](release-v0.1.0/BRAMKI.md).

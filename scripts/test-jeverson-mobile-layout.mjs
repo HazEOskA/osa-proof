@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { chromium } from "playwright";
+import { chromium, devices } from "playwright";
 
 const base = process.env.OSA_UI_TEST_BASE || "http://127.0.0.1:3100";
 const out = "artifacts/osa-native-chat";
 fs.mkdirSync(out,{recursive:true});
-const browser = await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
+const browser = await chromium.launch({executablePath:process.env.OSA_CHROMIUM_EXECUTABLE||undefined,headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
 try {
   for (const [name,width,height] of [["android-320",320,640],["android-390",390,844],["desktop",1440,900]]) {
-    const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce"});
+    const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce",...(width<768?{isMobile:true,hasTouch:true,userAgent:devices["Pixel 7"].userAgent}:{})});
     const pageErrors=[],network=[];
     page.on("pageerror",error=>pageErrors.push(error.message));
     page.on("request",request=>{if(/\/api\/(nvidia\/chat|unified\/execute|chat\/complete)/.test(request.url()))network.push(request.url());});

@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { handleOperatorAuth, operatorAccessStatus, operatorOriginAllowed, operatorProject, operatorSession, protectedRuntime } from "./operator-access";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
@@ -85,7 +86,8 @@ export class ApiState {
     readonly authMode: AuthMode = "session",
     missionStore?: MissionStore,
     brain?: BrainControlPlane,
-    readonly web3: Web3Service = new Web3Service()
+    readonly web3: Web3Service = new Web3Service(),
+    readonly accessEnv: NodeJS.ProcessEnv = process.env
   ) {
     this.intelligence = intelligence;
     this.datasets = datasets;
@@ -100,7 +102,8 @@ export class ApiState {
 
 async function readJson<T>(request: IncomingMessage): Promise<T> {
   const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
+  let bytes = 0;
+  for await (const chunk of request) { const b=Buffer.from(chunk); bytes+=b.length; if(bytes>512000) throw Error("REQUEST_BODY_TOO_LARGE"); chunks.push(b); }
   return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T;
 }
 
@@ -117,6 +120,7 @@ function bearerToken(request: IncomingMessage): string | undefined {
 }
 
 function authenticatedSession(request: IncomingMessage, state: ApiState): SessionRecord | undefined {
+  if (protectedRuntime(state.accessEnv)) return operatorSession(request,state.accessEnv);
   const token = bearerToken(request);
   const session = token ? state.sessions.get(token) : undefined;
   return session ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
@@ -130,7 +134,7 @@ function requireSession(
   const session = authenticatedSession(request, state);
   if (!session) {
     send(response, 401, {
-      error: "authenticated session required",
+      error: "Wymagana jest uwierzytelniona sesja.",
       code: "AUTHENTICATED_SESSION_REQUIRED",
     });
     return undefined;
@@ -168,6 +172,23 @@ export async function handleApiRequest(
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+      response.setHeader("cache-control","no-store");
+      if (await handleOperatorAuth(request,response,url.pathname,state.accessEnv)) return;
+      const cloud = protectedRuntime(state.accessEnv);
+      if (cloud) {
+        if (url.pathname === "/auth/dev-login") return send(response,403,{code:"DEV_LOGIN_DISABLED",error:"Logowanie deweloperskie jest wyłączone w chmurze."});
+        const access = operatorAccessStatus(state.accessEnv);
+        if (!access.configured) return send(response,503,{code:"OPERATOR_ACCESS_NOT_CONFIGURED",error:"Dostęp operatora wymaga konfiguracji po stronie serwera."});
+        if (!requireSession(request,response,state)) return;
+        if (!["GET","HEAD"].includes(method) && !operatorOriginAllowed(request,state.accessEnv))
+          return send(response,403,{code:"ORIGIN_DENIED",error:"Niedozwolone pochodzenie żądania."});
+        // Scope v0.1: one operator, one organization and project. No claim of multi-user IAM.
+        // External executors need a separate reviewed execution policy; an env switch is insufficient.
+        if (!["GET","HEAD"].includes(method) && !["nvidia","auth","unified"].includes(parts[0]) &&
+            (executionDescription.mode === "provider" || state.accessEnv.OSA_INTEGRATION_ENABLED === "1"))
+          return send(response,403,{code:"EXTERNAL_EXECUTION_GATED",error:"Wykonanie zewnętrzne wymaga odrębnej polityki uprawnień."});
+      }
+
 
       if (parts[0] === "unified") {
         const session = requireSession(request,response,state);
@@ -177,9 +198,13 @@ export async function handleApiRequest(
           for await (const chunk of request) { size+=Buffer.byteLength(chunk); if(size>512000)return send(response,413,{status:"BLOCKED",error:"UNIFIED_BODY_TOO_LARGE"});chunks.push(Buffer.from(chunk)); }
           let body:unknown;try {body=JSON.parse(Buffer.concat(chunks).toString("utf8"));} catch {return send(response,400,{status:"BLOCKED",error:"UNIFIED_INVALID_JSON"});}
           if(url.pathname === "/unified/verify") {
+            const bundle=body as {team?:TeamGraph};
+            if(cloud&&(bundle.team?.organization_id!==session.identity.organization_id||bundle.team?.project_id!==operatorProject(state.accessEnv)))return send(response,403,{error:"TENANT_SCOPE_DENIED"});
             try {return send(response,200,verifyUnifiedBundle(body as Parameters<typeof verifyUnifiedBundle>[0]));}
             catch {return send(response,400,{ok:false,errors:["UNIFIED_INVALID_BUNDLE"]});}
           }
+          if(cloud && (body as {tool?:unknown})?.tool!==undefined)
+            return send(response,403,{status:"BLOCKED",error:"CLIENT_MODEL_DISPATCH_DENIED"});
           if((body as {tool?:unknown})?.tool!==undefined){
             const configured=process.env.OSA_UNIFIED_RUNTIME_TOKEN;
             const supplied=String(request.headers.authorization||"").replace(/^Bearer /,"");
@@ -190,7 +215,7 @@ export async function handleApiRequest(
           if(!session.identity.organization_id)return send(response,403,{status:"BLOCKED",error:"UNIFIED_ORGANIZATION_REQUIRED"});
           installUnifiedTools(registry);
           let result;
-          try {result = await executeUnified(body,session.identity.organization_id,registry);}
+          try {result = await executeUnified(body,session.identity.organization_id,registry,operatorProject(state.accessEnv));}
           catch {return send(response,400,{status:"BLOCKED",error:"UNIFIED_INVALID_INPUT"});}
           state.runs.set(result.run.run_id,structuredClone(result.run));
           state.teams.set(state.teamKey(result.team.team_id,result.team.version),result.team);
@@ -229,7 +254,15 @@ export async function handleApiRequest(
 
       if (parts[0] === "nvidia") {
         if (!requireSession(request, response, state)) return;
-        return handleNvidiaRequest(request, response, url.pathname);
+        const session=authenticatedSession(request,state)!;
+        return handleNvidiaRequest(request, response, url.pathname, {env:state.accessEnv, dispatch:async input=>{
+          installUnifiedTools(registry,state.accessEnv);
+          const result=await executeUnified(input,session.identity.organization_id!,registry,operatorProject(state.accessEnv));
+          state.runs.set(result.run.run_id,structuredClone(result.run));
+          state.teams.set(state.teamKey(result.team.team_id,result.team.version),result.team);
+          state.missions.set(result.mission.mission_id,result.mission);
+          return result;
+        }});
       }
 
       if (parts[0] === "templates" && parts[1] === "delivery-lab") {
@@ -244,7 +277,7 @@ export async function handleApiRequest(
           const input = validateDemoRequest(await readJson(request));
           installDemoExecutors(registry,options);
           state.platform.syncExecutors(registry);
-          const team = demoTeam({organization_id,project_id:"project_delivery_lab"});
+          const team = demoTeam({organization_id,project_id:operatorProject(state.accessEnv)||"project_delivery_lab"});
           const mission = demoMission(input,team);
           await state.missionKernel.create(mission,team);
           state.teams.set(state.teamKey(team.team_id,team.version),structuredClone(team));
@@ -267,6 +300,7 @@ export async function handleApiRequest(
       if (parts[0] === "web3") {
         const session = requireSession(request,response,state);
         if (!session) return;
+        if(cloud && !["GET","HEAD"].includes(method)) return send(response,403,{code:"WEB3_EXECUTION_GATED",error:"Wykonania Web3 w chmurze wymagają odrębnej akceptacji zakresu projektu."});
         return handleWeb3Request(request,response,state,registry,session);
       }
 
@@ -318,7 +352,7 @@ export async function handleApiRequest(
         const token = bearerToken(request);
         if (!token || !state.sessions.revoke(token)) {
           return send(response, 401, {
-            error: "authenticated session required",
+            error: "Wymagana jest uwierzytelniona sesja.",
             code: "AUTHENTICATED_SESSION_REQUIRED",
           });
         }
@@ -326,7 +360,7 @@ export async function handleApiRequest(
       }
 
       if (url.pathname === "/build/status" && method === "GET") {
-        return send(response, 200, { ...executionDescription, auth_mode: state.authMode, executors: registry.refs(), persistence: "PROCESS_MEMORY", mission_persistence: state.missionKernel.store.persistence, brain: state.missionKernel.brain.describe(), protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
+        return send(response, 200, { ...executionDescription, auth_mode: cloud?"operator":state.authMode, executors: registry.refs(), persistence: "PROCESS_MEMORY", durable_cloud_storage: false, persistence_notice: "Stan procesu znika po restarcie lub zmianie instancji. Historia rozmów jest lokalna w przeglądarce.", mission_persistence: state.missionKernel.store.persistence, brain: state.missionKernel.brain.describe(), protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
       }
 
       if (url.pathname === "/build/workspace" && method === "GET") {
@@ -338,6 +372,9 @@ export async function handleApiRequest(
         if (!requireSession(request, response, state)) return;
         const workspace = await readJson<BuildWorkspace>(request);
         validateBuildWorkspace(workspace);
+        const owner=authenticatedSession(request,state)!;
+        if(workspace.team.organization_id!==owner.identity.organization_id || (cloud && workspace.team.project_id!==operatorProject(state.accessEnv)))
+          return send(response,403,{error:"TENANT_SCOPE_DENIED"});
         if (workspace.team.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         state.buildWorkspace = structuredClone(workspace);
         const graph = workspace.team;
@@ -516,7 +553,10 @@ export async function handleApiRequest(
         }
         if (method === "POST") {
           if (!requireSession(request, response, state)) return;
-          return send(response, 201, state.organizations.register(await readJson<{ organization_id: string; name: string; projects?: string[] }>(request)));
+          const input=await readJson<{organization_id:string;name:string;projects?:string[]}>(request);
+          const session=authenticatedSession(request,state)!;
+          if(cloud&&(input.organization_id!==session.identity.organization_id||input.projects?.some(p=>p!==operatorProject(state.accessEnv)))) return send(response,403,{error:"TENANT_SCOPE_DENIED"});
+          return send(response,201,state.organizations.register(input));
         }
       }
 
@@ -527,7 +567,7 @@ export async function handleApiRequest(
 
       if (url.pathname === "/permissions" && method === "GET") {
         const session = authenticatedSession(request, state);
-        return send(response, 200, { auth_mode: state.authMode, identity: session ? { identity_id: session.identity.identity_id, roles: session.identity.roles } : null, permissions: PERMISSIONS });
+        return send(response, 200, { auth_mode: cloud?"operator":state.authMode, identity: session ? { identity_id: session.identity.identity_id, roles: session.identity.roles } : null, permissions: PERMISSIONS });
       }
 
       if (parts[0] === "evaluators") {
@@ -557,7 +597,7 @@ export async function handleApiRequest(
         if (!session) return;
         const graph = await readJson<TeamGraph>(request);
         validateTeamGraph(graph);
-        if (graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (graph.organization_id !== session.identity.organization_id || (cloud && graph.project_id !== operatorProject(state.accessEnv))) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         state.teams.set(state.teamKey(graph.team_id, graph.version), structuredClone(graph));
         return send(response, 201, graph);
@@ -569,7 +609,7 @@ export async function handleApiRequest(
         const version = url.searchParams.get("version");
         if (!version) return send(response, 400, { error: "version query parameter is required" });
         const graph = state.teams.get(state.teamKey(parts[1], version));
-        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (graph && (graph.organization_id !== session.identity.organization_id || (cloud && graph.project_id !== operatorProject(state.accessEnv)))) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         return graph ? send(response, 200, graph) : send(response, 404, { error: "team not found" });
       }
 
@@ -577,9 +617,9 @@ export async function handleApiRequest(
         const session = requireSession(request, response, state);
         if (!session) return;
         const mission = await readJson<Mission>(request);
-        if (mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (mission.organization_id !== session.identity.organization_id || (cloud && mission.project_id !== operatorProject(state.accessEnv))) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         const graph = state.teams.get(state.teamKey(mission.team_id, mission.team_version));
-        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (graph && (graph.organization_id !== session.identity.organization_id || (cloud && graph.project_id !== operatorProject(state.accessEnv)))) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (!graph) return send(response, 404, { error: "team version not found" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         await state.missionKernel.create(mission, graph);
@@ -592,7 +632,7 @@ export async function handleApiRequest(
         if (!session) return;
         const record = await state.missionKernel.get(parts[1]);
         if (!record) return send(response, 404, { error: "mission not found" });
-        if (record.mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (record.mission.organization_id !== session.identity.organization_id || (cloud && record.mission.project_id !== operatorProject(state.accessEnv))) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (method === "GET" && parts.length === 2) return send(response, 200, record);
         if (method === "GET" && parts[2] === "timeline") return send(response, 200, record.timeline);
         if (method === "GET" && parts[2] === "run") return record.run ? send(response, 200, record.run) : send(response, 404, { error: "mission has no run" });
@@ -616,7 +656,7 @@ export async function handleApiRequest(
         if (!session) return;
         const run = state.runs.get(parts[1]);
         if (!run) return send(response, 404, { error: "run not found" });
-        if (run.proof.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (run.proof.organization_id !== session.identity.organization_id || (cloud && run.proof.project_id !== operatorProject(state.accessEnv))) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (parts.length === 2) return send(response, 200, run);
         if (parts[2] === "events") return send(response, 200, run.events);
         if (parts[2] === "evidence") return send(response, 200, run.evidence);
@@ -625,6 +665,7 @@ export async function handleApiRequest(
 
     return send(response, 404, { error: "not found" });
   } catch (error) {
+    if(protectedRuntime(state.accessEnv)) return send(response,400,{code:"REQUEST_REJECTED",error:"Żądanie odrzucone. Sprawdź dane i uprawnienia."});
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof KnowledgeError || error instanceof ExperimentError) {
       return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });

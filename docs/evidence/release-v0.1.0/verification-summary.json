@@ -1,0 +1,76 @@
+{
+  "captured_at": "2026-10-16T23:10:39.505517+00:00",
+  "release_status": "BLOCKED",
+  "unit_tests": {
+    "total": 237,
+    "passed": 234,
+    "failed": 0,
+    "skipped": 3
+  },
+  "provider_model_tool_calls": "NOT_TESTED",
+  "cloud_persistence": false,
+  "production_commit": "512a6e17048db549f8b515396b2d7710b40af781",
+  "production_deployment": "dpl_dwH79xqLhkcSn5zzwjzmStPwMKmJ",
+  "model_calls_executed": 0,
+  "production_mutations": 0,
+  "browser_runtime": "Chromium 153.0.8010.0, Playwright 1.63.0",
+  "browser_provider_contracts": "SIMULATED",
+  "real_native_executions": [
+    {
+      "name": "android-320",
+      "android_emulation": true,
+      "result": "PASS",
+      "refresh_restored": true,
+      "tampered_restore_rejected": true,
+      "cloud_persistence": false,
+      "execution_id": "exec_747445b6-e172-4df5-807b-9d7e78cd3db8",
+      "crypto_sha256": "64fcc6edb1f1f7c3a78eb115cd1bb1a20fad16c49ef0e8008432e378d298a91d",
+      "real_runtime": true,
+      "verified_receipt": true,
+      "replay_ui": true,
+      "replay_to_final_event": true,
+      "provider_model_tool_call": "NOT_TESTED",
+      "paid_calls": 0
+    },
+    {
+      "name": "android-390",
+      "android_emulation": true,
+      "result": "PASS",
+      "refresh_restored": true,
+      "tampered_restore_rejected": true,
+      "cloud_persistence": false,
+      "execution_id": "exec_3fffac2f-3a8d-46d0-9fae-4bc74abcd4de",
+      "crypto_sha256": "64fcc6edb1f1f7c3a78eb115cd1bb1a20fad16c49ef0e8008432e378d298a91d",
+      "real_runtime": true,
+      "verified_receipt": true,
+      "replay_ui": true,
+      "replay_to_final_event": true,
+      "provider_model_tool_call": "NOT_TESTED",
+      "paid_calls": 0
+    },
+    {
+      "name": "desktop",
+      "android_emulation": false,
+      "result": "PASS",
+      "refresh_restored": true,
+      "tampered_restore_rejected": true,
+      "cloud_persistence": false,
+      "execution_id": "exec_67274aa8-da5b-450e-b201-ecb663a89100",
+      "crypto_sha256": "64fcc6edb1f1f7c3a78eb115cd1bb1a20fad16c49ef0e8008432e378d298a91d",
+      "real_runtime": true,
+      "verified_receipt": true,
+      "replay_ui": true,
+      "replay_to_final_event": true,
+      "provider_model_tool_call": "NOT_TESTED",
+      "paid_calls": 0
+    }
+  ],
+  "limitations": [
+    "Brak live testu NVIDIA i Redis",
+    "Brak trwałego backendu serverless",
+    "Brak izolowanego workera/Docker",
+    "Brak live połączenia NeurOSA"
+  ],
+  "android_emulation": "Pixel 7 UA + mobile/touch at 320/390; not physical Android hardware",
+  "source_manifest_sha256": "1d3c5cf4ab25c50b68257c917915c300f07976a207d92cb17e66be77171c5e0f"
+}

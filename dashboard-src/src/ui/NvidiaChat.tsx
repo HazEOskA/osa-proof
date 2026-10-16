@@ -14,7 +14,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export default function NvidiaChat() {
   const promptId = useId();
   const [prompt, setPrompt] = useState("");
-  const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
   const [customModel, setCustomModel] = useState(false);
   const [models, setModels] = useState<string[]>(() => { try { const v = JSON.parse(localStorage.getItem("osa.nvidia.models") || "[]"); return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(x)).slice(0, 50) : []; } catch { return []; } });
@@ -34,7 +33,7 @@ export default function NvidiaChat() {
   async function submit(e: React.FormEvent) {
     e.preventDefault(); if (busy) return;
     setBusy(true); setError(""); setReply(null);
-    try { setReply(await request<Reply>("chat", { method: "POST", body: JSON.stringify({ prompt, model, ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) }) })); }
+    try { setReply(await request<Reply>("chat", { method: "POST", body: JSON.stringify({ prompt, model }) })); }
     catch (e) { setError(e instanceof Error ? e.message : "Wywołanie nie powiodło się."); }
     finally { setBusy(false); }
   }
@@ -47,15 +46,11 @@ export default function NvidiaChat() {
         <option value="custom">Dodaj model — wpisz ID</option>
       </select>
       {customModel && <><label htmlFor={`${promptId}-custom`} className="block">Identyfikator modelu</label><input id={`${promptId}-custom`} value={model} onChange={e => setModel(e.target.value)} disabled={busy} required maxLength={200} placeholder="dostawca/model" className="focus-ring tap w-full rounded border border-line bg-panel px-2" /><button type="button" onClick={addModel} disabled={busy} className="focus-ring tap rounded border border-line px-3">Dodaj model</button>{modelError && <p role="alert">{modelError}</p>}</>}
-      <h3 className="pt-3 text-base font-semibold">Skonfiguruj API</h3>
-      <label htmlFor={`${promptId}-key`} className="block">Własny klucz API NVIDIA (opcjonalnie)</label>
-      <input id={`${promptId}-key`} type="password" autoComplete="off" value={apiKey} onChange={e => setApiKey(e.target.value)} disabled={busy} maxLength={4096} spellCheck={false} placeholder="Wklej klucz API NVIDIA" className="focus-ring tap w-full rounded border border-line bg-panel px-2" />
-      <p className="text-dim">Klucz jest używany tylko w tym panelu i wysyłany do serwera przy rozmowie. Po zamknięciu panelu znika. Puste pole używa klucza z Vercel.</p>
-      {apiKey && <button type="button" disabled={busy} onClick={() => setApiKey("")} className="focus-ring tap rounded border border-line px-3">Usuń własny klucz</button>}
+      <p className="text-dim">Klucz API jest przechowywany wyłącznie na serwerze. Wywołania wymagają zatwierdzonego modelu, aktualnej polityki kosztowej i limitu żądań.</p>
       <p className="text-dim">Dostęp do wybranego modelu zależy od uprawnień klucza NVIDIA.</p>
       <label htmlFor={promptId} className="block">Polecenie dla NVIDIA</label>
       <textarea id={promptId} value={prompt} onChange={e => setPrompt(e.target.value)} maxLength={8000} rows={4} required className="focus-ring w-full rounded border border-line bg-panel p-2" placeholder="Napisz, czego potrzebujesz…" />
-      <button disabled={busy || !prompt.trim() || (!status?.configured && !apiKey.trim()) || !model.trim()} className="focus-ring tap rounded border border-line px-3 disabled:opacity-40">{busy ? "Generuję…" : "Wyślij do NVIDIA"}</button>
+      <button disabled={busy || !prompt.trim() || !status?.configured || !model.trim()} className="focus-ring tap rounded border border-line px-3 disabled:opacity-40">{busy ? "Generuję…" : "Wyślij do NVIDIA"}</button>
     </form>
     {error && <p role="alert" className="text-red-400">{error}</p>}
     {reply && <div aria-live="polite"><p className="whitespace-pre-wrap break-words">{reply.text}</p><p className="mono mt-3 break-all text-[10px] text-dim">{reply.model} · {reply.latency_ms} ms · odpowiedź: {reply.provider_response_id || "brak ID dostawcy"} · żądanie: {reply.request_id}</p></div>}

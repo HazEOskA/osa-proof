@@ -1,7 +1,7 @@
 name: OSA Native Chat Mobile Regression
 on:
   push:
-    branches: [feature/osa-fleet-chat-slice1-proof, feature/osa-unified-runtime-v1]
+    branches: [feature/osa-fleet-chat-slice1-proof, feature/osa-unified-runtime-v1, feature/osa-contextual-guide-v1]
   pull_request:
     branches: [main]
 permissions:
@@ -19,22 +19,12 @@ jobs:
       - name: Install dashboard build and browser
         run: |
           npm ci
-          npm install --no-save --no-audit --no-fund playwright@1.63.0
       - name: Build OSA Proof native chat
         run: node scripts/build-dashboard.cjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Serve local dashboard
-        run: |
-          nohup python3 -m http.server 3100 --directory dashboard-dist > /tmp/osa-mobile.log 2>&1 &
-          for i in $(seq 1 30); do
-            if curl --silent --fail http://127.0.0.1:3100/ > /dev/null; then exit 0; fi
-            sleep 1
-          done
-          cat /tmp/osa-mobile.log
-          exit 1
-      - name: Verify native chat sessions, agent selection, no iframe, mobile and desktop
-        run: node scripts/test-jeverson-mobile-layout.mjs
+      - name: Kontrakty UI czatu i przewodnika na 320/390/1440 (dostawca symulowany)
+        run: node scripts/test-dashboard-browser.cjs
       - name: Compile real OSA Runtime for native tool E2E
         run: npm run build
       - name: Browser E2E native chat → OSA Runtime → verified Proof → Replay
@@ -46,6 +36,8 @@ jobs:
           name: osa-native-chat-mobile-regression
           path: |
             artifacts/osa-native-chat/
+            artifacts/osa-guide/
+            artifacts/osa-operator/
             artifacts/osa-native-chat-e2e/
           if-no-files-found: ignore
           retention-days: 14

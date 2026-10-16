@@ -1,0 +1,10 @@
+{"name":"android-320","ai_transport_contract":"PASS","real_provider":"NOT_TESTED","intercepted_responses":1}
+{"name":"android-320","result":"PASS","sessions":2,"agent_selector":true,"model_selector":true,"blocked_model_requests":0,"verified_proof":"NOT_TESTED","overflow":0,"page_errors":0}
+{"name":"android-390","ai_transport_contract":"PASS","real_provider":"NOT_TESTED","intercepted_responses":1}
+{"name":"android-390","result":"PASS","sessions":2,"agent_selector":true,"model_selector":true,"blocked_model_requests":0,"verified_proof":"NOT_TESTED","overflow":0,"page_errors":0}
+{"name":"desktop","ai_transport_contract":"PASS","real_provider":"NOT_TESTED","intercepted_responses":1}
+{"name":"desktop","result":"PASS","sessions":2,"agent_selector":true,"model_selector":true,"blocked_model_requests":0,"verified_proof":"NOT_TESTED","overflow":0,"page_errors":0}
+{"name":"telefon-320","globalGuide":"PASS","homeHelp":true,"moduleContext":true,"fleetChatContext":true,"simulatedProvider":true,"realProvider":"NOT_TESTED","providerCalls":1,"overflow":0}
+{"name":"telefon-390","globalGuide":"PASS","homeHelp":true,"moduleContext":true,"fleetChatContext":true,"simulatedProvider":true,"realProvider":"NOT_TESTED","providerCalls":1,"overflow":0}
+{"name":"desktop","globalGuide":"PASS","homeHelp":true,"moduleContext":true,"fleetChatContext":true,"simulatedProvider":true,"realProvider":"NOT_TESTED","providerCalls":1,"overflow":0}
+{"operator_ui_contract":"PASS","widths":[320,390,1440],"project_history_isolation":true,"api_auth":"TESTED_SEPARATELY","real_provider":"NOT_TESTED","auth_response":"SIMULATED"}
