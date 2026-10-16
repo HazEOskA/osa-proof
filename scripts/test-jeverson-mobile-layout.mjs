@@ -30,12 +30,12 @@ try {
     await page.getByRole("button",{name:"Wybierz agenta"}).click();
     await page.getByTestId("osa-agent-picker").getByRole("button",{name:/Agent programistyczny/}).click();
     assert.match(await page.getByRole("button",{name:"Wybierz agenta"}).innerText(),/Agent programistyczny/);
-    await page.getByRole("combobox",{name:"Wybierz model"}).selectOption("openrouter");
-    assert.equal(await page.getByRole("combobox",{name:"Wybierz model"}).inputValue(),"openrouter");
+    await page.getByRole("combobox",{name:"Wybierz model"}).selectOption("nvidia");
+    assert.equal(await page.getByRole("combobox",{name:"Wybierz model"}).inputValue(),"nvidia");
     await page.getByTestId("osa-composer").fill("P0: kontrola izolacji sesji A");
     await page.getByTestId("osa-send").click();
     await page.getByTestId("osa-chat-notice").waitFor();
-    assert.match(await page.getByTestId("osa-chat-notice").innerText(),/NIEDOSTĘPNY/);
+    assert.match(await page.getByTestId("osa-chat-notice").innerText(),/MODEL NIEDOSTĘPNY/);
     assert.equal(await page.getByTestId("osa-message").count(),1,"Blocked request must not forge assistant answer");
     assert.equal(network.length,0,"Blocked LLM must never reach provider API");
     if(width<768)await page.getByRole("button",{name:"Otwórz historię"}).click();
@@ -82,7 +82,7 @@ try {
     });
     await page.reload({waitUntil:"domcontentloaded"});
     await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
-    await page.getByText("NVIDIA · POŁĄCZONO").waitFor({state:"visible",timeout:15000});
+    await page.getByText("NVIDIA · KLUCZ GOTOWY").waitFor({state:"visible",timeout:15000});
     await page.getByTestId("osa-composer").fill("Cześć OSA");
     await page.getByTestId("osa-send").click();
     await page.getByText("Witaj, jestem asystentem OSA.").waitFor({state:"visible"});
