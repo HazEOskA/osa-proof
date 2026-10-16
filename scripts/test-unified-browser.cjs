@@ -21,6 +21,10 @@ async function main(){
       page.on("request",r=>{if(r.url().includes("/api/unified/"))requests.push({method:r.method(),url:r.url()});});
       const loaded=await page.goto(base,{waitUntil:"domcontentloaded"});
       assert.equal(loaded?.status(),200);
+      const home=page.locator('section[aria-label="Launch"]');
+      await home.waitFor({state:"visible"});
+      assert.equal(await page.getByTestId("osa-native-chat").count(),0,"Framework Home must load first");
+      await home.getByRole("button",{name:"Agent Chat Fleet",exact:true}).click();
       await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
       assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0);
       const input="OSA Unified Runtime V1";
