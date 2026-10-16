@@ -5,12 +5,12 @@ const {spawn}=require("node:child_process");
 const {chromium}=require("playwright");
 const root=path.resolve(__dirname,".."),out=path.join(root,"artifacts","osa-native-chat-e2e");
 fs.mkdirSync(out,{recursive:true});
-const base="http://127.0.0.1:3100";
+const base="http://127.0.0.1:3199";
 const children=[];
 async function ready(url){for(let i=0;i<100;i++){try{if((await fetch(url)).ok)return;}catch{}await new Promise(r=>setTimeout(r,300));}throw Error("SERVER_NOT_READY "+url);}
 async function main(){
   const log=fs.openSync(path.join(out,"local-runtime.log"),"w");
-  children.push(spawn(process.execPath,["scripts/unified-e2e-server.cjs"],{cwd:root,stdio:["ignore",log,log],env:{...process.env,OSA_EXECUTION_MODE:"fixture",NVIDIA_API_KEY:"",OPENROUTER_API_KEY:""}}));
+  children.push(spawn(process.execPath,["scripts/unified-e2e-server.cjs"],{cwd:root,stdio:["ignore",log,log],env:{...process.env,OSA_E2E_API_PORT:"3199",OSA_EXECUTION_MODE:"fixture",NVIDIA_API_KEY:"",OPENROUTER_API_KEY:""}}));
   await ready(base+"/api/build/status");
   const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
   const report=[];
