@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
+import { osaGuideContext } from "./osa-guide";
 
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
@@ -21,7 +22,7 @@ export function nvidiaRequestConfig(options: { apiKey?: unknown; model?: unknown
   }
   return config;
 }
-export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = process.env, fetcher: typeof fetch = fetch, context?: { agent?: unknown; history?: unknown }) {
+export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = process.env, fetcher: typeof fetch = fetch, context?: { agent?: unknown; history?: unknown; view?: unknown }) {
   if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 8000) throw new NvidiaError(400, "INVALID_PROMPT", "Wpisz prompt od 1 do 8000 znaków.");
   if(env.OSA_ZERO_COST_ONLY==="true"&&env.OSA_NVIDIA_FREE_TIER_ACK!=="true")
     throw new NvidiaError(403,"NVIDIA_COST_POLICY_BLOCKED","NVIDIA: wymagane potwierdzenie bezpłatnego dostępu przed wywołaniem modelu.");
@@ -35,10 +36,16 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
     hermes: "Jesteś Hermesem OSA. Analizujesz możliwości ulepszeń, proponujesz zmiany. Nie wykonujesz ich samodzielnie.",
     security: "Jesteś Agentem bezpieczeństwa OSA. Analizujesz ryzyka, uprawnienia i kontrole dostępu.",
     research: "Jesteś Agentem badawczym OSA. Odróżniaj dowody od hipotez.",
-    runtime: "Jesteś asystentem Runtime OSA. Wyjaśniasz tracing, proof i evidence bez wymyślania wykonania."
+    runtime: "Jesteś asystentem Runtime OSA. Wyjaśniasz tracing, proof i evidence bez wymyślania wykonania.",
+    guide: "Jesteś OSĄ — kontekstowym przewodnikiem po frameworku i jego samouczkiem. Odpowiadaj krok po kroku i znaj dokładne moduły nawigacji."
   };
   const agent = context?.agent;
   if(agent !== undefined && (typeof agent !== "string" || !Object.hasOwn(agents,agent))) throw new NvidiaError(400,"INVALID_AGENT","Nieprawidłowy agent.");
+  let guideContext = "";
+  if (agent === "guide") {
+    try { guideContext = osaGuideContext(context?.view); }
+    catch { throw new NvidiaError(400,"INVALID_GUIDE_VIEW","Nieznany moduł przewodnika OSA."); }
+  }
   const history = context?.history;
   if(history !== undefined && (!Array.isArray(history) || history.length > 8 ||
     history.some((m:unknown) => !m || typeof m !== "object" || !("role" in m) || !("content" in m) ||
@@ -49,7 +56,7 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
   const started = Date.now();
   let response: Response;
   try {
-    response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: AbortSignal.timeout(25000), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ model, stream: false, max_tokens: 1024, messages: [{ role: "system", content: "Jesteś asystentem ekosystemu OSA. Zawsze odpowiadaj po polsku. Nie twierdź, że wykonałeś operacje poza tą rozmową. Odpowiedź modelu nie jest dowodem wykonania." + (typeof agent==="string" ? " "+agents[agent] : "") }, ...previous, { role: "user", content: prompt.trim() }] }) });
+    response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: AbortSignal.timeout(25000), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ model, stream: false, max_tokens: 1024, messages: [{ role: "system", content: "Jesteś asystentem ekosystemu OSA. Zawsze odpowiadaj po polsku. Nie twierdź, że wykonałeś operacje poza tą rozmową. Odpowiedź modelu nie jest dowodem wykonania." + (typeof agent==="string" ? " "+agents[agent] : "") + (guideContext ? "\n"+guideContext : "") }, ...previous, { role: "user", content: prompt.trim() }] }) });
   } catch { throw new NvidiaError(504, "NVIDIA_UNAVAILABLE", "NVIDIA nie odpowiedziała w wymaganym czasie lub połączenie nie powiodło się."); }
   if (!response.ok) {
     throw new NvidiaError(response.status === 429 ? 429 : 502, "NVIDIA_REJECTED", response.status === 401 || response.status === 403 ? "NVIDIA odrzuciła autoryzację. Sprawdź klucz i dostęp do modelu." : response.status === 429 ? "Limit wywołań NVIDIA. Spróbuj później." : `NVIDIA odrzuciła żądanie (HTTP ${response.status}).`);
@@ -78,10 +85,10 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
   try {
     let size = 0; const chunks: Buffer[] = [];
     for await (const chunk of request) { const bytes = Buffer.from(chunk); size += bytes.length; if (size > 40000) throw new NvidiaError(413, "BODY_TOO_LARGE", "Żądanie jest za duże."); chunks.push(bytes); }
-    let body: { prompt?: unknown; apiKey?: unknown; model?: unknown; agent?: unknown; history?: unknown };
+    let body: { prompt?: unknown; apiKey?: unknown; model?: unknown; agent?: unknown; history?: unknown; view?: unknown };
     try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new NvidiaError(400, "INVALID_JSON", "Nieprawidłowy JSON."); }
     if(fleet){if(body.apiKey!==undefined)throw new NvidiaError(400,"FLEET_SERVER_KEY_ONLY","Czat floty korzysta wyłącznie z klucza serwera."); fleetLimit();}
-    return send(200, await nvidiaComplete(body?.prompt, nvidiaRequestConfig(fleet ? {} : body ?? {}),fetch, fleet ? {agent:body?.agent,history:body?.history} : undefined));
+    return send(200, await nvidiaComplete(body?.prompt, nvidiaRequestConfig(fleet ? {} : body ?? {}),fetch, fleet ? {agent:body?.agent,history:body?.history,view:body?.view} : undefined));
   } catch (error) {
     if (error instanceof NvidiaError) return send(error.status, { error: error.message, code: error.code });
     return send(500, { error: "Błąd mostu NVIDIA.", code: "NVIDIA_INTERNAL_ERROR" });
