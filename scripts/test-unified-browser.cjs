@@ -43,6 +43,8 @@ async function main(){
       await inspect.getByRole("button",{name:/Replay/}).click();
       await page.getByRole("slider",{name:"Replay position"}).waitFor({state:"visible"});
       await page.screenshot({path:path.join(out,name+"-replay.png"),fullPage:true});
+      const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+      assert.ok(overflow<=1,"Native Runtime chat overflow: "+overflow);
       assert.deepEqual(failures,[]);
       const row={name,result:"PASS",execution_id:execution.match(/exec_[a-f0-9-]{36}/)[0],crypto_sha256:expectedHash,real_runtime:true,verified_receipt:true,replay_ui:true,provider_model_tool_call:"NOT_TESTED",paid_calls:0};
       console.log(JSON.stringify(row));report.push(row);await page.close();
