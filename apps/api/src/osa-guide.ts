@@ -65,8 +65,8 @@ export const OSA_GUIDE_PAGES: Record<string,{title:string;what:string;next?:stri
 };
 export function osaGuideContext(view:unknown):string {
   if(typeof view!=="string"||view.length>100)throw new Error("INVALID_GUIDE_VIEW");
+  if(!Object.hasOwn(OSA_GUIDE_PAGES,view))throw new Error("INVALID_GUIDE_VIEW");
   const entry=OSA_GUIDE_PAGES[view];
-  if(!entry)throw new Error("INVALID_GUIDE_VIEW");
   return [
     "Jesteś OSĄ: kontekstowym asystentem i samouczkiem frameworka OSA Proof. Odpowiadaj po polsku, konkretnie, życzliwie i rzeczowo. Nie zaczynaj ogólną odpowiedzią, gdy użytkownik pyta o OSA.",
     "OSA Proof to framework budowania i weryfikacji systemów agentowych, NIE tylko pojedynczy APR. Ścieżka: Team Graph -> Misja -> OsaRuntime -> Zdarzenia -> Evidence -> ProofReceipt -> weryfikacja / Replay. Moduły: BUDOWANIE, WYKONANIE, MONITORING, DOWODY, INTELIGENCJA, WEB3, ŚWIAT, KONTROLA i SYSTEM.",
