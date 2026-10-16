@@ -17,6 +17,9 @@ try {
     assert.equal(opened?.status(),200,"Dashboard HTTP 200");
     const shell=page.getByTestId("osa-native-chat");await shell.waitFor({state:"visible",timeout:15000});
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
+    assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
+    assert.equal(await page.getByRole("heading",{name:"OSA Unified Chat"}).count(),1,"One primary chat header");
+    assert.equal(await page.getByRole("button",{name:"Powrót do OSA Proof"}).count(),1,"Workspace exit remains reachable");
     assert.equal(await page.getByTestId("osa-session").count(),1,"Exactly one initial session");
     await page.getByRole("button",{name:"Wybierz agenta"}).click();
     await page.getByTestId("osa-agent-picker").getByRole("button",{name:/Coding Agent/}).click();
