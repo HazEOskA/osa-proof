@@ -8,11 +8,12 @@ export const Mono = ({ children, className = "" }: { children: ReactNode; classN
 export const short = (s: string, n = 12) => (s.length > n * 2 + 1 ? `${s.slice(0, n)}…${s.slice(-6)}` : s);
 
 const V: Record<string, { c: string; t: string }> = {
-  VERIFIED: { c: "var(--ok)", t: "VERIFIED" }, PASS: { c: "var(--ok)", t: "PASS" },
-  FAILED: { c: "var(--bad)", t: "FAILED" }, MISMATCH: { c: "var(--bad)", t: "MISMATCH" },
-  INCOMPLETE: { c: "var(--warn)", t: "INCOMPLETE" }, MATCH: { c: "var(--ok)", t: "MATCH" },
-  UNKNOWN: { c: "var(--faint)", t: "UNKNOWN" }, SNAPSHOT: { c: "var(--warn)", t: "SNAPSHOT" }, LIVE: { c: "var(--ok)", t: "LIVE" },
-  PREVIEW: { c: "var(--warn)", t: "PREVIEW" }, SOON: { c: "var(--faint)", t: "SOON" },
+  VERIFIED: { c: "var(--ok)", t: "ZWERYFIKOWANO" }, PASS: { c: "var(--ok)", t: "ZALICZONO" },
+  FAILED: { c: "var(--bad)", t: "BŁĄD" }, MISMATCH: { c: "var(--bad)", t: "NIEZGODNOŚĆ" },
+  INCOMPLETE: { c: "var(--warn)", t: "NIEKOMPLETNE" }, MATCH: { c: "var(--ok)", t: "ZGODNE" },
+  UNKNOWN: { c: "var(--faint)", t: "NIEZNANE" }, SNAPSHOT: { c: "var(--warn)", t: "MIGAWKA" }, LIVE: { c: "var(--ok)", t: "AKTYWNE" },
+  DONE: { c: "var(--ok)", t: "GOTOWE" }, PENDING: { c: "var(--warn)", t: "OCZEKUJE" }, "NOT CONNECTED": { c: "var(--bad)", t: "NIEPOŁĄCZONE" },
+  PREVIEW: { c: "var(--warn)", t: "PODGLĄD" }, SOON: { c: "var(--faint)", t: "W PRZYGOTOWANIU" },
 };
 // Design system StatusBadge: dot plus a word, tracked uppercase, never colour alone.
 export function Status({ v, label, framed = false }: { v: Verdict | string; label?: string; framed?: boolean }) {
@@ -23,7 +24,8 @@ export function Status({ v, label, framed = false }: { v: Verdict | string; labe
     </span>
   );
 }
-export const Unknown = ({ why = "not reported by osa-proof" }: { why?: string }) => <span className="mono text-[11px] text-dim" title={why}>unknown</span>;
+export const Unknown = ({ why = "Brak danych w OSA Proof" }: { why?: string }) => <span className="mono text-[11px] text-dim" title={why}>brak danych</span>;
+export const statusText = (v: string) => V[v]?.t ?? v;
 
 export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
   return (

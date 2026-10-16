@@ -19,14 +19,14 @@ import { OsaRuntime } from "../packages/runtime/src";
 const CLOCK = () => new Date("2026-09-29T12:00:00.000Z");
 
 const graph: TeamGraph = {
-  organization_id: "org_ev", project_id: "project_ev", team_id: "team_ev", version: "1",
+  organization_id: "org_dev_local", project_id: "project_ev", team_id: "team_ev", version: "1",
   agents: [
     { agent_id: "planner", role: "planner", executor_ref: DEV_PLANNER_REF },
     { agent_id: "builder", role: "builder", executor_ref: DEV_BUILDER_REF },
   ],
   edges: [{ edge_id: "p_b", from_agent_id: "planner", to_agent_id: "builder", kind: "handoff" }],
 };
-const TEAM = { organization_id: "org_ev", project_id: "project_ev", team_id: "team_ev", team_version: "1", entry_agent_id: "planner" };
+const TEAM = { organization_id: "org_dev_local", project_id: "project_ev", team_id: "team_ev", team_version: "1", entry_agent_id: "planner" };
 
 function example(id: string, expected: "VERIFIED" | "FAILED" = "VERIFIED"): ExampleInput {
   return {

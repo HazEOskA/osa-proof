@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import raw from "./snapshot.json";
 import type { Snapshot, Source, Run, TeamGraph, LayerProfile, Mission } from "./types";
 
@@ -52,6 +52,7 @@ export function useOsaData(): {
   enterLayer: (layerId: string) => Promise<LayerEnterResult>;
   inspectExecution: (team: TeamGraph, mission: Mission, run: Run) => void;
 } {
+  const liveExecution = useRef(false);
   const [data, setData] = useState<Snapshot>(snapshot);
   const [source, setSource] = useState<Source>({ kind: "SNAPSHOT", detail: `captured ${snapshot.captured_at.slice(0, 16).replace("T", " ")}Z · ${snapshot.source.mode} mode` });
   const [checking, setChecking] = useState(true);
@@ -66,10 +67,13 @@ export function useOsaData(): {
       if (!Array.isArray(layers)) { setChecking(false); return; }
       const t = snapshot.team;
       const team = await getJson<TeamGraph>(`/teams/${t.team_id}?version=${t.version}`);
-      const runs = await Promise.all(snapshot.runs.map(async (r) => (await getJson<Run>(`/runs/${r.run_id}`)) ?? r));
+      const retrieved = await Promise.all(snapshot.runs.map(r => getJson<Run>(`/runs/${r.run_id}`)));
+      const runs = retrieved.map((run,index)=>run ?? snapshot.runs[index]);
       if (!alive) return;
-      setData(current => current.runs.some(run => run.proof.team_id.startsWith("osa.delivery-lab:")) ? {...current,layers} : { ...snapshot, layers, team: team ?? snapshot.team, runs });
-      setSource(current => current.detail.startsWith("Delivery Lab execution") ? current : { kind: "LIVE", detail: "osa-proof API reachable" });
+      if (liveExecution.current) { setData(current=>({...current,layers}));setChecking(false);return; }
+      setData({ ...snapshot, layers, team: team ?? snapshot.team, runs });
+      const allLive = retrieved.every(Boolean);
+      setSource({kind:allLive?"LIVE":"SNAPSHOT",detail:allLive?"osa-proof API reachable":"API online · zapisany snapshot fixture; brak nowego wykonania"});
       setChecking(false);
     })();
     return () => { alive = false; };
@@ -89,6 +93,7 @@ export function useOsaData(): {
       await requestJson<Mission>("/missions", { method: "POST", body: JSON.stringify(mission) });
       }
       const run = await requestJson<Run>(`/missions/${encodeURIComponent(missionId)}/run`, { method: "POST", body: "{}" });
+      liveExecution.current = true;
       setData((current) => ({
         ...current,
         runs: [run, ...current.runs.filter((item) => item.run_id !== run.run_id)],
@@ -118,9 +123,10 @@ export function useOsaData(): {
   }, []);
 
   const inspectExecution = useCallback((team: TeamGraph, mission: Mission, run: Run) => {
+    liveExecution.current = true;
     // A scoped projection of the exact API result, not a second execution or invented world state.
     setData(current => ({...current,team,missions:[mission],runs:[run]}));
-    setSource({kind:"LIVE",detail:`Delivery Lab execution ${run.execution_id}`});
+    setSource({kind:"LIVE",detail:`${mission.mission_id.startsWith("unified_") ? "OSA Unified" : mission.mission_id.startsWith("osa-trace-") ? "OSA TRACE" : "Delivery Lab"} execution ${run.execution_id}`});
   }, []);
   return { data, source, checking, runningMission, actionError, runMission, enterLayer, inspectExecution };
 }

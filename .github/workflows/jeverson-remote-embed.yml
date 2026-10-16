@@ -1,0 +1,33 @@
+name: OSA Native Chat Remote Acceptance (Manual)
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: "Zatwierdzony URL wdrożenia native OSA Chat (HTTPS)"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  remote-native-chat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --no-audit --no-fund playwright@1.63.0
+      - run: npx playwright install --with-deps chromium
+      - name: Validate approved native chat deployment on mobile and desktop
+        env:
+          OSA_REMOTE_PROOF_URL: ${{ inputs.preview_url }}
+        run: node scripts/test-jeverson-deployed-iframe.mjs
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osa-native-chat-remote-acceptance
+          path: artifacts/osa-native-chat-remote/
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,0 +1,22 @@
+name: OSA Fleet Slice 1 Proof
+on:
+  push:
+    branches: [feature/osa-fleet-chat-slice1-proof]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Validate dashboard build
+        run: node scripts/build-dashboard.cjs

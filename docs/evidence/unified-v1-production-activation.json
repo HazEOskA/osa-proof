@@ -1,0 +1,49 @@
+{
+  "authorization": "User: Daj to na production (2026-10-15 Europe/Amsterdam)",
+  "target": "production",
+  "main_merged": false,
+  "osa": {
+    "deployment_id": "dpl_9CzWPv1a9kxvcogrSRdQuW1jgzyN",
+    "sha": "ee7aa2f9e68699d169c79e5afe0e52f3f5cc06d4",
+    "url": "https://osa-proof-three.vercel.app/",
+    "status": "READY"
+  },
+  "jeverson": {
+    "deployment_id": "dpl_9iJgTxd66XWDoisid5fguJneYx1e",
+    "sha": "b489862e041bab5827deed6a47b3e4c00ad000b7",
+    "url": "https://aether-eight-theta-52.vercel.app/",
+    "status": "READY",
+    "nvidia_configured": true,
+    "openrouter_configured": true,
+    "runtime_ready": true,
+    "cost_policy": "ZERO_COST_ONLY",
+    "sso": "all"
+  },
+  "negative_checks": {
+    "nvidia_chat": {
+      "http": 403,
+      "code": "NVIDIA_COST_POLICY_BLOCKED",
+      "provider_called": false
+    },
+    "unsigned_model_dispatch": {
+      "http": 403,
+      "code": "MODEL_DISPATCH_SERVICE_AUTH_REQUIRED"
+    }
+  },
+  "production_browser": {
+    "osa_app_loaded": true,
+    "normal_chat_iframe": "BLOCKED_VERCEL_SIGN_IN_REQUIRED",
+    "model_tool_execution": "NOT_VERIFIED",
+    "paid_provider_calls": 0
+  },
+  "remaining": {
+    "neurosa": "BLOCKED_NOT_CONFIGURED",
+    "isolated_worker": "BLOCKED_NOT_CONFIGURED",
+    "native_builder": "BLOCKED_REQUIRES_WORKER_AND_OPERATOR_APPROVAL"
+  },
+  "rollback": {
+    "osa": "dpl_GK1pSAKBvNNM1xZxecumer6dsvUh",
+    "jeverson": "dpl_5ZUXAHrBHMPXhxG1rShLgVEu2Yob"
+  },
+  "qa_access": "Temporary branch alias grant revoked; no public exception enabled."
+}

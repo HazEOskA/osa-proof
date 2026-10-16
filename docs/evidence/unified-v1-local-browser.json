@@ -1,0 +1,30 @@
+{
+  "network_replacements": 0,
+  "paid_provider_calls": 0,
+  "reports": [
+    {
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "execution_id": "exec_54a46366-dad6-4fde-8604-284905c4c8fc",
+      "status": "PASS",
+      "normal_chat": true,
+      "actual_crypto": true,
+      "trace": true,
+      "receipt": true,
+      "page_errors": []
+    },
+    {
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "execution_id": "exec_f7ec1e00-9567-4d91-bb4f-bafe9da3b8ca",
+      "status": "PASS",
+      "normal_chat": true,
+      "actual_crypto": true,
+      "trace": true,
+      "receipt": true,
+      "page_errors": []
+    }
+  ]
+}

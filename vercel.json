@@ -2,7 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node scripts/build-dashboard.cjs",
   "outputDirectory": "dashboard-dist",
-  "git": { "deploymentEnabled": { "feature/platform-v03-v05-review": false } },
+  "git": {
+    "deploymentEnabled": {
+      "feature/platform-v03-v05-review": false,
+      "feature/osa-fleet-chat-slice1-proof": false,
+      "feature/osa-unified-runtime-v1": false
+    }
+  },
   "cleanUrls": true,
   "trailingSlash": false,
   "env": {
@@ -11,24 +17,81 @@
     "OSA_WEB3_SOLANA_RPC_URL": "https://api.devnet.solana.com"
   },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/osa?__osa_path=:path*" },
-    { "source": "/layers/:path*", "destination": "/api/osa?__osa_path=layers/:path*" },
-    { "source": "/teams/:path*", "destination": "/api/osa?__osa_path=teams/:path*" },
-    { "source": "/missions/:path*", "destination": "/api/osa?__osa_path=missions/:path*" },
-    { "source": "/runs/:path*", "destination": "/api/osa?__osa_path=runs/:path*" },
-    { "source": "/intelligence/:path*", "destination": "/api/osa?__osa_path=intelligence/:path*" },
-    { "source": "/datasets/:path*", "destination": "/api/osa?__osa_path=datasets/:path*" },
-    { "source": "/evaluators/:path*", "destination": "/api/osa?__osa_path=evaluators/:path*" },
-    { "source": "/build/:path*", "destination": "/api/osa?__osa_path=build/:path*" },
-    { "source": "/auth/:path*", "destination": "/api/osa?__osa_path=auth/:path*" },
-    { "source": "/session/:path*", "destination": "/api/osa?__osa_path=session/:path*" },
-    { "source": "/deployments/:path*", "destination": "/api/osa?__osa_path=deployments/:path*" },
-    { "source": "/policies/:path*", "destination": "/api/osa?__osa_path=policies/:path*" },
-    { "source": "/organizations/:path*", "destination": "/api/osa?__osa_path=organizations/:path*" },
-    { "source": "/secrets/:path*", "destination": "/api/osa?__osa_path=secrets/:path*" },
-    { "source": "/permissions/:path*", "destination": "/api/osa?__osa_path=permissions/:path*" },
-    { "source": "/experiments/:path*", "destination": "/api/osa?__osa_path=experiments/:path*" },
-    { "source": "/queue/:path*", "destination": "/api/osa?__osa_path=queue/:path*" },
-    { "source": "/knowledge/:path*", "destination": "/api/osa?__osa_path=knowledge/:path*" }
+    {
+      "source": "/api/:path*",
+      "destination": "/api/osa?__osa_path=:path*"
+    },
+    {
+      "source": "/layers/:path*",
+      "destination": "/api/osa?__osa_path=layers/:path*"
+    },
+    {
+      "source": "/teams/:path*",
+      "destination": "/api/osa?__osa_path=teams/:path*"
+    },
+    {
+      "source": "/missions/:path*",
+      "destination": "/api/osa?__osa_path=missions/:path*"
+    },
+    {
+      "source": "/runs/:path*",
+      "destination": "/api/osa?__osa_path=runs/:path*"
+    },
+    {
+      "source": "/intelligence/:path*",
+      "destination": "/api/osa?__osa_path=intelligence/:path*"
+    },
+    {
+      "source": "/datasets/:path*",
+      "destination": "/api/osa?__osa_path=datasets/:path*"
+    },
+    {
+      "source": "/evaluators/:path*",
+      "destination": "/api/osa?__osa_path=evaluators/:path*"
+    },
+    {
+      "source": "/build/:path*",
+      "destination": "/api/osa?__osa_path=build/:path*"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "/api/osa?__osa_path=auth/:path*"
+    },
+    {
+      "source": "/session/:path*",
+      "destination": "/api/osa?__osa_path=session/:path*"
+    },
+    {
+      "source": "/deployments/:path*",
+      "destination": "/api/osa?__osa_path=deployments/:path*"
+    },
+    {
+      "source": "/policies/:path*",
+      "destination": "/api/osa?__osa_path=policies/:path*"
+    },
+    {
+      "source": "/organizations/:path*",
+      "destination": "/api/osa?__osa_path=organizations/:path*"
+    },
+    {
+      "source": "/secrets/:path*",
+      "destination": "/api/osa?__osa_path=secrets/:path*"
+    },
+    {
+      "source": "/permissions/:path*",
+      "destination": "/api/osa?__osa_path=permissions/:path*"
+    },
+    {
+      "source": "/experiments/:path*",
+      "destination": "/api/osa?__osa_path=experiments/:path*"
+    },
+    {
+      "source": "/queue/:path*",
+      "destination": "/api/osa?__osa_path=queue/:path*"
+    },
+    {
+      "source": "/knowledge/:path*",
+      "destination": "/api/osa?__osa_path=knowledge/:path*"
+    }
   ]
 }

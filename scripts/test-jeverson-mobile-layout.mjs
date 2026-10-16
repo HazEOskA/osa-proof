@@ -1,0 +1,96 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { chromium } from "playwright";
+
+const base = process.env.OSA_UI_TEST_BASE || "http://127.0.0.1:3100";
+const out = "artifacts/osa-native-chat";
+fs.mkdirSync(out,{recursive:true});
+const browser = await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
+try {
+  for (const [name,width,height] of [["android-320",320,640],["android-390",390,844],["desktop",1440,900]]) {
+    const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce"});
+    const pageErrors=[],network=[];
+    page.on("pageerror",error=>pageErrors.push(error.message));
+    page.on("request",request=>{if(/\/api\/(nvidia\/chat|unified\/execute|chat\/complete)/.test(request.url()))network.push(request.url());});
+    await page.route("**/api/build/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({mode:"fixture",auth_mode:"open",persistence:"PROCESS_MEMORY"})}));
+    const opened=await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+    assert.equal(opened?.status(),200,"Dashboard HTTP 200");
+    const home=page.locator('section[aria-label="Uruchamianie"]');
+    await home.waitFor({state:"visible",timeout:15000});
+    assert.equal(await page.getByTestId("osa-native-chat").count(),0,"Framework Home, not chat, is default");
+    assert.equal(await home.getByRole("button",{name:"Czat floty agentów",exact:true}).count(),1,"Chat Fleet is an optional Home module");
+    await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+    const shell=page.getByTestId("osa-native-chat");await shell.waitFor({state:"visible",timeout:15000});
+    assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
+    assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
+    assert.equal(await page.getByRole("heading",{name:"Czat floty agentów"}).count(),1,"One chat-module header");
+    assert.equal(await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).count(),1,"Framework return always accessible");
+    assert.equal(await page.getByRole("button",{name:"Powrót do OSA Proof"}).count(),1,"Workspace exit remains reachable");
+    assert.equal(await page.getByTestId("osa-session").count(),1,"Exactly one initial session");
+    await page.getByRole("button",{name:"Wybierz agenta"}).click();
+    await page.getByTestId("osa-agent-picker").getByRole("button",{name:/Agent programistyczny/}).click();
+    assert.match(await page.getByRole("button",{name:"Wybierz agenta"}).innerText(),/Agent programistyczny/);
+    await page.getByRole("combobox",{name:"Wybierz model"}).selectOption("nvidia");
+    assert.equal(await page.getByRole("combobox",{name:"Wybierz model"}).inputValue(),"nvidia");
+    await page.getByTestId("osa-composer").fill("P0: kontrola izolacji sesji A");
+    await page.getByTestId("osa-send").click();
+    await page.getByTestId("osa-chat-notice").waitFor();
+    assert.match(await page.getByTestId("osa-chat-notice").innerText(),/MODEL NIEDOSTĘPNY/);
+    assert.equal(await page.getByTestId("osa-message").count(),1,"Blocked request must not forge assistant answer");
+    assert.equal(network.length,0,"Blocked LLM must never reach provider API");
+    if(width<768)await page.getByRole("button",{name:"Otwórz historię"}).click();
+    await page.getByTestId("osa-new-chat").click();
+    assert.equal(await page.getByTestId("osa-session").count(),2,"New chat creates exactly one session");
+    assert.equal(await page.getByTestId("osa-message").count(),0,"New chat must not reuse previous messages");
+    assert.equal(await page.getByTestId("osa-composer").inputValue(),"");
+    await page.getByTestId("osa-composer").fill("P0: kontrola izolacji sesji B");
+    await page.getByTestId("osa-send").click();
+    assert.equal(await page.getByTestId("osa-message").count(),1);
+    if(width<768)await page.getByRole("button",{name:"Otwórz historię"}).click();
+    await page.getByTestId("osa-session").filter({hasText:"kontrola izolacji sesji A"}).click();
+    assert.match(await page.getByTestId("osa-message").innerText(),/sesji A/);
+    assert.doesNotMatch(await page.getByTestId("osa-message").innerText(),/sesji B/);
+    await page.getByRole("button",{name:"Inspektor"}).click();
+    await page.getByTestId("osa-inspector").waitFor({state:"visible"});
+    assert.match(await page.getByTestId("osa-inspector").innerText(),/BRAK ZWERYFIKOWANEGO WYKONANIA/);
+    await page.getByRole("button",{name:"Zamknij",exact:true}).first().click();
+    await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).click();
+    await home.waitFor({state:"visible"});
+    assert.equal(await shell.count(),0,"Chat must not replace the framework after return");
+    assert.equal(await home.getByRole("button",{name:"Świat",exact:true}).count(),1,"Original World module preserved");
+    assert.equal(await home.getByRole("button",{name:"Misje",exact:true}).count(),1,"Original Missions module preserved");
+    await page.reload({waitUntil:"domcontentloaded"});
+    await home.waitFor({state:"visible"});
+    await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+    await shell.waitFor({state:"visible"});
+    assert.match(await page.getByTestId("osa-message").innerText(),/sesji A/);
+    assert.equal(await page.getByTestId("osa-session").count(),2,"Session persists after refresh");
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+    assert.ok(overflow<=1,name+" horizontal overflow "+overflow);
+    assert.deepEqual(pageErrors,[],"No browser uncaught exceptions");
+    await page.screenshot({path:out+"/"+name+".png",fullPage:true});
+    // Contract simulation only; the real NVIDIA provider is never mocked in application code.
+    let providerRequests=0;
+    await page.route("**/api/nvidia/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({provider:"NVIDIA",configured:true,model:"nvidia/test-model"})}));
+    await page.route("**/api/nvidia/fleet-chat",route=>{
+      const body=route.request().postDataJSON();
+      assert.equal(body.agent,"coding","Chosen AI persona travels to backend");
+      assert.equal(body.prompt,"Cześć OSA","User text travels to provider route");
+      assert.ok(Array.isArray(body.history),"History is sent as structured messages");
+      providerRequests++;
+      return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({text:"Witaj, jestem asystentem OSA.",model:"nvidia/test-model",provider_response_id:"synthetic-contract-id",request_id:"synthetic-contract-request",latency_ms:1,status:"PROVIDER_RESPONSE"})});
+    });
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+    await page.getByText("NVIDIA · KLUCZ GOTOWY").waitFor({state:"visible",timeout:15000});
+    await page.getByTestId("osa-composer").fill("Cześć OSA");
+    await page.getByTestId("osa-send").click();
+    await page.getByText("Witaj, jestem asystentem OSA.").waitFor({state:"visible"});
+    assert.equal(providerRequests,1,"AI transport contract called exactly once");
+    assert.match(await page.getByTestId("osa-message").last().innerText(),/ODPOWIEDŹ MODELU AI/);
+    console.log(JSON.stringify({name,ai_transport_contract:"PASS",real_provider:"NOT_TESTED",intercepted_responses:providerRequests}));
+
+    console.log(JSON.stringify({name,result:"PASS",sessions:2,agent_selector:true,model_selector:true,blocked_model_requests:network.length,verified_proof:"NOT_TESTED",overflow,page_errors:pageErrors.length}));
+    await page.close();
+  }
+}finally{await browser.close();}

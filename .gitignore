@@ -8,3 +8,5 @@ dashboard-dist/
 
 .osa-local-review/
 dist-worker/
+
+artifacts/
