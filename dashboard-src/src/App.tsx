@@ -9,7 +9,7 @@ import { useThemes } from "./useThemes";
 export default function App() {
   const { data, source, runningMission, actionError, runMission, enterLayer, inspectExecution } = useOsaData();
   const graph = useMemo(() => buildGraph(data), [data]);
-  const [view, setView] = useState<ViewId>("jeverson-chat");
+  const [view, setView] = useState<ViewId>("home");
   const [runId, setRunId] = useState(data.runs[0]?.run_id ?? "");
   const [focus, setFocus] = useState<string | null>(null);
   const [palette, setPalette] = useState(false);
