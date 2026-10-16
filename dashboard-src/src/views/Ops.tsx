@@ -51,7 +51,7 @@ function Tiles({ items }: { items: { k: string; v: ReactNode; s?: string }[] }) 
 }
 
 function Unreachable({ what, error }: { what: string; error: string }) {
-  return <p className="text-[13px] text-bad">{what} unreachable: {error}. Nothing is shown rather than something invented.</p>;
+  return <p className="text-[13px] text-bad">{what} niedostępne: {error}. Nie pokazujemy fikcyjnych danych.</p>;
 }
 
 function missionOf(run: Run) { return run.proof.mission_id; }
@@ -68,17 +68,17 @@ export function Logs() {
   const shown = rows.filter(({ run, e }) => (type === "ALL" || e.type === type) &&
     (!needle || `${missionOf(run)} ${e.type} ${e.agent_id ?? ""} ${JSON.stringify(e.payload)}`.toLowerCase().includes(needle)));
   return (
-    <Page eyebrow="OBSERVE · LOGS" title="Runtime logs" lead={`Every runtime event from the ${data.runs.length} runs this dashboard holds, in run and sequence order. Events carry sequence numbers, not timestamps.`}>
+    <Page eyebrow="MONITORING · LOGS" title="Dzienniki wykonania" lead={`Zdarzenia z ${data.runs.length} wykonań w kolejności uruchomienia i numerów zdarzeń. Brak znaczników czasu.`}>
       <div className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="logs-q">Filter</label>
-        <input id="logs-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by mission, type, agent or payload"
+        <input id="logs-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtruj według misji, typu, agenta lub treści"
           className="focus-ring glass min-w-0 flex-1 rounded-md px-3 py-2 text-[13px]" />
         <label className="sr-only" htmlFor="logs-type">Event type</label>
         <select id="logs-type" value={type} onChange={(e) => setType(e.target.value)} className="focus-ring glass rounded-md px-3 py-2 text-[13px]">
           {types.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
-      <div className="mono text-[11px] text-dim">{shown.length} of {rows.length} events</div>
+      <div className="mono text-[11px] text-dim">{shown.length} z {rows.length} zdarzeń</div>
       <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full text-left text-[12px]">
           <thead className="bg-panel text-dim"><tr><th className="px-3 py-2">Mission</th><th className="px-3 py-2">#</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Agent</th><th className="px-3 py-2">Payload</th></tr></thead>
@@ -138,17 +138,17 @@ export function Metrics() {
   }, [data.runs]);
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—");
   return (
-    <Page eyebrow="OBSERVE · METRICS" title="Run metrics" lead="Computed in the browser from the runs this dashboard holds. Durations are not shown: events carry sequence numbers, not timestamps.">
+    <Page eyebrow="MONITORING · METRICS" title="Metryki wykonań" lead="Obliczane w przeglądarce z zapisanych wykonań. Czasy trwania są niedostępne, ponieważ zdarzenia mają numery, a nie znaczniki czasu.">
       <Tiles items={[
-        { k: "Runs", v: m.runs }, { k: "Verified", v: `${m.verified} · ${pct(m.verified, m.runs)}`, s: "VERIFIED" },
+        { k: "Wykonania", v: m.runs }, { k: "Zweryfikowane", v: `${m.verified} · ${pct(m.verified, m.runs)}`, s: "VERIFIED" },
         { k: "Requirements passed", v: `${m.reqPass}/${m.reqs}` }, { k: "Verifier observations ok", v: `${m.obsOk}/${m.obs}` },
       ]} />
       <Tiles items={[
-        { k: "Events", v: m.events }, { k: "Evidence records", v: m.evidence },
+        { k: "Zdarzenia", v: m.events }, { k: "Evidence records", v: m.evidence },
         { k: "Provider calls", v: m.calls }, { k: "Provider attempts", v: m.attempts },
       ]} />
       <div className="grid gap-8 lg:grid-cols-2">
-        <Section title="Verdicts"><Bars rows={[{ k: "VERIFIED", v: m.verified, c: "var(--ok)" }, { k: "FAILED", v: m.failed, c: "var(--bad)" }, { k: "INCOMPLETE", v: m.incomplete, c: "var(--warn)" }]} /></Section>
+        <Section title="Werdykty"><Bars rows={[{ k: "VERIFIED", v: m.verified, c: "var(--ok)" }, { k: "FAILED", v: m.failed, c: "var(--bad)" }, { k: "INCOMPLETE", v: m.incomplete, c: "var(--warn)" }]} /></Section>
         <Section title="Evidence by kind"><Bars rows={m.kinds.map(([k, v]) => ({ k, v }))} /></Section>
       </div>
     </Page>
@@ -160,7 +160,7 @@ export function Timeline() {
   const run = useRun();
   const lanes = useMemo(() => ["runtime", ...[...new Set(run.events.map((e) => e.agent_id).filter(Boolean) as string[])]], [run]);
   return (
-    <Page eyebrow="WORLD · TIMELINE" title="Run timeline" lead="Each event of one run in sequence order, placed in the lane of the agent that produced it. Runtime events without an agent sit in the runtime lane.">
+    <Page eyebrow="ŚWIAT · TIMELINE" title="Oś czasu wykonania" lead="Zdarzenia wykonania w kolejności, na ścieżkach poszczególnych agentów. Zdarzenia bez agenta trafiają na ścieżkę silnika.">
       <RunPicker />
       <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full text-[12px]">
@@ -198,7 +198,7 @@ function LayeredGraph({ nodes, edges }: { nodes: GNodeLite[]; edges: { from: str
   const color = (s?: string) => s === "LIVE" ? "var(--ok)" : s === "PREVIEW" ? "var(--warn)" : s === "SOON" ? "var(--faint)" : "var(--cyan)";
   return (
     <div className="overflow-x-auto rounded-lg border border-line bg-ink">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Graph">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Graf">
         <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--dim)" /></marker></defs>
         {edges.map((e, i) => {
           const a = pos.get(e.from), b = pos.get(e.to); if (!a || !b) return null;
@@ -223,7 +223,7 @@ export function Topology() {
   const { data } = useOsa();
   const t = data.team;
   return (
-    <Page eyebrow="OBSERVE · TOPOLOGY" title={`Team ${t.team_id} v${t.version}`} lead="The canonical Team Graph: every agent with its executor ref, and every edge the runtime follows.">
+    <Page eyebrow="MONITORING · TOPOLOGY" title={`Team ${t.team_id} v${t.version}`} lead="Kanoniczny graf zespołu: agenci, ich wykonawcy i połączenia wykorzystywane przez silnik.">
       <LayeredGraph nodes={t.agents.map((a) => ({ id: a.agent_id, title: `${a.agent_id} · ${a.role}`, sub: a.executor_ref }))} edges={t.edges.map((e) => ({ from: e.from_agent_id, to: e.to_agent_id, label: e.kind }))} />
       <Section title="Agents">
         {t.agents.map((a) => <Kv key={a.agent_id} k={a.agent_id}>{a.executor_ref}{a.model_ref ? ` · ${a.model_ref}` : ""}</Kv>)}
@@ -236,12 +236,12 @@ export function Topology() {
 export function Dependencies() {
   const { data: reports, error } = useApi<ModuleReport[]>("/intelligence");
   return (
-    <Page eyebrow="WORLD · DEPENDENCIES" title="Module dependencies" lead="Intelligence modules and what each one depends on. A module is LIVE only when its proofs pass and every dependency is LIVE; the API computes this, the page only draws it.">
+    <Page eyebrow="ŚWIAT · DEPENDENCIES" title="Zależności modułów" lead="Moduły inteligencji i ich zależności. Moduł działa po pozytywnej weryfikacji dowodów i uruchomieniu zależności. Stan wylicza API.">
       {error && <Unreachable what="GET /api/intelligence" error={error} />}
       {reports && <>
-        <LayeredGraph nodes={reports.map((r) => ({ id: r.id, title: r.label, sub: `${r.status} · proofs ${r.proofs.filter((p) => p.ok).length}/${r.proofs.length}`, status: r.status }))}
+        <LayeredGraph nodes={reports.map((r) => ({ id: r.id, title: r.label, sub: `${r.status} · dowody ${r.proofs.filter((p) => p.ok).length}/${r.proofs.length}`, status: r.status }))}
           edges={reports.flatMap((r) => r.depends_on.map((d) => ({ from: d, to: r.id })))} />
-        <Section title="Blocked">{reports.filter((r) => r.blocked_by.length).length === 0 ? <p className="text-[13px] text-dim">No module is blocked by a dependency.</p> :
+        <Section title="Zablokowane">{reports.filter((r) => r.blocked_by.length).length === 0 ? <p className="text-[13px] text-dim">Żaden moduł nie jest blokowany przez zależności.</p> :
           reports.filter((r) => r.blocked_by.length).map((r) => <Kv key={r.id} k={r.label}>waits on {r.blocked_by.join(", ")}</Kv>)}</Section>
       </>}
     </Page>
@@ -258,7 +258,7 @@ export function AuditTrail() {
     return () => { alive = false; };
   }, [data.runs]);
   return (
-    <Page eyebrow="PROOF · AUDIT TRAIL" title="Receipt audit trail" lead="Every sealed receipt the dashboard holds, re-verified in this browser: digests of evidence, observations and final output are recomputed and compared with the receipt.">
+    <Page eyebrow="DOWODY · AUDIT TRAIL" title="Historia audytu potwierdzeń" lead="Wszystkie potwierdzenia są ponownie sprawdzane w przeglądarce: skróty dowodów, obserwacji i wyników są porównywane z potwierdzeniem.">
       <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full text-left text-[12px]">
           <thead className="bg-panel text-dim"><tr><th className="px-3 py-2">Mission</th><th className="px-3 py-2">Verdict</th><th className="px-3 py-2">proof_id</th><th className="px-3 py-2">evidence_root</th><th className="px-3 py-2">Re-verified</th></tr></thead>
@@ -292,16 +292,16 @@ export function Monitoring() {
   const failed = data.runs.filter((r) => r.verdict !== "VERIFIED");
   const count = (s: string) => intel.data?.filter((r) => r.status === s).length ?? 0;
   return (
-    <Page eyebrow="OBSERVE · MONITORING" title="System health" lead="Live checks against the API, plus the runs that did not verify. Each tile is a request made when this page opened.">
+    <Page eyebrow="MONITORING · MONITORING" title="Stan systemu" lead="Kontrole dostępności API i wykonań, których nie zweryfikowano. Każdy kafelek pobiera aktualny wynik przy otwarciu.">
       <Tiles items={[
-        { k: "API", v: status.data ? "reachable" : status.error ? "unreachable" : "checking", s: status.data ? "LIVE" : status.error ? "FAILED" : "UNKNOWN" },
+        { k: "API", v: status.data ? "dostępne" : status.error ? "niedostępne" : "sprawdzanie", s: status.data ? "LIVE" : status.error ? "FAILED" : "UNKNOWN" },
         { k: "Data source", v: source.kind, s: source.kind },
         { k: "Intelligence LIVE", v: intel.data ? `${count("LIVE")}/${intel.data.length}` : "—" },
-        { k: "Runs not verified", v: `${failed.length}/${data.runs.length}`, s: failed.length ? "FAILED" : "VERIFIED" },
+        { k: "Wykonania niezweryfikowane", v: `${failed.length}/${data.runs.length}`, s: failed.length ? "FAILED" : "VERIFIED" },
       ]} />
       {status.error && <Unreachable what="GET /api/build/status" error={status.error} />}
       <Section title="Runs that did not verify">
-        {failed.length === 0 ? <p className="text-[13px] text-dim">Every run held by the dashboard is VERIFIED.</p> : failed.map((r) => (
+        {failed.length === 0 ? <p className="text-[13px] text-dim">Wszystkie zapisane wykonania są zweryfikowane.</p> : failed.map((r) => (
           <div key={r.run_id} className="py-1.5"><div className="flex items-center justify-between"><Mono className="text-[12px]">{missionOf(r)}</Mono><Status v={r.verdict} /></div>
             <div className="text-[12px] text-dim">{r.proof.runtime_failure ?? r.proof.requirement_verdicts.filter((v) => v.verdict !== "VERIFIED").map((v) => `${v.requirement_id}: ${v.reason}`).join("; ")}</div></div>
         ))}
@@ -315,7 +315,7 @@ export function Runtime() {
   const { data } = useOsa();
   const { data: status, error } = useApi<BuildStatus>("/build/status");
   return (
-    <Page eyebrow="RUNTIME · RUNTIME" title="Runtime" lead="How the API executes agents right now, which executor refs it has registered, and whether every agent in the Team Graph resolves to one.">
+    <Page eyebrow="WYKONANIE · RUNTIME" title="Runtime" lead="Jak API wykonuje agentów, jacy wykonawcy są zarejestrowani i czy każdy agent z grafu zespołu ma przypisanego wykonawcę.">
       {error && <Unreachable what="GET /api/build/status" error={error} />}
       {status && <>
         <Tiles items={[
@@ -326,7 +326,7 @@ export function Runtime() {
           <Section title="Team Graph agents → executor">
             {data.team.agents.map((a) => {
               const ok = status.executors?.includes(a.executor_ref);
-              return <div key={a.agent_id} className="flex items-center justify-between gap-3 py-1.5"><Mono className="text-[12px]">{a.agent_id} → {a.executor_ref}</Mono><Status v={ok ? "PASS" : "MISMATCH"} label={ok ? "registered" : "missing"} /></div>;
+              return <div key={a.agent_id} className="flex items-center justify-between gap-3 py-1.5"><Mono className="text-[12px]">{a.agent_id} → {a.executor_ref}</Mono><Status v={ok ? "PASS" : "MISMATCH"} label={ok ? "zarejestrowano" : "brak"} /></div>;
             })}
           </Section>
           <Section title="Registered executor refs">
@@ -342,15 +342,15 @@ export function Runtime() {
 export function Settings() {
   const { data: status, error } = useApi<BuildStatus>("/build/status");
   return (
-    <Page eyebrow="SYSTEM · SETTINGS" title="Settings" lead="Server configuration comes from environment variables and is read-only here. Changing it means changing the deployment's environment, never a browser flag.">
+    <Page eyebrow="SYSTEM · SETTINGS" title="Ustawienia" lead="Konfiguracja serwera pochodzi ze zmiennych środowiskowych. Tutaj jest tylko do odczytu, a zmiana wymaga aktualizacji środowiska wdrożenia.">
       <div className="grid gap-8 lg:grid-cols-2">
         <Section title="Server (GET /api/build/status)">
           {error && <Unreachable what="GET /api/build/status" error={error} />}
           {status && <>
             <Kv k="OSA_EXECUTION_MODE">{status.mode ?? "—"}</Kv>
             <Kv k="OSA_AUTH_MODE">{status.auth_mode ?? "—"}</Kv>
-            <Kv k="OSA_PROVIDER / OSA_MODEL">{status.provider ? `${status.provider} / ${status.model}` : "not set (fixture mode)"}</Kv>
-            <Kv k="OSA_MODEL_FALLBACKS">{status.fallbacks?.join(", ") || "none"}</Kv>
+            <Kv k="OSA_PROVIDER / OSA_MODEL">{status.provider ? `${status.provider} / ${status.model}` : "nie ustawiono (tryb testowy)"}</Kv>
+            <Kv k="OSA_MODEL_FALLBACKS">{status.fallbacks?.join(", ") || "brak"}</Kv>
             <Kv k="persistence">{status.persistence ?? "—"}</Kv>
             {Object.entries(status.protocols ?? {}).map(([k, v]) => <Kv key={k} k={k}>{v}</Kv>)}
           </>}
@@ -358,7 +358,7 @@ export function Settings() {
         <Section title="This browser">
           <div className="flex items-center justify-between py-1.5"><span className="text-[13px] text-dim">Theme</span><ThemeSwitch /></div>
           <div className="flex items-center justify-between py-1.5"><span className="text-[13px] text-dim">Collapsed sidebar groups</span>
-            <button className="focus-ring rounded-md border border-line px-3 py-1 text-[12px] hover:bg-raise" onClick={() => { try { localStorage.removeItem("osa.nav.closed"); location.reload(); } catch { /* storage unavailable */ } }}>Reset</button></div>
+            <button className="focus-ring rounded-md border border-line px-3 py-1 text-[12px] hover:bg-raise" onClick={() => { try { localStorage.removeItem("osa.nav.closed"); location.reload(); } catch { /* storage unavailable */ } }}>Przywróć</button></div>
         </Section>
       </div>
     </Page>
@@ -370,7 +370,7 @@ export function Architecture() {
   const { data } = useOsa();
   const repo = data.repo;
   return (
-    <Page eyebrow="WORLD · ARCHITECTURE" title="Architecture" lead={`Packages, apps and architecture documents of osa-proof, as captured in the dashboard snapshot (${data.captured_at.slice(0, 10)}).`}>
+    <Page eyebrow="ŚWIAT · ARCHITECTURE" title="Architektura" lead={`Pakiety, aplikacje i dokumentacja OSA Proof według zapisanej migawki (${data.captured_at.slice(0, 10)}).`}>
       <Tiles items={[{ k: "Packages", v: repo.packages.length }, { k: "Apps", v: repo.apps.length }, { k: "Architecture docs", v: repo.docs.length }, { k: "Team agents", v: data.team.agents.length }]} />
       <div className="grid gap-8 lg:grid-cols-3">
         <Section title="packages/">{repo.packages.map((p) => <div key={p} className="mono py-0.5 text-[12px]">{p}</div>)}</Section>
