@@ -35,11 +35,17 @@ jobs:
           exit 1
       - name: Verify native chat sessions, agent selection, no iframe, mobile and desktop
         run: node scripts/test-jeverson-mobile-layout.mjs
+      - name: Compile real OSA Runtime for native tool E2E
+        run: npm run build
+      - name: Browser E2E native chat → OSA Runtime → verified Proof → Replay
+        run: node scripts/test-unified-browser.cjs
       - name: Upload test screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: osa-native-chat-mobile-regression
-          path: artifacts/osa-native-chat/
+          path: |
+            artifacts/osa-native-chat/
+            artifacts/osa-native-chat-e2e/
           if-no-files-found: ignore
           retention-days: 14
