@@ -14,7 +14,8 @@ const worker=createWorkerServer({token,provider:new DockerWorkspaceProvider()});
 worker.listen(3102,"127.0.0.1");
 const execution=createDevExecution({...process.env,OSA_EXECUTION_MODE:"fixture"});
 const state=new ApiState(undefined,undefined,undefined,"open");
-const root=path.resolve(__dirname,"../dashboard-src/dist");
+const generated=path.resolve(__dirname,"../dashboard-dist");
+const root=fs.existsSync(path.join(generated,"index.html"))?generated:path.resolve(__dirname,"../dashboard-src/dist");
 const mime={".html":"text/html",".js":"text/javascript",".css":"text/css",".svg":"image/svg+xml",".png":"image/png",".webp":"image/webp"};
 const server=http.createServer((req,res)=>{
   const url=new URL(req.url,"http://127.0.0.1:3100");
