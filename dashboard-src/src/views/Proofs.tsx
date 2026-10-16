@@ -28,10 +28,10 @@ export default function Proofs() {
   const bad = checks?.filter((c) => !c.ok).length ?? 0;
   const rails = [
     { k: "CLAIM", v: `${run.proof.requirement_verdicts.length} acceptance requirement(s)`, s: "" },
-    { k: "EVIDENCE", v: `${run.evidence.length} records · ${run.observations.length} verifier observations`, s: "" },
-    { k: "VALIDATION", v: run.proof.requirement_verdicts.map((r) => r.verdict).join(" · "), s: run.verdict },
+    { k: "MATERIAŁY", v: `${run.evidence.length} rekordów · ${run.observations.length} obserwacji weryfikatora`, s: "" },
+    { k: "WERYFIKACJA", v: run.proof.requirement_verdicts.map((r) => r.verdict).join(" · "), s: run.verdict },
     { k: "PROOF", v: run.proof.proof_id.slice(0, 22) + "…", s: "" },
-    { k: "RECEIPT", v: run.proof.schema, s: "" },
+    { k: "POTWIERDZENIE", v: run.proof.schema, s: "" },
   ];
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 py-6 md:px-8">
@@ -39,10 +39,10 @@ export default function Proofs() {
       <header className="border-b border-line pb-5">
         <div className="label mb-2">CLAIM ≠ PROOF</div>
         <h2 className="font-display text-[clamp(18px,2.8vw,32px)] font-normal leading-[1.3]" style={{ color: run.verdict === "VERIFIED" ? "var(--ok)" : run.verdict === "FAILED" ? "var(--bad)" : "var(--warn)" }}>
-          {run.verdict === "VERIFIED" ? "RUN VERIFIED" : run.verdict === "FAILED" ? "VERIFICATION FAILED" : "RUN INCOMPLETE"}
+          {run.verdict === "VERIFIED" ? "WYKONANIE ZWERYFIKOWANE" : run.verdict === "FAILED" ? "WERYFIKACJA NIEUDANA" : "WYKONANIE NIEKOMPLETNE"}
         </h2>
-        <p className="mt-1 text-[14px] text-dim">{run.proof.mission_id} · team {run.proof.team_id} v{run.proof.team_version}</p>
-        {run.proof.runtime_failure && <p className="mono mt-2 text-[12px] text-bad">runtime failure: {run.proof.runtime_failure}</p>}
+        <p className="mt-1 text-[14px] text-dim">{run.proof.mission_id} · zespół {run.proof.team_id} v{run.proof.team_version}</p>
+        {run.proof.runtime_failure && <p className="mono mt-2 text-[12px] text-bad">błąd wykonania: {run.proof.runtime_failure}</p>}
       </header>
 
       <ol className="grid gap-px overflow-hidden rounded-lg border border-line bg-line md:grid-cols-5">
@@ -67,15 +67,15 @@ export default function Proofs() {
 
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <div><div className="label">INDEPENDENT RECOMPUTATION · IN YOUR BROWSER</div>
+            <div><div className="label">NIEZALEŻNA WERYFIKACJA · W PRZEGLĄDARCE</div>
               <div className="mt-1">{err ? <span className="mono text-[12px] text-warn">{err}</span> : !checks ? <div className="skeleton h-4 w-32 rounded" /> : bad === 0 ? <Status v="PASS" label={`${checks.length}/${checks.length} MATCH`} /> : <Status v="MISMATCH" label={`${bad} MISMATCH`} />}</div></div>
-            <button onClick={() => setTamper((t) => !t)} aria-pressed={tamper} className={`focus-ring tap mono rounded-md border px-3 text-[11px] ${tamper ? "border-warn/60 text-warn" : "border-line text-dim hover:text-fg"}`}>{tamper ? "Undo tamper" : "Simulate tamper"}</button>
+            <button onClick={() => setTamper((t) => !t)} aria-pressed={tamper} className={`focus-ring tap mono rounded-md border px-3 text-[11px] ${tamper ? "border-warn/60 text-warn" : "border-line text-dim hover:text-fg"}`}>{tamper ? "Cofnij zmianę testową" : "Symuluj naruszenie"}</button>
           </div>
-          {tamper && <p className="mono mb-3 rounded border border-warn/40 bg-warn/5 p-2 text-[11px] text-warn">SIMULATION · evidence #1 status edited in a local copy. Source data untouched.</p>}
+          {tamper && <p className="mono mb-3 rounded border border-warn/40 bg-warn/5 p-2 text-[11px] text-warn">SYMULACJA · zmieniono status pierwszego dowodu w kopii lokalnej. Dane źródłowe nie zostały naruszone.</p>}
           <ul className="divide-y divide-line rounded-lg border border-line">
             {(checks ?? []).map((c) => (
               <li key={c.id} className="px-3 py-2"><div className="flex items-center justify-between gap-3"><span className="text-[12.5px]">{c.label}</span><Status v={c.ok ? "MATCH" : "MISMATCH"} /></div>
-                {!c.ok && <div className="mono mt-1 space-y-0.5 break-all text-[10.5px]"><div className="text-dim">receipt  {c.expected}</div><div className="text-bad">computed {c.observed}</div></div>}</li>))}
+                {!c.ok && <div className="mono mt-1 space-y-0.5 break-all text-[10.5px]"><div className="text-dim">potwierdzenie  {c.expected}</div><div className="text-bad">obliczono {c.observed}</div></div>}</li>))}
             {!checks && !err && [0, 1, 2, 3].map((i) => <li key={i} className="px-3 py-3"><div className="skeleton h-3.5 w-3/4 rounded" /></li>)}
           </ul>
         </div>
