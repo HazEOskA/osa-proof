@@ -18,7 +18,7 @@ const API_NOTES: Record<string, string[]> = {
   "model-mesh": ["GET /intelligence/model-mesh", "OSA_MODEL_FALLBACKS=provider:model,…"],
   datasets: ["POST /datasets", "GET /datasets/:id?as_of=", "POST /datasets/:id/versions", "PUT /datasets/:id/tags/:tag", "GET /datasets/:id/verify"],
   evaluators: ["POST /evaluators", "POST /runs/:id/evaluations", "POST /runs/:id/labels", "GET /runs/:id/evaluations"],
-  memory: ["Lives in the separate neurosa repository."],
+  memory: ["Działa w osobnym repozytorium NeurOSA."],
 };
 
 const DOC_SECTIONS = new Set(["models", "llm-gateway", "model-mesh", "datasets", "evaluators"]);
@@ -44,18 +44,18 @@ export default function Intelligence({ id }: { id: string }) {
     return (
       <div className="mx-auto max-w-[900px] px-4 py-6 md:px-8">
         <div className="label mb-2">INTELLIGENCE · {id.toUpperCase()}</div>
-        <p className="text-[14px] text-bad">API unreachable: {err}</p>
-        <p className="mt-2 text-[13px] text-dim">This view reads GET /api/intelligence/{id}. Nothing is shown rather than something invented.</p>
+        <p className="text-[14px] text-bad">API niedostępne: {err}</p>
+        <p className="mt-2 text-[13px] text-dim">Ten widok pobiera GET /api/intelligence/{id}. Nie pokazujemy fikcyjnych danych.</p>
       </div>
     );
   }
-  if (!report) return <div className="mx-auto max-w-[900px] px-4 py-6 text-[13px] text-dim md:px-8">Loading /intelligence/{id}…</div>;
+  if (!report) return <div className="mx-auto max-w-[900px] px-4 py-6 text-[13px] text-dim md:px-8">Ładowanie /intelligence/{id}…</div>;
 
   const passed = report.proofs.filter((p) => p.ok).length;
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 py-6 md:px-8">
       <header className="border-b border-line pb-5">
-        <div className="label mb-2">INTELLIGENCE · STATUS FROM PROOFS</div>
+        <div className="label mb-2">INTELIGENCJA · STAN NA PODSTAWIE DOWODÓW</div>
         <div className="flex flex-wrap items-center gap-4">
           <h2 className="font-display text-[clamp(20px,3vw,34px)] font-normal">{report.label}</h2>
           <Status v={report.status} framed />
@@ -64,15 +64,15 @@ export default function Intelligence({ id }: { id: string }) {
       </header>
 
       <ol className="grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-3">
-        <li className="bg-ink p-3"><span className="label">Proofs</span><div className="mono mt-2 text-[20px]">{passed}/{report.proofs.length}</div></li>
-        <li className="bg-ink p-3"><span className="label">Version</span><div className="mono mt-2 text-[20px]">{report.version ?? "—"}</div></li>
-        <li className="bg-ink p-3"><span className="label">Blocked by</span><div className="mono mt-2 text-[14px]">{report.blocked_by.length ? report.blocked_by.join(", ") : "nothing"}</div></li>
+        <li className="bg-ink p-3"><span className="label">Dowody</span><div className="mono mt-2 text-[20px]">{passed}/{report.proofs.length}</div></li>
+        <li className="bg-ink p-3"><span className="label">Wersja</span><div className="mono mt-2 text-[20px]">{report.version ?? "—"}</div></li>
+        <li className="bg-ink p-3"><span className="label">Blokowane przez</span><div className="mono mt-2 text-[14px]">{report.blocked_by.length ? report.blocked_by.join(", ") : "brak"}</div></li>
       </ol>
 
       <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
         <div>
-          <Section title="Required proofs">
-            {report.proofs.length === 0 && <p className="text-[13px] text-dim">No implementation registered, so there is nothing to prove yet.</p>}
+          <Section title="Wymagane dowody">
+            {report.proofs.length === 0 && <p className="text-[13px] text-dim">Brak zarejestrowanej implementacji, więc nie ma jeszcze dowodów.</p>}
             {report.proofs.map((p) => (
               <div key={p.proof_id} className="py-1.5">
                 <div className="flex items-center justify-between gap-3"><Mono className="text-[12px]">{p.proof_id}</Mono><Status v={p.ok ? "PASS" : "FAILED"} /></div>
@@ -81,19 +81,19 @@ export default function Intelligence({ id }: { id: string }) {
             ))}
           </Section>
           {datasets && (
-            <Section title={`Datasets in this API process · ${datasets.length}`}>
-              {datasets.length === 0 && <p className="text-[13px] text-dim">None yet. Create one with POST /datasets; storage is process memory.</p>}
+            <Section title={`Zbiory danych w procesie API · ${datasets.length}`}>
+              {datasets.length === 0 && <p className="text-[13px] text-dim">Brak danych. Utwórz zbiór przez POST /datasets; dane przechowywane są tylko w pamięci procesu.</p>}
               {datasets.map((d) => (
                 <div key={d.dataset_id} className="py-1.5">
-                  <div className="flex items-center justify-between gap-3"><Mono className="text-[12px]">{d.dataset_id} · v{d.version}</Mono><span className="text-[12px] text-dim">{d.example_count} examples{d.tags.length ? ` · ${d.tags.join(", ")}` : ""}</span></div>
+                  <div className="flex items-center justify-between gap-3"><Mono className="text-[12px]">{d.dataset_id} · v{d.version}</Mono><span className="text-[12px] text-dim">{d.example_count} przykładów{d.tags.length ? ` · ${d.tags.join(", ")}` : ""}</span></div>
                   <div className="mono text-[11px] text-dim">{short(d.version_sha256)}</div>
                 </div>
               ))}
             </Section>
           )}
           {evaluators && (
-            <Section title={`Evaluators in this API process · ${evaluators.length}`}>
-              {evaluators.length === 0 && <p className="text-[13px] text-dim">None yet. Register one with POST /evaluators; storage is process memory.</p>}
+            <Section title={`Ewaluatory w procesie API · ${evaluators.length}`}>
+              {evaluators.length === 0 && <p className="text-[13px] text-dim">Brak ewaluatorów. Dodaj przez POST /evaluators; dane są tylko w pamięci procesu.</p>}
               {evaluators.map((e) => (
                 <div key={e.evaluator_id} className="py-1.5">
                   <div className="flex items-center justify-between gap-3"><Mono className="text-[12px]">{e.evaluator_id}</Mono><span className="text-[12px] text-dim">{e.spec.type} · {e.kind} · pass ≥ {e.pass_threshold}</span></div>
@@ -104,9 +104,9 @@ export default function Intelligence({ id }: { id: string }) {
           )}
         </div>
         <div>
-          <Section title="Report">
-            <Kv k="module">{report.id}</Kv>
-            <Kv k="depends on">{report.depends_on.length ? report.depends_on.join(", ") : "—"}</Kv>
+          <Section title="Raport">
+            <Kv k="moduł">{report.id}</Kv>
+            <Kv k="zależy od">{report.depends_on.length ? report.depends_on.join(", ") : "—"}</Kv>
             <Kv k="evaluated_at">{report.evaluated_at}</Kv>
             <Kv k="report_sha256">{short(report.report_sha256)}</Kv>
           </Section>
@@ -115,7 +115,7 @@ export default function Intelligence({ id }: { id: string }) {
               <ul className="mono space-y-1 text-[12px] text-dim">{API_NOTES[report.id].map((n) => <li key={n}>{n}</li>)}</ul>
             </Section>
           )}
-          <Section title="Docs"><a className="text-[13px] text-cyan hover:underline" href={`/docs#${DOC_SECTIONS.has(report.id) ? report.id : "intelligence"}`}>Open the {report.label} docs</a></Section>
+          <Section title="Dokumentacja"><a className="text-[13px] text-cyan hover:underline" href={`/docs#${DOC_SECTIONS.has(report.id) ? report.id : "intelligence"}`}>Otwórz dokumentację {report.label}</a></Section>
         </div>
       </div>
     </div>
