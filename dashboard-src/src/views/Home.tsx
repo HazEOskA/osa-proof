@@ -13,6 +13,7 @@ const destination = (view: ViewId) => {
 
 const LAUNCH: { label: string; icon: string; color: string; view: ViewId; built: boolean; focus?: string }[] = [
   { label: "World", icon: CARD.world, color: "#4d9bff", view: "world", built: true },
+  { label: "Agent Chat Fleet", icon: CARD.agents, color: "#36d6f5", ...destination("jeverson-chat") },
   { label: "Agents", icon: CARD.agents, color: "#f8a541", ...destination("build:agents") },
   { label: "Minions", icon: CARD.minions, color: "#36d6f5", ...destination("build:agents") },
   { label: "Workers", icon: CARD.workers, color: "#ff8a3d", ...destination("build:agents") },
