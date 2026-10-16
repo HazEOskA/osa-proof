@@ -88,7 +88,7 @@ function LiveRail() {
   if (!run) return null;
   return (
     <aside className="hidden w-[210px] shrink-0 flex-col border-l border-line bg-ink xl:flex" aria-label="Live system rail">
-      <div className="flex h-11 items-center justify-between border-b border-line px-3"><span className="label">Zdarzenia systemowe</span><Status v={run.verdict} /></div>
+      <div className="flex min-h-[72px] min-w-0 flex-col items-start justify-center gap-2 overflow-hidden border-b border-line px-3 py-2"><span className="label">Zdarzenia systemowe</span><Status v={run.verdict} /></div>
       <div className="mono border-b border-line px-3 py-1.5 text-[10px] text-dim">{run.proof.mission_id} · order by sequence (events carry no timestamps)</div>
       <ol className="flex-1 overflow-y-auto py-1">
         {run.events.map((e) => (
