@@ -109,11 +109,12 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   const { view, source, openPalette } = useOsa();
   const web3 = useWeb3Data();
   const [drawer, setDrawer] = useState(false);
+  // The chat is the primary command surface: no second dashboard rail, header or nav.
+  if (view === "jeverson-chat") return <div className="h-[100dvh] min-h-0 min-w-0 overflow-hidden bg-void"><JeversonChat /></div>;
   let body;
   const v: ViewId = view;
   if (v === "nvidia:models") body = <NvidiaModels />;
   else if (v === "delivery-lab") body = <DeliveryLab />;
-  else if (v === "jeverson-chat") body = <JeversonChat />;
   else if (v === "home") body = <Home />;
   else if (v === "world") body = <World />;
   else if (v === "missions") body = <Missions />;
