@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { nvidiaComplete, nvidiaStatus, nvidiaRequestConfig, NvidiaError } from "../apps/api/src/nvidia";
+import { nvidiaComplete, nvidiaStatus, nvidiaRequestConfig, nvidiaAvailability, NVIDIA_MODEL, NvidiaError } from "../apps/api/src/nvidia";
 const env = { NVIDIA_API_KEY: "test-secret", NVIDIA_MODEL: "configured-model" };
 test("NVIDIA: missing configuration and invalid prompt never call provider", async () => {
   const never = (async () => { throw Error("must not call"); }) as typeof fetch;
@@ -64,10 +64,21 @@ test("NVIDIA: per-request key and model never mutate shared configuration", asyn
   assert.equal(nvidiaRequestConfig({}, original).NVIDIA_API_KEY, "server-secret");
 });
 
-test("production zero-cost policy blocks NVIDIA before a provider request",async()=>{
+test("polityka zerowych kosztów wymaga potwierdzenia dla niezweryfikowanego modelu",async()=>{
   let calls=0;
-  await assert.rejects(()=>nvidiaComplete("test",{NVIDIA_API_KEY:"unit-test-placeholder",OSA_ZERO_COST_ONLY:"true"},(async()=>{calls++;throw Error("unexpected");}) as typeof fetch),/potwierdzenie bezpłatnego/);
+  await assert.rejects(()=>nvidiaComplete("test",{NVIDIA_API_KEY:"unit-test-placeholder",NVIDIA_MODEL:"other/unverified",OSA_ZERO_COST_ONLY:"true"},(async()=>{calls++;throw Error("unexpected");}) as typeof fetch),/potwierdzenie bezpłatnego/);
   assert.equal(calls,0);
+});
+
+test("bezpłatny Nemotron w open nie wymaga operatora, Redis ani codziennego potwierdzenia",async()=>{
+  const env={VERCEL:"1",VERCEL_ENV:"production",OSA_AUTH_MODE:"open",OSA_ZERO_COST_ONLY:"true",NVIDIA_API_KEY:"unit-test-placeholder"};
+  assert.deepEqual(nvidiaAvailability(env),{available:true,gate:null});
+  let calls=0;
+  const answer=await nvidiaComplete("Cześć",env,(async(_url,init)=>{
+    calls++;assert.equal(JSON.parse(String(init?.body)).model,NVIDIA_MODEL);
+    return new Response(JSON.stringify({id:"simulated-provider",model:NVIDIA_MODEL,choices:[{finish_reason:"stop",message:{content:"Odpowiedź kontrolowana w teście transportu."}}]}));
+  }) as typeof fetch);
+  assert.equal(calls,1);assert.equal(answer.model,NVIDIA_MODEL);
 });
 
 test("NVIDIA Fleet: role profile and previous messages reach the model; no claim of tool execution", async()=>{

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHash, randomUUID } from "node:crypto";
-import { protectedRuntime } from "./operator-access";
+import { protectedRuntime, openVercelAccess } from "./operator-access";
 import { ModelQuotaError, sharedQuotaConfigured, takeModelQuota } from "./model-quota";
 import type { executeUnified, UnifiedRequest } from "./unified";
 import { osaGuideContext } from "./osa-guide";
@@ -26,6 +26,10 @@ export function nvidiaRequestConfig(options: { apiKey?: unknown; model?: unknown
   return config;
 }
 export function nvidiaCostGate(env: NodeJS.ProcessEnv, model = nvidiaStatus(env).model): void {
+  // NVIDIA Build lists this exact model at the fixed integrate.api.nvidia.com
+  // endpoint as a free API endpoint. No daily operator attestation is needed.
+  // Source verified 2026-10-17: https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b
+  if (model === NVIDIA_MODEL) return;
   if(protectedRuntime(env) && env.OSA_ZERO_COST_ONLY!=="true")
     throw new NvidiaError(403,"ZERO_COST_POLICY_REQUIRED","Model jest zablokowany: wymagana polityka zerowych kosztów.");
   if(env.OSA_ZERO_COST_ONLY!=="true") return;
@@ -39,7 +43,7 @@ export function nvidiaCostGate(env: NodeJS.ProcessEnv, model = nvidiaStatus(env)
 export function nvidiaAvailability(env:NodeJS.ProcessEnv) {
   try {nvidiaCostGate(env);} catch(error){return {available:false,gate:error instanceof NvidiaError?error.code:"UNKNOWN"};}
   if(!nvidiaStatus(env).configured)return {available:false,gate:"NVIDIA_NOT_CONFIGURED"};
-  if(protectedRuntime(env)&&!sharedQuotaConfigured(env))return {available:false,gate:"SHARED_QUOTA_NOT_CONFIGURED"};
+  if(protectedRuntime(env)&&!openVercelAccess(env)&&!sharedQuotaConfigured(env))return {available:false,gate:"SHARED_QUOTA_NOT_CONFIGURED"};
   return {available:true,gate:null};
 }
 const NVIDIA_TOOLS = [{type:"function",function:{name:"osa_sha256",description:"Oblicza SHA-256 podanego tekstu przez autoryzowany OSA Runtime. Tylko odczyt, bez zmian plików i sieci.",
@@ -121,7 +125,7 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
   options: {env?:NodeJS.ProcessEnv;dispatch?:(value:UnifiedRequest)=>ReturnType<typeof executeUnified>;fetch?:typeof fetch}={}) {
   const env=options.env??process.env,fetcher=options.fetch??fetch;
   const send = (status: number, data: unknown) => { response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }); response.end(JSON.stringify(data)); };
-  if (path === "/nvidia/status" && request.method === "GET") return send(200, {...nvidiaStatus(env),...nvidiaAvailability(env),quota:protectedRuntime(env)?"SHARED_REQUIRED":"LOCAL_PROCESS_ONLY"});
+  if (path === "/nvidia/status" && request.method === "GET") return send(200, {...nvidiaStatus(env),...nvidiaAvailability(env),quota:sharedQuotaConfigured(env)?"SHARED":protectedRuntime(env)&&!openVercelAccess(env)?"SHARED_REQUIRED":"LOCAL_PROCESS_ONLY"});
   const fleet=path==="/nvidia/fleet-chat";
   if ((path !== "/nvidia/chat" && !fleet) || request.method !== "POST") return send(404, { error: "Trasa NVIDIA nie istnieje." });
   try {

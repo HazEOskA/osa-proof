@@ -60,7 +60,7 @@ test("chmura: brak konfiguracji operatora zatrzymuje żądanie mimo OSA_AUTH_MOD
   const base=await listen(server);
   try{const r=await fetch(base+"/nvidia/status");assert.equal(r.status,503);assert.equal((await r.json()).code,"OPERATOR_ACCESS_NOT_CONFIGURED");}finally{await close(server);}
 });
-for (const environment of ["preview","production"]) test(`${environment} open: panel i natywny dowód działają bez operatora, model nadal wymaga autoryzacji`,async()=>{
+for (const environment of ["preview","production"]) test(`${environment} open: czat i natywny dowód nie wymagają sesji operatora`,async()=>{
   const env={VERCEL:"1",VERCEL_ENV:environment,OSA_AUTH_MODE:"open"};
   const runtime=createDevExecution({OSA_EXECUTION_MODE:"fixture"});
   const server=createApiServer(runtime.registry,new ApiState(undefined,undefined,undefined,"open",undefined,undefined,undefined,env),runtime.description);
@@ -77,7 +77,7 @@ for (const environment of ["preview","production"]) test(`${environment} open: p
     assert.equal(verified.status,200);assert.equal((await verified.json()).ok,true);
     for(const path of ["/nvidia/chat","/nvidia/fleet-chat"]){
       const denied=await fetch(base+path,{method:"POST",headers:json,body:JSON.stringify({prompt:"test"})});
-      assert.equal(denied.status,401);assert.equal((await denied.json()).code,"MODEL_OPERATOR_SESSION_REQUIRED");
+      assert.equal(denied.status,503);assert.equal((await denied.json()).code,"NVIDIA_NOT_CONFIGURED");
     }
     assert.equal((await fetch(base+"/unified/execute",{method:"POST",headers:json,body:JSON.stringify({tool:"osa.crypto.sha256.v1"})})).status,403);
     assert.equal((await fetch(base+"/web3/execute",{method:"POST",headers:json,body:"{}"})).status,403);

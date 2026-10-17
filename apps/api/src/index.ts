@@ -258,13 +258,8 @@ export async function handleApiRequest(
       }
 
       if (parts[0] === "nvidia") {
-        if (!requireSession(request, response, state)) return;
-        const operator = cloud ? operatorSession(request,state.accessEnv) : undefined;
-        if (cloud && !["GET","HEAD"].includes(method)) {
-          if (!operator) return send(response,401,{code:"MODEL_OPERATOR_SESSION_REQUIRED",error:"Wywołanie modelu wymaga autoryzacji operatora. Panel w trybie otwartym działa bez logowania."});
-          if (!operatorOriginAllowed(request,state.accessEnv)) return send(response,403,{code:"ORIGIN_DENIED",error:"Niedozwolone pochodzenie żądania."});
-        }
-        const session=operator ?? authenticatedSession(request,state)!;
+        const session = requireSession(request, response, state);
+        if (!session) return;
         return handleNvidiaRequest(request, response, url.pathname, {env:state.accessEnv, dispatch:async input=>{
           installUnifiedTools(registry,state.accessEnv);
           const result=await executeUnified(input,session.identity.organization_id!,registry,operatorProject(state.accessEnv));

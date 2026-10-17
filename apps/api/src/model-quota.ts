@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { protectedRuntime } from "./operator-access";
+import { protectedRuntime, openVercelAccess } from "./operator-access";
 type Env = Record<string,string|undefined>;
 export class ModelQuotaError extends Error {
   constructor(readonly status:number, readonly code:string, message:string){super(message);}
@@ -22,7 +22,7 @@ export function sharedQuotaConfigured(env:Env):boolean {
 }
 const calls:number[]=[];
 export async function takeModelQuota(env:Env,requestId:string,fetcher:typeof fetch=fetch):Promise<void>{
-  if(protectedRuntime(env)){
+  if(sharedQuotaConfigured(env) || (protectedRuntime(env) && !openVercelAccess(env))){
     if(!sharedQuotaConfigured(env))throw new ModelQuotaError(503,"SHARED_QUOTA_NOT_CONFIGURED","Model jest zablokowany: brakuje współdzielonego limitu żądań.");
     const scope=[env.VERCEL_ENV||env.NODE_ENV||"protected",env.OSA_OPERATOR_ORGANIZATION_ID,env.OSA_OPERATOR_PROJECT_ID].join(":");
     const key="osa:model-quota:v1:"+createHash("sha256").update(scope).digest("hex");
