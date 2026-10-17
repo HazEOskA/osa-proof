@@ -1,0 +1,73 @@
+{
+  "base_commit": "4964a8c97503a95b6a8e0dbdb7633b1c0ba92a2f",
+  "scope": "Jawny open w produkcji Vercel na polecenie operatora; ochrona NVIDIA i kosztów bez zmian.",
+  "npm_test": {
+    "total": 240,
+    "pass": 237,
+    "fail": 0,
+    "skip": 3
+  },
+  "build_backend": "PASS",
+  "build_dashboard": "PASS",
+  "build_worker_host": "PASS",
+  "browser_environment": "Lokalny prawdziwy backend, VERCEL=1, VERCEL_ENV=production, OSA_AUTH_MODE=open.",
+  "browser_results": [
+    {
+      "name": "android-320",
+      "android_emulation": true,
+      "result": "PASS",
+      "access_mode": "OPEN_PRODUCTION",
+      "login_required": false,
+      "refresh_restored": true,
+      "tampered_restore_rejected": true,
+      "cloud_persistence": false,
+      "execution_id": "exec_5831b75c-e1aa-4362-80d7-37b1c3d48433",
+      "crypto_sha256": "64fcc6edb1f1f7c3a78eb115cd1bb1a20fad16c49ef0e8008432e378d298a91d",
+      "real_runtime": true,
+      "verified_receipt": true,
+      "replay_ui": true,
+      "replay_to_final_event": true,
+      "provider_model_tool_call": "NOT_TESTED",
+      "paid_calls": 0
+    },
+    {
+      "name": "android-390",
+      "android_emulation": true,
+      "result": "PASS",
+      "access_mode": "OPEN_PRODUCTION",
+      "login_required": false,
+      "refresh_restored": true,
+      "tampered_restore_rejected": true,
+      "cloud_persistence": false,
+      "execution_id": "exec_de3aafb9-a3e3-49d7-a344-ac07bcd90965",
+      "crypto_sha256": "64fcc6edb1f1f7c3a78eb115cd1bb1a20fad16c49ef0e8008432e378d298a91d",
+      "real_runtime": true,
+      "verified_receipt": true,
+      "replay_ui": true,
+      "replay_to_final_event": true,
+      "provider_model_tool_call": "NOT_TESTED",
+      "paid_calls": 0
+    },
+    {
+      "name": "desktop",
+      "android_emulation": false,
+      "result": "PASS",
+      "access_mode": "OPEN_PRODUCTION",
+      "login_required": false,
+      "refresh_restored": true,
+      "tampered_restore_rejected": true,
+      "cloud_persistence": false,
+      "execution_id": "exec_af0ce349-a259-413f-92db-7746f493503b",
+      "crypto_sha256": "64fcc6edb1f1f7c3a78eb115cd1bb1a20fad16c49ef0e8008432e378d298a91d",
+      "real_runtime": true,
+      "verified_receipt": true,
+      "replay_ui": true,
+      "replay_to_final_event": true,
+      "provider_model_tool_call": "NOT_TESTED",
+      "paid_calls": 0
+    }
+  ],
+  "live_production": "Odczyty po wdrożeniu i commit powiązane w PR #16.",
+  "live_nvidia": "NOT_TESTED",
+  "paid_calls": 0
+}

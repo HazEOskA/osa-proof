@@ -15,9 +15,9 @@ process.env.OSA_WORKER_TOKEN=token;
 const worker=createWorkerServer({token,provider:new DockerWorkspaceProvider()});
 worker.listen(3102,"127.0.0.1");
 const execution=createDevExecution({...process.env,OSA_EXECUTION_MODE:"fixture"});
-// Exercise the real API with the same open-access policy as Vercel Preview.
+// Exercise the real API with the same open-access policy as Vercel production.
 const state=new ApiState(undefined,undefined,undefined,"open",undefined,undefined,undefined,
-  {...process.env,VERCEL:"1",VERCEL_ENV:"preview",OSA_AUTH_MODE:"open"});
+  {...process.env,VERCEL:"1",VERCEL_ENV:"production",OSA_AUTH_MODE:"open"});
 const generated=path.resolve(__dirname,"../dashboard-dist");
 const root=fs.existsSync(path.join(generated,"index.html"))?generated:path.resolve(__dirname,"../dashboard-src/dist");
 const mime={".html":"text/html",".js":"text/javascript",".css":"text/css",".svg":"image/svg+xml",".png":"image/png",".webp":"image/webp"};

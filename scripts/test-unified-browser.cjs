@@ -13,7 +13,7 @@ async function main(){
   children.push(spawn(process.execPath,["scripts/unified-e2e-server.cjs"],{cwd:root,stdio:["ignore",log,log],env:{...process.env,OSA_E2E_API_PORT:"3199",OSA_EXECUTION_MODE:"fixture",NVIDIA_API_KEY:"",OPENROUTER_API_KEY:""}}));
   await ready(base+"/api/build/status");
   const access=await (await fetch(base+"/api/auth/access")).json();
-  assert.equal(access.required,false);assert.equal(access.mode,"OPEN_PREVIEW");assert.equal(access.authenticated,false);
+  assert.equal(access.required,false);assert.equal(access.mode,"OPEN_PRODUCTION");assert.equal(access.authenticated,false);
   const browser=await chromium.launch({executablePath:process.env.OSA_CHROMIUM_EXECUTABLE||undefined,headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
   const report=[];
   try {

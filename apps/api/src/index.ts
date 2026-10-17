@@ -27,7 +27,7 @@ import { BrainControlPlane, verifyBrainPlan } from "../../../packages/brain/src"
 import { runTraceProbe, TraceInputError } from "./trace-probe";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
-// "open": no login, for the Vercel preview dashboard; every open-mode request acts as OPEN_MODE_SESSION.
+// "open": no panel login in local development or explicit Vercel preview/production open mode.
 export type AuthMode = "session" | "open";
 
 export class AuthConfigError extends Error {
@@ -189,7 +189,7 @@ export async function handleApiRequest(
           return send(response,403,{code:"ORIGIN_DENIED",error:"Niedozwolone pochodzenie żądania."});
         // Scope v0.1: one operator, one organization and project. No claim of multi-user IAM.
       }
-      // Opening Preview does not authorize external executors or model costs.
+      // Opening the panel does not authorize external executors or model costs.
       if (cloud && !["GET","HEAD"].includes(method) && !["nvidia","auth","unified"].includes(parts[0]) &&
           (executionDescription.mode === "provider" || state.accessEnv.OSA_INTEGRATION_ENABLED === "1"))
         return send(response,403,{code:"EXTERNAL_EXECUTION_GATED",error:"Wykonanie zewnętrzne wymaga odrębnej polityki uprawnień."});
@@ -261,7 +261,7 @@ export async function handleApiRequest(
         if (!requireSession(request, response, state)) return;
         const operator = cloud ? operatorSession(request,state.accessEnv) : undefined;
         if (cloud && !["GET","HEAD"].includes(method)) {
-          if (!operator) return send(response,401,{code:"MODEL_OPERATOR_SESSION_REQUIRED",error:"Wywołanie modelu wymaga autoryzacji operatora. Panel Preview działa bez logowania."});
+          if (!operator) return send(response,401,{code:"MODEL_OPERATOR_SESSION_REQUIRED",error:"Wywołanie modelu wymaga autoryzacji operatora. Panel w trybie otwartym działa bez logowania."});
           if (!operatorOriginAllowed(request,state.accessEnv)) return send(response,403,{code:"ORIGIN_DENIED",error:"Niedozwolone pochodzenie żądania."});
         }
         const session=operator ?? authenticatedSession(request,state)!;

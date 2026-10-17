@@ -4,7 +4,7 @@ Modele NVIDIA oraz Czat floty agentów korzystają z tego samego serwerowego mos
 
 Klucz `NVIDIA_API_KEY` jest przechowywany wyłącznie w środowisku serwera. Panel nie przyjmuje własnego klucza dostawcy. HTTP odrzuca pole `apiKey` i ID modelu inne niż skonfigurowane na serwerze. Nie zapisuj sekretów w promptach ani zasobach Buildera.
 
-Panel i natywne wykonania Vercel Preview w trybie `OSA_AUTH_MODE=open` działają bez obowiązkowego logowania. Wywołania NVIDIA nadal wymagają podpisanej sesji operatora oraz zgodnego originu; wyjątek Preview nie wyłącza ochrony produkcji ani polityki kosztowej. `/auth/dev-login` pozostaje wyłączone w chmurze. Vercel SSO jest osobnym ustawieniem i nie zostało zmienione.
+Panel i natywne wykonania Vercel Preview oraz produkcji w jawnym `OSA_AUTH_MODE=open` działają bez obowiązkowego logowania. Wywołania NVIDIA nadal wymagają podpisanej sesji operatora oraz zgodnego originu; otwarty panel nie wyłącza autoryzacji modelu ani polityki kosztowej. `/auth/dev-login` pozostaje wyłączone w chmurze. Vercel SSO jest osobnym ustawieniem i nie zostało zmienione.
 
 `GET /api/nvidia/status` w otwartym Preview jest dostępne bez logowania i zwraca `configured`, `available`, `gate` i rodzaj limitu. Obecny klucz nie oznacza udanego wykonania. Model jest blokowany bez aktywnej polityki zerowych kosztów, aktualnego potwierdzenia bezpłatnego modelu i współdzielonego limitu. Pełna konfiguracja: [instrukcja operatora](release-v0.1.0/OPERATOR.md).
 

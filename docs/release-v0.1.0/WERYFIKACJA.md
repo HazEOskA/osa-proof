@@ -74,3 +74,15 @@ Na życzenie operatora usunięto blokadę całego panelu w otwartym Vercel Previ
 | desktop | `exec_6927de50-2ced-436b-97c1-13784263530b` | [dowód](../evidence/release-v0.1.0/preview-open-desktop-bundle.json) |
 
 Bieżący commit, CI i odczyt wdrożonego Preview są powiązane w [PR #16](https://github.com/HazEOskA/osa-proof/pull/16). Nie wykonano płatnego testu modelu ani wdrożenia produkcyjnego. Stan wydania pozostaje BLOCKED.
+
+## Produkcyjny tryb open na polecenie operatora
+
+Po korekcie Preview operator osobno zlecił wdrożenie gałęzi na produkcję, aby sprawdzić panel pod stałym adresem. Dopuszczony open obejmuje teraz jawne Vercel Preview i produkcję. Tryb session, autoryzacja wywołań modelu, koszty i blokady narzędzi mutujących pozostają aktywne. Wcześniejsze deklaracje o niezmienionej produkcji opisują poprzedni checkpoint.
+
+Pełne npm test: **237 PASS, 0 FAIL, 3 SKIP z 240**; [log](../evidence/release-v0.1.0/production-open-npm-test.txt). Build backendu, dashboardu i worker hosta PASS. Prawdziwy lokalny backend z produkcyjną polityką open przeszedł browser E2E na 320/390/1440: brak logowania, natywny SHA-256, receipt, Replay, odświeżenie i odmowa zmienionego bundle. [Wyniki](../evidence/release-v0.1.0/production-open-results.json), [log](../evidence/release-v0.1.0/production-open-browser.txt).
+
+- android-320: `exec_5831b75c-e1aa-4362-80d7-37b1c3d48433`, [bundle](../evidence/release-v0.1.0/production-open-android-320-bundle.json).
+- android-390: `exec_de3aafb9-a3e3-49d7-a344-ac07bcd90965`, [bundle](../evidence/release-v0.1.0/production-open-android-390-bundle.json).
+- desktop: `exec_af0ce349-a259-413f-92db-7746f493503b`, [bundle](../evidence/release-v0.1.0/production-open-desktop-bundle.json).
+
+Bieżący commit, CI, deployment i odbiór rzeczywistej produkcji są wskazane w [PR #16](https://github.com/HazEOskA/osa-proof/pull/16). To testy natywnego Runtime; nie zaliczają modelowego E2E ani formalnego wydania. [Zakres wdrożenia i rollback](WDROZENIE_PRODUKCJA.md).

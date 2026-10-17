@@ -26,7 +26,7 @@ Macierz dotyczy zakresu dowodów z tego PR, nie deklarowanej gotowości wszystki
 | A2A | PLANNED | API raportuje UNSUPPORTED | Brak dowodu i aktywnego protokołu |
 | Cloud deploy | GATED | Adaptery i przegląd planu; `deployment_execution_enabled=false` | Brak zgody na wykonanie; nie provisionowano infrastruktury |
 | Regulated | GATED | `tests/layers.test.ts`, backendowy gate | Brak weryfikacji organizacji, afiliacji i entitlementów |
-| Dostęp operatora | PARTIAL | Testy podpisu, originu, projektu, wygaśnięcia, odmów modelu i otwartego Preview | Panel Preview na życzenie operatora bez obowiązkowego logowania; chronione wywołania modelu nieaktywowane; produkcyjna granica w kodzie pozostaje |
+| Dostęp operatora | PARTIAL | Testy podpisu, originu, projektu, wygaśnięcia, odmów modelu i otwartego Preview | Panel Preview i produkcji w jawnym open na życzenie operatora bez obowiązkowego logowania; chronione wywołania modelu nieaktywowane; tryb session zachowuje granicę operatora |
 | Wielu użytkowników / IAM | PLANNED | Jawny zakres pojedynczego operatora | Brak OIDC, zarządzania użytkownikami, pełnego RBAC i odwoływania pojedynczych sesji |
 | Control plane | PARTIAL | Istniejący wspólny ApiState i polski UI; testy API | Brak drugiego control plane; PROCESS_MEMORY pozostaje ograniczeniem |
 | Trwałość serverless | BLOCKED | `/api/build/status`, nowa instancja nie posiada poprzednich rekordów | Wymagany rzeczywisty trwały backend; localStorage i lokalne pliki nie wystarczą |

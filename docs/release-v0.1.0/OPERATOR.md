@@ -9,7 +9,7 @@ npm run worker:build
 node scripts/build-dashboard.cjs
 ```
 
-Tryb `OSA_EXECUTION_MODE=fixture` jest jawnie testowy. `OSA_AUTH_MODE=open` udostępnia środowisko lokalne i Vercel Preview bez obowiązkowego logowania. Wyjątek wymaga jednocześnie `VERCEL=1` oraz `VERCEL_ENV=preview`; nie obejmuje produkcji ani autoryzacji wywołań NVIDIA. Host workerów bez Docker i prawdziwej izolacji pozostaje GATED.
+Tryb `OSA_EXECUTION_MODE=fixture` jest jawnie testowy. `OSA_AUTH_MODE=open` udostępnia środowisko lokalne oraz Vercel Preview/produkcję bez obowiązkowego logowania. W Vercel wymaga jednocześnie `VERCEL=1` oraz `VERCEL_ENV=preview` lub `production`; nie obejmuje autoryzacji wywołań NVIDIA. Host workerów bez Docker i prawdziwej izolacji pozostaje GATED.
 
 ## Preview bez logowania
 
@@ -61,10 +61,10 @@ Przewodnik „Zapytaj OSĘ” pozostaje samouczkiem bez prawa wykonywania narzę
 
 ## Rollback i produkcja
 
-Nie wdrażaj tej gałęzi do produkcji ani nie scalaj jej do main przed przejściem bramek i osobnym zatwierdzeniem. Produkcja bazowa to `512a6e1` / `dpl_dwH79xqLhkcSn5zzwjzmStPwMKmJ`.
+Operator osobno zlecił wdrożenie tej gałęzi na produkcję w celu sprawdzenia panelu bez obowiązkowego logowania. To nie jest formalne wydanie v0.1.0 i nie obejmuje merge do main. Produkcja bazowa i punkt cofnięcia tej operacji to `512a6e1` / `dpl_dwH79xqLhkcSn5zzwjzmStPwMKmJ`. Szczegóły: [WDROZENIE_PRODUKCJA.md](WDROZENIE_PRODUKCJA.md).
 
 Rollback Preview: zachowaj produkcję, anuluj/wyłącz wyłącznie problematyczne Preview i przywróć poprzedni zatwierdzony head gałęzi. Nie usuwaj dowodów. Ewentualne zmienne gałęzi usuwaj dopiero po identyfikacji ich ID i targetu; nie usuwaj wspólnych kluczy NVIDIA.
 
-Rollback produkcji, jeśli wydanie zostanie później zatwierdzone: wybierz ostatni zatwierdzony deployment po sprawdzeniu jego zabezpieczeń i trwałego backendu; nie promuj automatycznie `512a6e1`, ponieważ ma `auth_mode=open`. Alternatywa to odwracający commit z zachowaniem nowych zabezpieczeń. Zmiana ochrony i redeploy produkcji wymagają osobnej zgody. Nie ma migracji bazy wykonanej przez ten PR.
+Rollback bieżącego wdrożenia testowego: przywróć poprzedni produkcyjny deployment wskazany wyżej. Odtwarza to wcześniejszy stan open, a nie docelową ochronę wieloużytkownikową. Nie wykonano migracji bazy ani zmiany sekretów. Dalsze zmiany ochrony, infrastruktury i formalne wydanie wymagają osobnego zakresu.
 
 Historia rozmów, szkic Buildera i lokalny bundle w chronionym środowisku mają osobne klucze storage dla organizacji/projektu potwierdzonych przez sesję. Stare zapisy bez zakresu pozostają na urządzeniu; nie są kasowane ani automatycznie importowane do chronionego projektu. To rozdzielenie widoków lokalnych, nie szyfrowany magazyn ani granica bezpieczeństwa między osobami korzystającymi z tego samego profilu przeglądarki.

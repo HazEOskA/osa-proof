@@ -60,14 +60,14 @@ test("chmura: brak konfiguracji operatora zatrzymuje żądanie mimo OSA_AUTH_MOD
   const base=await listen(server);
   try{const r=await fetch(base+"/nvidia/status");assert.equal(r.status,503);assert.equal((await r.json()).code,"OPERATOR_ACCESS_NOT_CONFIGURED");}finally{await close(server);}
 });
-test("Preview open: panel i natywny dowód działają bez operatora, model nadal wymaga autoryzacji",async()=>{
-  const env={VERCEL:"1",VERCEL_ENV:"preview",OSA_AUTH_MODE:"open"};
+for (const environment of ["preview","production"]) test(`${environment} open: panel i natywny dowód działają bez operatora, model nadal wymaga autoryzacji`,async()=>{
+  const env={VERCEL:"1",VERCEL_ENV:environment,OSA_AUTH_MODE:"open"};
   const runtime=createDevExecution({OSA_EXECUTION_MODE:"fixture"});
   const server=createApiServer(runtime.registry,new ApiState(undefined,undefined,undefined,"open",undefined,undefined,undefined,env),runtime.description);
   const base=await listen(server);
   try{
     const access=await (await fetch(base+"/auth/access")).json();
-    assert.deepEqual(access,{required:false,configured:false,mode:"OPEN_PREVIEW",authenticated:false,scope:null});
+    assert.deepEqual(access,{required:false,configured:false,mode:environment==="production"?"OPEN_PRODUCTION":"OPEN_PREVIEW",authenticated:false,scope:null});
     const status=await fetch(base+"/build/status");assert.equal(status.status,200);assert.equal((await status.json()).auth_mode,"open");
     assert.equal((await fetch(base+"/nvidia/status")).status,200);
     const json={"content-type":"application/json"};
@@ -83,13 +83,14 @@ test("Preview open: panel i natywny dowód działają bez operatora, model nadal
     assert.equal((await fetch(base+"/web3/execute",{method:"POST",headers:json,body:"{}"})).status,403);
   }finally{await close(server);}
 });
-test("wyjątek bez logowania dotyczy wyłącznie jawnego Vercel Preview open",()=>{
+test("tryb bez logowania wymaga jawnego Vercel preview/production open; session pozostaje chronione",()=>{
   for(const env of [
-    {VERCEL:"1",VERCEL_ENV:"production",OSA_AUTH_MODE:"open"},
+    {VERCEL:"1",VERCEL_ENV:"production",OSA_AUTH_MODE:"session"},
     {VERCEL:"1",OSA_AUTH_MODE:"open"},
     {VERCEL:"1",VERCEL_ENV:"development",OSA_AUTH_MODE:"open"},
     {NODE_ENV:"production",VERCEL_ENV:"preview",OSA_AUTH_MODE:"open"},
-    {VERCEL:"1",VERCEL_ENV:"preview",OSA_AUTH_MODE:"session"}
+    {VERCEL:"1",VERCEL_ENV:"preview",OSA_AUTH_MODE:"session"},
+    {VERCEL:"1",VERCEL_ENV:"production"}
   ])assert.equal(operatorAccessStatus(env).required,true);
 });
 test("koszty: brak polityki, zgody, modelu lub świeżej weryfikacji blokuje wywołanie",async()=>{

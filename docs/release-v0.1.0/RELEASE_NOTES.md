@@ -4,11 +4,11 @@
 
 OSA Proof pozostaje jednym frameworkiem: konfiguracja agentów i grafu zespołu, rozmowa, Runtime, śledzenie, materiał dowodowy, deterministyczna weryfikacja i Replay. Zakres nie tworzy nowego dashboardu, repozytorium ani systemu pamięci.
 
-Kandydat łączy globalny polski samouczek „Zapytaj OSĘ” z osobnym Czatem floty agentów. Panel Preview działa na życzenie operatora bez obowiązkowego logowania. Kandydat zachowuje ochronę produkcyjnego API i kosztów, dopuszcza wyłącznie serwerowy klucz/model NVIDIA i ograniczone narzędzie SHA-256 wybrane przez model. Wykonanie ma jeden execution_id, a receipt i dowody przechodzą osobną walidację.
+Kandydat łączy globalny polski samouczek „Zapytaj OSĘ” z osobnym Czatem floty agentów. Panel Preview działa na życzenie operatora bez obowiązkowego logowania. Operator następnie zlecił także produkcyjny odbiór otwartego panelu. Kandydat zachowuje autoryzację wywołań modelu i ochronę kosztów, dopuszcza wyłącznie serwerowy klucz/model NVIDIA i ograniczone narzędzie SHA-256 wybrane przez model. Wykonanie ma jeden execution_id, a receipt i dowody przechodzą osobną walidację.
 
 Gotowość modelu i infrastruktury jest jawna. Brak działającego bezpłatnego dostępu, wspólnego licznika, trwałego backendu lub izolowanego workera pozostawia odpowiednie funkcje GATED/BLOCKED. Lokalna historia i ponownie zweryfikowany bundle nie oznaczają trwałości w chmurze.
 
-Pełna ścieżka NVIDIA na Preview, trwały zapis serverless i wdrożenie zabezpieczeń na produkcję pozostają niespełnionymi warunkami. Szczegóły: [BRAMKI.md](BRAMKI.md), [MACIERZ.md](MACIERZ.md), [WERYFIKACJA.md](WERYFIKACJA.md).
+Pełna ścieżka NVIDIA na Preview i trwały zapis serverless pozostają niespełnionymi warunkami. Osobno zlecone wdrożenie panelu do odbioru nie stanowi formalnego wydania; zobacz [WDROZENIE_PRODUKCJA.md](WDROZENIE_PRODUKCJA.md). Szczegóły: [BRAMKI.md](BRAMKI.md), [MACIERZ.md](MACIERZ.md), [WERYFIKACJA.md](WERYFIKACJA.md).
 
 ## Następne aktualizacje
 

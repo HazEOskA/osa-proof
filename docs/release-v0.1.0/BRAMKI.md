@@ -18,7 +18,7 @@ PR-y źródłowe pozostają bez zmian. Zamknięcie ich jako zastąpionych należ
 
 ## Naprawy przygotowane w kodzie
 
-1. Na życzenie operatora panel i natywne API Vercel Preview działają bez obowiązkowego logowania: wymagane są `VERCEL=1`, `VERCEL_ENV=preview` i `OSA_AUTH_MODE=open`. `/api/auth/access` raportuje wtedy `required=false`, `mode=OPEN_PREVIEW`. Poza tym dokładnym zakresem chmurowe API nadal wymaga sesji operatora; brak konfiguracji kończy się 503, brak sesji — 401. Wywołania NVIDIA w otwartym Preview nadal wymagają autoryzacji. Odpowiedzi mają `Cache-Control: no-store`.
+1. Na życzenie operatora panel i natywne API Vercel Preview oraz produkcji działają bez obowiązkowego logowania: wymagane są `VERCEL=1`, `VERCEL_ENV=preview` lub `production` i `OSA_AUTH_MODE=open`. `/api/auth/access` raportuje wtedy `required=false`, `mode=OPEN_PREVIEW` lub `OPEN_PRODUCTION`. Poza tym dokładnym zakresem chmurowe API nadal wymaga sesji operatora; brak konfiguracji kończy się 503, brak sesji — 401. Wywołania NVIDIA w otwartym Preview nadal wymagają autoryzacji. Odpowiedzi mają `Cache-Control: no-store`.
 2. Sesja operatora jest podpisana, ograniczona do jednego originu, organizacji i projektu; działa między instancjami bez `SessionStore`. Cookie: `__Host-osa-operator`, HttpOnly, Secure, SameSite=Strict, 30 minut. Żądania zmieniające stan wymagają zgodnego `Origin`. To dostęp jednego operatora, **nie pełny wieloużytkownikowy IAM/OIDC/RBAC**. Rotacja klucza unieważnia wszystkie sesje; wylogowanie usuwa cookie, nie cofa kopii wcześniej skradzionego cookie przed jego wygaśnięciem.
 3. Klucze NVIDIA są konfigurowane wyłącznie na serwerze. HTTP odrzuca `apiKey` i zmianę modelu poza konfigurację. Formularz klucza dostawcy usunięto z przeglądarki.
 4. W chmurze obowiązuje `OSA_ZERO_COST_ONLY=true`, jawne potwierdzenie bezpłatnego dostępu do konkretnego modelu z ważnością maksymalnie 24 godziny i współdzielony licznik. Brak któregokolwiek warunku blokuje żądanie; brak automatycznego płatnego zamiennika i retry.
@@ -26,7 +26,7 @@ PR-y źródłowe pozostają bez zmian. Zamknięcie ich jako zastąpionych należ
 6. Opcja „Narzędzia modelu” wysyła definicję `osa_sha256` do NVIDIA. Wyłącznie walidowane `tool_calls` z odpowiedzi dostawcy uruchamiają istniejący Runtime. Narzędzie jest tylko odczytowe. Dowód zawiera ID odpowiedzi, żądany i raportowany model oraz skróty żądania i odpowiedzi. Klient nie może dostarczyć własnego modelowego dispatchu. Deterministyczne polecenia natywne pozostają jawnie oddzielne.
 7. Nowy zapis lokalnego bundle jest weryfikowany po odświeżeniu przez przeglądarkę oraz stateless API. To lokalny eksport, nie trwałe przechowywanie w chmurze. Brak poprawnej weryfikacji nie tworzy stanu LIVE.
 
-Zmiany te nie zabezpieczają jeszcze działającej produkcji: do produkcji nie wdrożono gałęzi wydawniczej.
+Operator następnie zlecił wdrożenie tej gałęzi na produkcję do odbioru panelu. Zakres, brak formalnego wydania i rollback: [WDROZENIE_PRODUKCJA.md](WDROZENIE_PRODUKCJA.md).
 
 ## Niespełnione warunki obowiązkowe
 
@@ -40,7 +40,7 @@ Pełna ścieżka modelowa ma zapis skrótu odpowiedzi dostawcy, a nie kryptograf
 
 ## Decyzja
 
-Brak zgody na merge, tag i GitHub Release przed zamknięciem obowiązkowych bramek. Produkcyjny deploy oraz zmiana ochrony produkcji wymagają osobnego zatwierdzenia dokładnego commitu i konfiguracji. Macierz możliwości: [MACIERZ.md](MACIERZ.md). Instrukcja operatora: [OPERATOR.md](OPERATOR.md).
+Brak zgody na merge, tag i GitHub Release przed zamknięciem obowiązkowych bramek. Operator osobno zlecił produkcyjne wdrożenie bieżącej gałęzi z otwartym panelem; nie oznacza to zgody na merge, tag ani GitHub Release. Macierz możliwości: [MACIERZ.md](MACIERZ.md). Instrukcja operatora: [OPERATOR.md](OPERATOR.md).
 
 Historia rozmów, szkic Buildera i lokalny bundle w chronionym środowisku mają osobne klucze storage dla organizacji/projektu potwierdzonych przez sesję. Stare zapisy bez zakresu pozostają na urządzeniu; nie są kasowane ani automatycznie importowane do chronionego projektu. To rozdzielenie widoków lokalnych, nie szyfrowany magazyn ani granica bezpieczeństwa między osobami korzystającymi z tego samego profilu przeglądarki.
 

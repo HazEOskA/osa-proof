@@ -58,7 +58,7 @@ test("open mode: no login needed, identity is the explicit OPEN MODE identity, s
   });
 });
 
-test("Vercel Preview opens without login; production keeps its operator boundary", () => {
+test("Vercel uses explicit open access; cloud model calls keep separate authorization", () => {
   const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as { env: Record<string, string> };
   assert.equal(vercel.env.OSA_AUTH_MODE, "open");
 });
