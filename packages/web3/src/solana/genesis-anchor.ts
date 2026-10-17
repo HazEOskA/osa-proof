@@ -50,16 +50,32 @@ async function loadSolanaRuntime(): Promise<{ kit: any; rpcPlugin: any; signerPl
   ]);
   return { kit, rpcPlugin, signerPlugin, memo };
 }
-async function waitForFinalized(rpc: any, signature: string, attempts = 60): Promise<number> {
+async function waitForFundedBalance(
+  rpc: any,
+  address: string,
+  minimumLamports: bigint,
+  attempts = 120,
+): Promise<void> {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const result = await rpc.getSignatureStatuses([signature], { searchTransactionHistory: true }).send();
-    const status = result?.value?.[0];
-    if (status?.err) throw new Error("GENESIS_ANCHOR_TRANSACTION_FAILED");
-    if (status?.confirmationStatus === "finalized") {
-      const slot = Number(status.slot);
-      if (!Number.isSafeInteger(slot) || slot < 0) throw new Error("GENESIS_ANCHOR_SLOT_INVALID");
-      return slot;
-    }
+    const result = await rpc.getBalance(address, { commitment: "finalized" }).send();
+    if (BigInt(result.value) >= minimumLamports) return;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error("GENESIS_ANCHOR_AIRDROP_NOT_VISIBLE_AT_FINALIZED");
+}
+
+async function waitForFinalizedTransaction(
+  rpc: any,
+  signature: string,
+  attempts = 120,
+): Promise<any> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const transaction = await rpc.getTransaction(signature, {
+      commitment: "finalized",
+      encoding: "jsonParsed",
+      maxSupportedTransactionVersion: 0,
+    }).send();
+    if (transaction) return transaction;
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   throw new Error("GENESIS_ANCHOR_TRANSACTION_NOT_FINALIZED");
@@ -111,7 +127,7 @@ export async function anchorGenesisProofOnSolanaDevnet(
   const airdropTransactionRef = String(
     await client.rpc.requestAirdrop(payer.address, kit.lamports(airdropLamports), { commitment: "confirmed" }).send(),
   );
-  await waitForFinalized(client.rpc, airdropTransactionRef);
+  await waitForFundedBalance(client.rpc, String(payer.address), airdropLamports);
 
   const memo = buildGenesisAnchorMemo(input);
   const { value: latestBlockhash } = await client.rpc.getLatestBlockhash({ commitment: "finalized" }).send();
@@ -126,14 +142,9 @@ export async function anchorGenesisProofOnSolanaDevnet(
   const transactionRef = String(kit.getSignatureFromTransaction(signedTransaction));
   const sendWithoutConfirming = kit.sendTransactionWithoutConfirmingFactory({ rpc: client.rpc });
   await sendWithoutConfirming(signedTransaction, { commitment: "confirmed" });
-  const slot = await waitForFinalized(client.rpc, transactionRef);
-
-  const transaction = await client.rpc.getTransaction(transactionRef, {
-    commitment: "finalized",
-    encoding: "jsonParsed",
-    maxSupportedTransactionVersion: 0,
-  }).send();
-  if (!transaction) throw new Error("GENESIS_ANCHOR_TRANSACTION_READBACK_MISSING");
+  const transaction = await waitForFinalizedTransaction(client.rpc, transactionRef);
+  const slot = Number(transaction.slot);
+  if (!Number.isSafeInteger(slot) || slot < 0) throw new Error("GENESIS_ANCHOR_SLOT_INVALID");
 
   const memoProgramAddress = String(memoRuntime.MEMO_PROGRAM_ADDRESS);
   const observedMemo = extractMemoFromTransaction(transaction, memoProgramAddress);
