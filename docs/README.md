@@ -7,6 +7,7 @@
 | Potrzeba | Dokument | Źródło prawdy |
 | --- | --- | --- |
 | Co działa, co jest GATED/BLOCKED? | [Macierz możliwości](release-v0.1.0/MACIERZ.md) | Statusy poszczególnych funkcji z granicami dowodów |
+| Bieżący odbiór runtime i produkcji | [Domknięcie runtime 17.10](release-v0.1.0/DOMKNIECIE_RUNTIME_2026-10-17.md) | Prawdziwy Docker, Worker Host, niezależne receipts i publiczny browser E2E |
 | Co blokuje formalne wydanie? | [Bramki v0.1.0](release-v0.1.0/BRAMKI.md) | Warunki odbioru, nie plan nowych frameworków |
 | Dodatkowy przegląd kodu i środowiska | [Audyt 17.10.2026](release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md) | Priorytety bezpieczeństwa, produkcja, dowody |
 | Jak uruchomić i testować? | [Instrukcja operatora](release-v0.1.0/OPERATOR.md) | Konfiguracja Preview, modelu, bezpieczeństwo i limity |

@@ -1,6 +1,8 @@
 # OSA Proof v0.1.0 — kandydat do wydania
 
-> **AKTUALNY ODCZYT 17.10.2026:** formalne wydanie nadal `BLOCKED`, ale stały alias produkcyjny wskazuje już deployment `dpl_B8s5QZV1t5CMfy6qm453rkFMs2Bh` z `release/osa-proof-v0.1.0@4c375e8` (`READY`). Poprzednie `512a6e1` to historyczna baza/rollback, **nie bieżący alias**. [Dodatkowy audyt](AUDYT_DODATKOWY_2026-10-17.md), [historia wdrożenia](WDROZENIE_PRODUKCJA.md). Nie łącz wdrożenia panelu z publikacją tagu lub GitHub Release.
+> **Nowszy checkpoint:** produkcja `5f2c2ac`, dwa rzeczywiste wykonania Docker/Worker Host i publiczny browser E2E. [Bieżące dowody i brakujące warunki](DOMKNIECIE_RUNTIME_2026-10-17.md). Formalne wydanie pozostaje BLOCKED.
+
+> **HISTORYCZNY ODCZYT 17.10.2026 (4c375e8):** formalne wydanie nadal `BLOCKED`, ale stały alias produkcyjny wskazuje już deployment `dpl_B8s5QZV1t5CMfy6qm453rkFMs2Bh` z `release/osa-proof-v0.1.0@4c375e8` (`READY`). Poprzednie `512a6e1` to historyczna baza/rollback, **nie bieżący alias**. [Dodatkowy audyt](AUDYT_DODATKOWY_2026-10-17.md), [historia wdrożenia](WDROZENIE_PRODUKCJA.md). Nie łącz wdrożenia panelu z publikacją tagu lub GitHub Release.
 
 **Dodatkowy warunek P0:** jawny `OPEN_PRODUCTION` nie izoluje użytkowników ani danych: tryb otwarty dopuszcza natywne operacje na współdzielonym stanie; osobny login NVIDIA chroni model, **nie wszystkie POST**. v0.1 nie może zostać przedstawione jako bezpieczna wieloużytkownikowa produkcja. Wydanie wymaga decyzji o granicy publicznego demo/chronionych danych i testów tej polityki. Rzeczywisty model, atomowy limit i trwałość pozostają niezaliczone.
 

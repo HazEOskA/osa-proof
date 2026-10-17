@@ -1,0 +1,584 @@
+[
+  {
+    "path": "/api/auth/access",
+    "http": 200,
+    "body": {
+      "required": false,
+      "configured": false,
+      "mode": "OPEN_PRODUCTION",
+      "authenticated": false,
+      "scope": null
+    }
+  },
+  {
+    "path": "/api/build/status",
+    "http": 200,
+    "body": {
+      "mode": "fixture",
+      "auth_mode": "open",
+      "executors": [
+        "dev.builder.fixture.v1",
+        "dev.builder.v1",
+        "dev.planner.fixture.v1",
+        "dev.planner.v1",
+        "osa.conversation.record.v1",
+        "osa.crypto.sha256.v1",
+        "osa.native-builder.v1",
+        "osa.runtime.inspect.v1",
+        "osa.unified.blocked.v1",
+        "osa.worker.health.v1",
+        "web3.analyze.v1",
+        "web3.execute.v1",
+        "web3.monitor.v1",
+        "web3.prepareTransaction.v1",
+        "web3.read.v1",
+        "web3.risk.v1",
+        "web3.simulate.v1",
+        "web3.verify.v1"
+      ],
+      "persistence": "PROCESS_MEMORY",
+      "durable_cloud_storage": false,
+      "persistence_notice": "Stan procesu znika po restarcie lub zmianie instancji. Historia rozmów jest lokalna w przeglądarce.",
+      "mission_persistence": "PROCESS_MEMORY",
+      "brain": {
+        "planner_id": "osa.brain.native.v1",
+        "mode": "native",
+        "model_refs": [],
+        "memory": "NONE",
+        "adaptive_routing": false,
+        "risk": "UNASSESSED"
+      },
+      "protocols": {
+        "MCP": "UNSUPPORTED",
+        "A2A": "UNSUPPORTED"
+      }
+    }
+  },
+  {
+    "path": "/api/platform/status",
+    "http": 200,
+    "body": {
+      "version": "0.5-local-review",
+      "mode": "PRE_DEPLOY",
+      "persistence": "PROCESS_MEMORY",
+      "fleet": [],
+      "capabilities": [
+        {
+          "capability_id": "web3.read",
+          "version": "1",
+          "kind": "API",
+          "capabilities": [
+            "web3.read"
+          ],
+          "permissions": [
+            "web3.read"
+          ],
+          "inputs": {
+            "domain": "web3",
+            "chain": "solana"
+          },
+          "outputs": {
+            "assurance": "RPC_VALIDATED"
+          },
+          "cost": {
+            "unit": "rpc_request",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "web3.read.v1",
+          "sha256": "a3362fd1e24c479f3f10cc6bd8b3e19d6573dbcb6573f6f0de0015c555e1926d"
+        },
+        {
+          "capability_id": "web3.monitor",
+          "version": "1",
+          "kind": "API",
+          "capabilities": [
+            "web3.monitor"
+          ],
+          "permissions": [
+            "web3.monitor"
+          ],
+          "inputs": {
+            "domain": "web3",
+            "chain": "solana"
+          },
+          "outputs": {
+            "assurance": "RPC_VALIDATED"
+          },
+          "cost": {
+            "unit": "rpc_request",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "web3.monitor.v1",
+          "sha256": "ffb8527ba5fa2b1d4702661c8dbcc73b706bb2f2984f91a9467fd03a05f028f1"
+        },
+        {
+          "capability_id": "web3.analyze",
+          "version": "1",
+          "kind": "API",
+          "capabilities": [
+            "web3.analyze"
+          ],
+          "permissions": [
+            "web3.analyze"
+          ],
+          "inputs": {
+            "domain": "web3",
+            "chain": "solana"
+          },
+          "outputs": {
+            "assurance": "RPC_VALIDATED"
+          },
+          "cost": {
+            "unit": "rpc_request",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "web3.analyze.v1",
+          "sha256": "3bf295fa680043ccdc31e15e3303c62928aee907e73591bd1bcb2a382cc50f1c"
+        },
+        {
+          "capability_id": "web3.verify",
+          "version": "1",
+          "kind": "API",
+          "capabilities": [
+            "web3.verify"
+          ],
+          "permissions": [
+            "web3.verify"
+          ],
+          "inputs": {
+            "domain": "web3",
+            "chain": "solana"
+          },
+          "outputs": {
+            "assurance": "RPC_VALIDATED"
+          },
+          "cost": {
+            "unit": "rpc_request",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "web3.verify.v1",
+          "sha256": "a225a2da0d07489f6af16bb992e14591454658405a906d1ebb6d502e5e1402dd"
+        },
+        {
+          "capability_id": "web3.simulate",
+          "version": "1",
+          "kind": "API",
+          "capabilities": [
+            "web3.simulate"
+          ],
+          "permissions": [
+            "web3.simulate"
+          ],
+          "inputs": {
+            "domain": "web3",
+            "chain": "solana"
+          },
+          "outputs": {
+            "assurance": "RPC_VALIDATED"
+          },
+          "cost": {
+            "unit": "rpc_request",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "UNAVAILABLE",
+          "executor_ref": "web3.simulate.v1",
+          "sha256": "364a20e8220d00e78746797f2d57feef742248610de2f1f31415b787ef3b117a"
+        },
+        {
+          "capability_id": "web3.prepareTransaction",
+          "version": "1",
+          "kind": "API",
+          "capabilities": [
+            "web3.prepareTransaction"
+          ],
+          "permissions": [
+            "web3.prepareTransaction"
+          ],
+          "inputs": {
+            "domain": "web3",
+            "chain": "solana"
+          },
+          "outputs": {
+            "assurance": "RPC_VALIDATED"
+          },
+          "cost": {
+            "unit": "rpc_request",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "UNAVAILABLE",
+          "executor_ref": "web3.prepareTransaction.v1",
+          "sha256": "76b91c6a67b66f1a219ee125245c863e77651aefaf30fb507f0468803a406a1d"
+        },
+        {
+          "capability_id": "web3.execute",
+          "version": "1",
+          "kind": "API",
+          "capabilities": [
+            "web3.execute"
+          ],
+          "permissions": [
+            "web3.execute"
+          ],
+          "inputs": {
+            "domain": "web3",
+            "chain": "solana"
+          },
+          "outputs": {
+            "assurance": "RPC_VALIDATED"
+          },
+          "cost": {
+            "unit": "rpc_request",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "UNAVAILABLE",
+          "executor_ref": "web3.execute.v1",
+          "sha256": "efa9c8ff57f380faa794d814055d06efeb6832a45a0998e55c57c6b94bc579e2"
+        },
+        {
+          "capability_id": "web3.risk",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "web3.analyze"
+          ],
+          "permissions": [
+            "web3.analyze"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": 0
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "web3.risk.v1",
+          "sha256": "ada18e90ff11087daf9fd107d77cedfedc22498b91d425b79aa55bcf4df35cea"
+        },
+        {
+          "capability_id": "dev.builder.fixture.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "dev.builder.fixture.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "dev.builder.fixture.v1",
+          "sha256": "66caf996745f1190a942d3da995b262a8e47bf0c271a31eea18d3d6dcf364542"
+        },
+        {
+          "capability_id": "dev.builder.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "dev.builder.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "dev.builder.v1",
+          "sha256": "fd2ebdefd5bf87fa83c3c832409b4fb20a78460cdfa67d608c74400f754439de"
+        },
+        {
+          "capability_id": "dev.planner.fixture.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "dev.planner.fixture.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "dev.planner.fixture.v1",
+          "sha256": "841133cc883850cec67182e03379db5b9e1898b46d78104c4f12e9191b85dfe4"
+        },
+        {
+          "capability_id": "dev.planner.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "dev.planner.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "dev.planner.v1",
+          "sha256": "436cc1b6f7b8984aeae0b993cc4de362fa34472699f8a5387d13b56d12564a55"
+        },
+        {
+          "capability_id": "osa.conversation.record.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "osa.conversation.record.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "osa.conversation.record.v1",
+          "sha256": "5b9706d70b3f9c20d0b1c175fdb2fb3980f7d1f7510ffc1822bf31f6cd581665"
+        },
+        {
+          "capability_id": "osa.crypto.sha256.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "osa.crypto.sha256.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "osa.crypto.sha256.v1",
+          "sha256": "caa7fb10134a159b5fafc5022ce1dd886926667ed468c9f032c731b9a5b8a063"
+        },
+        {
+          "capability_id": "osa.native-builder.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "osa.native-builder.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "osa.native-builder.v1",
+          "sha256": "3986cb3c5a5796b54487922ac4e944b4319e182a1d4f39e8b79aee85d448a82b"
+        },
+        {
+          "capability_id": "osa.runtime.inspect.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "osa.runtime.inspect.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "osa.runtime.inspect.v1",
+          "sha256": "1eb2d0b84376b138160544325c6fc5674b8d868963bb2aaa3313506f8402887c"
+        },
+        {
+          "capability_id": "osa.unified.blocked.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "osa.unified.blocked.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "osa.unified.blocked.v1",
+          "sha256": "49b49afa2289ab4d4e9cc36dfc7a678a119a593968a625329410b4d2a159abad"
+        },
+        {
+          "capability_id": "osa.worker.health.v1",
+          "version": "1",
+          "kind": "NATIVE",
+          "capabilities": [
+            "osa.worker.health.v1"
+          ],
+          "permissions": [
+            "executor.invoke"
+          ],
+          "inputs": {},
+          "outputs": {},
+          "cost": {
+            "unit": "execution",
+            "amount": null
+          },
+          "risk": "UNKNOWN",
+          "health": "READY",
+          "executor_ref": "osa.worker.health.v1",
+          "sha256": "cb784b32c376f69066376e1944cefbfcf92321fd73d29d774b933a52f0f80291"
+        }
+      ],
+      "benchmark_results": 0,
+      "cloud_providers": [],
+      "deployment_execution_enabled": false,
+      "web3": {
+        "version": "0.1",
+        "mode": "READ_ONLY",
+        "chain": "solana",
+        "rpcConfigured": true,
+        "persistence": "MISSION_STORE_EVIDENCE",
+        "projection": "REPLAY_FROM_EVIDENCE",
+        "signingEnabled": false,
+        "executionEnabled": false,
+        "capabilities": [
+          {
+            "id": "web3.read",
+            "health": "READY"
+          },
+          {
+            "id": "web3.monitor",
+            "health": "READY"
+          },
+          {
+            "id": "web3.analyze",
+            "health": "READY"
+          },
+          {
+            "id": "web3.simulate",
+            "health": "UNAVAILABLE"
+          },
+          {
+            "id": "web3.prepareTransaction",
+            "health": "UNAVAILABLE"
+          },
+          {
+            "id": "web3.execute",
+            "health": "UNAVAILABLE"
+          },
+          {
+            "id": "web3.verify",
+            "health": "READY"
+          }
+        ],
+        "agents": [
+          {
+            "role": "MonitoringAgent",
+            "executor_ref": "web3.monitor.v1"
+          },
+          {
+            "role": "AnalysisAgent",
+            "executor_ref": "web3.analyze.v1"
+          },
+          {
+            "role": "RiskAgent",
+            "executor_ref": "web3.risk.v1"
+          },
+          {
+            "role": "VerificationAgent",
+            "executor_ref": "web3.verify.v1"
+          },
+          {
+            "role": "TransactionAgent",
+            "executor_ref": "web3.prepareTransaction.v1",
+            "status": "UNAVAILABLE"
+          }
+        ],
+        "protocols": [
+          {
+            "id": "Tokens",
+            "support": "SPL_READ"
+          },
+          {
+            "id": "DeFi",
+            "support": "CONTRACT_ONLY"
+          },
+          {
+            "id": "NFTs",
+            "support": "CONTRACT_ONLY"
+          },
+          {
+            "id": "DAOs",
+            "support": "CONTRACT_ONLY"
+          },
+          {
+            "id": "Gaming",
+            "support": "CONTRACT_ONLY"
+          }
+        ],
+        "assurance": "RPC_VALIDATED",
+        "cryptographicProof": false
+      }
+    }
+  },
+  {
+    "path": "/api/nvidia/status",
+    "http": 200,
+    "body": {
+      "provider": "NVIDIA",
+      "configured": true,
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "available": false,
+      "gate": "NVIDIA_COST_POLICY_BLOCKED",
+      "quota": "SHARED_REQUIRED"
+    }
+  }
+]

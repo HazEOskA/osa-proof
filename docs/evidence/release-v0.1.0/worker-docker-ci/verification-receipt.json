@@ -1,0 +1,97 @@
+{
+  "schema": "osa.proof_receipt.v2",
+  "run_id": "run_1f9596668f126245c4f8ba22",
+  "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+  "organization_id": "org",
+  "project_id": "project",
+  "team_id": "team",
+  "team_version": "1",
+  "mission_id": "mission",
+  "binding": {
+    "organization_id": "org",
+    "project_id": "project",
+    "team_id": "team",
+    "team_version": "1",
+    "mission_id": "mission",
+    "run_id": "run_1f9596668f126245c4f8ba22",
+    "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+  },
+  "verdict": "VERIFIED",
+  "requirement_verdicts": [
+    {
+      "requirement_id": "tested",
+      "verdict": "VERIFIED",
+      "evidence_ids": [
+        "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3"
+      ],
+      "reason": "evidence satisfied the explicit acceptance requirement"
+    }
+  ],
+  "evidence_ids": [
+    "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+    "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+    "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+    "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4"
+  ],
+  "evidence_refs": [
+    {
+      "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+      "evidence_sha256": "c65ccb619b49e917239e50b43f9d25aec661cd42ef9119a7433c4febe15bb318"
+    },
+    {
+      "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+      "evidence_sha256": "43d3a027501aceadb71eb0e4871aef16eec6cd3f6b8149b56e5e384b1bc5e451"
+    },
+    {
+      "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+      "evidence_sha256": "a21e8d055fb20e11ad4737bcad3aae5b3de3ee54996b0e23784c4525ce978169"
+    },
+    {
+      "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4",
+      "evidence_sha256": "9e6766260e77bfa229899708a606c68d4ec3e09e6fffdf1ed78f42a625e3a223"
+    }
+  ],
+  "evidence_root": "3def7385c320502e7b719e83abeebd1230e02b78512a60e65d55b40536a76625",
+  "observation_refs": [
+    {
+      "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:1",
+      "observation_sha256": "3bbe0cb0a0c3b46e0ffd7350dd0f839a1aa25592895f4b2bc3d56ab7da00fbdc"
+    },
+    {
+      "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:2",
+      "observation_sha256": "29407436b3419b49e3eb15420937c7f6cfd96c0fb38f92b6b03bb98d5556cb38"
+    },
+    {
+      "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:3",
+      "observation_sha256": "fe6bfb1091bfab94c25d8a668ea32188a011367b289f8e1eab76c7f719262832"
+    },
+    {
+      "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:4",
+      "observation_sha256": "e0eaf881d26e918d332b4d47f16a1c5edaebd8009b758ccf54e1f7c670d2da64"
+    },
+    {
+      "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:5",
+      "observation_sha256": "f3228903d726ad337ea4a96948847feb712b931312a6bf67d0db394020f29835"
+    },
+    {
+      "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:6",
+      "observation_sha256": "8bc3dcbe11a90ec8f5e74ca2efcfc5d4738d1069c5439d1a331518cdd4f15dbb"
+    },
+    {
+      "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:7",
+      "observation_sha256": "ee6eadebbe58f98ddc2aacabadeb13dbd380934e95657e4955e6a2aae673b267"
+    },
+    {
+      "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:8",
+      "observation_sha256": "699e940b3723aacb465ac84b6fd58a39a5e66e94ff020e77f184c3d69de48a19"
+    }
+  ],
+  "final_output_sha256": "f18dfe5f46f6253f61d6fe3fa6dcb3d3c62b962d0ba0f6d178cedc7b2a990717",
+  "created_at": "2026-10-17T03:51:57.655Z",
+  "verifier": {
+    "name": "osa-proof-deterministic",
+    "version": "2"
+  },
+  "proof_id": "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4",
+  "receipt_sha256": "7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4"
+}

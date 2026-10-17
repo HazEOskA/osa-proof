@@ -1,0 +1,12 @@
+[
+  {
+    "path": "/api/nvidia/chat",
+    "status": 401,
+    "code": "MODEL_OPERATOR_SESSION_REQUIRED"
+  },
+  {
+    "path": "/api/nvidia/fleet-chat",
+    "status": 401,
+    "code": "MODEL_OPERATOR_SESSION_REQUIRED"
+  }
+]

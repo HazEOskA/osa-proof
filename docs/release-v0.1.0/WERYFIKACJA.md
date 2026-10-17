@@ -91,3 +91,7 @@ Pełne npm test: **237 PASS, 0 FAIL, 3 SKIP z 240**; [log](../evidence/release-v
 - desktop: `exec_af0ce349-a259-413f-92db-7746f493503b`, [bundle](../evidence/release-v0.1.0/production-open-desktop-bundle.json).
 
 Bieżący commit, CI, deployment i odbiór rzeczywistej produkcji są wskazane w [PR #16](https://github.com/HazEOskA/osa-proof/pull/16). To testy natywnego Runtime; nie zaliczają modelowego E2E ani formalnego wydania. [Zakres wdrożenia i rollback](WDROZENIE_PRODUKCJA.md).
+
+## Nowszy odbiór runtime i produkcji
+
+Zaliczono dwa rzeczywiste wykonania Docker/Worker Host w CI, pobrano artefakty i niezależnie zweryfikowano oba receipts. Publiczny natywny przepływ produkcyjny przeszedł 320/390/1440; model i Azure nie zostały zastąpione mockiem jako dowodem działania. Identyfikatory, linki do CI, hash archiwum i faktyczne pozostałe warunki: [DOMKNIECIE_RUNTIME_2026-10-17.md](DOMKNIECIE_RUNTIME_2026-10-17.md).

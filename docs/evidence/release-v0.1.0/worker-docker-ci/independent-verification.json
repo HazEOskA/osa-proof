@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "method": "verifyCompletedMission wykonany niezależnie po pobraniu archiwum CI",
+  "ci_commit": "5f2c2ac709d0463673953c4b98c31814c164b0cf",
+  "ci_run": "https://github.com/HazEOskA/osa-proof/actions/runs/39000369616",
+  "artifact_id": 12088931300,
+  "artifact_sha256": "36ffbd9a7d51bb5399ef2cd34563e4f771104fa123e7790501d99114ca7f0528",
+  "execution_ids": [
+    "exec_3facbc2a-b243-45a5-ac11-908437064865",
+    "exec_5f242576-63bb-4a26-b79c-456674a0b61e"
+  ],
+  "real_docker": true,
+  "real_worker_http": true,
+  "azure_deployment": false,
+  "model_calls": 0
+}

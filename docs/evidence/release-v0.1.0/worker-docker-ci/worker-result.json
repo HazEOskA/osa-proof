@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "execution_id": "exec_5f242576-63bb-4a26-b79c-456674a0b61e",
+  "mission_id": "worker_149a95bd-b0bb-40d1-a8c7-b5830191363e",
+  "provider": "docker",
+  "transport": "Worker Host HTTP / RemoteWorkspaceProvider",
+  "model_calls": 0,
+  "isolated_uid": 1000,
+  "network": "none",
+  "root_write_denied": true,
+  "unauthorized_denied": true,
+  "foreign_scope_denied": true,
+  "container_removed": true,
+  "receipt_verified": true,
+  "cloud_deployment": false
+}

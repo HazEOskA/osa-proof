@@ -1,0 +1,357 @@
+{
+  "team": {
+    "organization_id": "org_dev_local",
+    "project_id": "osa-proof",
+    "team_id": "osa.unified.v1",
+    "version": "1",
+    "agents": [
+      {
+        "agent_id": "osa-tool-worker",
+        "role": "Native OSA tool worker",
+        "executor_ref": "osa.crypto.sha256.v1",
+        "tool_capabilities": [
+          "osa.crypto.sha256.v1"
+        ]
+      }
+    ],
+    "edges": []
+  },
+  "mission": {
+    "organization_id": "org_dev_local",
+    "project_id": "osa-proof",
+    "team_id": "osa.unified.v1",
+    "team_version": "1",
+    "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+    "objective": "Oblicz SHA-256 tekstu: OSA Unified Runtime V1",
+    "entry_agent_id": "osa-tool-worker",
+    "input": {
+      "message": "Oblicz SHA-256 tekstu: OSA Unified Runtime V1",
+      "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148"
+    },
+    "requirements": [
+      {
+        "requirement_id": "tool_completed",
+        "type": "evidence_field_equals",
+        "evidence_kind": "unified_tool_result",
+        "field": "status",
+        "expected": "OK",
+        "agent_id": "osa-tool-worker"
+      }
+    ]
+  },
+  "run": {
+    "run_id": "run_7ceecac417894fc184c724af",
+    "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+    "verdict": "VERIFIED",
+    "final_output": {
+      "tool": "crypto.sha256",
+      "text": "OSA Unified Runtime V1",
+      "sha256": "64fcc6edb1f1f7c3a78eb115cd1bb1a20fad16c49ef0e8008432e378d298a91d",
+      "encoding": "utf8",
+      "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148"
+    },
+    "events": [
+      {
+        "event_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:event:1",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+        "sequence": 1,
+        "type": "RUN_CREATED",
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "payload": {
+          "objective": "Oblicz SHA-256 tekstu: OSA Unified Runtime V1"
+        }
+      },
+      {
+        "event_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:event:2",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+        "sequence": 2,
+        "type": "RUN_STARTED",
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "payload": {}
+      },
+      {
+        "event_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:event:3",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+        "sequence": 3,
+        "type": "AGENT_STARTED",
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "agent_id": "osa-tool-worker",
+        "payload": {
+          "role": "Native OSA tool worker",
+          "executor_ref": "osa.crypto.sha256.v1",
+          "operation_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148:op:1:osa-tool-worker"
+        }
+      },
+      {
+        "event_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:event:4",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+        "sequence": 4,
+        "type": "EVIDENCE_RECORDED",
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "agent_id": "osa-tool-worker",
+        "payload": {
+          "evidence_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:evidence:1",
+          "kind": "unified_tool_result",
+          "evidence_sha256": "853e8ffc2e5b1ba1066d1a0811c40c376b87133be14e23cc801eb223ff9a0cc0"
+        }
+      },
+      {
+        "event_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:event:5",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+        "sequence": 5,
+        "type": "AGENT_COMPLETED",
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "agent_id": "osa-tool-worker",
+        "payload": {}
+      },
+      {
+        "event_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:event:6",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+        "sequence": 6,
+        "type": "VERIFICATION_STARTED",
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "payload": {
+          "requirement_count": 1
+        }
+      },
+      {
+        "event_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:event:7",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+        "sequence": 7,
+        "type": "VERIFICATION_PASSED",
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "payload": {
+          "proof_id": "proof_5149dd1be8373291882f6a9e69622c1cea8ba16cf17a66d0e24f182d9e185d42"
+        }
+      },
+      {
+        "event_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:event:8",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+        "sequence": 8,
+        "type": "RUN_VERIFIED",
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "payload": {
+          "proof_id": "proof_5149dd1be8373291882f6a9e69622c1cea8ba16cf17a66d0e24f182d9e185d42"
+        }
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:evidence:1",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+        "sequence": 1,
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "agent_id": "osa-tool-worker",
+        "provenance": "EXECUTOR_EVIDENCE",
+        "binding": {
+          "organization_id": "org_dev_local",
+          "project_id": "osa-proof",
+          "team_id": "osa.unified.v1",
+          "team_version": "1",
+          "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+          "run_id": "run_7ceecac417894fc184c724af",
+          "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148"
+        },
+        "producer": {
+          "type": "executor",
+          "agent_id": "osa-tool-worker",
+          "executor_ref": "osa.crypto.sha256.v1",
+          "operation_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148:op:1:osa-tool-worker"
+        },
+        "kind": "unified_tool_result",
+        "data": {
+          "status": "OK",
+          "tool": "crypto.sha256",
+          "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148"
+        },
+        "content_sha256": "8e921f84a315ee6eaba4c81d26559ac2ab4292ec757435657dff549cbb5d779b",
+        "content_bytes": 209,
+        "evidence_sha256": "853e8ffc2e5b1ba1066d1a0811c40c376b87133be14e23cc801eb223ff9a0cc0"
+      }
+    ],
+    "observations": [
+      {
+        "observation_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:observation:1",
+        "sequence": 1,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org_dev_local",
+          "project_id": "osa-proof",
+          "team_id": "osa.unified.v1",
+          "team_version": "1",
+          "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+          "run_id": "run_7ceecac417894fc184c724af",
+          "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:evidence:1",
+        "check": "binding",
+        "ok": true,
+        "reason": "evidence bound to this execution",
+        "observation_sha256": "90c40256cec93db775eaaad9e150debc916e9a8eef21ba4f5c0566a5aba1ec3b"
+      },
+      {
+        "observation_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:observation:2",
+        "sequence": 2,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org_dev_local",
+          "project_id": "osa-proof",
+          "team_id": "osa.unified.v1",
+          "team_version": "1",
+          "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+          "run_id": "run_7ceecac417894fc184c724af",
+          "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:evidence:1",
+        "check": "evidence_digest",
+        "ok": true,
+        "expected": "853e8ffc2e5b1ba1066d1a0811c40c376b87133be14e23cc801eb223ff9a0cc0",
+        "observed": "853e8ffc2e5b1ba1066d1a0811c40c376b87133be14e23cc801eb223ff9a0cc0",
+        "reason": "evidence digest recomputed",
+        "observation_sha256": "5bb90bd5925622e72ace7d446644a08e0c0fb995adf1a1388e61f55708f61d34"
+      },
+      {
+        "observation_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:observation:3",
+        "sequence": 3,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org_dev_local",
+          "project_id": "osa-proof",
+          "team_id": "osa.unified.v1",
+          "team_version": "1",
+          "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+          "run_id": "run_7ceecac417894fc184c724af",
+          "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:evidence:1",
+        "check": "content_digest",
+        "ok": true,
+        "observed": "8e921f84a315ee6eaba4c81d26559ac2ab4292ec757435657dff549cbb5d779b",
+        "reason": "claimed content digest matches core-computed digest",
+        "observation_sha256": "1e4cf937d32eb7754e25e6c74fda52c3b77dfbd4614fee1b9db82001c1dc2db9"
+      }
+    ],
+    "proof": {
+      "schema": "osa.proof_receipt.v2",
+      "run_id": "run_7ceecac417894fc184c724af",
+      "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148",
+      "organization_id": "org_dev_local",
+      "project_id": "osa-proof",
+      "team_id": "osa.unified.v1",
+      "team_version": "1",
+      "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+      "binding": {
+        "organization_id": "org_dev_local",
+        "project_id": "osa-proof",
+        "team_id": "osa.unified.v1",
+        "team_version": "1",
+        "mission_id": "unified_a4c0b8dd-0d49-4788-82a8-8786acc60768",
+        "run_id": "run_7ceecac417894fc184c724af",
+        "execution_id": "exec_613830a7-755d-42f1-a3a7-1b36cb25d148"
+      },
+      "verdict": "VERIFIED",
+      "requirement_verdicts": [
+        {
+          "requirement_id": "tool_completed",
+          "verdict": "VERIFIED",
+          "evidence_ids": [
+            "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:evidence:1"
+          ],
+          "reason": "evidence satisfied the explicit acceptance requirement"
+        }
+      ],
+      "evidence_ids": [
+        "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:evidence:1"
+      ],
+      "evidence_refs": [
+        {
+          "evidence_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:evidence:1",
+          "evidence_sha256": "853e8ffc2e5b1ba1066d1a0811c40c376b87133be14e23cc801eb223ff9a0cc0"
+        }
+      ],
+      "evidence_root": "052de69aca5d28a7a22fde33eec7d54838b4cb5b1701647dad2f0ce616f30cdf",
+      "observation_refs": [
+        {
+          "observation_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:observation:1",
+          "observation_sha256": "90c40256cec93db775eaaad9e150debc916e9a8eef21ba4f5c0566a5aba1ec3b"
+        },
+        {
+          "observation_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:observation:2",
+          "observation_sha256": "5bb90bd5925622e72ace7d446644a08e0c0fb995adf1a1388e61f55708f61d34"
+        },
+        {
+          "observation_id": "run_7ceecac417894fc184c724af:exec_613830a7-755d-42f1-a3a7-1b36cb25d148:observation:3",
+          "observation_sha256": "1e4cf937d32eb7754e25e6c74fda52c3b77dfbd4614fee1b9db82001c1dc2db9"
+        }
+      ],
+      "final_output_sha256": "f1b65524f1f22a5582d2c366792519bef9a7f29ac60bb23f65e0e8d82a99efdd",
+      "created_at": "2026-10-17T03:56:14.866Z",
+      "verifier": {
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "proof_id": "proof_5149dd1be8373291882f6a9e69622c1cea8ba16cf17a66d0e24f182d9e185d42",
+      "receipt_sha256": "5149dd1be8373291882f6a9e69622c1cea8ba16cf17a66d0e24f182d9e185d42"
+    }
+  }
+}

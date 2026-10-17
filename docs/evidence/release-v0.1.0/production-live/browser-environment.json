@@ -1,0 +1,17 @@
+{
+  "url": "https://osa-proof-three.vercel.app",
+  "actual_network_requests": true,
+  "provider_responses_intercepted": false,
+  "browser": "Chromium 153 / Playwright 1.63",
+  "android_emulation_widths": [
+    320,
+    390
+  ],
+  "desktop_width": 1440,
+  "runtime_proxy_used": true,
+  "ignore_https_errors_for_runtime_proxy_ca": true,
+  "tls_verification_scope": "Browser kontrolował działanie aplikacji; zwykły urllib HTTPS osobno zweryfikował API przy użyciu systemowego CA. Browser nie zalicza audytu TLS.",
+  "revision_at_start": "4c375e8058e30b06f178e261ccb32e4bb45f61b2",
+  "revision_deployed_after_tests": "5f2c2ac709d0463673953c4b98c31814c164b0cf",
+  "model_calls": 0
+}

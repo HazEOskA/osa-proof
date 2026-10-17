@@ -1,0 +1,1514 @@
+{
+  "schema": "osa.mission.v1",
+  "revision": 19,
+  "mission": {
+    "organization_id": "org",
+    "project_id": "project",
+    "mission_id": "mission",
+    "team_id": "team",
+    "team_version": "1",
+    "entry_agent_id": "builder",
+    "objective": "build and test",
+    "input": {},
+    "requirements": [
+      {
+        "requirement_id": "tested",
+        "type": "evidence_field_equals",
+        "agent_id": "tester",
+        "evidence_kind": "build_receipt",
+        "field": "status",
+        "expected": "tested"
+      }
+    ],
+    "policy": {
+      "allowed_executor_refs": [
+        "build",
+        "test"
+      ],
+      "required_receipts": [
+        "sandbox_receipt",
+        "build_receipt"
+      ]
+    }
+  },
+  "team": {
+    "organization_id": "org",
+    "project_id": "project",
+    "team_id": "team",
+    "version": "1",
+    "agents": [
+      {
+        "agent_id": "builder",
+        "role": "builder",
+        "executor_ref": "build"
+      },
+      {
+        "agent_id": "tester",
+        "role": "tester",
+        "executor_ref": "test"
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "handoff",
+        "from_agent_id": "builder",
+        "to_agent_id": "tester",
+        "kind": "handoff"
+      }
+    ]
+  },
+  "state": "COMPLETED",
+  "task_graph": {
+    "mission_id": "mission",
+    "nodes": [
+      {
+        "task_id": "mission:task:1",
+        "mission_id": "mission",
+        "agent_id": "builder",
+        "depends_on": [],
+        "state": "COMPLETED"
+      },
+      {
+        "task_id": "mission:task:2",
+        "mission_id": "mission",
+        "agent_id": "tester",
+        "depends_on": [
+          "mission:task:1"
+        ],
+        "state": "COMPLETED"
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "event_id": "mission:mission:1",
+      "event_type": "MISSION_CREATED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.984Z",
+      "correlation_id": "mission",
+      "payload": {},
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:2",
+      "event_type": "BRAIN_PLANNING_STARTED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.brain",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.987Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:1",
+      "payload": {
+        "attempt_id": "planning_d9bb8d64-dfcf-438d-8b42-4633f8f2452d",
+        "planner_id": "osa.brain.native.v1",
+        "mode": "native",
+        "model_refs": [],
+        "memory": "NONE",
+        "adaptive_routing": false,
+        "risk": "UNASSESSED"
+      },
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:3",
+      "event_type": "BRAIN_PLAN_ACCEPTED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.brain",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.992Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:2",
+      "payload": {
+        "plan_sha256": "17770ad12fc8434124326f2640e9d5b446b6f8fb24d1a936fb2b742b5f69d2c6"
+      },
+      "evidence": [
+        "52311ede01181a5a96eba3edef53434f30e657583fc55c1aa90a07f3a9681423"
+      ]
+    },
+    {
+      "event_id": "mission:mission:4",
+      "event_type": "BRAIN_DECISION_RECORDED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.brain",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.992Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:3",
+      "payload": {
+        "task_id": "mission:task:1",
+        "selection": {
+          "agent_id": "builder",
+          "executor_ref": "build",
+          "framework_ref": "osa.native",
+          "declared_tool_capabilities": []
+        }
+      },
+      "evidence": [
+        "54b63da3502f6d0d60071aca3752b79a823b6f3f56755907cc8a32b5a176c082"
+      ]
+    },
+    {
+      "event_id": "mission:mission:5",
+      "event_type": "BRAIN_DECISION_RECORDED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.brain",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.992Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:4",
+      "payload": {
+        "task_id": "mission:task:2",
+        "selection": {
+          "agent_id": "tester",
+          "executor_ref": "test",
+          "framework_ref": "osa.native",
+          "declared_tool_capabilities": []
+        }
+      },
+      "evidence": [
+        "b0d2eb13bbd36c9f2062e7ac53412a488e615ab643dc343dfdaf1595835c2914"
+      ]
+    },
+    {
+      "event_id": "mission:mission:6",
+      "event_type": "MISSION_PLANNED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.992Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:5",
+      "payload": {},
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:7",
+      "event_type": "MISSION_EXECUTING",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.994Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:6",
+      "payload": {},
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:8",
+      "event_type": "RUN_CREATED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.996Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:7",
+      "payload": {
+        "objective": "build and test",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+      },
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:9",
+      "event_type": "RUN_STARTED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.996Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:8",
+      "payload": {
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+      },
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:10",
+      "event_type": "AGENT_STARTED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:52.997Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:9",
+      "payload": {
+        "role": "builder",
+        "executor_ref": "build",
+        "operation_id": "exec_3facbc2a-b243-45a5-ac11-908437064865:op:1:builder",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "agent_id": "builder"
+      },
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:11",
+      "event_type": "EVIDENCE_RECORDED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:56.990Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:10",
+      "payload": {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+        "kind": "source",
+        "evidence_sha256": "c65ccb619b49e917239e50b43f9d25aec661cd42ef9119a7433c4febe15bb318",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "agent_id": "builder"
+      },
+      "evidence": [
+        "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1"
+      ]
+    },
+    {
+      "event_id": "mission:mission:12",
+      "event_type": "EVIDENCE_RECORDED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:56.990Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:11",
+      "payload": {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+        "kind": "sandbox_receipt",
+        "evidence_sha256": "43d3a027501aceadb71eb0e4871aef16eec6cd3f6b8149b56e5e384b1bc5e451",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "agent_id": "builder"
+      },
+      "evidence": [
+        "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2"
+      ]
+    },
+    {
+      "event_id": "mission:mission:13",
+      "event_type": "AGENT_COMPLETED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:56.991Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:12",
+      "payload": {
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "agent_id": "builder"
+      },
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:14",
+      "event_type": "HANDOFF_CREATED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:56.991Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:13",
+      "payload": {
+        "from_agent_id": "builder",
+        "to_agent_id": "tester",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "agent_id": "builder"
+      },
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:15",
+      "event_type": "AGENT_STARTED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:56.991Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:14",
+      "payload": {
+        "role": "tester",
+        "executor_ref": "test",
+        "operation_id": "exec_3facbc2a-b243-45a5-ac11-908437064865:op:2:tester",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "agent_id": "tester"
+      },
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:16",
+      "event_type": "EVIDENCE_RECORDED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:57.654Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:15",
+      "payload": {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+        "kind": "build_receipt",
+        "evidence_sha256": "a21e8d055fb20e11ad4737bcad3aae5b3de3ee54996b0e23784c4525ce978169",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "agent_id": "tester"
+      },
+      "evidence": [
+        "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3"
+      ]
+    },
+    {
+      "event_id": "mission:mission:17",
+      "event_type": "EVIDENCE_RECORDED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:57.654Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:16",
+      "payload": {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4",
+        "kind": "sandbox_receipt",
+        "evidence_sha256": "9e6766260e77bfa229899708a606c68d4ec3e09e6fffdf1ed78f42a625e3a223",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "agent_id": "tester"
+      },
+      "evidence": [
+        "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4"
+      ]
+    },
+    {
+      "event_id": "mission:mission:18",
+      "event_type": "AGENT_COMPLETED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:57.654Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:17",
+      "payload": {
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "agent_id": "tester"
+      },
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:19",
+      "event_type": "VERIFICATION_STARTED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:57.654Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:18",
+      "payload": {
+        "requirement_count": 1,
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+      },
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:20",
+      "event_type": "MISSION_VERIFYING",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:57.654Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:19",
+      "payload": {},
+      "evidence": []
+    },
+    {
+      "event_id": "mission:mission:21",
+      "event_type": "VERIFICATION_PASSED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:57.656Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:20",
+      "payload": {
+        "proof_id": "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+      },
+      "evidence": [
+        "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4"
+      ]
+    },
+    {
+      "event_id": "mission:mission:22",
+      "event_type": "RUN_VERIFIED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:57.657Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:21",
+      "payload": {
+        "proof_id": "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+      },
+      "evidence": [
+        "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4"
+      ]
+    },
+    {
+      "event_id": "mission:mission:23",
+      "event_type": "BRAIN_REFLECTED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.brain",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:57.659Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:22",
+      "payload": {
+        "verdict": "VERIFIED",
+        "recovery": "NONE"
+      },
+      "evidence": [
+        "79ac703a706a6a2fb8a839357007256ad9f28e9b5b3f220b2cc4ed8680968c31",
+        "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4"
+      ]
+    },
+    {
+      "event_id": "mission:mission:24",
+      "event_type": "MISSION_COMPLETED",
+      "mission_id": "mission",
+      "tenant_id": "org",
+      "source": "osa.mission-kernel",
+      "subject": "mission",
+      "timestamp": "2026-10-17T03:51:57.659Z",
+      "correlation_id": "mission",
+      "causation_id": "mission:mission:23",
+      "payload": {},
+      "evidence": [
+        "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4"
+      ]
+    }
+  ],
+  "planning": {
+    "status": "READY",
+    "attempt_id": "planning_d9bb8d64-dfcf-438d-8b42-4633f8f2452d"
+  },
+  "brain": {
+    "plan": {
+      "schema": "osa.mission_plan.v1",
+      "scope": {
+        "organization_id": "org",
+        "project_id": "project",
+        "mission_id": "mission"
+      },
+      "mission_sha256": "3629d27f903d79742b884787c706c57857f7adeb32045fae52c4eca08e3cf494",
+      "team_sha256": "970b55e597352a03afa6c7ca29efc8992099c53c7e90213a4838a8b9363cc82a",
+      "summary": "build and test",
+      "goals": [
+        "build and test"
+      ],
+      "tasks": [
+        {
+          "task_id": "mission:task:1",
+          "agent_id": "builder",
+          "instruction": "As builder, work toward: build and test",
+          "depends_on": [],
+          "executor_ref": "build",
+          "framework_ref": "osa.native"
+        },
+        {
+          "task_id": "mission:task:2",
+          "agent_id": "tester",
+          "instruction": "As tester, work toward: build and test",
+          "depends_on": [
+            "mission:task:1"
+          ],
+          "executor_ref": "test",
+          "framework_ref": "osa.native"
+        }
+      ],
+      "risk": "UNASSESSED",
+      "plan_sha256": "17770ad12fc8434124326f2640e9d5b446b6f8fb24d1a936fb2b742b5f69d2c6"
+    },
+    "planning_receipt": {
+      "schema": "osa.planning_receipt.v1",
+      "scope": {
+        "organization_id": "org",
+        "project_id": "project",
+        "mission_id": "mission"
+      },
+      "planner_id": "osa.brain.native.v1",
+      "mode": "native",
+      "model_refs": [],
+      "mission_sha256": "3629d27f903d79742b884787c706c57857f7adeb32045fae52c4eca08e3cf494",
+      "team_sha256": "970b55e597352a03afa6c7ca29efc8992099c53c7e90213a4838a8b9363cc82a",
+      "plan_sha256": "17770ad12fc8434124326f2640e9d5b446b6f8fb24d1a936fb2b742b5f69d2c6",
+      "proposal_sha256": "072f56364a34dbc6d1e1411ea68900373e0373658a5b316e193b6f0d5e48f492",
+      "world_state_sha256": "1307f977433412ba90cbee99040751509665bbc937554cacf23819fcd3e5a085",
+      "memory_context_sha256": null,
+      "decisions_root": "ab7e677520798db97ce75d2cf8ca7844fb32e75a690a66d2b8d7aeb4af6f538c",
+      "evidence": {
+        "source": "canonical_team_graph",
+        "team_sha256": "970b55e597352a03afa6c7ca29efc8992099c53c7e90213a4838a8b9363cc82a"
+      },
+      "created_at": "2026-10-17T03:51:52.990Z",
+      "verdict": "ACCEPTED",
+      "receipt_sha256": "52311ede01181a5a96eba3edef53434f30e657583fc55c1aa90a07f3a9681423"
+    },
+    "decision_receipts": [
+      {
+        "schema": "osa.decision_receipt.v1",
+        "scope": {
+          "organization_id": "org",
+          "project_id": "project",
+          "mission_id": "mission"
+        },
+        "task_id": "mission:task:1",
+        "selection": {
+          "agent_id": "builder",
+          "executor_ref": "build",
+          "framework_ref": "osa.native",
+          "declared_tool_capabilities": []
+        },
+        "reason": "PINNED_TEAM_GRAPH",
+        "policy_sha256": "e1bd590f60d48c1729ff073ebc2f5031ec0dadce845afd733507a0d8ded2caab",
+        "budget_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+        "receipt_sha256": "54b63da3502f6d0d60071aca3752b79a823b6f3f56755907cc8a32b5a176c082"
+      },
+      {
+        "schema": "osa.decision_receipt.v1",
+        "scope": {
+          "organization_id": "org",
+          "project_id": "project",
+          "mission_id": "mission"
+        },
+        "task_id": "mission:task:2",
+        "selection": {
+          "agent_id": "tester",
+          "executor_ref": "test",
+          "framework_ref": "osa.native",
+          "declared_tool_capabilities": []
+        },
+        "reason": "PINNED_TEAM_GRAPH",
+        "policy_sha256": "e1bd590f60d48c1729ff073ebc2f5031ec0dadce845afd733507a0d8ded2caab",
+        "budget_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+        "receipt_sha256": "b0d2eb13bbd36c9f2062e7ac53412a488e615ab643dc343dfdaf1595835c2914"
+      }
+    ],
+    "world_state": {
+      "mission_state": "CREATED",
+      "team_version": "1",
+      "task_states": [
+        {
+          "task_id": "mission:task:1",
+          "state": "PENDING"
+        },
+        {
+          "task_id": "mission:task:2",
+          "state": "PENDING"
+        }
+      ]
+    },
+    "reflection": {
+      "schema": "osa.brain_reflection.v1",
+      "scope": {
+        "organization_id": "org",
+        "project_id": "project",
+        "mission_id": "mission"
+      },
+      "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+      "proof_receipt_sha256": "7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4",
+      "verdict": "VERIFIED",
+      "failed_requirements": [],
+      "recovery": "NONE",
+      "reflection_sha256": "79ac703a706a6a2fb8a839357007256ad9f28e9b5b3f220b2cc4ed8680968c31"
+    }
+  },
+  "run": {
+    "run_id": "run_1f9596668f126245c4f8ba22",
+    "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+    "verdict": "VERIFIED",
+    "final_output": {
+      "artifact": "bW9kdWxlLmV4cG9ydHMgPSB4ID0+IHggKyAxOwo=",
+      "build_receipt": {
+        "schema": "osa.build_receipt.v1",
+        "organization_id": "org",
+        "project_id": "project",
+        "mission_id": "mission",
+        "source_sha256": "87f4a294e2e1babbba6528a53086ebb848735c50592dd717778e3dea55f05932",
+        "artifact_sha256": "18645b98a77d931dc416188387bda298967a346ee8a1f91197f077c48406d196",
+        "checks": [
+          {
+            "name": "BUILD",
+            "command_sha256": "7c82bee058f947955fa282b62b240acfc06fe38278f16a2f5624b3c91afc4508",
+            "exit_code": 0,
+            "output_sha256": "cf7c056fa32ec3b94f57da996711bbb842f44b36300fdeec9e78a60a6bbf1a1b"
+          },
+          {
+            "name": "TEST",
+            "command_sha256": "884f1178e7ce8113f3fbf99604cf9321b538aa6e578095f783561b71f7a2b045",
+            "exit_code": 0,
+            "output_sha256": "62afe95589fdf7ef85569f0570e96d91e0cf3aec971d09cc4b3a82812ccea84e"
+          }
+        ],
+        "created_at": "2026-10-17T03:51:57.593Z",
+        "receipt_sha256": "a4276aaccc91f7e64088a10c266ed4416ae85dc856b8632da3e23134bc5fa1c9"
+      }
+    },
+    "events": [
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:1",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 1,
+        "type": "RUN_CREATED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "payload": {
+          "objective": "build and test"
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:2",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 2,
+        "type": "RUN_STARTED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "payload": {}
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:3",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 3,
+        "type": "AGENT_STARTED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "builder",
+        "payload": {
+          "role": "builder",
+          "executor_ref": "build",
+          "operation_id": "exec_3facbc2a-b243-45a5-ac11-908437064865:op:1:builder"
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:4",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 4,
+        "type": "EVIDENCE_RECORDED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "builder",
+        "payload": {
+          "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+          "kind": "source",
+          "evidence_sha256": "c65ccb619b49e917239e50b43f9d25aec661cd42ef9119a7433c4febe15bb318"
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:5",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 5,
+        "type": "EVIDENCE_RECORDED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "builder",
+        "payload": {
+          "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+          "kind": "sandbox_receipt",
+          "evidence_sha256": "43d3a027501aceadb71eb0e4871aef16eec6cd3f6b8149b56e5e384b1bc5e451"
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:6",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 6,
+        "type": "AGENT_COMPLETED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "builder",
+        "payload": {}
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:7",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 7,
+        "type": "HANDOFF_CREATED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "builder",
+        "payload": {
+          "from_agent_id": "builder",
+          "to_agent_id": "tester"
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:8",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 8,
+        "type": "AGENT_STARTED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "tester",
+        "payload": {
+          "role": "tester",
+          "executor_ref": "test",
+          "operation_id": "exec_3facbc2a-b243-45a5-ac11-908437064865:op:2:tester"
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:9",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 9,
+        "type": "EVIDENCE_RECORDED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "tester",
+        "payload": {
+          "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+          "kind": "build_receipt",
+          "evidence_sha256": "a21e8d055fb20e11ad4737bcad3aae5b3de3ee54996b0e23784c4525ce978169"
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:10",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 10,
+        "type": "EVIDENCE_RECORDED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "tester",
+        "payload": {
+          "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4",
+          "kind": "sandbox_receipt",
+          "evidence_sha256": "9e6766260e77bfa229899708a606c68d4ec3e09e6fffdf1ed78f42a625e3a223"
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:11",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 11,
+        "type": "AGENT_COMPLETED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "tester",
+        "payload": {}
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:12",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 12,
+        "type": "VERIFICATION_STARTED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "payload": {
+          "requirement_count": 1
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:13",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 13,
+        "type": "VERIFICATION_PASSED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "payload": {
+          "proof_id": "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4"
+        }
+      },
+      {
+        "event_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:event:14",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 14,
+        "type": "RUN_VERIFIED",
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "payload": {
+          "proof_id": "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4"
+        }
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 1,
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "builder",
+        "provenance": "EXECUTOR_EVIDENCE",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "executor",
+          "agent_id": "builder",
+          "executor_ref": "build",
+          "operation_id": "exec_3facbc2a-b243-45a5-ac11-908437064865:op:1:builder"
+        },
+        "kind": "source",
+        "data": {
+          "sha256": "87f4a294e2e1babbba6528a53086ebb848735c50592dd717778e3dea55f05932"
+        },
+        "evidence_sha256": "c65ccb619b49e917239e50b43f9d25aec661cd42ef9119a7433c4febe15bb318"
+      },
+      {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 2,
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "builder",
+        "provenance": "EXECUTOR_EVIDENCE",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "executor",
+          "agent_id": "builder",
+          "executor_ref": "build",
+          "operation_id": "exec_3facbc2a-b243-45a5-ac11-908437064865:op:1:builder"
+        },
+        "kind": "sandbox_receipt",
+        "data": {
+          "schema": "osa.sandbox_receipt.v1",
+          "organization_id": "org",
+          "project_id": "project",
+          "mission_id": "mission",
+          "task_id": "mission:task:1",
+          "workspace_id": "c7c583a7af2d5fff164b7a06e9aaae3c8eb4c5d0c461ea6bbc103d0915e100f5",
+          "provider": "docker",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+          "output_sha256": "3e478d35b8ea5b257fb1625e4655cbd293b2664e21a412dfabaf3277670afe11",
+          "lifecycle": [
+            "CREATE",
+            "EXECUTE",
+            "DESTROY"
+          ],
+          "receipt_sha256": "b101d90e369384850d40e3ba52927e6026f5e318ecf1469f5432bc823e5afd44"
+        },
+        "evidence_sha256": "43d3a027501aceadb71eb0e4871aef16eec6cd3f6b8149b56e5e384b1bc5e451"
+      },
+      {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 3,
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "tester",
+        "provenance": "EXECUTOR_EVIDENCE",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "executor",
+          "agent_id": "tester",
+          "executor_ref": "test",
+          "operation_id": "exec_3facbc2a-b243-45a5-ac11-908437064865:op:2:tester"
+        },
+        "kind": "build_receipt",
+        "data": {
+          "status": "tested",
+          "receipt": {
+            "schema": "osa.build_receipt.v1",
+            "organization_id": "org",
+            "project_id": "project",
+            "mission_id": "mission",
+            "source_sha256": "87f4a294e2e1babbba6528a53086ebb848735c50592dd717778e3dea55f05932",
+            "artifact_sha256": "18645b98a77d931dc416188387bda298967a346ee8a1f91197f077c48406d196",
+            "checks": [
+              {
+                "name": "BUILD",
+                "command_sha256": "7c82bee058f947955fa282b62b240acfc06fe38278f16a2f5624b3c91afc4508",
+                "exit_code": 0,
+                "output_sha256": "cf7c056fa32ec3b94f57da996711bbb842f44b36300fdeec9e78a60a6bbf1a1b"
+              },
+              {
+                "name": "TEST",
+                "command_sha256": "884f1178e7ce8113f3fbf99604cf9321b538aa6e578095f783561b71f7a2b045",
+                "exit_code": 0,
+                "output_sha256": "62afe95589fdf7ef85569f0570e96d91e0cf3aec971d09cc4b3a82812ccea84e"
+              }
+            ],
+            "created_at": "2026-10-17T03:51:57.593Z",
+            "receipt_sha256": "a4276aaccc91f7e64088a10c266ed4416ae85dc856b8632da3e23134bc5fa1c9"
+          }
+        },
+        "evidence_sha256": "a21e8d055fb20e11ad4737bcad3aae5b3de3ee54996b0e23784c4525ce978169"
+      },
+      {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+        "sequence": 4,
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "agent_id": "tester",
+        "provenance": "EXECUTOR_EVIDENCE",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "executor",
+          "agent_id": "tester",
+          "executor_ref": "test",
+          "operation_id": "exec_3facbc2a-b243-45a5-ac11-908437064865:op:2:tester"
+        },
+        "kind": "sandbox_receipt",
+        "data": {
+          "schema": "osa.sandbox_receipt.v1",
+          "organization_id": "org",
+          "project_id": "project",
+          "mission_id": "mission",
+          "task_id": "mission:task:2",
+          "workspace_id": "14a1276205c54f5477902b54ee8244325b8e9956edd4baafbbc2342827cce1d1",
+          "provider": "docker",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+          "output_sha256": "f18dfe5f46f6253f61d6fe3fa6dcb3d3c62b962d0ba0f6d178cedc7b2a990717",
+          "lifecycle": [
+            "CREATE",
+            "EXECUTE",
+            "DESTROY"
+          ],
+          "receipt_sha256": "9acd2ab408c415bfe3549521d1b1a6e26243afff88bbc0419678572a20998794"
+        },
+        "evidence_sha256": "9e6766260e77bfa229899708a606c68d4ec3e09e6fffdf1ed78f42a625e3a223"
+      }
+    ],
+    "observations": [
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:1",
+        "sequence": 1,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+        "check": "binding",
+        "ok": true,
+        "reason": "evidence bound to this execution",
+        "observation_sha256": "3bbe0cb0a0c3b46e0ffd7350dd0f839a1aa25592895f4b2bc3d56ab7da00fbdc"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:2",
+        "sequence": 2,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+        "check": "evidence_digest",
+        "ok": true,
+        "expected": "c65ccb619b49e917239e50b43f9d25aec661cd42ef9119a7433c4febe15bb318",
+        "observed": "c65ccb619b49e917239e50b43f9d25aec661cd42ef9119a7433c4febe15bb318",
+        "reason": "evidence digest recomputed",
+        "observation_sha256": "29407436b3419b49e3eb15420937c7f6cfd96c0fb38f92b6b03bb98d5556cb38"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:3",
+        "sequence": 3,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+        "check": "binding",
+        "ok": true,
+        "reason": "evidence bound to this execution",
+        "observation_sha256": "fe6bfb1091bfab94c25d8a668ea32188a011367b289f8e1eab76c7f719262832"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:4",
+        "sequence": 4,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+        "check": "evidence_digest",
+        "ok": true,
+        "expected": "43d3a027501aceadb71eb0e4871aef16eec6cd3f6b8149b56e5e384b1bc5e451",
+        "observed": "43d3a027501aceadb71eb0e4871aef16eec6cd3f6b8149b56e5e384b1bc5e451",
+        "reason": "evidence digest recomputed",
+        "observation_sha256": "e0eaf881d26e918d332b4d47f16a1c5edaebd8009b758ccf54e1f7c670d2da64"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:5",
+        "sequence": 5,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+        "check": "binding",
+        "ok": true,
+        "reason": "evidence bound to this execution",
+        "observation_sha256": "f3228903d726ad337ea4a96948847feb712b931312a6bf67d0db394020f29835"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:6",
+        "sequence": 6,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+        "check": "evidence_digest",
+        "ok": true,
+        "expected": "a21e8d055fb20e11ad4737bcad3aae5b3de3ee54996b0e23784c4525ce978169",
+        "observed": "a21e8d055fb20e11ad4737bcad3aae5b3de3ee54996b0e23784c4525ce978169",
+        "reason": "evidence digest recomputed",
+        "observation_sha256": "8bc3dcbe11a90ec8f5e74ca2efcfc5d4738d1069c5439d1a331518cdd4f15dbb"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:7",
+        "sequence": 7,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4",
+        "check": "binding",
+        "ok": true,
+        "reason": "evidence bound to this execution",
+        "observation_sha256": "ee6eadebbe58f98ddc2aacabadeb13dbd380934e95657e4955e6a2aae673b267"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:8",
+        "sequence": 8,
+        "provenance": "VERIFIER_OBSERVATION",
+        "binding": {
+          "organization_id": "org",
+          "project_id": "project",
+          "team_id": "team",
+          "team_version": "1",
+          "mission_id": "mission",
+          "run_id": "run_1f9596668f126245c4f8ba22",
+          "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+        },
+        "producer": {
+          "type": "verifier",
+          "name": "osa-proof-deterministic",
+          "version": "2"
+        },
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4",
+        "check": "evidence_digest",
+        "ok": true,
+        "expected": "9e6766260e77bfa229899708a606c68d4ec3e09e6fffdf1ed78f42a625e3a223",
+        "observed": "9e6766260e77bfa229899708a606c68d4ec3e09e6fffdf1ed78f42a625e3a223",
+        "reason": "evidence digest recomputed",
+        "observation_sha256": "699e940b3723aacb465ac84b6fd58a39a5e66e94ff020e77f184c3d69de48a19"
+      }
+    ],
+    "proof": {
+      "schema": "osa.proof_receipt.v2",
+      "run_id": "run_1f9596668f126245c4f8ba22",
+      "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+      "organization_id": "org",
+      "project_id": "project",
+      "team_id": "team",
+      "team_version": "1",
+      "mission_id": "mission",
+      "binding": {
+        "organization_id": "org",
+        "project_id": "project",
+        "team_id": "team",
+        "team_version": "1",
+        "mission_id": "mission",
+        "run_id": "run_1f9596668f126245c4f8ba22",
+        "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+      },
+      "verdict": "VERIFIED",
+      "requirement_verdicts": [
+        {
+          "requirement_id": "tested",
+          "verdict": "VERIFIED",
+          "evidence_ids": [
+            "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3"
+          ],
+          "reason": "evidence satisfied the explicit acceptance requirement"
+        }
+      ],
+      "evidence_ids": [
+        "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+        "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+        "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+        "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4"
+      ],
+      "evidence_refs": [
+        {
+          "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+          "evidence_sha256": "c65ccb619b49e917239e50b43f9d25aec661cd42ef9119a7433c4febe15bb318"
+        },
+        {
+          "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+          "evidence_sha256": "43d3a027501aceadb71eb0e4871aef16eec6cd3f6b8149b56e5e384b1bc5e451"
+        },
+        {
+          "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+          "evidence_sha256": "a21e8d055fb20e11ad4737bcad3aae5b3de3ee54996b0e23784c4525ce978169"
+        },
+        {
+          "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4",
+          "evidence_sha256": "9e6766260e77bfa229899708a606c68d4ec3e09e6fffdf1ed78f42a625e3a223"
+        }
+      ],
+      "evidence_root": "3def7385c320502e7b719e83abeebd1230e02b78512a60e65d55b40536a76625",
+      "observation_refs": [
+        {
+          "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:1",
+          "observation_sha256": "3bbe0cb0a0c3b46e0ffd7350dd0f839a1aa25592895f4b2bc3d56ab7da00fbdc"
+        },
+        {
+          "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:2",
+          "observation_sha256": "29407436b3419b49e3eb15420937c7f6cfd96c0fb38f92b6b03bb98d5556cb38"
+        },
+        {
+          "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:3",
+          "observation_sha256": "fe6bfb1091bfab94c25d8a668ea32188a011367b289f8e1eab76c7f719262832"
+        },
+        {
+          "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:4",
+          "observation_sha256": "e0eaf881d26e918d332b4d47f16a1c5edaebd8009b758ccf54e1f7c670d2da64"
+        },
+        {
+          "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:5",
+          "observation_sha256": "f3228903d726ad337ea4a96948847feb712b931312a6bf67d0db394020f29835"
+        },
+        {
+          "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:6",
+          "observation_sha256": "8bc3dcbe11a90ec8f5e74ca2efcfc5d4738d1069c5439d1a331518cdd4f15dbb"
+        },
+        {
+          "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:7",
+          "observation_sha256": "ee6eadebbe58f98ddc2aacabadeb13dbd380934e95657e4955e6a2aae673b267"
+        },
+        {
+          "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:8",
+          "observation_sha256": "699e940b3723aacb465ac84b6fd58a39a5e66e94ff020e77f184c3d69de48a19"
+        }
+      ],
+      "final_output_sha256": "f18dfe5f46f6253f61d6fe3fa6dcb3d3c62b962d0ba0f6d178cedc7b2a990717",
+      "created_at": "2026-10-17T03:51:57.655Z",
+      "verifier": {
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "proof_id": "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4",
+      "receipt_sha256": "7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4"
+    }
+  },
+  "verification_receipt": {
+    "schema": "osa.proof_receipt.v2",
+    "run_id": "run_1f9596668f126245c4f8ba22",
+    "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865",
+    "organization_id": "org",
+    "project_id": "project",
+    "team_id": "team",
+    "team_version": "1",
+    "mission_id": "mission",
+    "binding": {
+      "organization_id": "org",
+      "project_id": "project",
+      "team_id": "team",
+      "team_version": "1",
+      "mission_id": "mission",
+      "run_id": "run_1f9596668f126245c4f8ba22",
+      "execution_id": "exec_3facbc2a-b243-45a5-ac11-908437064865"
+    },
+    "verdict": "VERIFIED",
+    "requirement_verdicts": [
+      {
+        "requirement_id": "tested",
+        "verdict": "VERIFIED",
+        "evidence_ids": [
+          "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3"
+        ],
+        "reason": "evidence satisfied the explicit acceptance requirement"
+      }
+    ],
+    "evidence_ids": [
+      "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+      "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+      "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+      "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4"
+    ],
+    "evidence_refs": [
+      {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:1",
+        "evidence_sha256": "c65ccb619b49e917239e50b43f9d25aec661cd42ef9119a7433c4febe15bb318"
+      },
+      {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:2",
+        "evidence_sha256": "43d3a027501aceadb71eb0e4871aef16eec6cd3f6b8149b56e5e384b1bc5e451"
+      },
+      {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:3",
+        "evidence_sha256": "a21e8d055fb20e11ad4737bcad3aae5b3de3ee54996b0e23784c4525ce978169"
+      },
+      {
+        "evidence_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:evidence:4",
+        "evidence_sha256": "9e6766260e77bfa229899708a606c68d4ec3e09e6fffdf1ed78f42a625e3a223"
+      }
+    ],
+    "evidence_root": "3def7385c320502e7b719e83abeebd1230e02b78512a60e65d55b40536a76625",
+    "observation_refs": [
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:1",
+        "observation_sha256": "3bbe0cb0a0c3b46e0ffd7350dd0f839a1aa25592895f4b2bc3d56ab7da00fbdc"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:2",
+        "observation_sha256": "29407436b3419b49e3eb15420937c7f6cfd96c0fb38f92b6b03bb98d5556cb38"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:3",
+        "observation_sha256": "fe6bfb1091bfab94c25d8a668ea32188a011367b289f8e1eab76c7f719262832"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:4",
+        "observation_sha256": "e0eaf881d26e918d332b4d47f16a1c5edaebd8009b758ccf54e1f7c670d2da64"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:5",
+        "observation_sha256": "f3228903d726ad337ea4a96948847feb712b931312a6bf67d0db394020f29835"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:6",
+        "observation_sha256": "8bc3dcbe11a90ec8f5e74ca2efcfc5d4738d1069c5439d1a331518cdd4f15dbb"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:7",
+        "observation_sha256": "ee6eadebbe58f98ddc2aacabadeb13dbd380934e95657e4955e6a2aae673b267"
+      },
+      {
+        "observation_id": "run_1f9596668f126245c4f8ba22:exec_3facbc2a-b243-45a5-ac11-908437064865:observation:8",
+        "observation_sha256": "699e940b3723aacb465ac84b6fd58a39a5e66e94ff020e77f184c3d69de48a19"
+      }
+    ],
+    "final_output_sha256": "f18dfe5f46f6253f61d6fe3fa6dcb3d3c62b962d0ba0f6d178cedc7b2a990717",
+    "created_at": "2026-10-17T03:51:57.655Z",
+    "verifier": {
+      "name": "osa-proof-deterministic",
+      "version": "2"
+    },
+    "proof_id": "proof_7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4",
+    "receipt_sha256": "7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4"
+  },
+  "mission_receipt": {
+    "schema": "osa.mission_receipt.v1",
+    "mission_id": "mission",
+    "organization_id": "org",
+    "project_id": "project",
+    "mission_sha256": "3629d27f903d79742b884787c706c57857f7adeb32045fae52c4eca08e3cf494",
+    "task_graph_sha256": "c5634521460cc173e5b0a0e3b5645ed33a89c3df5096319fe73d3301fd7f4da1",
+    "verification_receipt_sha256": "7d975790f4010ebace8b4309da36639b2fdd38c7cd74c0d35767c6c2fb9f78a4",
+    "timeline_sha256": "cf457fa88e4fdfa03d4afb5774e738d2b7a981f8eeddf9f6b56e9ce2af96d29a",
+    "created_at": "2026-10-17T03:51:57.659Z",
+    "planning_receipt_sha256": "52311ede01181a5a96eba3edef53434f30e657583fc55c1aa90a07f3a9681423",
+    "decisions_root": "ab7e677520798db97ce75d2cf8ca7844fb32e75a690a66d2b8d7aeb4af6f538c",
+    "reflection_sha256": "79ac703a706a6a2fb8a839357007256ad9f28e9b5b3f220b2cc4ed8680968c31",
+    "receipt_sha256": "7e419d6b10267c03844cfde5b02369901aac3040d5959141c4e06f8266eb7db3"
+  }
+}
