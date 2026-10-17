@@ -3,12 +3,7 @@ import type { ProofAnchorV1 } from "../../../contracts/src/trust";
 export const GENESIS_ANCHOR_CONFIRM = "GENESIS_ANCHOR_000001";
 export const MAX_DEVNET_AIRDROP_LAMPORTS = 10_000_000n;
 export const GENESIS_AGENT_AI_ID = "@ai:osatechgpt.dev/agents/genesis";
-export const GENESIS_SOLANA_RUNTIME = {
-  kit: "8.5.0",
-  rpc: "0.22.0",
-  signer: "0.19.0",
-  memo: "0.16.0",
-} as const;
+export const GENESIS_SOLANA_RUNTIME = { kit: "8.5.0", rpc: "0.22.0", signer: "0.19.0", memo: "0.16.0" } as const;
 
 export interface GenesisAnchorInput {
   agent_ai_id: string;
@@ -16,7 +11,6 @@ export interface GenesisAnchorInput {
   proof_receipt_digest: string;
   artifact_digest: string;
 }
-
 export interface GenesisAnchorExecution {
   anchor: ProofAnchorV1;
   payer_address: string;
@@ -24,19 +18,18 @@ export interface GenesisAnchorExecution {
   memo: string;
   memo_program: string;
   airdrop_lamports: string;
+  airdrop_transaction_ref: string;
 }
 
 function assertDigest(value: string, label: string): void {
   if (!/^[0-9a-f]{64}$/.test(value)) throw new Error(`${label} must be lowercase sha256 hex`);
 }
-
 export function validateGenesisAnchorInput(input: GenesisAnchorInput): void {
   if (input.agent_ai_id !== GENESIS_AGENT_AI_ID) throw new Error("GENESIS_ANCHOR_AGENT_ID_MISMATCH");
   assertDigest(input.merkle_root, "merkle_root");
   assertDigest(input.proof_receipt_digest, "proof_receipt_digest");
   assertDigest(input.artifact_digest, "artifact_digest");
 }
-
 export function buildGenesisAnchorMemo(input: GenesisAnchorInput): string {
   validateGenesisAnchorInput(input);
   return [
@@ -47,13 +40,7 @@ export function buildGenesisAnchorMemo(input: GenesisAnchorInput): string {
     `artifact:${input.artifact_digest}`,
   ].join("\n");
 }
-
-async function loadSolanaRuntime(): Promise<{
-  kit: any;
-  rpcPlugin: any;
-  signerPlugin: any;
-  memo: any;
-}> {
+async function loadSolanaRuntime(): Promise<{ kit: any; rpcPlugin: any; signerPlugin: any; memo: any }> {
   const dynamicImport = async (moduleName: string): Promise<any> => import(moduleName);
   const [kit, rpcPlugin, signerPlugin, memo] = await Promise.all([
     dynamicImport("@solana/kit"),
@@ -63,7 +50,20 @@ async function loadSolanaRuntime(): Promise<{
   ]);
   return { kit, rpcPlugin, signerPlugin, memo };
 }
-
+async function waitForFinalized(rpc: any, signature: string, attempts = 60): Promise<number> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const result = await rpc.getSignatureStatuses([signature], { searchTransactionHistory: true }).send();
+    const status = result?.value?.[0];
+    if (status?.err) throw new Error("GENESIS_ANCHOR_TRANSACTION_FAILED");
+    if (status?.confirmationStatus === "finalized") {
+      const slot = Number(status.slot);
+      if (!Number.isSafeInteger(slot) || slot < 0) throw new Error("GENESIS_ANCHOR_SLOT_INVALID");
+      return slot;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error("GENESIS_ANCHOR_TRANSACTION_NOT_FINALIZED");
+}
 function extractMemoFromTransaction(raw: unknown, memoProgramAddress: string): string | null {
   const tx = raw as {
     transaction?: { message?: { instructions?: Array<Record<string, unknown>> } };
@@ -86,11 +86,7 @@ function extractMemoFromTransaction(raw: unknown, memoProgramAddress: string): s
     for (const line of logs) {
       const match = /^Program log: Memo \(len \d+\): "(.*)"$/.exec(line);
       if (match) {
-        try {
-          return JSON.parse(`"${match[1]}"`);
-        } catch {
-          return match[1];
-        }
+        try { return JSON.parse(`"${match[1]}"`); } catch { return match[1]; }
       }
     }
   }
@@ -103,7 +99,6 @@ export async function anchorGenesisProofOnSolanaDevnet(
 ): Promise<GenesisAnchorExecution> {
   validateGenesisAnchorInput(input);
   if (options.confirm !== GENESIS_ANCHOR_CONFIRM) throw new Error("GENESIS_ANCHOR_CONFIRMATION_REQUIRED");
-
   const airdropLamports = options.airdrop_lamports ?? MAX_DEVNET_AIRDROP_LAMPORTS;
   if (airdropLamports <= 0n || airdropLamports > MAX_DEVNET_AIRDROP_LAMPORTS) {
     throw new Error("GENESIS_ANCHOR_AIRDROP_LIMIT_EXCEEDED");
@@ -111,45 +106,43 @@ export async function anchorGenesisProofOnSolanaDevnet(
 
   const { kit, rpcPlugin, signerPlugin, memo: memoRuntime } = await loadSolanaRuntime();
   const payer = await kit.generateKeyPairSigner();
-  const client = kit
-    .createClient()
-    .use(signerPlugin.signer(payer))
-    .use(rpcPlugin.solanaDevnetRpc())
-    .use(memoRuntime.memoProgram());
+  const client = kit.createClient().use(signerPlugin.signer(payer)).use(rpcPlugin.solanaDevnetRpc()).use(memoRuntime.memoProgram());
 
-  await client.airdrop(payer.address, kit.lamports(airdropLamports));
+  const airdropTransactionRef = String(
+    await client.rpc.requestAirdrop(payer.address, kit.lamports(airdropLamports), { commitment: "confirmed" }).send(),
+  );
+  await waitForFinalized(client.rpc, airdropTransactionRef);
 
   const memo = buildGenesisAnchorMemo(input);
-  const sent = await client.memo.instructions.addMemo({ memo }).sendTransaction();
-  const transactionRef = String(sent.context.signature);
+  const { value: latestBlockhash } = await client.rpc.getLatestBlockhash({ commitment: "finalized" }).send();
+  const instruction = memoRuntime.getAddMemoInstruction({ memo });
+  const transactionMessage = kit.pipe(
+    kit.createTransactionMessage({ version: "legacy" }),
+    (message: any) => kit.setTransactionMessageFeePayerSigner(payer, message),
+    (message: any) => kit.setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, message),
+    (message: any) => kit.appendTransactionMessageInstructions([instruction], message),
+  );
+  const signedTransaction = await kit.signTransactionMessageWithSigners(transactionMessage);
+  const transactionRef = String(kit.getSignatureFromTransaction(signedTransaction));
+  const sendWithoutConfirming = kit.sendTransactionWithoutConfirmingFactory({ rpc: client.rpc });
+  await sendWithoutConfirming(signedTransaction, { commitment: "confirmed" });
+  const slot = await waitForFinalized(client.rpc, transactionRef);
 
-  let transaction: unknown = null;
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    transaction = await client.rpc
-      .getTransaction(transactionRef, {
-        commitment: "finalized",
-        encoding: "jsonParsed",
-        maxSupportedTransactionVersion: 0,
-      })
-      .send();
-    if (transaction) break;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  if (!transaction) throw new Error("GENESIS_ANCHOR_TRANSACTION_NOT_FINALIZED");
-
-  const tx = transaction as { slot?: number | bigint; blockTime?: number | bigint | null };
-  const slot = Number(tx.slot);
-  if (!Number.isSafeInteger(slot) || slot < 0) throw new Error("GENESIS_ANCHOR_SLOT_INVALID");
+  const transaction = await client.rpc.getTransaction(transactionRef, {
+    commitment: "finalized",
+    encoding: "jsonParsed",
+    maxSupportedTransactionVersion: 0,
+  }).send();
+  if (!transaction) throw new Error("GENESIS_ANCHOR_TRANSACTION_READBACK_MISSING");
 
   const memoProgramAddress = String(memoRuntime.MEMO_PROGRAM_ADDRESS);
   const observedMemo = extractMemoFromTransaction(transaction, memoProgramAddress);
   if (observedMemo !== memo) throw new Error("GENESIS_ANCHOR_MEMO_READBACK_MISMATCH");
 
-  const blockTime = tx.blockTime == null ? null : Number(tx.blockTime);
-  const anchoredAt =
-    blockTime != null && Number.isFinite(blockTime)
-      ? new Date(blockTime * 1000).toISOString()
-      : new Date().toISOString();
+  const blockTime = transaction.blockTime == null ? null : Number(transaction.blockTime);
+  const anchoredAt = blockTime != null && Number.isFinite(blockTime)
+    ? new Date(blockTime * 1000).toISOString()
+    : new Date().toISOString();
 
   return {
     anchor: {
@@ -166,5 +159,6 @@ export async function anchorGenesisProofOnSolanaDevnet(
     memo,
     memo_program: memoProgramAddress,
     airdrop_lamports: airdropLamports.toString(),
+    airdrop_transaction_ref: airdropTransactionRef,
   };
 }
