@@ -28,9 +28,16 @@ export function buildAiProfile(env: Record<string, string | undefined>) {
   const parsed = parseAiId(id);
   if (parsed.profile_path.length !== 0) throw new Error("OSA_AI_AUTHORITY must be a root DNS authority");
 
-  const links: Array<Record<string, string>> = [{ rel: "human", href: canonical }];
+  const canonicalUrl = new URL(canonical);
+  if (canonicalUrl.protocol !== "https:") throw new Error("OSA_AI_CANONICAL_URL must use HTTPS");
+
+  const links: Array<Record<string, string>> = [{ rel: "human", href: canonicalUrl.toString() }];
   const proofUrl = env.OSA_AI_PROOF_URL?.trim();
-  if (proofUrl) links.push({ rel: "proof", href: proofUrl });
+  if (proofUrl) {
+    const parsedProofUrl = new URL(proofUrl);
+    if (parsedProofUrl.protocol !== "https:") throw new Error("OSA_AI_PROOF_URL must use HTTPS");
+    links.push({ rel: "proof", href: parsedProofUrl.toString() });
+  }
 
   return {
     spec: "ai-profile/0.1",
@@ -40,7 +47,7 @@ export function buildAiProfile(env: Record<string, string | undefined>) {
     description:
       env.OSA_AI_DESCRIPTION?.trim() ||
       "Proof-first infrastructure for verifiable agent execution.",
-    canonical,
+    canonical: canonicalUrl.toString(),
     links,
   };
 }
