@@ -24,6 +24,7 @@ import { KnowledgeError, KnowledgeStore } from "../../../packages/knowledge/src"
 import { BuildWorkspace, validateBuildWorkspace } from "./build";
 import { BrainControlPlane, verifyBrainPlan } from "../../../packages/brain/src";
 import { runTraceProbe, TraceInputError } from "./trace-probe";
+import { handleTrustRequest } from "./trust";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
 // "open": no login, for the Vercel preview dashboard; every open-mode request acts as OPEN_MODE_SESSION.
@@ -168,6 +169,8 @@ export async function handleApiRequest(
       const method = request.method ?? "GET";
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+
+      if (await handleTrustRequest(request, response, url)) return;
 
       if (parts[0] === "unified") {
         const session = requireSession(request,response,state);
