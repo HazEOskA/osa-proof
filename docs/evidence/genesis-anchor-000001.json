@@ -1,0 +1,41 @@
+{
+  "schema": "osa.genesis_anchor.v1",
+  "anchor_number": "000001",
+  "source": {
+    "genesis_artifact_sha256": "b93fd5a1c54d89598ab74f52bfbeaaa4f47bef64317c2ab6649bc03fec6f6018",
+    "merkle_root": "6d3bc05a9ba5fd1f803444fc9674f8b94db062bbaa8d38609f278d4eaefdbe96",
+    "proof_receipt_digest": "bd4bfbc7e50b36f21b83b8e27871d86cfc32c4e09d7d36b8a83cbfbdd9608ebd",
+    "agent_ai_id": "@ai:osatechgpt.dev/agents/genesis"
+  },
+  "network": {
+    "chain": "solana",
+    "cluster": "devnet",
+    "memo_program": "Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH",
+    "payer_address": "8hC9rJsDZRgQLw8r6AThSyf1sfdibPivhivt3kDdBp22",
+    "airdrop_lamports": "10000",
+    "airdrop_transaction_ref": null,
+    "slot": 512173382
+  },
+  "memo": "agent:@ai:osatechgpt.dev/agents/genesis\nmerkle:6d3bc05a9ba5fd1f803444fc9674f8b94db062bbaa8d38609f278d4eaefdbe96\nproof:bd4bfbc7e50b36f21b83b8e27871d86cfc32c4e09d7d36b8a83cbfbdd9608ebd\nartifact:b93fd5a1c54d89598ab74f52bfbeaaa4f47bef64317c2ab6649bc03fec6f6018",
+  "proof_anchor": {
+    "schema": "osa.proof_anchor.v1",
+    "merkle_root": "6d3bc05a9ba5fd1f803444fc9674f8b94db062bbaa8d38609f278d4eaefdbe96",
+    "chain": "solana",
+    "network": "devnet",
+    "transaction_ref": "4axWBY4nhJk8tBkxZT41V7DYkHCRPsUxgzmJrAQfKRF4R6V9echW4yVXekYibJ1HodvLSiuvFAQkg6BuCTD4t8LP",
+    "anchored_at": "2026-10-17T19:05:42.000Z",
+    "assurance": "CHAIN_CONFIRMED"
+  },
+  "verification": {
+    "source_artifact_digest_verified": true,
+    "source_verification_flags_true": true,
+    "merkle_root_recomputed": true,
+    "anchor_binding_verified": true,
+    "devnet_only": true,
+    "transaction_finalized": true,
+    "memo_readback_verified": true,
+    "private_key_persisted": false
+  },
+  "created_at": "2026-10-17T19:05:43.437Z",
+  "artifact_sha256": "a77f77b9d0c218e081ddf2a037758e405e0cfc7947d96ebd6bae47c28e4ad39d"
+}
