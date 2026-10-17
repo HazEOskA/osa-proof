@@ -1,107 +1,41 @@
-# Azure Worker Deploy V0.1
+# Istniejący OSA Worker Host na Azure
 
-This slice deploys the OSA Worker Host to a dedicated Azure Linux VM.
+Kod workera, sandboxa Docker i adaptera Azure znajduje się w tym samym `HazEOskA/osa-proof`. Skrypt nie jest dowodem, że host już działa. Gotowość wymaga rzeczywistego wykonania i weryfikacji dowodu.
 
-## Cost guards
+## Naprawione połączenie konfiguracji
 
-The deploy script refuses to create billable compute unless Azure reports:
+- Bootstrap pobiera gałąź `release/osa-proof-v0.1.0`, przekazuje organizację i projekt wymagane przez Compose oraz zapisuje `.env` z uprawnieniami 0600.
+- Brak scope i nieprawidłowy token zatrzymują start przed instalacją pakietów. Plik env jest parsowany jako dane; nie jest wykonywany przez shell.
+- Ponowne uruchomienie zachowuje istniejący token Key Vault. Rotacja nie jest ukrytym skutkiem redeployu.
+- Nowy sandbox domyślnie ma sieć `none`. Włączenie egressu wymaga jawnego ustawienia hosta dla zaakceptowanego zadania.
+- Health potwierdza osiągalność procesu. Nie zalicza uruchomienia kontenera ani builda.
 
-```text
-subscriptionPolicies.spendingLimit = On
-```
+## Wymagane środowisko
 
-That is the hard subscription-level guard for eligible credit/free subscriptions.
-
-It also creates a resource-group budget before the VM and configures daily VM
-auto-shutdown. Azure budgets are alerts, not hard stops.
-
-Defaults:
-
-```text
-resource group: rg-osa-worker
-region: northeurope
-VM: guarded 2-vCPU / 8-GB candidate pool (B2ms -> D2as_v5 -> D2s_v5 -> D2_v5)
-budget: 40 (subscription billing currency)
-auto-shutdown: 01:00 UTC
-```
-
-Override with:
+Uruchomienie skryptu wymaga zalogowanego Azure CLI/Cloud Shell, właściwej subskrypcji i scope:
 
 ```bash
-export OSA_AZURE_BUDGET_AMOUNT=30
-export OSA_AZURE_VM_SIZE=Standard_D2as_v5
-export OSA_AZURE_AUTO_SHUTDOWN_UTC=0100
+export OSA_WORKER_ORGANIZATION_ID=org_dev_local
+export OSA_WORKER_PROJECT_ID=osa-proof
+export OSA_WORKER_BRANCH=release/osa-proof-v0.1.0
 ```
 
-## Run
+Dla już istniejącego workera potrzebne są jego rzeczywisty adres i bezpiecznie skonfigurowany token. Nie wysyłaj tokenu do czatu ani issue. Przykładowy plik kontrolny: [control-plane.env.example](../worker/control-plane.env.example).
 
-Use Azure Cloud Shell:
+## Nowy provisioning: koszt i zakres
+
+`deploy.sh` tworzy RG, budżet, sieć, publiczny adres, VM, Managed Identity, Key Vault, uprawnienia i harmonogram wyłączenia. Nie należy go uruchamiać jako nieszkodliwego health checku. Wymagana jest osobna akceptacja kosztu i tego zakresu.
+
+Skrypt wymaga `subscriptionPolicies.spendingLimit=On`. Domyślny budżet RG to 40 jednostek waluty rozliczeniowej; budżet generuje alerty, nie stanowi twardego limitu wydatków. VM: pula 2 vCPU / 8 GB, bez automatycznego zwiększania rozmiaru. Regiony: northeurope, westeurope, swedencentral, germanywestcentral, francecentral; jawne `OSA_AZURE_LOCATION` wyłącza fallback. Wyłączenie domyślnie 01:00 UTC nie usuwa opłat za wszystkie zasoby.
+
+Dopiero po zaakceptowaniu konkretnego zakresu operator może wykonać:
 
 ```bash
-git clone --branch feature/azure-worker-deploy-v0.1 --depth 1 https://github.com/HazEOskA/osa-proof.git
-cd osa-proof
 bash deploy/azure-worker/deploy.sh
 ```
 
-The script creates:
+Nie uruchomiono tego provisioningu w ramach obecnego odbioru. Azure CLI i aktywny host nie są dostępne w lokalnym środowisku pracy.
 
-- dedicated resource group,
-- resource-group monthly budget,
-- VNet/subnet/NSG,
-- static Public IP with Azure DNS name,
-- Ubuntu 24.04 VM,
-- system-assigned managed identity,
-- Azure Key Vault secret for the worker token,
-- Key Vault RBAC assignment,
-- daily VM auto-shutdown,
-- Docker/Caddy/OSA Worker Host,
-- public TLS endpoint.
+## Rzeczywista weryfikacja
 
-The worker token is stored in Key Vault and written to
-`~/osa-worker-control-plane.env` in Cloud Shell with mode 0600. It is not
-committed to Git.
-
-## Safety
-
-Do not remove the Azure subscription spending limit for this deployment.
-
-The script aborts before VM creation when the reported spending limit is not
-`On`.
-
-
-## Capacity fallback
-
-Azure can report a SKU as unavailable in a region even when the VM family is
-generally supported. The deploy script therefore tries only a bounded set of
-2-vCPU / 8-GB SKUs and never auto-escalates to a larger VM:
-
-```text
-Standard_B2ms
-Standard_D2as_v5
-Standard_D2s_v5
-Standard_D2_v5
-```
-
-SKUs that Azure marks as restricted for the subscription are skipped. If
-preflight still returns a capacity/allocation error, the next candidate is
-tried. Any non-capacity error stops the deployment immediately.
-
-
-## Guarded EU region fallback
-
-When the preferred region has subscription or capacity restrictions, the deploy
-script probes only this EU pool:
-
-```text
-northeurope
-westeurope
-swedencentral
-germanywestcentral
-francecentral
-```
-
-Selection is size-first, so `Standard_B2ms` is preferred across all candidate
-regions before moving to the more expensive D-series candidates. The deploy
-never auto-selects a larger VM and never leaves the EU region pool.
-
-Set `OSA_AZURE_LOCATION` explicitly to disable automatic region fallback.
+Istniejący CI uruchamia `OSA_LOCAL_DOCKER_TEST=1` dla `platform-v05.test` i `worker-docker-live.test`. Obejmuje kontenery, Worker Host HTTP, RemoteWorkspaceProvider, scope, odmowę zapisu poza workspace, Runtime, receipt i cleanup. Dowody są artefaktem `osa-worker-docker-proof` bieżącego CI. To dowód wykonania na runnerze CI; nie oznacza wdrożenia Azure, pushu obrazu do registry ani wywołania modelu.

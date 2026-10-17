@@ -13,7 +13,7 @@ services:
       OSA_WORKER_PROJECT_ID: ${OSA_WORKER_PROJECT_ID:?required}
       OSA_WORKER_CAPACITY: ${OSA_WORKER_CAPACITY:-4}
       OSA_WORKSPACE_DOCKER_IMAGE: ${OSA_WORKSPACE_DOCKER_IMAGE:-osa/workspace-node22:v0.1}
-      OSA_WORKSPACE_DOCKER_NETWORK: ${OSA_WORKSPACE_DOCKER_NETWORK:-bridge}
+      OSA_WORKSPACE_DOCKER_NETWORK: ${OSA_WORKSPACE_DOCKER_NETWORK:-none}
       DOCKER_BIN: docker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

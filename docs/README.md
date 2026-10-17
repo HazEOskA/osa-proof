@@ -23,6 +23,7 @@
 - [Most NVIDIA](NVIDIA_BRIDGE.md) — provider, narzędzia modelu i ograniczenia.
 - [Proof Protocol V1](PROOF_PROTOCOL_V1.md) i [V2](PROOF_PROTOCOL_V2.md) — weryfikacja, integralność i semantyka receipt.
 - [Builder](NATIVE_BUILDER_V0.1.md), [Worker Host](OSA_WORKER_HOST_V0.1.md), [Workspace Provider](WORKSPACE_PROVIDER_V0.1.md).
+- [Uruchomienie istniejącego hosta i granice dowodu cloud](../deploy/azure-worker/README.md) — wymagany scope, poprawiony bootstrap i rzeczywisty test Docker w CI.
 - [NeurOSA S2](NEUROSA_BRAIN_S2.md) i [plan aktywacji pamięci](NEXT_STEP_MEMORY_ACTIVATION.md) — **nie** oznaczają uruchomionej pamięci.
 - [Intelligence Layer](INTELLIGENCE_LAYER_V1.md), [dashboard](DASHBOARD_INTEGRATION.md).
 

@@ -20,6 +20,20 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Rzeczywisty Docker, Worker Host, sandboxy i receipts
+        env:
+          OSA_LOCAL_DOCKER_TEST: '1'
+          OSA_REVIEW_DIR: artifacts/osa-worker-docker
+        run: |
+          docker version
+          node --test --test-name-pattern '^LIVE' dist/tests/platform-v05.test.js dist/tests/worker-docker-live.test.js
+      - name: Dowody rzeczywistego wykonania sandboxów
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osa-worker-docker-proof
+          path: artifacts/osa-worker-docker/
+          if-no-files-found: error
       - name: Kompilacja hosta workerów
         run: npm run worker:build
       - name: Kontrola znanych formatów sekretów w zmianach

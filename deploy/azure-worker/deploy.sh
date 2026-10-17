@@ -8,8 +8,14 @@ VM_SIZE_OVERRIDE="${OSA_AZURE_VM_SIZE:-}"
 BUDGET_AMOUNT="${OSA_AZURE_BUDGET_AMOUNT:-40}"
 AUTO_SHUTDOWN_UTC="${OSA_AZURE_AUTO_SHUTDOWN_UTC:-0100}"
 ADMIN_USER="${OSA_AZURE_ADMIN_USER:-osa}"
-BRANCH="${OSA_WORKER_BRANCH:-feature/azure-worker-deploy-v0.1}"
+BRANCH="${OSA_WORKER_BRANCH:-release/osa-proof-v0.1.0}"
 REPO_URL="${OSA_REPO_URL:-https://github.com/HazEOskA/osa-proof.git}"
+source "$(dirname -- "${BASH_SOURCE[0]}")/../worker/config.sh"
+osa_worker_validate_scope "${OSA_WORKER_ORGANIZATION_ID:-}" "${OSA_WORKER_PROJECT_ID:-}"
+if [[ ! "$BRANCH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$ || ! "$REPO_URL" =~ ^https://github\.com/HazEOskA/osa-proof(\.git)?$ ]]; then
+  echo "Nieprawidłowa gałąź lub repozytorium workera." >&2
+  exit 10
+fi
 
 if ! command -v az >/dev/null 2>&1; then
   echo "Azure CLI is required. Run this script in Azure Cloud Shell." >&2
@@ -94,13 +100,12 @@ if ! az keyvault show -g "${RG}" -n "${KV_NAME}" >/dev/null 2>&1; then
     --output none
 fi
 
-WORKER_TOKEN="$(openssl rand -hex 32)"
-az keyvault secret set \
-  --vault-name "${KV_NAME}" \
-  --name osa-worker-token \
-  --value "${WORKER_TOKEN}" \
-  --output none
-unset WORKER_TOKEN
+EXISTING_SECRET_ID="$(az keyvault secret list --vault-name "${KV_NAME}" --query "[?name=='osa-worker-token'].id | [0]" -o tsv)"
+if [[ -z "${EXISTING_SECRET_ID}" ]]; then
+  WORKER_TOKEN="$(openssl rand -hex 32)"
+  az keyvault secret set --vault-name "${KV_NAME}" --name osa-worker-token --value "${WORKER_TOKEN}" --output none
+  unset WORKER_TOKEN
+fi
 
 # Pick the cheapest guarded 2-vCPU / 8-GB option across nearby EU regions.
 # An explicit OSA_AZURE_LOCATION disables automatic region fallback.
@@ -340,6 +345,8 @@ export OSA_WORKER_TOKEN="\${TOKEN}"
 export OSA_WORKER_DOMAIN="${FQDN}"
 export OSA_WORKER_BRANCH="${BRANCH}"
 export OSA_REPO_URL="${REPO_URL}"
+export OSA_WORKER_ORGANIZATION_ID="${OSA_WORKER_ORGANIZATION_ID}"
+export OSA_WORKER_PROJECT_ID="${OSA_WORKER_PROJECT_ID}"
 apt-get update
 apt-get install -y --no-install-recommends git ca-certificates curl
 rm -rf /tmp/osa-worker-bootstrap
@@ -377,12 +384,14 @@ OSA_BUILDER_MODE=native
 OSA_WORKSPACE_PROVIDER=remote
 OSA_WORKER_BASE_URL=https://${FQDN}
 OSA_WORKER_TOKEN=$(az keyvault secret show --vault-name "${KV_NAME}" --name osa-worker-token --query value -o tsv)
+OSA_WORKER_ORGANIZATION_ID=${OSA_WORKER_ORGANIZATION_ID}
+OSA_WORKER_PROJECT_ID=${OSA_WORKER_PROJECT_ID}
 OSA_WORKER_REQUEST_TIMEOUT_MS=120000
 EOF
 chmod 600 "${HOME}/osa-worker-control-plane.env"
 
 echo
-echo "AZURE WORKER DEPLOY V0.1: PASS"
+echo "OSA Worker Host: HTTPS HEALTH VERIFIED; sandbox wymaga osobnego testu wykonania."
 echo "Worker URL: https://${FQDN}"
 echo "Worker IP: ${PUBLIC_IP}"
 echo "Worker location: ${LOCATION}"
