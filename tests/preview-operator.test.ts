@@ -40,7 +40,7 @@ test("preview operator uses NeurOSA without OAuth, forbids cross-origin writes",
     for (const headers of [{ origin: "https://evil.example" },
       { origin: "https://preview.example", host: "preview.example", "sec-fetch-site": "cross-site" },
       { host: "preview.example" }]) {
-      const response = await fetch(base + "/unified/execute", { method: "POST", headers, body: "{}" });
+      const response = await fetch(base + "/unified/execute", { method: "POST", headers: headers as Record<string, string>, body: "{}" });
       assert.equal(response.status, 403);
       assert.equal((await response.json() as {code:string}).code, "PREVIEW_ORIGIN_REJECTED");
     }
