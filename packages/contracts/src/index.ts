@@ -299,3 +299,4 @@ export interface LayerEnterResult {
 }
 
 export * from "./web3";
+export * from "./trust";
