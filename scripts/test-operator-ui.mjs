@@ -20,7 +20,7 @@ try{
  await page.route("**/api/auth/access",r=>r.fulfill({json:{required:true,configured:true,authenticated:true,scope:{organization_id:"org_test",project_id:project}}}));
  await page.goto(base,{waitUntil:"domcontentloaded"});
  await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
- await page.getByTestId("osa-composer").fill("WIADOMOŚĆ WYŁĄCZNIE PROJEKTU A");await page.getByTestId("osa-send").click();
+ await page.getByTestId("osa-composer").fill("Oblicz SHA-256 tekstu: WIADOMOŚĆ WYŁĄCZNIE PROJEKTU A");await page.getByTestId("osa-send").click();
  await page.getByTestId("osa-message").filter({hasText:"WIADOMOŚĆ WYŁĄCZNIE PROJEKTU A"}).waitFor();
  project="b";await page.reload({waitUntil:"domcontentloaded"});
  await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();

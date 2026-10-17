@@ -4,20 +4,22 @@ import { useOsa } from "../ctx";
 import { scopedStorageKey, useAccessScope } from "../AccessBoundary";
 import { verifyRun } from "../lib/verify";
 import { statusText } from "../ui/primitives";
+import ApiConnections, { PROVIDERS, providerStatus, type ProviderId, type ProviderStatus } from "../ui/ApiConnections";
 import type { Mission, Run, TeamGraph } from "../data/types";
 
 // Native OSA surface. No iframe, no client secrets, no pretend model execution.
-type AgentId = "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
-type ModelId = "auto" | "nvidia" | "openrouter";
+type AgentId = "jeff" | "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
+type ModelId = "auto" | ProviderId;
 type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; executionId?:string; runId?:string };
 type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
 type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
 type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{url:string;http_status:number|null;status:string}> };
 type StatusInfo = { mode?:string; auth_mode?:string; persistence?:string };
 type ModelStatus = { configured:boolean; available?:boolean; gate?:string|null; provider:string; model:string };
-type ModelAnswer = { text:string; model:string; provider_response_id:string|null; request_id:string; latency_ms:number; status:"PROVIDER_RESPONSE"|"TOOL_EXECUTED";bundle?:Bundle };
+type ModelAnswer = { provider?:string; text:string; model:string; provider_response_id:string|null; request_id:string; latency_ms:number; status:"PROVIDER_RESPONSE"|"TOOL_EXECUTED";bundle?:Bundle };
 
 const AGENTS: Array<{id:AgentId;name:string;purpose:string;state:string;icon:string}> = [
+  {id:"jeff",name:"Jeff",purpose:"Jeverson · główny asystent OSA",state:"CZAT",icon:"◆"},
   {id:"leader",name:"Lider",purpose:"Team Graph · delegowanie · plan",state:"OGRANICZONY",icon:"◇"},
   {id:"coding",name:"Agent programistyczny",purpose:"Kod · repo · testy · review",state:"OGRANICZONY",icon:"⌘"},
   {id:"commerce",name:"Handel internetowy",purpose:"Sklep · produkty · integracje",state:"PLANOWANY",icon:"▣"},
@@ -28,7 +30,7 @@ const AGENTS: Array<{id:AgentId;name:string;purpose:string;state:string;icon:str
 ];
 const id = () => crypto.randomUUID();
 const stamp = () => new Date().toISOString();
-const empty = ():Session => ({id:id(),title:"Nowa rozmowa",agent:"leader",model:"auto",updated:stamp(),messages:[]});
+const empty = ():Session => ({id:id(),title:"Nowa rozmowa",agent:"jeff",model:"auto",updated:stamp(),messages:[]});
 function restore(KEY:string):Session[] {
   try {
     const value:unknown = JSON.parse(localStorage.getItem(KEY)||"null");
@@ -36,9 +38,9 @@ function restore(KEY:string):Session[] {
     const valid:Session[] = [];
     for (const item of value.slice(0,50)) {
       if (!item || typeof item.id!=="string" || typeof item.title!=="string" || !Array.isArray(item.messages) ||
-          !AGENTS.some(a=>a.id===item.agent) || !["auto","nvidia","openrouter"].includes(item.model)) continue;
+          !AGENTS.some(a=>a.id===item.agent) || !["auto",...PROVIDERS.map(p=>p.id)].includes(item.model)) continue;
       const messages:Msg[] = item.messages.filter((m:Msg)=>m && typeof m.id==="string" && typeof m.text==="string" && ["user","assistant"].includes(m.role)).slice(-100).map((m:Msg)=>({...m,text:m.text.slice(0,20000)}));
-      valid.push({id:item.id,title:item.title.slice(0,100),agent:item.agent,model:item.model==="openrouter"?"auto":item.model,updated:item.updated,messages});
+      valid.push({id:item.id,title:item.title.slice(0,100),agent:item.agent,model:item.model,updated:item.updated,messages});
     }
     return valid.length?valid:[empty()];
   } catch { return [empty()]; }
@@ -74,7 +76,14 @@ export default function JeversonChat() {
   const [modelTools,setModelTools] = useState(false);
   const [lastRun,setLastRun] = useState<{sessionId:string;run:Run;verified:boolean}|null>(null);
   const seq = useRef(0), controller = useRef<AbortController|null>(null), bottom = useRef<HTMLDivElement>(null);
+  const [providers,setProviders]=useState<ProviderStatus|null>(null),[connectionsOpen,setConnectionsOpen]=useState(false),[lastProvider,setLastProvider]=useState("NVIDIA");
+  async function refreshProviders(){try{setProviders(await providerStatus());}catch{/* Legacy deployments still expose NVIDIA status. */}}
+  useEffect(()=>{void refreshProviders();const refresh=()=>{void refreshProviders();};window.addEventListener("osa-api-connections",refresh);return()=>window.removeEventListener("osa-api-connections",refresh);},[]);
   const current = sessions.find(s=>s.id===activeId)||sessions[0];
+  const selectedProvider:ProviderId=current.model==="auto"?(providers?.providers.find(p=>p.configured)?.id||"nvidia"):current.model;
+  const selectedConnection=providers?.providers.find(p=>p.id===selectedProvider);
+  const selectedConfigured=selectedConnection?.configured??(selectedProvider==="nvidia"&&Boolean(modelStatus?.configured));
+  const providerLabel=PROVIDERS.find(p=>p.id===selectedProvider)?.name||selectedProvider;
   const agent = AGENTS.find(a=>a.id===current.agent)||AGENTS[0];
   const activeRun = lastRun && lastRun.sessionId===current.id && lastRun.verified?lastRun.run:null;
   useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(sessions.slice(0,50)));localStorage.setItem(ACTIVE,current.id);}catch{setStorageProblem(true);}},[sessions,current.id,KEY,ACTIVE]);
@@ -92,7 +101,7 @@ export default function JeversonChat() {
     update(sessionId,s=>({...s,updated:stamp(),title:s.messages.length===0&&role==="user"?text.slice(0,48):s.title,messages:[...s.messages,msg].slice(-100)}));
   }
   function selectAgent(agentId:AgentId){update(current.id,s=>({...s,agent:agentId}));setAgentOpen(false);}
-  function selectModel(model:ModelId){update(current.id,s=>({...s,model}));}
+  function selectModel(model:ModelId){update(current.id,s=>({...s,model}));setModelReplied(false);if(model!=="auto"&&model!=="nvidia")setModelTools(false);}
   async function verify(bundle:Bundle,sessionId:string) {
     if(!bundle || bundle.execution_id!==bundle.run?.execution_id || bundle.run?.proof?.execution_id!==bundle.execution_id)throw Error("EXECUTION_BINDING_INVALID");
     const [checks,remote]=await Promise.all([verifyRun(bundle.run),api<{ok:boolean}>("/unified/verify",bundle)]);
@@ -102,20 +111,18 @@ export default function JeversonChat() {
   }
   async function submit(e?:FormEvent) {
     e?.preventDefault();const text=draft.trim();if(!text||busy)return;
-    const sessionId=current.id;setDraft("");setError("");addMessage(sessionId,"user",text,"USER");
-    if((modelTools||!command(text))&&current.model==="openrouter"){
-      setError("OPENROUTER NIEDOSTĘPNY · Brak klucza OpenRouter na serwerze. Wybierz Automatycznie lub NVIDIA.");
-      return;
+    const sessionId=current.id;setError("");
+    if((modelTools||!command(text))&&!selectedConfigured){
+      setError("Dodaj połączenie "+providerLabel+" w Połączeniach API.");setConnectionsOpen(true);return;
     }
-    if((modelTools||!command(text))&&(!modelStatus?.configured||modelStatus.available===false)){
-      setError("MODEL NIEDOSTĘPNY · Dostęp wymaga konfiguracji serwera i aktywnych bramek kosztów oraz limitu żądań. Żadne wywołanie nie zostało wykonane.");
-      return;
-    }
+    setDraft("");addMessage(sessionId,"user",text,"USER");
     const request=++seq.current,abort=new AbortController();controller.current=abort;setBusy(true);
     try {
       if(modelTools||!command(text)) {
         const history=current.messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}));
-        const answer=await api<ModelAnswer>("/nvidia/fleet-chat",{prompt:text,agent:current.agent,history,...(modelTools?{execute_tools:true,execution_id:"exec_"+id()}:{})},abort.signal);
+        const gateway=selectedProvider!=="nvidia"||selectedConnection?.source==="PRIVATE_SERVER_STORE";
+        const answer=await api<ModelAnswer>(gateway?"/models/chat":"/nvidia/fleet-chat",{prompt:text,agent:current.agent,history,...(gateway?{provider:selectedProvider}:{}),...(modelTools?{execute_tools:true,execution_id:"exec_"+id()}:{})},abort.signal);
+        setLastProvider(answer.provider||providerLabel);
         if(request!==seq.current)return;
         if(answer.status==="TOOL_EXECUTED" && answer.bundle?.status==="EXECUTED" && answer.bundle.run.verdict==="VERIFIED"){
           await verify(answer.bundle,sessionId);
@@ -153,6 +160,8 @@ export default function JeversonChat() {
   }
   function key(e:KeyboardEvent<HTMLTextAreaElement>){if(e.key==="Enter"&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void submit();}}
   return <section aria-label="Czat floty agentów" data-testid="osa-native-chat" className="relative flex h-full min-h-0 min-w-0 overflow-hidden bg-[#070b13] text-fg">
+    {connectionsOpen&&<div role="dialog" aria-label="Połączenia API" className="fixed inset-0 z-[80] overflow-y-auto bg-[#0b1424] p-4 sm:p-8"><div className="mx-auto max-w-3xl"><div className="mb-5 flex justify-end"><button type="button" aria-label="Zamknij połączenia API" onClick={()=>setConnectionsOpen(false)} className="focus-ring min-h-[44px] rounded-lg border border-line px-4 text-sm">Wróć do czatu ✕</button></div><ApiConnections onSaved={()=>void refreshProviders()}/></div></div>}
+
     {mobileHistory&&<button onClick={()=>setMobileHistory(false)} aria-label="Zamknij historię" className="absolute inset-0 z-30 bg-black/75 md:hidden"/>}
     <aside aria-label="Historia rozmów" className={(mobileHistory?"translate-x-0":"-translate-x-full")+" absolute inset-y-0 left-0 z-40 flex w-[min(85vw,290px)] shrink-0 flex-col border-r border-white/10 bg-[#0b111c] transition-transform md:static md:w-[238px] md:translate-x-0"}>
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-4"><div><div className="text-xs font-bold tracking-[.16em] text-cyan">OSA / FIRMA</div><div className="mt-1 text-[10px] text-dim">CENTRUM STEROWANIA AGENTAMI</div></div><button onClick={()=>setMobileHistory(false)} className="md:hidden" aria-label="Zamknij menu">✕</button></div>
@@ -175,7 +184,7 @@ export default function JeversonChat() {
         {AGENTS.map(a=><button key={a.id} onClick={()=>selectAgent(a.id)} aria-pressed={a.id===current.agent} className={(a.id===current.agent?"bg-cyan/10":"hover:bg-white/5")+" mb-1 w-full rounded-lg p-3 text-left"}><span className="flex items-center justify-between text-xs"><strong>{a.icon} {a.name}</strong><span className="text-[9px] text-dim">{a.state}</span></span><span className="mt-1 block text-[11px] text-dim">{a.purpose}</span></button>)}
         <p className="mt-2 text-[10px] text-warn">Widoczność agenta nie oznacza uruchomionego runtime. Mutacje wymagają Approval Gate.</p>
       </div>}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-3 py-2"><span className="flex min-w-0 items-center gap-2 text-[11px] text-dim"><button type="button" onClick={()=>selectAgent("hermes")} aria-label="Wybierz Hermesa" title="Hermes · wybierz agenta" className="osa-hermes-orb inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-cyan/40 bg-cyan/10 text-cyan">✦</button><span className="truncate">Hermes · propozycje zatwierdzane przez operatora</span></span><span className="shrink-0 rounded-full border border-warn/40 px-2 py-1 text-[9px] text-warn">{modelReplied?"NVIDIA · ODPOWIADA":modelStatus?.available===false?"NVIDIA · DOSTĘP OGRANICZONY":modelStatus?.configured?"NVIDIA · KLUCZ GOTOWY":status?.mode==="fixture"?"TRYB TESTOWY · MODEL NIEDOSTĘPNY":"MODEL NIEDOSTĘPNY"}</span></div>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-3 py-2"><span className="flex min-w-0 items-center gap-2 text-[11px] text-dim"><button type="button" onClick={()=>selectAgent("hermes")} aria-label="Wybierz Hermesa" title="Hermes · wybierz agenta" className="osa-hermes-orb inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-cyan/40 bg-cyan/10 text-cyan">✦</button><span className="truncate">Hermes · propozycje zatwierdzane przez operatora</span></span><span className="shrink-0 rounded-full border border-warn/40 px-2 py-1 text-[9px] text-warn">{modelReplied?lastProvider+" · ODPOWIADA":selectedConfigured?providerLabel+" · GOTOWE":"DODAJ POŁĄCZENIE API"}</span></div>
       {inspector?
         <div data-testid="osa-inspector" aria-label="Inspektor wykonania" className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"><div className="mx-auto max-w-3xl"><h2 className="text-lg font-semibold">Śledzenie / Materiał dowodowy / Weryfikacja / Odtwarzanie</h2><p className="mt-2 text-xs text-dim">Tylko rzeczywiste wykonania; żadnych fikcyjnych dowodów.</p>
           <div className="mt-4 rounded-xl border border-line bg-panel p-4 text-xs">Tryb: {status?.mode||"NIEZNANY"} · Logowanie: {status?.auth_mode||"NIEZNANE"}<div className="mt-2">Zapisywanie: {status?.persistence||"NIEZNANE"}</div><div className="mt-2 break-all font-mono">Wykonanie: {activeRun?.execution_id||"BRAK ZWERYFIKOWANEGO WYKONANIA"}</div><div className="mt-2">Weryfikacja: {activeRun?statusText(activeRun.verdict):"NIEZWERYFIKOWANO"} · Materiały: {activeRun?.evidence.length||0} · Zdarzenia: {activeRun?.events.length||0}</div></div>
@@ -187,10 +196,10 @@ export default function JeversonChat() {
           {busy&&<div role="status" className="text-xs text-dim">Silnik OSA · trwa wykonywanie żądania...</div>}<div ref={bottom}/></div></div>}
       {error&&<div role="alert" data-testid="osa-chat-notice" className="mx-3 mb-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-[11px] text-warn">{error}<button className="ml-2 underline" onClick={()=>setError("")}>Zamknij</button></div>}
       {storageProblem&&<p role="alert" className="px-3 text-[11px] text-warn">Zapis historii na urządzeniu jest zablokowany.</p>}
-      <div className="shrink-0 border-t border-white/10 bg-[#0b111c] px-3 py-3 sm:px-6"><label className="mx-auto mb-2 flex max-w-[820px] items-center gap-2 text-[10px] text-dim"><input type="checkbox" checked={modelTools} onChange={e=>setModelTools(e.target.checked)} disabled={busy}/>Narzędzia modelu · tylko SHA-256, bez zmian</label><form onSubmit={e=>void submit(e)} className="mx-auto max-w-[820px] rounded-2xl border border-line2 bg-[#101b2a] p-3 focus-within:border-cyan/50">
+      <div className="shrink-0 border-t border-white/10 bg-[#0b111c] px-3 py-3 sm:px-6"><label className="mx-auto mb-2 flex max-w-[820px] items-center gap-2 text-[10px] text-dim"><input type="checkbox" checked={modelTools} onChange={e=>setModelTools(e.target.checked)} disabled={busy||selectedProvider!=="nvidia"}/>Narzędzia modelu · SHA-256 przez NVIDIA, bez zmian</label><form onSubmit={e=>void submit(e)} className="mx-auto max-w-[820px] rounded-2xl border border-line2 bg-[#101b2a] p-3 focus-within:border-cyan/50">
         <textarea aria-label="Wiadomość do OSA" data-testid="osa-composer" placeholder={"Wiadomość do "+agent.name+"..."} rows={2} maxLength={20000} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={key} className="block max-h-[160px] min-h-[52px] w-full resize-y bg-transparent text-sm outline-none placeholder:text-dim"/>
-        <div className="flex flex-wrap items-center gap-2 border-t border-white/5 pt-2"><label className="text-[10px] text-dim">Model <select aria-label="Wybierz model" value={current.model} onChange={e=>selectModel(e.target.value as ModelId)} className="rounded border border-line bg-panel p-1 text-[11px] text-fg"><option value="auto">Automatycznie</option><option value="nvidia">NVIDIA</option><option value="openrouter" disabled>OpenRouter · brak klucza</option></select></label><button type="button" onClick={()=>void trace()} disabled={busy} className="rounded border border-line p-2 text-[10px] text-cyan disabled:opacity-50">ŚLEDZENIE OSA</button><span className="ml-auto hidden text-[10px] text-dim sm:inline">POLITYKA KOSZTÓW SERWERA</span>{busy?<button type="button" onClick={()=>{cancel();setError("Żądanie anulowano. Wynik niezweryfikowany.");}} className="ml-auto shrink-0 rounded-lg border border-line px-3 py-2 text-xs text-warn">Przerwij</button>:<button data-testid="osa-send" disabled={!draft.trim()} className="ml-auto shrink-0 rounded-lg bg-cyan px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Wyślij ↑</button>}</div>
-      </form><p className="mx-auto mt-2 max-w-[820px] text-center text-[10px] text-dim">{modelStatus?.configured?"Odpowiedzi AI pochodzą z NVIDIA i nie oznaczają wykonania narzędzi ani zweryfikowanego dowodu.":"Model AI nie jest połączony w tym środowisku. Narzędzia i dowody działają osobno."}</p></div>
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/5 pt-2"><label className="text-[10px] text-dim">Model <select aria-label="Wybierz model" value={current.model} onChange={e=>selectModel(e.target.value as ModelId)} className="rounded border border-line bg-panel p-1 text-[11px] text-fg"><option value="auto">Automatycznie</option>{PROVIDERS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><button type="button" onClick={()=>setConnectionsOpen(true)} className="focus-ring rounded border border-cyan/40 p-2 text-[10px] text-cyan">Połączenia API</button><button type="button" onClick={()=>void trace()} disabled={busy} className="rounded border border-line p-2 text-[10px] text-cyan disabled:opacity-50">ŚLEDZENIE OSA</button><span className="ml-auto hidden text-[10px] text-dim sm:inline">POLITYKA KOSZTÓW SERWERA</span>{busy?<button type="button" onClick={()=>{cancel();setError("Żądanie anulowano. Wynik niezweryfikowany.");}} className="ml-auto shrink-0 rounded-lg border border-line px-3 py-2 text-xs text-warn">Przerwij</button>:<button data-testid="osa-send" disabled={!draft.trim()} className="ml-auto shrink-0 rounded-lg bg-cyan px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Wyślij ↑</button>}</div>
+      </form><p className="mx-auto mt-2 max-w-[820px] text-center text-[10px] text-dim">{selectedConfigured?"Odpowiedzi AI: "+providerLabel+". Wykonanie narzędzia potwierdza osobny dowód Runtime.":"Wybierz dostawcę i dodaj klucz w Połączeniach API. Narzędzia natywne działają osobno."}</p></div>
     </div>
   </section>;
 }

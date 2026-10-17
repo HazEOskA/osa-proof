@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { protectedRuntime, openVercelAccess } from "./operator-access";
 import { ModelQuotaError, sharedQuotaConfigured, takeModelQuota } from "./model-quota";
 import type { executeUnified, UnifiedRequest } from "./unified";
-import { osaGuideContext } from "./osa-guide";
+import { chatContext } from "./chat-context";
 
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
@@ -53,37 +53,15 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
   nvidiaCostGate(env);
   const key = env.NVIDIA_API_KEY?.trim();
   if (!key) throw new NvidiaError(503, "NVIDIA_NOT_CONFIGURED", "Dodaj NVIDIA_API_KEY w środowisku serwera.");
-  // Use an explicit profile to guide the assistant; these are chat-only roles, never execution authority.
-  const agents: Record<string,string> = {
-    leader: "Jesteś Liderem floty OSA. Pomagasz planować, delegować w planie i analizować architekturę.",
-    coding: "Jesteś Agentem programistycznym OSA. Doradzasz w projektowaniu kodu, testach i przeglądach. Nie deklaruj zapisania zmian.",
-    commerce: "Jesteś Agentem handlu internetowego OSA. Pomagasz planować e-commerce, integracje i analitykę.",
-    hermes: "Jesteś Hermesem OSA. Analizujesz możliwości ulepszeń, proponujesz zmiany. Nie wykonujesz ich samodzielnie.",
-    security: "Jesteś Agentem bezpieczeństwa OSA. Analizujesz ryzyka, uprawnienia i kontrole dostępu.",
-    research: "Jesteś Agentem badawczym OSA. Odróżniaj dowody od hipotez.",
-    runtime: "Jesteś asystentem Runtime OSA. Wyjaśniasz tracing, proof i evidence bez wymyślania wykonania.",
-    guide: "Jesteś OSĄ — kontekstowym przewodnikiem po frameworku i jego samouczkiem. Odpowiadaj krok po kroku i znaj dokładne moduły nawigacji."
-  };
-  const agent = context?.agent;
-  if(agent !== undefined && (typeof agent !== "string" || !Object.hasOwn(agents,agent))) throw new NvidiaError(400,"INVALID_AGENT","Nieprawidłowy agent.");
-  let guideContext = "";
-  if (agent === "guide") {
-    try { guideContext = osaGuideContext(context?.view); }
-    catch { throw new NvidiaError(400,"INVALID_GUIDE_VIEW","Nieznany moduł przewodnika OSA."); }
-  }
-  const history = context?.history;
-  if(history !== undefined && (!Array.isArray(history) || history.length > 8 ||
-    history.some((m:unknown) => !m || typeof m !== "object" || !("role" in m) || !("content" in m) ||
-      !["user","assistant"].includes(String(m.role)) || Object.keys(m).some(k=>!["role","content"].includes(k)) || typeof m.content !== "string" || m.content.length > 1800)))
-    throw new NvidiaError(400,"INVALID_HISTORY","Historia rozmowy ma nieprawidłowy format lub przekracza limit.");
-  const previous: {role:string;content:string}[] = Array.isArray(history) ? history.map(({role,content})=>({role,content})) : [];
+  let conversation:ReturnType<typeof chatContext>;
+  try {conversation=chatContext(context);} catch(error) {const code=error instanceof Error?error.message:"INVALID_CONTEXT";throw new NvidiaError(400,code,code==="INVALID_GUIDE_VIEW"?"Nieznany moduł przewodnika OSA.":code==="GUIDE_TOOLS_DENIED"?"Przewodnik nie wykonuje narzędzi.":"Nieprawidłowy agent lub historia rozmowy.");}
+  const previous=conversation.history;
   const model = nvidiaStatus(env).model;
   if(prompt.includes(key)||previous.some(m=>m.content.includes(key)))throw new NvidiaError(400,"SECRET_IN_PROMPT","Żądanie zawiera dane uwierzytelniające i zostało odrzucone.");
-  if(context?.tools && agent==="guide")throw new NvidiaError(400,"GUIDE_TOOLS_DENIED","Przewodnik nie wykonuje narzędzi.");
   const started = Date.now();
   const requestBody = { model, stream:false, max_tokens:1024,
     ...(context?.tools?{tools:NVIDIA_TOOLS,tool_choice:"auto",parallel_tool_calls:false}:{}),
-    messages:[{role:"system",content:"Jesteś asystentem ekosystemu OSA. Zawsze odpowiadaj po polsku. Nie twierdź, że wykonałeś operacje poza tą rozmową. Odpowiedź modelu nie jest dowodem wykonania." + (typeof agent==="string"?" "+agents[agent]:"") + (guideContext?" "+guideContext:"")},...previous,{role:"user",content:prompt.trim()}] };
+    messages:[{role:"system",content:conversation.system},...previous,{role:"user",content:prompt.trim()}] };
   let response: Response;
   try {
     response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: AbortSignal.timeout(25000), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(requestBody) });
@@ -121,19 +99,11 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
     response_sha256:createHash("sha256").update(JSON.stringify(data)).digest("hex"),tool_call:toolCall};
 }
 
-export async function handleNvidiaRequest(request: IncomingMessage, response: ServerResponse, path: string,
-  options: {env?:NodeJS.ProcessEnv;dispatch?:(value:UnifiedRequest)=>ReturnType<typeof executeUnified>;fetch?:typeof fetch}={}) {
+export type NvidiaChatBody = {prompt?:unknown;apiKey?:unknown;model?:unknown;agent?:unknown;view?:unknown;history?:unknown;execute_tools?:unknown;execution_id?:unknown};
+export type NvidiaChatOptions = {env?:NodeJS.ProcessEnv;dispatch?:(value:UnifiedRequest)=>ReturnType<typeof executeUnified>;fetch?:typeof fetch};
+export async function nvidiaChat(body:NvidiaChatBody,options:NvidiaChatOptions={},fleet=true) {
   const env=options.env??process.env,fetcher=options.fetch??fetch;
-  const send = (status: number, data: unknown) => { response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }); response.end(JSON.stringify(data)); };
-  if (path === "/nvidia/status" && request.method === "GET") return send(200, {...nvidiaStatus(env),...nvidiaAvailability(env),quota:sharedQuotaConfigured(env)?"SHARED":protectedRuntime(env)&&!openVercelAccess(env)?"SHARED_REQUIRED":"LOCAL_PROCESS_ONLY"});
-  const fleet=path==="/nvidia/fleet-chat";
-  if ((path !== "/nvidia/chat" && !fleet) || request.method !== "POST") return send(404, { error: "Trasa NVIDIA nie istnieje." });
-  try {
-    let size = 0; const chunks: Buffer[] = [];
-    for await (const chunk of request) { const bytes = Buffer.from(chunk); size += bytes.length; if (size > 40000) throw new NvidiaError(413, "BODY_TOO_LARGE", "Żądanie jest za duże."); chunks.push(bytes); }
-    let body: {prompt?:unknown;apiKey?:unknown;model?:unknown;agent?:unknown;view?:unknown;history?:unknown;execute_tools?:unknown;execution_id?:unknown};
-    try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new NvidiaError(400, "INVALID_JSON", "Nieprawidłowy JSON."); }
-    if(!body||typeof body!=="object"||Array.isArray(body))throw new NvidiaError(400,"INVALID_JSON","Wymagany jest obiekt JSON.");
+  if(!body||typeof body!=="object"||Array.isArray(body))throw new NvidiaError(400,"INVALID_JSON","Wymagany jest obiekt JSON.");
     if(body.apiKey!==undefined)throw new NvidiaError(400,"SERVER_KEY_ONLY","Klucz NVIDIA jest konfigurowany wyłącznie na serwerze.");
     if(body.model!==undefined&&body.model!==nvidiaStatus(env).model)throw new NvidiaError(403,"MODEL_NOT_ALLOWED","Model musi być zatwierdzony w konfiguracji serwera.");
     if(body.execute_tools!==undefined&&typeof body.execute_tools!=="boolean")throw new NvidiaError(400,"INVALID_TOOL_MODE","Nieprawidłowy tryb narzędzi.");
@@ -150,9 +120,24 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
         tool:"osa.crypto.sha256.v1",args:answer.tool_call.args,selection:{provider:"nvidia",model:answer.model,
           reported_model:answer.reported_model,response_sha256:answer.response_sha256,request_sha256:answer.request_sha256,
           response_id:answer.provider_response_id,tool_call_id:answer.tool_call.id,source:"SERVER_OBSERVED_PROVIDER_RESPONSE"}});
-      return send(200,{...answer,status:bundle.status==="EXECUTED"?"TOOL_EXECUTED":"TOOL_BLOCKED",bundle});
+      return {...answer,status:bundle.status==="EXECUTED"?"TOOL_EXECUTED":"TOOL_BLOCKED",bundle};
     }
-    return send(200,answer);
+    return answer;
+}
+
+export async function handleNvidiaRequest(request: IncomingMessage, response: ServerResponse, path: string,
+  options: NvidiaChatOptions={}) {
+  const env=options.env??process.env;
+  const send = (status: number, data: unknown) => { response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }); response.end(JSON.stringify(data)); };
+  if (path === "/nvidia/status" && request.method === "GET") return send(200, {...nvidiaStatus(env),...nvidiaAvailability(env),quota:sharedQuotaConfigured(env)?"SHARED":protectedRuntime(env)&&!openVercelAccess(env)?"SHARED_REQUIRED":"LOCAL_PROCESS_ONLY"});
+  const fleet=path==="/nvidia/fleet-chat";
+  if ((path !== "/nvidia/chat" && !fleet) || request.method !== "POST") return send(404, { error: "Trasa NVIDIA nie istnieje." });
+  try {
+    let size = 0; const chunks: Buffer[] = [];
+    for await (const chunk of request) { const bytes = Buffer.from(chunk); size += bytes.length; if (size > 40000) throw new NvidiaError(413, "BODY_TOO_LARGE", "Żądanie jest za duże."); chunks.push(bytes); }
+    let body: {prompt?:unknown;apiKey?:unknown;model?:unknown;agent?:unknown;view?:unknown;history?:unknown;execute_tools?:unknown;execution_id?:unknown};
+    try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new NvidiaError(400, "INVALID_JSON", "Nieprawidłowy JSON."); }
+    return send(200,await nvidiaChat(body,options,fleet));
   } catch (error) {
     if (error instanceof NvidiaError||error instanceof ModelQuotaError) return send(error.status, { error: error.message, code: error.code });
     return send(500, { error: "Błąd mostu NVIDIA.", code: "NVIDIA_INTERNAL_ERROR" });

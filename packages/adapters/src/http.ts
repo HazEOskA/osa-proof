@@ -29,6 +29,7 @@ export async function postJson(params: {
   try {
     response = await fetch(params.url, {
       method: "POST",
+      redirect: "error",
       headers: { "content-type": "application/json", ...params.headers },
       body: params.body,
       signal: AbortSignal.timeout(params.timeoutMs),
@@ -42,7 +43,9 @@ export async function postJson(params: {
       { retryable: true }
     );
   }
-  const raw = await response.text();
+  const chunks:Uint8Array[]=[];let bytes=0;const reader=response.body?.getReader();
+  if(reader)try{while(true){const next=await reader.read();if(next.done)break;bytes+=next.value.length;if(bytes>256000){await reader.cancel();throw new ProviderCallError("provider response exceeded the size limit");}chunks.push(next.value);}}finally{reader.releaseLock();}
+  const raw = Buffer.concat(chunks).toString("utf8");
   return { status: response.status, raw, headers: response.headers, latency_ms: Date.now() - started };
 }
 

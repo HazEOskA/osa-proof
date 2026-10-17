@@ -5,7 +5,8 @@ import { createDevExecution, DevExecution } from "../apps/api/src/server";
 import { vercelApiPath } from "../apps/api/src/vercel";
 
 // The single Vercel Function for the OSA API. vercel.json rewrites every API path here, so all routes share
-// process-local state only. Explicit open mode skips the panel login; cloud model calls keep operator authorization.
+// process-local mission state. Explicit open mode includes chat without an operator login.
+// User API credentials use the separate encrypted server-side ProviderVault.
 let state: ApiState | undefined;
 let execution: DevExecution | undefined;
 

@@ -41,8 +41,8 @@ export class AnthropicProvider implements ModelProvider {
       model: this.config.model,
       max_tokens: this.config.max_tokens,
       system: request.system,
-      messages: [{ role: "user", content: request.prompt }],
-      output_config: { format: { type: "json_schema", schema: request.output_schema } },
+      messages: [...(request.history ?? []), { role: "user", content: request.prompt }],
+      ...(request.output_schema ? { output_config: { format: { type: "json_schema", schema: request.output_schema } } } : {}),
     });
 
     const response = await postJson({

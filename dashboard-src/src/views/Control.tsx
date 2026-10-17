@@ -3,6 +3,7 @@ import { useOsa } from "../ctx";
 import { requestJson } from "../data/data";
 import { Kv, Mono, Section, Status, short } from "../ui/primitives";
 import { sha256 } from "../lib/verify";
+import ApiConnections from "../ui/ApiConnections";
 
 // Control-plane screens backed by the API (packages/control). Every button calls a real route; results and
 // errors are shown as the API returns them. State lives in the API process (PROCESS_MEMORY).
@@ -190,7 +191,8 @@ export function Organizations() {
 export function Secrets() {
   const list = useLoad<Secret[]>("/secrets");
   return (
-    <Page eyebrow="KONTROLA · SECRETS" title="Sekrety" lead="Sekrety znajdują się w zmiennych środowiskowych wdrożenia. Strona pokazuje wyłącznie ich nazwy i stan konfiguracji, nigdy wartości ani ich fragmentów.">
+    <Page eyebrow="KONTROLA · API" title="Sekrety i połączenia API" lead="Dodaj własne połączenia albo sprawdź dostawców skonfigurowanych na serwerze. Wartości zapisanych kluczy nie są zwracane do przeglądarki.">
+      <ApiConnections />
       <Err msg={list.error} />
       <Section title="Environment">
         {list.data?.map((s) => <div key={s.name} className="flex items-center justify-between gap-3 py-1.5"><span className="text-[12px]"><Mono>{s.name}</Mono> · <span className="text-dim">{s.used_by}</span></span><Status v={s.set ? "PASS" : "UNKNOWN"} label={s.set ? "set" : "not set"} /></div>)}

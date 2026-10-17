@@ -66,7 +66,7 @@ test("organizations and secrets: observed + registered orgs; secrets expose name
   assert.deepEqual(list.map((o) => [o.organization_id, o.source, o.projects]), [["org_a", "registered", ["p1", "p2"]], ["org_b", "observed", ["p9"]]]);
   assert.throws(() => orgs.register({ organization_id: "org_a", name: "again" }), ControlError);
   const status = secretStatus({ ANTHROPIC_API_KEY: "sk-SECRET-VALUE", OPENAI_API_KEY: "" });
-  assert.deepEqual(status.map((s) => [s.name, s.set]), [["ANTHROPIC_API_KEY", true], ["OPENAI_API_KEY", false]]);
+  assert.deepEqual(status.map((s) => [s.name, s.set]), [["NVIDIA_API_KEY", false], ["OPENROUTER_API_KEY", false], ["ANTHROPIC_API_KEY", true], ["OPENAI_API_KEY", false]]);
   assert.ok(!JSON.stringify(status).includes("SECRET-VALUE"));
 });
 

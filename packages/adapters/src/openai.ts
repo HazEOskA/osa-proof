@@ -21,7 +21,7 @@ export class OpenAIProvider implements ModelProvider {
   readonly id = "openai";
   readonly model: string;
 
-  constructor(private readonly config: ProviderConfig) {
+  constructor(private readonly config: ProviderConfig, private readonly chatPath = "/v1/chat/completions", private readonly tokenParameter = "max_completion_tokens") {
     this.model = config.model;
   }
 
@@ -36,20 +36,21 @@ export class OpenAIProvider implements ModelProvider {
   private async call(request: ModelRequest): Promise<ModelResponse> {
     const body = JSON.stringify({
       model: this.config.model,
-      max_completion_tokens: this.config.max_tokens,
+      [this.tokenParameter]: this.config.max_tokens,
       messages: [
         { role: "system", content: request.system },
+        ...(request.history ?? []),
         { role: "user", content: request.prompt },
       ],
-      response_format: {
+      ...(request.output_schema ? { response_format: {
         type: "json_schema",
         json_schema: { name: "osa_output", strict: true, schema: request.output_schema },
-      },
+      }} : {}),
     });
 
     const response = await postJson({
       provider: this.id,
-      url: `${this.config.base_url}/v1/chat/completions`,
+      url: `${this.config.base_url}${this.chatPath}`,
       headers: { authorization: `Bearer ${this.config.api_key}` },
       body,
       timeoutMs: this.config.timeout_ms,

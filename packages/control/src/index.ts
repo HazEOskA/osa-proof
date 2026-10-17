@@ -233,6 +233,8 @@ export class OrganizationStore {
 // ── Secrets ─────────────────────────────────────────────────────────────────────────────────────────────
 // Only names and whether they are set. Never a value, a length, a prefix or a hash of a value.
 export const KNOWN_SECRETS: ReadonlyArray<{ name: string; used_by: string }> = [
+  { name: "NVIDIA_API_KEY", used_by: "Czat NVIDIA / Jeff / Hermes" },
+  { name: "OPENROUTER_API_KEY", used_by: "Czat OpenRouter / Jeff / Hermes" },
   { name: "ANTHROPIC_API_KEY", used_by: "llm-gateway (OSA_PROVIDER=anthropic)" },
   { name: "OPENAI_API_KEY", used_by: "llm-gateway (OSA_PROVIDER=openai)" },
 ];
@@ -259,6 +261,10 @@ export const PERMISSIONS: ReadonlyArray<PermissionRow> = [
   { permission: "policies.write", method: "POST", path: "/policies", enforced: "session" },
   { permission: "organizations.write", method: "POST", path: "/organizations", enforced: "session" },
   { permission: "secrets.read", method: "GET", path: "/secrets", enforced: "session" },
+  { permission: "models.read", method: "GET", path: "/models/status", enforced: "session" },
+  { permission: "models.connect", method: "POST", path: "/models/connections", enforced: "session" },
+  { permission: "models.disconnect", method: "POST", path: "/models/connections/delete", enforced: "session" },
+  { permission: "models.chat", method: "POST", path: "/models/chat", enforced: "session" },
   { permission: "experiments.run", method: "POST", path: "/experiments", enforced: "session" },
   { permission: "queue.write", method: "POST", path: "/queue", enforced: "session" },
   { permission: "queue.drain", method: "POST", path: "/queue/drain", enforced: "session" },

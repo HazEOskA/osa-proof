@@ -5,7 +5,8 @@ export type JsonSchema = Record<string, unknown>;
 export interface ModelRequest {
   system: string;
   prompt: string;
-  output_schema: JsonSchema;
+  output_schema?: JsonSchema;
+  history?: Array<{ role: "user" | "assistant"; content: string }>;
 }
 
 export interface ModelUsage {

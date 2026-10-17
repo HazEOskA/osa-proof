@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOsa, type ViewId } from "../ctx";
 import { HOME_ITEM, NAV } from "../nav";
+import { PROVIDERS, providerStatus, type ProviderId, type ProviderStatus } from "../ui/ApiConnections";
 
 type Message={role:"user"|"assistant";text:string};
 type Answer={status:string;text?:string};
@@ -40,6 +41,10 @@ export default function OsaHelpDock(){
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [connected,setConnected]=useState<boolean|null>(null);
+  const [provider,setProvider]=useState<ProviderId>("nvidia"),[providers,setProviders]=useState<ProviderStatus|null>(null);
+  useEffect(()=>{const refresh=()=>{void providerStatus().then(setProviders).catch(()=>{});};refresh();window.addEventListener("osa-api-connections",refresh);return()=>window.removeEventListener("osa-api-connections",refresh);},[]);
+  const providerLabel=PROVIDERS.find(p=>p.id===provider)?.name||provider;
+
   const scrollRef=useRef<HTMLDivElement>(null);
   const abort=useRef<AbortController|null>(null);
   const input=useRef<HTMLTextAreaElement>(null);
@@ -59,7 +64,7 @@ export default function OsaHelpDock(){
     try{
       const timeout=setTimeout(()=>ctl.abort(),29000);
       let response:Response;
-      try{response=await fetch("/api/nvidia/fleet-chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prompt:text,agent:"guide",view,history}),signal:ctl.signal});}
+      try{const gateway=provider!=="nvidia"||providers?.providers.find(p=>p.id===provider)?.source==="PRIVATE_SERVER_STORE";response=await fetch(gateway?"/api/models/chat":"/api/nvidia/fleet-chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prompt:text,agent:"guide",view,history,...(gateway?{provider}:{})}),signal:ctl.signal});}
       finally{clearTimeout(timeout);}
       const data=await response.json().catch(()=>({error:"Odpowiedź serwera ma nieprawidłowy format."})) as Answer&{error?:string};
       if(!response.ok)throw Error(data.error||"Nie udało się połączyć z modelem.");
@@ -94,7 +99,8 @@ export default function OsaHelpDock(){
           {error&&<p data-testid="osa-help-error" role="alert" className="rounded-md border border-bad/40 bg-bad/10 p-2 text-xs text-bad">{error}</p>}
         </div>
         <div className="shrink-0 border-t border-line bg-[#0e192b] px-3 pb-3 pt-3">
-          <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-dim"><span className="min-w-0 flex-1 truncate" title={label}>Aktualny kontekst: {label}</span><span className="shrink-0">{connected===null?"Sprawdzanie NVIDIA":connected?"NVIDIA · klucz gotowy":"NVIDIA · niedostępne"}</span></div>
+          <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-dim"><span className="min-w-0 flex-1 truncate" title={label}>Aktualny kontekst: {label}</span><span className="shrink-0">{provider==="nvidia"?(connected===null?"Sprawdzanie NVIDIA":connected?"NVIDIA · klucz gotowy":"NVIDIA · dodaj klucz"):providerLabel}</span></div>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11px]"><label>Dostawca <select aria-label="Dostawca przewodnika OSA" value={provider} onChange={e=>setProvider(e.target.value as ProviderId)} className="rounded border border-line bg-panel px-2 py-1">{PROVIDERS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><button type="button" className="focus-ring text-cyan underline" onClick={()=>{go("ops:secrets");setOpen(false);}}>Połączenia API</button></div>
           <form onSubmit={e=>{e.preventDefault();void ask();}} className="flex items-end gap-2">
             <textarea ref={input} aria-label="Pytanie do OSA" placeholder="Zapytaj o ten moduł..." value={draft} rows={2} maxLength={4000} disabled={busy} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void ask();}}} className="focus-ring min-h-[56px] min-w-0 flex-1 resize-none rounded-lg border border-line bg-panel p-3 text-xs text-fg placeholder:text-dim disabled:opacity-60"/>
             <button type="submit" disabled={!draft.trim()||busy} className="focus-ring min-h-[48px] shrink-0 rounded-lg bg-cyan px-4 text-xs font-semibold text-black disabled:opacity-50">Wyślij ↑</button>

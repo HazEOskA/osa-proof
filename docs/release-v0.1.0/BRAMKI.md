@@ -1,15 +1,34 @@
-# OSA Proof v0.1.0 — kandydat do wydania
+# OSA Proof v0.1.0 — bramki wydania
 
-> **Nowszy checkpoint:** produkcja `5f2c2ac`, dwa rzeczywiste wykonania Docker/Worker Host i publiczny browser E2E. [Bieżące dowody i brakujące warunki](DOMKNIECIE_RUNTIME_2026-10-17.md). Formalne wydanie pozostaje BLOCKED.
+**BLOCKED — brak formalnego tagu i GitHub Release.** Bieżący kod, CI i produkcja są w [PR #16](https://github.com/HazEOskA/osa-proof/pull/16). Poprzednie odczyty commitów w archiwalnych raportach nie określają aktualnego aliasu.
 
-> **HISTORYCZNY ODCZYT 17.10.2026 (4c375e8):** formalne wydanie nadal `BLOCKED`, ale stały alias produkcyjny wskazuje już deployment `dpl_B8s5QZV1t5CMfy6qm453rkFMs2Bh` z `release/osa-proof-v0.1.0@4c375e8` (`READY`). Poprzednie `512a6e1` to historyczna baza/rollback, **nie bieżący alias**. [Dodatkowy audyt](AUDYT_DODATKOWY_2026-10-17.md), [historia wdrożenia](WDROZENIE_PRODUKCJA.md). Nie łącz wdrożenia panelu z publikacją tagu lub GitHub Release.
+Cel pozostaje jeden: istniejący produkt w `HazEOskA/osa-proof`, polski interfejs i udowodniona ścieżka agent → wykonanie → dowód. Baza audytu: `main@512a6e17048db549f8b515396b2d7710b40af781`; jedna gałąź `release/osa-proof-v0.1.0` i jeden PR wydawniczy.
 
-**Dodatkowy warunek P0:** jawny `OPEN_PRODUCTION` nie izoluje użytkowników ani danych: tryb otwarty dopuszcza natywne operacje na współdzielonym stanie; osobny login NVIDIA chroni model, **nie wszystkie POST**. v0.1 nie może zostać przedstawione jako bezpieczna wieloużytkownikowa produkcja. Wydanie wymaga decyzji o granicy publicznego demo/chronionych danych i testów tej polityki. Rzeczywisty model, atomowy limit i trwałość pozostają niezaliczone.
+## Bieżąca decyzja operatora
 
+Operator zlecił produkcyjne wdrożenie tej gałęzi, usunięcie obowiązkowej sesji NVIDIA w open i przywrócenie Jeffa/Hermesa/OpenRoutera oraz formularza API. Nie oznacza to merge, tagu ani zaliczenia modelowego E2E. Tryb session pozostał w kodzie, a bezpieczne ograniczenia mutujących narzędzi nie zostały usunięte.
 
-**Stan: BLOCKED. Nie utworzono wydania ani tagu.** Numer `0.1.0` w pakiecie nie oznacza przejścia bramek.
+W open panel i model są publiczne. Wspólny obszar nie ma wieloużytkownikowego IAM. Własne połączenia API są oddzielone przez losowe ciasteczka HttpOnly i przechowywane zaszyfrowane; nie są częścią wspólnej konfiguracji. Bez Redis limit jest lokalny, nie między instancjami. Nie przedstawiamy tego jako prywatnej wieloużytkownikowej produkcji.
 
-Cel: jeden produkt w `HazEOskA/osa-proof`, istniejący polski interfejs i jedna udowodniona ścieżka agent → wykonanie → dowód. Baza: `main@512a6e17048db549f8b515396b2d7710b40af781`. Gałąź robocza: `release/osa-proof-v0.1.0`.
+## Aktualne bramki
+
+| Bramka | Wynik i dowód |
+|---|---|
+| npm test, backend, Worker Host, dashboard | Lokalnie 251 testów: 247 PASS, 0 FAIL, 4 SKIP; buildy poprawne. CI bieżącego SHA musi być zielone |
+| Interfejs 320/390/1440 | PASS: Czat, Zapytaj OSĘ, profile, wybór dostawcy, formularz API, bez przepełnienia poziomego |
+| Native Runtime → Evidence → receipt → niezależna weryfikacja → Replay | PASS lokalnie na trzech rozmiarach, odświeżenie i odmowa zmienionego dowodu. To nie jest modelowy tool_call |
+| Worker Host / Docker | Udowodnione rzeczywiste kontenery CI, bez wdrożonego hosta na Vercel |
+| Prawdziwy modelowy ONE FLOW | **BLOCKED**: brak potwierdzonego wykonania; automatyczna kontrola odrzuciła próbę NVIDIA w produkcji z braku osobnej zgody na koszt i zakres |
+| OpenRouter / OpenAI / Anthropic | Transport zaimplementowany; formularz i lokalny kontrakt HTTP sprawdzone; brak prawdziwego wywołania tych dostawców |
+| Trwałość serverless | **BLOCKED**: ApiState/historia misji/kolejki i prywatne połączenia bez trwałego backendu. localStorage i lokalny filesystem tego nie zastępują |
+| Sekrety | Lokalny test szyfrowania, izolacji właściciela, integralności i braku klucza w API/UI storage; skaner diffu. Brak nowych sekretów w repo |
+| Dokumentacja/statusy | Jedna [MACIERZ.md](MACIERZ.md), aktualny [OPERATOR.md](OPERATOR.md) i [POLACZENIA_API.md](POLACZENIA_API.md) |
+
+Weryfikacja odpowiedzi NVIDIA dotyczy zapisanych danych i skrótów, nie podpisu wystawionego przez dostawcę. Receipt Unified v2 nie obejmuje pełnych payloadów każdego zdarzenia Replay. Mission Kernel ma osobną zapieczętowaną oś zdarzeń.
+
+## Minimalny pozostały zakres
+
+Pierwszy brak to dozwolony, rzeczywisty test bezpłatnego modelu i jego tool_call z pełnym dowodem; nie zastępujemy go płatnym modelem ani obejściem odrzuconego wywołania. Następny brak to podłączenie istniejącego trwałego backendu i potwierdzenie restartu/wielu instancji. Nie utworzono płatnej bazy ani infrastruktury. Cloud deployment i NeurOSA pozostają zgodnie z macierzą ograniczone, dopóki nie ma rzeczywistego hosta/połączenia.
 
 ## Stan zastany i PR-y
 
@@ -23,34 +42,6 @@ CI wydania nie pobiera drugiego repozytorium Fleet; sprawdza lokalne kontrakty H
 
 PR-y źródłowe pozostają bez zmian. Zamknięcie ich jako zastąpionych należy wykonać dopiero po zaakceptowaniu zakresu PR wydawniczego.
 
-## Naprawy przygotowane w kodzie
+## Rollback i zamknięcie
 
-1. Na życzenie operatora panel i natywne API Vercel Preview oraz produkcji działają bez obowiązkowego logowania: wymagane są `VERCEL=1`, `VERCEL_ENV=preview` lub `production` i `OSA_AUTH_MODE=open`. `/api/auth/access` raportuje wtedy `required=false`, `mode=OPEN_PREVIEW` lub `OPEN_PRODUCTION`. Poza tym dokładnym zakresem chmurowe API nadal wymaga sesji operatora; brak konfiguracji kończy się 503, brak sesji — 401. Wywołania NVIDIA w otwartym Preview nadal wymagają autoryzacji. Odpowiedzi mają `Cache-Control: no-store`.
-2. Sesja operatora jest podpisana, ograniczona do jednego originu, organizacji i projektu; działa między instancjami bez `SessionStore`. Cookie: `__Host-osa-operator`, HttpOnly, Secure, SameSite=Strict, 30 minut. Żądania zmieniające stan wymagają zgodnego `Origin`. To dostęp jednego operatora, **nie pełny wieloużytkownikowy IAM/OIDC/RBAC**. Rotacja klucza unieważnia wszystkie sesje; wylogowanie usuwa cookie, nie cofa kopii wcześniej skradzionego cookie przed jego wygaśnięciem.
-3. Klucze NVIDIA są konfigurowane wyłącznie na serwerze. HTTP odrzuca `apiKey` i zmianę modelu poza konfigurację. Formularz klucza dostawcy usunięto z przeglądarki.
-4. W chmurze obowiązuje `OSA_ZERO_COST_ONLY=true`, jawne potwierdzenie bezpłatnego dostępu do konkretnego modelu z ważnością maksymalnie 24 godziny i współdzielony licznik. Brak któregokolwiek warunku blokuje żądanie; brak automatycznego płatnego zamiennika i retry.
-5. Adapter limitu Redis REST używa jednego atomowego EVAL, czasu Redis i okien 3/min oraz 30/h na organizację i projekt. Nie uruchomiono usługi ani bazy. Zachowanie na prawdziwym Redis nie zostało potwierdzone; test transportu jest symulowany. Awaria licznika blokuje model. Lokalny limit procesu nie jest używany jako zamiennik w chmurze.
-6. Opcja „Narzędzia modelu” wysyła definicję `osa_sha256` do NVIDIA. Wyłącznie walidowane `tool_calls` z odpowiedzi dostawcy uruchamiają istniejący Runtime. Narzędzie jest tylko odczytowe. Dowód zawiera ID odpowiedzi, żądany i raportowany model oraz skróty żądania i odpowiedzi. Klient nie może dostarczyć własnego modelowego dispatchu. Deterministyczne polecenia natywne pozostają jawnie oddzielne.
-7. Nowy zapis lokalnego bundle jest weryfikowany po odświeżeniu przez przeglądarkę oraz stateless API. To lokalny eksport, nie trwałe przechowywanie w chmurze. Brak poprawnej weryfikacji nie tworzy stanu LIVE.
-
-Operator następnie zlecił wdrożenie tej gałęzi na produkcję do odbioru panelu. Zakres, brak formalnego wydania i rollback: [WDROZENIE_PRODUKCJA.md](WDROZENIE_PRODUKCJA.md).
-
-## Niespełnione warunki obowiązkowe
-
-Wejście do panelu Preview nie wymaga konfiguracji operatora. Pierwszy bloker rzeczywistego przepływu modelowego: potwierdzona bezpłatność konta/modelu NVIDIA i działający, współdzielony limit żądań. Wywołanie modelu dodatkowo wymaga autoryzacji operatora; samo `configured=true` dla klucza nie spełnia tych warunków.
-
-Po ich spełnieniu trzeba wykonać rzeczywisty test NVIDIA → modelowe `tool_calls` → Runtime → Evidence → ProofReceipt → niezależna weryfikacja → Replay na Preview w 320/390/1440 px i test odmowy dostępu. Nie ma zweryfikowanego cloud `execution_id` z tej sesji. Symulowanego dostawcy nie wolno zaliczyć do tej bramki.
-
-Oddzielny bloker: brak trwałego backendu dla historii wykonań, sesji rozmów, misji i kolejek w serverless. Nie można potwierdzić odtworzenia z innego urządzenia lub po utracie instancji. Wybór i skonfigurowanie istniejącego trwałego backendu wymaga decyzji operatora. Nie utworzono płatnej bazy. Lokalny FileMissionStore i przeglądarkowy zapis bundle nie rozwiązują tego problemu.
-
-Pełna ścieżka modelowa ma zapis skrótu odpowiedzi dostawcy, a nie kryptograficzne poświadczenie wydane przez NVIDIA. Receipt v2 wiąże dowody i wynik; nie zawiera pełnego kryptograficznego zobowiązania do każdego payloadu zdarzenia Replay. Struktura i execution_id zdarzeń są sprawdzane. Mission Kernel ma osobną weryfikację zapieczętowanej osi misji — nie należy utożsamiać jej z bezpośrednim wykonaniem Unified.
-
-## Decyzja
-
-Brak zgody na merge, tag i GitHub Release przed zamknięciem obowiązkowych bramek. Operator osobno zlecił produkcyjne wdrożenie bieżącej gałęzi z otwartym panelem; nie oznacza to zgody na merge, tag ani GitHub Release. Macierz możliwości: [MACIERZ.md](MACIERZ.md). Instrukcja operatora: [OPERATOR.md](OPERATOR.md).
-
-Historia rozmów, szkic Buildera i lokalny bundle w chronionym środowisku mają osobne klucze storage dla organizacji/projektu potwierdzonych przez sesję. Stare zapisy bez zakresu pozostają na urządzeniu; nie są kasowane ani automatycznie importowane do chronionego projektu. To rozdzielenie widoków lokalnych, nie szyfrowany magazyn ani granica bezpieczeństwa między osobami korzystającymi z tego samego profilu przeglądarki.
-
-## Odbiór PR i nowego Preview
-
-[PR #16](https://github.com/HazEOskA/osa-proof/pull/16) zawiera także późniejszą korektę dostępu: otwarte Preview nie zatrzymuje już całego panelu przy braku konfiguracji operatora. Wyniki kodu `724c078`, w tym wcześniejsze odmowy 503/401, pozostają historycznymi dowodami poprzedniej polityki. Aktualna kontrola i granice dowodów: [WERYFIKACJA.md](WERYFIKACJA.md).
+Poprzedni gotowy deployment przed formularzem API: `dpl_AJrtC3jRjUhsD3y42iCmS91Gv6ns` / `7c823f57fcf62f4af3086e20877c9067f89e7ce5`. Brak migracji bazy i zmian istniejących sekretów. Dopiero po spełnieniu bramek i zatwierdzonym scaleniu można utworzyć tag v0.1.0, GitHub Release i końcowy checkpoint. Aktualne wdrożenie służy odbiorowi zleconych poprawek.

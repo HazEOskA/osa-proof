@@ -2,6 +2,8 @@ import { timingSafeEqual } from "node:crypto";
 import { handleOperatorAuth, operatorAccessStatus, operatorOriginAllowed, operatorProject, operatorSession, protectedRuntime } from "./operator-access";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
+import { handleProviderRequest } from "./provider-chat";
+import { ProviderVault } from "./provider-vault";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 import { Web3Service } from "../../../packages/web3/src";
@@ -62,6 +64,7 @@ const OPEN_MODE_SESSION: SessionRecord = Object.freeze({
 }) as SessionRecord;
 
 export class ApiState {
+  readonly providerVault: ProviderVault;
   buildWorkspace?: BuildWorkspace;
   readonly teams = new Map<string, TeamGraph>();
   readonly missions = new Map<string, Mission>();
@@ -89,6 +92,7 @@ export class ApiState {
     readonly web3: Web3Service = new Web3Service(),
     readonly accessEnv: NodeJS.ProcessEnv = process.env
   ) {
+    this.providerVault = new ProviderVault(accessEnv);
     this.intelligence = intelligence;
     this.datasets = datasets;
     this.evaluators = evaluators;
@@ -190,7 +194,7 @@ export async function handleApiRequest(
         // Scope v0.1: one operator, one organization and project. No claim of multi-user IAM.
       }
       // Opening the panel does not authorize external executors or model costs.
-      if (cloud && !["GET","HEAD"].includes(method) && !["nvidia","auth","unified"].includes(parts[0]) &&
+      if (cloud && !["GET","HEAD"].includes(method) && !["nvidia","models","auth","unified"].includes(parts[0]) &&
           (executionDescription.mode === "provider" || state.accessEnv.OSA_INTEGRATION_ENABLED === "1"))
         return send(response,403,{code:"EXTERNAL_EXECUTION_GATED",error:"Wykonanie zewnętrzne wymaga odrębnej polityki uprawnień."});
 
@@ -257,6 +261,19 @@ export async function handleApiRequest(
         }
       }
 
+      if (parts[0] === "models") {
+        const session = requireSession(request,response,state);
+        if (!session) return;
+        const organization=session.identity.organization_id!,project=operatorProject(state.accessEnv)||"osa-proof";
+        return handleProviderRequest(request,response,url.pathname,{env:state.accessEnv,scope:organization+":"+project,vault:state.providerVault,dispatch:async input=>{
+          installUnifiedTools(registry,state.accessEnv);
+          const result=await executeUnified(input,organization,registry,project);
+          state.runs.set(result.run.run_id,structuredClone(result.run));
+          state.teams.set(state.teamKey(result.team.team_id,result.team.version),result.team);
+          state.missions.set(result.mission.mission_id,result.mission);
+          return result;
+        }});
+      }
       if (parts[0] === "nvidia") {
         const session = requireSession(request, response, state);
         if (!session) return;

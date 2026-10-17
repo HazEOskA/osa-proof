@@ -1,17 +1,30 @@
 # Obsługa kandydata v0.1.0
 
-> **Stan 17.10.2026:** produkcyjny alias `https://osa-proof-three.vercel.app` wskazuje gałąź release, commit `4c375e8`, deployment `dpl_B8s5QZV1t5CMfy6qm453rkFMs2Bh` (`READY`). Jest to odbiór otwartego panelu, **nie** formalny release v0.1.0. Zobacz [raport audytu](AUDYT_DODATKOWY_2026-10-17.md) i [wdrożenie](WDROZENIE_PRODUKCJA.md).
+Produkt: https://osa-proof-three.vercel.app. Jedno repo `HazEOskA/osa-proof`, gałąź `release/osa-proof-v0.1.0`, [PR #16](https://github.com/HazEOskA/osa-proof/pull/16). PR zawiera bieżący SHA, CI i deployment. Formalny tag/release nie został utworzony.
 
-### Reguła bezpieczeństwa dla otwartego panelu
+## Czat i połączenia API
 
-- `OPEN_PREVIEW` / `OPEN_PRODUCTION` **nie mają izolacji użytkowników**. Udostępniaj jedynie niesekretne, publiczne dane demonstracyjne; nie importuj eksportu ChatGPT, pamięci NeurOSA ani danych klientów do wspólnego `org_dev_local`.
-- `requireSession` w trybie open przepuszcza anonimowe operacje natywne i część zapisów w `ApiState`. Ochrona NVIDIA to **oddzielna** bramka, a nie pełny RBAC całego control plane. Przed uruchomieniem provider executor lub integracji zewnętrznej zweryfikuj odmowę i zakres mutacji.
-- Dla logowania modelowego pod **stałym adresem** `https://osa-proof-three.vercel.app` ustaw `OSA_OPERATOR_ORIGIN` na dokładnie ten origin (we właściwym targetcie Vercel); domyślne `VERCEL_URL` może wskazywać unikalny adres builda, przez co przeglądarka pod aliasem nie przejdzie kontroli originu.
-- Nie kopiuj sekretów między Preview i Production. Oddzielne konfiguracje/zgody: Preview dla modelowego smoke, produkcja tylko po audycie i zatwierdzeniu. `OSA_OPERATOR_TOKEN` i `OSA_QUOTA_REDIS_REST_TOKEN` wpisuj wyłącznie jako sekrety serwera. Nie wystawiaj ich w `VITE_*`.
-- Do testu dostępu bez sekretów: anonimowy `GET /api/auth/access` ma ujawnić `required`, `mode`, `configured`, `authenticated=false`, ale nie wartość sekretu. Sukces prawdziwego loginu potwierdź dopiero w przeglądarce z poprawnym `Origin`; nie opieraj decyzji wyłącznie na statusie `configured=true`.
+1. Otwórz **Czat floty agentów**. Domyślny profil to Jeff; Hermes i pozostałe role są w wyborze agenta.
+2. Wybierz dostawcę w polu Model. OpenRouter jest dostępny jako osobna opcja.
+3. Otwórz **Połączenia API** w czacie albo **Sterowanie → Sekrety** w frameworku. Wybierz dostawcę, wpisz identyfikator modelu i własny klucz, następnie połącz.
+4. Klucz jest wysyłany wyłącznie do serwera tego wdrożenia. Nie wraca w metadanych i nie trafia do localStorage, sessionStorage ani historii. Ciasteczko HttpOnly przypisuje połączenie tej przeglądarce. Nie wklejaj klucza w wiadomość czatu.
+5. Domyślny NVIDIA Nemotron i `openrouter/free` korzystają z bezpłatnych wariantów. Pozostałe modele wymagają zaznaczenia zgody na rozliczenie własnego konta; brak automatycznego płatnego zamiennika. Wpisz dokładne ID aktualnie dostępne na swoim koncie dostawcy.
+6. Obecny Vercel przechowuje prywatne połączenia w szyfrowanym PROCESS_MEMORY przez maksymalnie godzinę. Restart lub inna instancja wymaga ponownego dodania klucza. To nie jest trwały magazyn chmurowy. Widoczny komunikat podaje ograniczenie.
+7. Przycisk **Usuń własny klucz** usuwa prywatne połączenie. Jeśli serwer ma osobny klucz środowiskowy, pozostaje dostępny jako domyślne połączenie; formularz go nie ujawnia ani nie usuwa.
 
+OpenAI i Anthropic używają istniejących adapterów. Dodatkowe zgodne API wymagają adresu HTTPS z listy podanej w formularzu. Modelowe narzędzie SHA-256 jest obsługiwane obecnie dla NVIDIA; inni dostawcy obsługują zwykłą rozmowę. Profile rozmowy nie oznaczają autonomicznych workerów.
 
-## Uruchomienie lokalne
+Globalne **Zapytaj OSĘ** ma wybór dostawcy, kontekst modułu i przejście do połączeń. Przewodnik nie wykonuje narzędzi.
+
+## Dostęp i limity
+
+Na polecenie operatora `OSA_AUTH_MODE=open` w Vercel Preview/production obejmuje panel i NVIDIA bez sesji operatora. `/api/auth/access` raportuje `required=false`. Nie ma obowiązkowego logowania Vercel ani kodu operatora w ścieżce produktu. To wspólny obszar demonstracyjny, bez wieloużytkownikowego IAM; prywatne połączenia mają osobne cookies, a pozostały współdzielony stan nie jest prywatną historią użytkownika.
+
+Tryb `session` pozostaje w kodzie: podpisana sesja, origin, organizacja i projekt, cookie HttpOnly/Secure/SameSite=Strict. Nie włączano go ponownie. Zapis/usuwanie prywatnego połączenia wymaga zgodnego originu także w open.
+
+Bez podłączonego Redis open używa limitu 3/min i 30/h na instancję i klucz. To nie jest limit globalny między instancjami. Adapter atomowego Redis REST pozostaje dostępny przez `OSA_QUOTA_REDIS_REST_URL` i `OSA_QUOTA_REDIS_REST_TOKEN`; nie uruchomiono nowej usługi. Model NVIDIA inny niż dokładny domyślny Nemotron zachowuje wcześniejszą politykę bezpłatności.
+
+## Dane i uruchomienie
 
 ```bash
 npm ci
@@ -20,62 +33,17 @@ npm run worker:build
 node scripts/build-dashboard.cjs
 ```
 
-Tryb `OSA_EXECUTION_MODE=fixture` jest jawnie testowy. `OSA_AUTH_MODE=open` udostępnia środowisko lokalne oraz Vercel Preview/produkcję bez obowiązkowego logowania. W Vercel wymaga jednocześnie `VERCEL=1` oraz `VERCEL_ENV=preview` lub `production`; nie obejmuje autoryzacji wywołań NVIDIA. Host workerów bez Docker i prawdziwej izolacji pozostaje GATED.
+- ApiState, misje i kolejki na Vercel: PROCESS_MEMORY, bez gwarancji przetrwania restartu.
+- Czat i zweryfikowany bundle: localStorage tego urządzenia; po odświeżeniu dowód jest ponownie weryfikowany.
+- Lokalny magazyn połączeń: szyfrowane pliki 0600 w ignorowanym `.osa-proof/connections`; test restartu i współbieżnego zapisu przechodzi.
+- Opcjonalny Postgres: `OSA_CONNECTIONS_DATABASE_URL` i 64-znakowy szesnastkowy `OSA_CONNECTIONS_ENCRYPTION_KEY`, wyłącznie serwerowo. Adapter nie został połączony/testowany z rzeczywistą chmurą. Nie dodawaj sekretów do `VITE_*`.
+- Worker Host: rzeczywisty Docker został udowodniony w CI; brak podłączonego hosta na Vercel. Builder zachowuje grant wykonania i izolację.
+- Cloud deploy, NeurOSA i Regulated: warunki zgodnie z [MACIERZ.md](MACIERZ.md). Nie importowano prywatnej historii, nie uruchomiono płatnej infrastruktury.
 
-## Preview bez logowania
+## Odbiór modelu i rollback
 
-Panel otwiera się bez kodu operatora. `GET /api/auth/access` ma zwracać `required=false`, `mode=OPEN_PREVIEW`, a `/api/build/status` — HTTP 200 i `auth_mode=open`. Działają natywne wykonania i weryfikacja dowodów. Jest to wspólne środowisko testowe z tożsamością `org_dev_local`, bez izolacji danych różnych odwiedzających. Vercel SSO jest osobnym ustawieniem; ta korekta go nie zmienia.
+Pełny modelowy test pozostaje niezaliczony. Automatyczna kontrola odrzuciła próbę NVIDIA z `execute_tools=true` w produkcji, wskazując brak osobnej zgody na koszt i zakres. Nie ponawiano jej inną drogą. Testy kontrolowanego transportu nie zastępują rzeczywistego modelu.
 
-## Konfiguracja chronionych wywołań modelu
+Po uzyskaniu odpowiedniego zakresu test musi objąć prawdziwy tool_call NVIDIA do `osa_sha256`, jeden execution_id, oba weryfikatory, Evidence, receipt, Replay, odświeżenie i odmowę obcego narzędzia. Test odmowy anonimowego modelu dotyczy trybu session; open na zlecenie operatora świadomie dopuszcza model bez sesji.
 
-Zmienne należy wpisać w bezpiecznym panelu Vercel, z targetem **Preview** i ograniczeniem do gałęzi `release/osa-proof-v0.1.0`. Nie wklejaj wartości sekretów do czatu, kodu, testów, logów ani promptów. Ten PR nie ustawia zmiennych projektu i nie zmienia produkcji.
-
-| Zmienna | Wartość / warunek |
-|---|---|
-| `OSA_OPERATOR_TOKEN` | Osobny, losowy sekret o co najmniej 256 bitach entropii; nie klucz dostawcy |
-| `OSA_OPERATOR_ORGANIZATION_ID` | Organizacja zgodna z istniejącym Team Graph; obecny snapshot używa `org_osa` |
-| `OSA_OPERATOR_PROJECT_ID` | Projekt zgodny z istniejącym Team Graph; obecny snapshot używa `prj_osa_proof` |
-| `OSA_OPERATOR_ORIGIN` | Dokładny origin HTTPS Preview; bez ścieżki. Gdy brak, używany jest unikalny `VERCEL_URL` |
-| `NVIDIA_API_KEY` | Istniejący sekret dostawcy wyłącznie po stronie serwera |
-| `NVIDIA_MODEL` | Jeden zatwierdzony model, bez automatycznego fallbacku |
-| `OSA_ZERO_COST_ONLY` | `true` |
-| `OSA_NVIDIA_FREE_TIER_ACK` | `true` wyłącznie po sprawdzeniu konta i zakresu bezpłatnego dostępu |
-| `OSA_NVIDIA_FREE_MODELS` | Dokładne ID potwierdzonego bezpłatnego modelu |
-| `OSA_NVIDIA_FREE_UNTIL` | Czas ISO w przyszłości, nie dalej niż 24 godziny; wygaszenie blokuje model |
-| `OSA_QUOTA_REDIS_REST_URL` | Origin HTTPS istniejącego zgodnego Redis REST, bez query/ścieżki/hasła |
-| `OSA_QUOTA_REDIS_REST_TOKEN` | Serwerowy sekret do atomowego EVAL, tylko niezbędne uprawnienia |
-
-Nie twórz automatycznie bazy, nie włączaj płatnego planu i nie kopiuj sekretów między targetami. Wymagany jest test rzeczywistego licznika przez dwie niezależne instancje; sama obecność zmiennych nie dowodzi działania.
-
-Otwarty panel nie wymaga zmiennych operatora. Są one nadal potrzebne do autoryzowanego testu NVIDIA. Sesję wydaje istniejące `POST /api/auth/operator-login` po sprawdzeniu kodu i dokładnie skonfigurowanego originu. Cookie jest HttpOnly; kod inicjalizujący nie działa jako Bearer do API. Aby przywrócić ekran logowania w Preview, ustaw `OSA_AUTH_MODE=session` wyłącznie dla tej gałęzi i wykonaj redeploy Preview.
-
-`GET /api/nvidia/status` w otwartym Preview bez logowania pokazuje `configured`, `available`, `gate` i rodzaj limitu. `available=true` oznacza przejście preflightu konfiguracji, nie udany test dostawcy ani potwierdzenie dostępnego salda.
-
-## Test prawdziwego przepływu
-
-1. W Czat floty agentów wybierz NVIDIA i włącz „Narzędzia modelu · tylko SHA-256, bez zmian”.
-2. Wyślij prośbę o SHA-256 krótkiego publicznego tekstu. Żądanie trafia do modelu z definicją narzędzia; nie przechodzi przez deterministyczny router.
-3. Jeśli model nie zwróci `tool_calls`, sama odpowiedź tekstowa nie zalicza bramki. Niedozwolone narzędzie i brak ID/modelu dostawcy kończą się odmową.
-4. Zapisz rzeczywiste `execution_id`, `provider_response_id`, model, receipt i wyniki obu weryfikatorów. Otwórz Śledzenie, Dowody i Odtwarzanie. Powtórz kontrolę na 320/390/1440 px.
-5. Odśwież. Bundle przywrócony lokalnie musi ponownie przejść walidację. Następnie sprawdź trwały odczyt z nowej instancji i innego urządzenia — obecna wersja tej bramki nie spełnia.
-6. W nowej sesji bez cookie API ma odmówić przed wywołaniem modelu. Osobno sprawdź odmowę obcego narzędzia i zmodyfikowanego dowodu.
-
-Przewodnik „Zapytaj OSĘ” pozostaje samouczkiem bez prawa wykonywania narzędzi.
-
-## Trwałość
-
-- `ApiState`, konfiguracje i kolejki: pamięć procesu, utrata po restarcie/zmianie instancji.
-- `FileMissionStore`: trwałość na tym samym lokalnym dysku, CAS i blokada pliku; bez gwarancji rozproszonej.
-- Czat i eksport ostatniego bundle: localStorage tego urządzenia. Nie synchronizują się między użytkownikami/urządzeniami i nie stanowią zabezpieczonego backendu historii.
-- Cookie operatora: podpis stateless, 30 minut, niezależny od instancji. Rotacja `OSA_OPERATOR_TOKEN` unieważnia sesje.
-- NeurOSA: GATED; w ramach wydania nie importujemy prywatnej historii. Istniejący adapter HB wymaga zgodnego upstream oraz konfiguracji `OSA_NEUROSA_*` opisanej w kodzie; nie należy uznawać go za połączony na podstawie samego `/health` innego serwisu.
-
-## Rollback i produkcja
-
-Operator osobno zlecił wdrożenie tej gałęzi na produkcję w celu sprawdzenia panelu bez obowiązkowego logowania. To nie jest formalne wydanie v0.1.0 i nie obejmuje merge do main. Produkcja bazowa i punkt cofnięcia tej operacji to `512a6e1` / `dpl_dwH79xqLhkcSn5zzwjzmStPwMKmJ`. Szczegóły: [WDROZENIE_PRODUKCJA.md](WDROZENIE_PRODUKCJA.md).
-
-Rollback Preview: zachowaj produkcję, anuluj/wyłącz wyłącznie problematyczne Preview i przywróć poprzedni zatwierdzony head gałęzi. Nie usuwaj dowodów. Ewentualne zmienne gałęzi usuwaj dopiero po identyfikacji ich ID i targetu; nie usuwaj wspólnych kluczy NVIDIA.
-
-Rollback bieżącego wdrożenia testowego: przywróć poprzedni produkcyjny deployment wskazany wyżej. Odtwarza to wcześniejszy stan open, a nie docelową ochronę wieloużytkownikową. Nie wykonano migracji bazy ani zmiany sekretów. Dalsze zmiany ochrony, infrastruktury i formalne wydanie wymagają osobnego zakresu.
-
-Historia rozmów, szkic Buildera i lokalny bundle w chronionym środowisku mają osobne klucze storage dla organizacji/projektu potwierdzonych przez sesję. Stare zapisy bez zakresu pozostają na urządzeniu; nie są kasowane ani automatycznie importowane do chronionego projektu. To rozdzielenie widoków lokalnych, nie szyfrowany magazyn ani granica bezpieczeństwa między osobami korzystającymi z tego samego profilu przeglądarki.
+Rollback bieżącej korekty API: poprzednia gotowa produkcja `dpl_AJrtC3jRjUhsD3y42iCmS91Gv6ns`, commit `7c823f57fcf62f4af3086e20877c9067f89e7ce5`. Przywraca NVIDIA bez logowania operatora, przed formularzem API i profilami. Nie wykonano migracji bazy ani rotacji istniejących sekretów. Powrót nie odtwarza tymczasowych połączeń procesu.

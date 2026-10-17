@@ -10,7 +10,7 @@ const server=http.createServer((req,res)=>{
 });
 (async()=>{
  await new Promise(r=>server.listen(0,"127.0.0.1",r));
- for(const script of ["scripts/test-jeverson-mobile-layout.mjs","scripts/test-osa-guide-browser.mjs","scripts/test-operator-ui.mjs"]){
+ for(const script of ["scripts/test-jeverson-mobile-layout.mjs","scripts/test-osa-guide-browser.mjs","scripts/test-operator-ui.mjs","scripts/test-api-connections-browser.mjs"]){
   await new Promise((resolve,reject)=>{const child=spawn(process.execPath,[script],{stdio:"inherit",env:{...process.env,OSA_UI_TEST_BASE:"http://127.0.0.1:"+server.address().port}});child.on("exit",code=>code===0?resolve():reject(Error(script+" failed: "+code)));child.on("error",reject);});
  }
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{server.closeAllConnections();server.close();});

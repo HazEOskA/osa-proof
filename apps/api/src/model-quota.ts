@@ -20,7 +20,7 @@ export function sharedQuotaConfigured(env:Env):boolean {
     return url.protocol==="https:"&&!url.username&&!url.password&&url.pathname==="/"&&!url.search&&!url.hash&&Boolean(env.OSA_QUOTA_REDIS_REST_TOKEN?.trim());
   }catch{return false;}
 }
-const calls:number[]=[];
+const localWindows=new Map<string,number[]>();
 export async function takeModelQuota(env:Env,requestId:string,fetcher:typeof fetch=fetch):Promise<void>{
   if(sharedQuotaConfigured(env) || (protectedRuntime(env) && !openVercelAccess(env))){
     if(!sharedQuotaConfigured(env))throw new ModelQuotaError(503,"SHARED_QUOTA_NOT_CONFIGURED","Model jest zablokowany: brakuje współdzielonego limitu żądań.");
@@ -38,6 +38,8 @@ export async function takeModelQuota(env:Env,requestId:string,fetcher:typeof fet
       return;
     }catch(error){if(error instanceof ModelQuotaError)throw error;throw new ModelQuotaError(503,"SHARED_QUOTA_UNAVAILABLE","Model jest zablokowany: współdzielony licznik nie odpowiada.");}
   }
+  const key=createHash("sha256").update(env.OSA_MODEL_QUOTA_SCOPE||env.NVIDIA_API_KEY||"default").digest("hex");
+  const calls=localWindows.get(key)??[];localWindows.set(key,calls);
   const now=Date.now();while(calls[0]!==undefined&&now-calls[0]>=3600000)calls.shift();
   if(calls.length>=30||calls.filter(t=>now-t<60000).length>=3)throw new ModelQuotaError(429,"MODEL_RATE_LIMIT","Lokalny limit modelu: 3 żądania na minutę i 30 na godzinę.");
   calls.push(now);

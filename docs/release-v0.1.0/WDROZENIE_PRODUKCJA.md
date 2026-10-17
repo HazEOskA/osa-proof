@@ -1,3 +1,13 @@
+# Bieżący odbiór produkcyjny
+
+Aktualny SHA, deployment i CI są utrzymywane w [PR #16](https://github.com/HazEOskA/osa-proof/pull/16). Adres produktu: https://osa-proof-three.vercel.app. Operator zlecił wdrożenie gałęzi release bez obowiązkowego logowania NVIDIA oraz przywrócenie profili i połączeń API. Nie jest to formalny release; brak merge/tagu/GitHub Release.
+
+Poprzedni zweryfikowany deployment tej korekty: `dpl_AJrtC3jRjUhsD3y42iCmS91Gv6ns`, SHA `7c823f57fcf62f4af3086e20877c9067f89e7ce5`, READY, właściwy alias. Jest punktem rollbacku przed formularzem API. Bez migracji bazy i bez zmiany istniejących sekretów. Klucze prywatnych połączeń na obecnym Vercel są tymczasowe w PROCESS_MEMORY.
+
+Instrukcja: [OPERATOR.md](OPERATOR.md). Poniższy zapis jest **historią wcześniejszego odbioru**; jego SHA, wymaganie loginu modelowego i punkt rollbacku nie opisują obecnej polityki.
+
+---
+
 # Produkcyjny odbiór otwartego panelu
 
 > **ODCZYT WERYFIKACYJNY 17.10.2026:** Vercel dla aliasu `osa-proof-three.vercel.app` wskazuje **aktualnie** deployment `dpl_B8s5QZV1t5CMfy6qm453rkFMs2Bh`, target `production`, commit `4c375e8058e30b06f178e261ccb32e4bb45f61b2`, branch `release/osa-proof-v0.1.0`, status `READY`. Wcześniejsze deploymenty `512a6e1` są historycznym punktem cofnięcia, nie bieżącym źródłem tego aliasu. Odczyt metadanych nie dowodzi przejścia aplikacyjnego E2E ani stanu prywatnej sesji. **Brak merge do main, tagu i GitHub Release.** [Audyt uzupełniający](AUDYT_DODATKOWY_2026-10-17.md).
