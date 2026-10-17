@@ -98,7 +98,9 @@ function blocked(reason: string, execution_id: string) {
   return {output:{status:"BLOCKED",reason,execution_id},evidence:[{kind:"unified_tool_result",data:{status:"BLOCKED",reason,execution_id}}]};
 }
 
-export async function executeUnified(value: unknown, organizationId: string, registry: ExecutorRegistry) {
+export async function executeUnified(value: unknown, organizationId: string, registry: ExecutorRegistry, projectId = "osa-proof") {
+  if (![organizationId, projectId].every(id => typeof id === "string" && id.trim().length > 0 && id.length <= 200))
+    throw new Error("UNIFIED_SCOPE_INVALID");
   const input = unifiedInput(value);
   const ref = input.tool || selectUnifiedTool(input.message);
   // Record model dispatch provenance inside the proof's hashed evidence. This
@@ -112,7 +114,7 @@ export async function executeUnified(value: unknown, organizationId: string, reg
       return {...result,evidence:[...(result.evidence||[]),{kind:"model_dispatch",data:{execution_id:input.execution_id,selection:input.selection!,arguments_sha256:digest(input.args)},content:JSON.stringify({selection:input.selection,args:input.args})}]};
     });
   }
-  const team: TeamGraph = {organization_id:organizationId,project_id:"osa-proof",team_id:"osa.unified.v1",version:"1",
+  const team: TeamGraph = {organization_id:organizationId,project_id:projectId,team_id:"osa.unified.v1",version:"1",
     agents:[{agent_id:"osa-tool-worker",role:"Native OSA tool worker",executor_ref:ref,tool_capabilities:[ref]}],edges:[]};
   const mission: Mission = {organization_id:organizationId,project_id:team.project_id,team_id:team.team_id,team_version:team.version,
     mission_id:"unified_"+randomUUID(),objective:input.message,entry_agent_id:"osa-tool-worker",input:{...input},

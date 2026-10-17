@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { requestJson } from "../data/data";
 import { Kv, Mono, Section, Status, short } from "../ui/primitives";
+import Memory from "./Memory";
 
 // Live Intelligence module view. Everything shown comes from the API (/intelligence/:id and the module's own
 // routes); status is computed by the backend from proofs, never set here.
@@ -24,6 +25,10 @@ const API_NOTES: Record<string, string[]> = {
 const DOC_SECTIONS = new Set(["models", "llm-gateway", "model-mesh", "datasets", "evaluators"]);
 
 export default function Intelligence({ id }: { id: string }) {
+  if (id === "memory") return <Memory />;
+  return <IntelligenceModule id={id} />;
+}
+function IntelligenceModule({ id }: { id: string }) {
   const [report, setReport] = useState<ModuleReport | null>(null);
   const [datasets, setDatasets] = useState<DatasetSummary[] | null>(null);
   const [evaluators, setEvaluators] = useState<EvaluatorDefinition[] | null>(null);

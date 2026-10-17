@@ -37,7 +37,34 @@ export interface BrainPlanner {
 }
 export interface BrainMemory {
   readonly id: string;
+  readonly binding?: Readonly<{ organization_id: string; project_id: string }>;
   recall(scope: BrainScope, objective: string, maxChars: number): Promise<BrainMemoryContext>;
+}
+
+export interface MemoryEvent {
+  schema: "osa.memory_event.v1";
+  scope: BrainScope;
+  kind: "AUTHENTICATED_USER_STATEMENT" | "VERIFIED_RUNTIME" | "CHAT_PROVENANCE";
+  // Integrity/provenance verification does not establish semantic truth.
+  verification_scope: string;
+  data: Record<string, unknown>;
+  event_sha256: string;
+}
+export interface MemoryWriteReceipt {
+  schema: "osa.memory_write_receipt.v1";
+  scope: BrainScope;
+  brain_id: string;
+  event_sha256: string;
+  document_id: string;
+  document_revision: number;
+  content_sha256: string;
+  receipt_sha256: string;
+}
+export interface WritableBrainMemory extends BrainMemory {
+  readonly binding: Readonly<{ organization_id: string; project_id: string }>;
+  probe(scope: BrainScope): Promise<{ brain_id: string; ledger_valid: true }>;
+  observe(event: MemoryEvent): Promise<MemoryWriteReceipt>;
+  readEvent(scope: BrainScope, documentId: string): Promise<{ event: MemoryEvent; receipt: MemoryWriteReceipt }>;
 }
 export interface MissionPlan {
   schema: "osa.mission_plan.v1";

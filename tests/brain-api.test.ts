@@ -51,14 +51,17 @@ test("HTTP S2: NeurOSA context -> model gateway -> pinned plan -> restart -> age
     const env = { OSA_EXECUTION_MODE: "provider", OSA_PROVIDER: "openai", OSA_MODEL: "test-brain", OPENAI_API_KEY: "TEST_PROVIDER_SECRET",
       OSA_PROVIDER_BASE_URL: providerBase, OSA_PROVIDER_MAX_RETRIES: "0", OSA_BRAIN_MODE: "model",
       OSA_NEUROSA_BASE_URL: memoryBase, OSA_NEUROSA_TOKEN: "TEST_MEMORY_SECRET_TOKEN_123456", OSA_NEUROSA_BRAIN_ID: "brain", OSA_NEUROSA_ORGANIZATION_ID: "org_dev_local", OSA_NEUROSA_PROJECT_ID: "project" };
+    let apiState: ApiState;
     function makeApi(): Server {
       const execution = createDevExecution(env);
-      return createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, "session", new FileMissionStore(directory), execution.brain), execution.description);
+      apiState = new ApiState(undefined, undefined, undefined, "session", new FileMissionStore(directory), execution.brain);
+      return createApiServer(execution.registry, apiState, execution.description);
     }
-    async function login(base: string): Promise<Record<string, string>> {
-      const res = await fetch(`${base}/auth/dev-login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ display_name: "S2 test" }) });
-      const login = await res.json() as { session: { token: string } };
-      return { "content-type": "application/json", authorization: `Bearer ${login.session.token}` };
+    async function login(_base: string): Promise<Record<string, string>> {
+      // Test-only trusted identity injection. Public dev-login must never authorize NeurOSA.
+      const session = apiState.sessions.create({ identity_id: "s2-test", provider: "microsoft", subject: "test:s2",
+        display_name: "S2 test", verified: true, roles: [], organization_id: "org_dev_local", project_ids: ["project"] });
+      return { "content-type": "application/json", authorization: `Bearer ${session.token}` };
     }
     api = makeApi(); let base = await listen(api), headers = await login(base);
     const post = (path: string, data: unknown) => fetch(`${base}${path}`, { method: "POST", headers, body: JSON.stringify(data) });
