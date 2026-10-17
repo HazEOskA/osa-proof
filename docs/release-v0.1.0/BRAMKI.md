@@ -1,5 +1,10 @@
 # OSA Proof v0.1.0 — kandydat do wydania
 
+> **AKTUALNY ODCZYT 17.10.2026:** formalne wydanie nadal `BLOCKED`, ale stały alias produkcyjny wskazuje już deployment `dpl_B8s5QZV1t5CMfy6qm453rkFMs2Bh` z `release/osa-proof-v0.1.0@4c375e8` (`READY`). Poprzednie `512a6e1` to historyczna baza/rollback, **nie bieżący alias**. [Dodatkowy audyt](AUDYT_DODATKOWY_2026-10-17.md), [historia wdrożenia](WDROZENIE_PRODUKCJA.md). Nie łącz wdrożenia panelu z publikacją tagu lub GitHub Release.
+
+**Dodatkowy warunek P0:** jawny `OPEN_PRODUCTION` nie izoluje użytkowników ani danych: tryb otwarty dopuszcza natywne operacje na współdzielonym stanie; osobny login NVIDIA chroni model, **nie wszystkie POST**. v0.1 nie może zostać przedstawione jako bezpieczna wieloużytkownikowa produkcja. Wydanie wymaga decyzji o granicy publicznego demo/chronionych danych i testów tej polityki. Rzeczywisty model, atomowy limit i trwałość pozostają niezaliczone.
+
+
 **Stan: BLOCKED. Nie utworzono wydania ani tagu.** Numer `0.1.0` w pakiecie nie oznacza przejścia bramek.
 
 Cel: jeden produkt w `HazEOskA/osa-proof`, istniejący polski interfejs i jedna udowodniona ścieżka agent → wykonanie → dowód. Baza: `main@512a6e17048db549f8b515396b2d7710b40af781`. Gałąź robocza: `release/osa-proof-v0.1.0`.
