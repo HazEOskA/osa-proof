@@ -1,0 +1,24 @@
+[
+  {
+    "preview": "https://osa-proof-e0up3e3ey-osabarca-1680s-projects.vercel.app",
+    "test": "unauthorized_dispatch",
+    "tool": "shell.exec",
+    "http_status": 403,
+    "response": {
+      "status": "BLOCKED",
+      "error": "CLIENT_MODEL_DISPATCH_DENIED"
+    },
+    "model_calls": 0
+  },
+  {
+    "preview": "https://osa-proof-e0up3e3ey-osabarca-1680s-projects.vercel.app",
+    "test": "unauthorized_dispatch",
+    "tool": "osa.crypto.sha256.v1",
+    "http_status": 403,
+    "response": {
+      "status": "BLOCKED",
+      "error": "CLIENT_MODEL_DISPATCH_DENIED"
+    },
+    "model_calls": 0
+  }
+]

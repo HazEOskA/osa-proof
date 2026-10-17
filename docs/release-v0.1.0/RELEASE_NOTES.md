@@ -8,9 +8,9 @@ Kandydat łączy globalny polski samouczek „Zapytaj OSĘ” z osobnym Czatem f
 
 Na wyraźne zlecenie operatora panel i NVIDIA w Vercel open nie wymagają logowania operatora. Tryb session pozostaje w kodzie. Domyślny Nemotron i OpenRouter free nie mają automatycznego płatnego zamiennika; użycie pozostałych prywatnych modeli wymaga zgody na rozliczenie własnego konta.
 
-Połączenia API na obecnym Vercel działają w szyfrowanej pamięci procesu do godziny i mogą zniknąć przy zmianie instancji. Lokalny szyfrowany plik przechodzi test restartu i zapisu współbieżnego. Trwały magazyn chmurowy nie został podłączony. Historia, misje, kolejki i lokalny eksport bundle zachowują opisane ograniczenia trwałości.
+Podłączono bezpłatny Postgres do wykonań Unified, dowodów, receipts, Mission Kernel i zaszyfrowanych połączeń API. Odczyt w nowym procesie/instancji, równoległy CAS oraz izolacja podpisów Preview/produkcja przechodzą. Połączenia są serwerowo szyfrowane i wygasają po 30 dniach; nie są współdzielone między przeglądarkami. Kolejki, rejestr workerów, szkic Buildera i część konfiguracji nadal pozostają PROCESS_MEMORY. Zwykła historia czatu jest lokalna.
 
-Testy UI obejmują 320/390/1440 px. Kontrolowane odpowiedzi dostawców służą tylko do testu interfejsu/transportu. Rzeczywisty lokalny Runtime → Evidence → ProofReceipt → niezależna weryfikacja → Replay przeszedł trzy rozmiary. Pełna ścieżka modelowa nadal nie ma dowodu: automatyczna kontrola odrzuciła próbę NVIDIA z narzędziem w produkcji z powodu braku osobnej zgody na koszt i zakres. Nie ogłaszamy wydania na podstawie tej próby.
+Testy UI obejmują 320/390/1440 px. Dwa rzeczywiste bezpłatne żądania NVIDIA na Preview zwróciły modelowe tool_calls. Wykonanie z czatu `exec_2b067264-0faf-4d82-b8a6-89b5e84978ff` przeszło Runtime → Events/Evidence/ProofReceipt → niezależną weryfikację → Postgres → Replay i odświeżenie w pustych przeglądarkach na trzech rozmiarach. Nieautoryzowany dispatch narzędzia zwrócił 403. Kontrolowane testy innych dostawców nadal nie są ich rzeczywistym dowodem.
 
 Instrukcja: [OPERATOR.md](OPERATOR.md), macierz: [MACIERZ.md](MACIERZ.md), dowody API: [POLACZENIA_API.md](POLACZENIA_API.md). Bieżący commit, CI i wdrożenie: [PR #16](https://github.com/HazEOskA/osa-proof/pull/16).
 
@@ -18,7 +18,7 @@ Instrukcja: [OPERATOR.md](OPERATOR.md), macierz: [MACIERZ.md](MACIERZ.md), dowod
 
 | Zakres | Cel |
 |---|---|
-| Warunki przed wydaniem v0.1.0 | Rzeczywiste bezpłatne modelowe tool_calls, komplet dowodów, trwały backend i uzgodniona polityka publicznego dostępu/limitu; bieżące wdrożenie produkcyjne jest już zlecone |
+| Warunki przed wydaniem v0.1.0 w zleconym zakresie | Podłączenie istniejącego Worker Hosta do Vercel i rzeczywisty odbiór sandboxa; model i trwały rdzeń już potwierdzone. Publiczny open jest decyzją operatora; limit bez Redis pozostaje lokalny |
 | v0.1.x | Naprawy wykryte w odbiorze, stabilizacja trwałego odczytu/Replay, monitoring i dokumentacja aktualnego zakresu |
 | v0.1.x — osobny import | Podłączenie zgodnego istniejącego adaptera NeurOSA i trwały import danych z jawnym zakresem; prywatna historia nie była importowana |
 | v0.2 | Wielu użytkowników i OIDC/RBAC, autonomiczne workery, szersze narzędzia, pełne integracje MCP/A2A, dopuszczone cloud deploy i funkcje Regulated |

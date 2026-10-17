@@ -1,0 +1,15 @@
+{
+  "base": "https://osa-proof-e0up3e3ey-osabarca-1680s-projects.vercel.app",
+  "result": "PASS",
+  "width": 390,
+  "real_form_and_server_store": true,
+  "canary_not_provider_key": true,
+  "storage": "DURABLE_SERVER_ENCRYPTED",
+  "new_context_with_owner_cookie": true,
+  "foreign_owner_denied": true,
+  "cross_origin_denied": true,
+  "no_frontend_key_storage": true,
+  "metadata_contains_no_key": true,
+  "cleanup": true,
+  "model_calls": 0
+}

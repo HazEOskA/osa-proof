@@ -8,7 +8,11 @@ Pierwszy rzeczywisty test na Preview kodu ef8eed4: `exec_b2457490-e018-4a09-9de9
 
 Niezależny backendowy verifier: PASS, jeden execution_id w run/receipt/events, zmieniony dowód odrzucony. Nie użyto deterministycznego routera ani podmiany odpowiedzi. Udokumentowany przez NVIDIA endpoint jest bezpłatny; nie było płatnego fallbacku. Bieżąca zgoda „dokończ trzy kroki” pozwoliła wykonać wcześniej opisany ograniczony test. Dawna automatyczna odmowa nie jest już bieżącym blokerem tego pierwszego wykonania.
 
-[Odpowiedź](../evidence/release-v0.1.0/finalization-three/nvidia-preview-attempt-1.json), [pełny bundle](../evidence/release-v0.1.0/finalization-three/model-bundle.json), [niezależna weryfikacja](../evidence/release-v0.1.0/finalization-three/independent-model-verification.json). Odbiór nowego Preview, browser Replay oraz ewentualny drugi test modelu są zapisywane w [PR #16](https://github.com/HazEOskA/osa-proof/pull/16); sam pierwszy wynik HTTP nie zalicza całej bramki UI.
+[Odpowiedź](../evidence/release-v0.1.0/finalization-three/nvidia-preview-attempt-1.json), [pełny bundle](../evidence/release-v0.1.0/finalization-three/model-bundle.json), [niezależna weryfikacja](../evidence/release-v0.1.0/finalization-three/independent-model-verification.json).
+
+Drugi i ostatni dozwolony test uruchomiono przez rzeczywisty Czat floty agentów na Preview kodu `3f6ada3d99b8224e80506eca1020eb941455c424`: `exec_2b067264-0faf-4d82-b8a6-89b5e84978ff`, odpowiedź `chatcmpl-2f3d5879-ec5e-4bec-9698-107de1080a8b`, tool_call `call-7e87cb2f-9c2a-4c44-92f5-c34d9a415440`. Ten sam model, argumenty i poprawny SHA-256. Każdy nowy pusty kontekst 320/390/1440 odczytał bundle z Postgresa, zweryfikował go backendowo i niezależnie przez WebCrypto, odtworzył 9 zdarzeń i zachował wynik po odświeżeniu. Odtwarzanie nie wykonało kolejnego żądania modelowego. Próby klienta podszywające się pod modelowy dispatch, w tym `shell.exec`, zwróciły HTTP 403 przed transportem do modelu. [Odpowiedź modelu](../evidence/release-v0.1.0/finalization-three/nvidia-preview-attempt-2.json), [odbiór browser](../evidence/release-v0.1.0/finalization-three/model-browser-results.json), [testy negatywne](../evidence/release-v0.1.0/finalization-three/preview-negative.json).
+
+Łącznie dwa bezpłatne wywołania na Preview, brak płatnego fallbacku. Test używał emulacji Androida, nie fizycznego telefonu. Dowód zachowuje pochodzenie odpowiedzi; receipt nie jest podpisem NVIDIA. Unified v2 nie zapieczętowuje pełnych payloadów Events.
 
 ## Rzeczywista trwałość
 
