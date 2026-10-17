@@ -7,6 +7,7 @@ import {
   signerFromPrivateKey,
   canonicalizeAiId,
   parseAiId,
+  resolveAiId,
 } from "../packages/identity/src";
 import {
   AgentTrustSession,
@@ -116,6 +117,50 @@ test("@ai canonicalization is deterministic and rejects forbidden syntax", () =>
   assert.throws(() => canonicalizeAiId("@ai:example.com/agent?id=1"));
 });
 
+test("@ai resolver validates root and subprofile identity", async () => {
+  const responses = new Map<string, unknown>([
+    [
+      "https://example.com/.well-known/ai-profile.json",
+      {
+        spec: "ai-profile/0.1",
+        id: "@ai:example.com",
+        type: "organization",
+        name: "Example",
+        canonical: "https://example.com",
+        links: [],
+        profiles: [{ id: "@ai:example.com/agent", href: "https://example.com/ai/agent.json" }],
+      },
+    ],
+    [
+      "https://example.com/ai/agent.json",
+      {
+        spec: "ai-profile/0.1",
+        id: "@ai:example.com/agent",
+        type: "agent",
+        name: "Agent",
+        canonical: "https://example.com/agent",
+        links: [],
+      },
+    ],
+  ]);
+  const fetcher = async (url: string) => ({
+    ok: responses.has(url),
+    status: responses.has(url) ? 200 : 404,
+    json: async () => responses.get(url),
+  });
+
+  const root = await resolveAiId("@AI:EXAMPLE.COM/", fetcher);
+  assert.equal(root.id, "@ai:example.com");
+
+  const agent = await resolveAiId("@ai:example.com/agent", fetcher);
+  assert.equal(agent.type, "agent");
+
+  await assert.rejects(
+    () => resolveAiId("@ai:example.com/missing", fetcher),
+    /AI_SUBPROFILE_NOT_FOUND/
+  );
+});
+
 test("delegation and runtime attestation are cryptographically verifiable", () => {
   const { controllerKeys, identity, delegation, session } = fixture();
   assert.deepEqual(
@@ -200,7 +245,7 @@ test("ProofReceipt v2 and action receipts are committed into one Merkle batch", 
   }
 });
 
-test("chain anchor verification binds a confirmed transaction to the batch root", () => {
+test("chain anchor binding rejects a mismatched Merkle root without claiming live chain verification", () => {
   const batch = createProofBatchV1(proofReceipt(), [], "2026-10-17T03:33:00.000Z");
   const anchor: ProofAnchorV1 = {
     schema: "osa.proof_anchor.v1",
