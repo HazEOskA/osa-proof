@@ -1,5 +1,10 @@
 # Weryfikacja kandydata v0.1.0
 
+> **NAJNOWSZY STAN 17.10.2026 (metadane, bez live model):** aktualny `release/osa-proof-v0.1.0@4c375e8058e30b06f178e261ccb32e4bb45f61b2` ma **3/3 CI SUCCESS**: [backend, testy i build](https://github.com/HazEOskA/osa-proof/actions/runs/38985293601), [browser Android/desktop](https://github.com/HazEOskA/osa-proof/actions/runs/38985293682), [Fleet HTTP/SSE](https://github.com/HazEOskA/osa-proof/actions/runs/38985293598). Obecny produkcyjny alias `osa-proof-three.vercel.app` mapuje się na `dpl_B8s5QZV1t5CMfy6qm453rkFMs2Bh` / `4c375e8` / `READY` (produkcja). Oznaczenie `READY` jest **stanem deploymentu**, nie testem HTTP pod tym aliasem ani dowodem wykonania modelu. Poprzednie zdania o produkcji `512a6e1` odnoszą się do dawnych odczytów. Żaden z tych trzech workflowów nie dostarcza rzeczywistego NVIDIA `tool_calls` ani trwałości chmurowej. [Nowy audyt](AUDYT_DODATKOWY_2026-10-17.md).
+
+**Dowody nadal wymagane do v0.1.0:** autoryzowany model z ważnym potwierdzeniem bezpłatności, realny licznik Redis dwóch instancji, modelowy tool call → Runtime → Evidence → ProofReceipt → Replay z nowym `execution_id` oraz trwały odczyt między instancjami. Testy z symulowanym modelem lub samym native SHA-256 **nie** spełniają tego warunku. Przed użyciem prawdziwych danych sprawdź współdzielony charakter `OPEN_PRODUCTION`.
+
+
 **Stan wydania: BLOCKED.** Poniższe wyniki opisują bazowy audyt kodu `724c078`. Późniejsza korekta usuwa obowiązkowe logowanie panelu w otwartym Preview; nie zmienia historycznych wyników poniżej. Manifest i stare zrzuty granicy operatora dotyczą wcześniejszej polityki. Aktualne wyniki korekty znajdują się w sekcji na końcu dokumentu.
 
 | Kontrola | Wynik | Dowód |
