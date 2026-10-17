@@ -36,3 +36,5 @@ export function createLocalDevIdentity(input: LocalDevIdentityInput): Identity {
     verified: true,
   };
 }
+export * from "./ai-id";
+export * from "./agent-crypto";
