@@ -12,3 +12,4 @@ export * from "./solana/rpc";
 export * from "./solana/adapter";
 export * from "./solana/normalization";
 export * from "./anchor";
+export * from "./solana/genesis-anchor";
