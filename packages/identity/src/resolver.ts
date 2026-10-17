@@ -50,7 +50,23 @@ export async function resolveAiId(
   });
   if (!ref) throw new Error("AI_SUBPROFILE_NOT_FOUND");
 
-  const profile = await fetchProfile(ref.href, fetcher);
+  let target: URL;
+  try {
+    target = new URL(ref.href);
+  } catch {
+    throw new Error("AI_PROFILE_SECURITY_BLOCKED: subprofile href is not a valid URL");
+  }
+  if (
+    target.protocol !== "https:" ||
+    target.username ||
+    target.password ||
+    target.port ||
+    target.hostname.toLowerCase() !== requested.authority
+  ) {
+    throw new Error("AI_PROFILE_SECURITY_BLOCKED: subprofile href must use HTTPS on the root authority");
+  }
+
+  const profile = await fetchProfile(target.toString(), fetcher);
   if (canonicalizeAiId(profile.id) !== requestedId) {
     throw new Error("AI_PROFILE_IDENTITY_MISMATCH: subprofile id does not match request");
   }
