@@ -1,0 +1,51 @@
+{
+  "schema": "osa.genesis_agent_proof.v1",
+  "proof_number": "000001",
+  "title": "GENESIS AGENT PROOF #000001",
+  "source": {
+    "repository": "HazEOskA/osa-proof",
+    "branch": "feature/agent-trust-fabric-v0.1",
+    "approved_base_sha": "42306c18c819ebabe1c3aa27506b780d61aa0fd4",
+    "execution_branch_head": "1c09c07be7a475ae03ea1ba45cb288933401cf3a",
+    "operation": "repo:read",
+    "target": "package.json",
+    "package_sha256": "62fcb7056977532a83655f85ca02036fe058fc514612073cf8ee9a409dbd8fa1",
+    "package_bytes": 896,
+    "generator_sha256": "51f0a6f69588467f62080475bcf777d476dd266bdfeef97fbbbb62259cf498e7"
+  },
+  "controller": {
+    "ai_id": "@ai:osatechgpt.dev",
+    "key_id": "ed25519:c0f37829855b22c74a7191360dca49ac",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAf9BcqTP/T05aWqQDq8d5M5IB+OX8hw1JuBL1jp851ms=\n-----END PUBLIC KEY-----\n"
+  },
+  "agent_identity": {
+    "schema": "osa.agent_identity.v1",
+    "ai_id": "@ai:osatechgpt.dev/agents/genesis",
+    "agent_id": "genesis",
+    "key_id": "ed25519:ffd5c5d194dc98e70ee547d58911b27e",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEALDYIITPy1i/4y9yfZ3JP+695UGCsvgBbqQ7yMnIsd7g=\n-----END PUBLIC KEY-----\n",
+    "controller": "@ai:osatechgpt.dev",
+    "status": "ACTIVE",
+    "created_at": "2026-10-17T12:10:01.357Z"
+  },
+  "delegation": {
+    "schema": "osa.delegation.v1",
+    "principal": "@ai:osatechgpt.dev",
+    "agent_ai_id": "@ai:osatechgpt.dev/agents/genesis",
+    "scopes": [
+      "repo:read"
+    ],
+    "denied_scopes": [
+      "blockchain:write",
+      "git:commit",
+      "git:push",
+      "network:write",
+      "production:deploy",
+      "repo:write"
+    ],
+    "policy_digest": "51f8ef445a1f445e6f67d2ab5825e88709652b64a484742564e74e960145cd30",
+    "valid_from": "2026-10-17T12:09:01.357Z",
+    "valid_until": "2026-10-17T12:25:01.357Z",
+    "delegation_digest": "8db2cf95fc4f02f72f3f8449084a858a8e81afbaa79d1f42ef9b72bce5fa629e",
+    "signature": {
+      "alg": "...[truncated]
