@@ -38,3 +38,4 @@ export function createLocalDevIdentity(input: LocalDevIdentityInput): Identity {
 }
 export * from "./ai-id";
 export * from "./agent-crypto";
+export * from "./resolver";
