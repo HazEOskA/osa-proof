@@ -1,5 +1,9 @@
 # OSA Proof
 
+**Aktualne docs po polsku:** [indeks dokumentacji](docs/README.md) · [dodatkowy audyt z 17.10.2026](docs/release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md) · [odbiór produkcyjny](docs/release-v0.1.0/WDROZENIE_PRODUKCJA.md) · [weryfikacja testów](docs/release-v0.1.0/WERYFIKACJA.md).
+
+**Stan wdrożenia i wydania to dwie różne rzeczy.** Pod adresem [OSA Proof](https://osa-proof-three.vercel.app) Vercel wskazał 17.10.2026 produkcyjny build `4c375e8` z gałęzi `release/osa-proof-v0.1.0`. Panel demo w `OSA_AUTH_MODE=open` nie izoluje różnych użytkowników i nie nadaje się do prywatnych danych. Klient NVIDIA nadal wymaga osobnej autoryzacji operatora i kontroli kosztów. Nie wykazano jeszcze rzeczywistego modelowego tool-call E2E ani trwałości serverless. **Nie ma formalnie wydanego v0.1.0.**
+
 **Kandydat v0.1.0: BLOCKED.** Bieżący zakres, dowody, ograniczenia i instrukcje po polsku: [bramki wydania](docs/release-v0.1.0/BRAMKI.md), [macierz możliwości](docs/release-v0.1.0/MACIERZ.md), [obsługa operatora](docs/release-v0.1.0/OPERATOR.md). Numer pakietu nie potwierdza wydania. Poniższa dokumentacja techniczna zawiera również opisy historycznych etapów; w kwestii gotowości obowiązuje macierz.
 
 **The proof layer for AI agents.**
