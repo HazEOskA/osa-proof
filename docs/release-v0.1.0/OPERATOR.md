@@ -1,5 +1,16 @@
 # Obsługa kandydata v0.1.0
 
+> **Stan 17.10.2026:** produkcyjny alias `https://osa-proof-three.vercel.app` wskazuje gałąź release, commit `4c375e8`, deployment `dpl_B8s5QZV1t5CMfy6qm453rkFMs2Bh` (`READY`). Jest to odbiór otwartego panelu, **nie** formalny release v0.1.0. Zobacz [raport audytu](AUDYT_DODATKOWY_2026-10-17.md) i [wdrożenie](WDROZENIE_PRODUKCJA.md).
+
+### Reguła bezpieczeństwa dla otwartego panelu
+
+- `OPEN_PREVIEW` / `OPEN_PRODUCTION` **nie mają izolacji użytkowników**. Udostępniaj jedynie niesekretne, publiczne dane demonstracyjne; nie importuj eksportu ChatGPT, pamięci NeurOSA ani danych klientów do wspólnego `org_dev_local`.
+- `requireSession` w trybie open przepuszcza anonimowe operacje natywne i część zapisów w `ApiState`. Ochrona NVIDIA to **oddzielna** bramka, a nie pełny RBAC całego control plane. Przed uruchomieniem provider executor lub integracji zewnętrznej zweryfikuj odmowę i zakres mutacji.
+- Dla logowania modelowego pod **stałym adresem** `https://osa-proof-three.vercel.app` ustaw `OSA_OPERATOR_ORIGIN` na dokładnie ten origin (we właściwym targetcie Vercel); domyślne `VERCEL_URL` może wskazywać unikalny adres builda, przez co przeglądarka pod aliasem nie przejdzie kontroli originu.
+- Nie kopiuj sekretów między Preview i Production. Oddzielne konfiguracje/zgody: Preview dla modelowego smoke, produkcja tylko po audycie i zatwierdzeniu. `OSA_OPERATOR_TOKEN` i `OSA_QUOTA_REDIS_REST_TOKEN` wpisuj wyłącznie jako sekrety serwera. Nie wystawiaj ich w `VITE_*`.
+- Do testu dostępu bez sekretów: anonimowy `GET /api/auth/access` ma ujawnić `required`, `mode`, `configured`, `authenticated=false`, ale nie wartość sekretu. Sukces prawdziwego loginu potwierdź dopiero w przeglądarce z poprawnym `Origin`; nie opieraj decyzji wyłącznie na statusie `configured=true`.
+
+
 ## Uruchomienie lokalne
 
 ```bash
