@@ -1,5 +1,10 @@
 # Produkcyjny odbiór otwartego panelu
 
+> **ODCZYT WERYFIKACYJNY 17.10.2026:** Vercel dla aliasu `osa-proof-three.vercel.app` wskazuje **aktualnie** deployment `dpl_B8s5QZV1t5CMfy6qm453rkFMs2Bh`, target `production`, commit `4c375e8058e30b06f178e261ccb32e4bb45f61b2`, branch `release/osa-proof-v0.1.0`, status `READY`. Wcześniejsze deploymenty `512a6e1` są historycznym punktem cofnięcia, nie bieżącym źródłem tego aliasu. Odczyt metadanych nie dowodzi przejścia aplikacyjnego E2E ani stanu prywatnej sesji. **Brak merge do main, tagu i GitHub Release.** [Audyt uzupełniający](AUDYT_DODATKOWY_2026-10-17.md).
+
+**Granica prywatności:** panel działa w współdzielonym `OPEN_PRODUCTION`; anonimowe żądania mogą korzystać z jednej tożsamości demo `org_dev_local`. Nie używać tu prywatnych eksportów, danych klientów, kluczy ani artefaktów wymagających izolacji. Samo chronienie wywołań NVIDIA nie chroni wszystkich pozostałych tras/mutacji. Jeśli realne dane mają wejść do OSA, wcześniej należy zamknąć dostęp do nich i wykonać osobne testy tenant/scope.
+
+
 Operator 17.10.2026 osobno zlecił wdrożenie gałęzi `release/osa-proof-v0.1.0` na istniejącą produkcję Vercel, żeby sprawdzić aplikację pod stałym adresem. To zgoda na ten odbiór, bez merge do main, tagu i GitHub Release. Formalne v0.1.0 nadal BLOCKED z powodu brakującego modelowego E2E, współdzielonego limitu i trwałego backendu.
 
 - Repo: `HazEOskA/osa-proof`; projekt `prj_okaBXTo47jIh8MzLfAEouQrHhexK`; zespół `team_inMcYbSrBTyul3ppWT7KixgI`.
