@@ -3,12 +3,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { EvidenceRecord, ProofReceipt, VerifierObservation } from "../packages/contracts/src";
 import { EvidenceCollector, trustEvidenceRefs } from "../packages/evidence/src";
+import { canonicalizeAiId } from "../packages/identity/src/ai-id";
 import {
-  canonicalizeAiId,
   createAgentIdentityV1,
   createAgentKeyPair,
   signerFromPrivateKey,
-} from "../packages/identity/src";
+} from "../packages/identity/src/agent-crypto";
 import {
   createMerkleProofV1,
   DeterministicProofVerifier,
@@ -24,7 +24,7 @@ import {
   verifyActionReceiptV1,
   verifyDelegationV1,
   verifyRuntimeAttestationV1,
-} from "../packages/runtime/src";
+} from "../packages/runtime/src/trust";
 
 const GENESIS_AI_ID = "@ai:osatechgpt.dev/agents/genesis";
 const CONTROLLER_AI_ID = "@ai:osatechgpt.dev";
