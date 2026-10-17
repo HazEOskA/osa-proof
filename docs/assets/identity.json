@@ -1,0 +1,41 @@
+{
+  "skill": "osa-readme-forge",
+  "skill_version": "3.0",
+  "identity_version": "3.0",
+  "brand": "OSA",
+  "system_name": "OSA Proof",
+  "author": "Bartosz Osiński",
+  "system_type": "Agent Runtime / AI Control Plane / Proof Verification",
+  "one_sentence_essence": "OSA Proof łączy graf agentów, wykonanie i weryfikowalne dowody w jednym frameworku, w którym deklaracja sukcesu nie zastępuje ProofReceipt.",
+  "hero_path": "apps/web/docs/osa-frameworks-banner.webp",
+  "logo_path": "dashboard-src/public/favicon.svg",
+  "mascot_path": "dashboard-src/public/assets/crew/osa-crew-atlas.png",
+  "visual_status": "REUSED_EXISTING_ASSETS_PNG_FIRST_NOT_COMPLETE",
+  "primary_format": "webp_existing",
+  "brand_dna": [
+    "dark",
+    "black",
+    "gold",
+    "blue",
+    "industrial-cyberpunk",
+    "muscular-wasp"
+  ],
+  "functional_accents": {
+    "cyan": "routing/observability",
+    "amber": "operator/approval",
+    "green": "verified",
+    "red": "blocked"
+  },
+  "visual_rules": [
+    "Wykorzystuj kanoniczną muskularną postać osy OSA, nie nową maskotkę.",
+    "Pierwotny hero i logo są w istniejącym repo; nie twórz fikcyjnych ścieżek.",
+    "Wymagany przez skill PNG 16:9 i logo PNG 1:1 nie istnieją w repo i nie mogą być oznaczone PROVEN.",
+    "Hero/banner, logo i maskotka pełnią różne funkcje."
+  ],
+  "target_png_paths": {
+    "hero": "docs/assets/hero-banner.png",
+    "logo": "docs/assets/logo-square.png"
+  },
+  "proof_policy": "CLAIM != PROOF",
+  "release_status": "v0.1.0 BLOCKED"
+}
