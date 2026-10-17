@@ -6,7 +6,7 @@ import { canonicalJson, digest } from "../../proof-core/src";
 
 export class MissionConflictError extends Error {}
 export interface MissionStore {
-  readonly persistence: "PROCESS_MEMORY" | "LOCAL_FILESYSTEM";
+  readonly persistence: "PROCESS_MEMORY" | "LOCAL_FILESYSTEM" | "DURABLE_POSTGRES";
   get(missionId: string): Promise<MissionRecord | undefined>;
   // undefined means create-only. Revisions are optimistic concurrency tokens.
   save(record: MissionRecord, expectedRevision?: number): Promise<void>;

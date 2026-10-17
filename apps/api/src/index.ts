@@ -4,6 +4,8 @@ import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unif
 import { handleNvidiaRequest } from "./nvidia";
 import { handleProviderRequest } from "./provider-chat";
 import { ProviderVault } from "./provider-vault";
+import { DurableStore, DurableMissionStore, StorageError, durableConfigured } from "./durable-store";
+import { digest } from "../../../packages/proof-core/src";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 import { Web3Service } from "../../../packages/web3/src";
@@ -65,6 +67,7 @@ const OPEN_MODE_SESSION: SessionRecord = Object.freeze({
 
 export class ApiState {
   readonly providerVault: ProviderVault;
+  readonly durable?:DurableStore;
   buildWorkspace?: BuildWorkspace;
   readonly teams = new Map<string, TeamGraph>();
   readonly missions = new Map<string, Mission>();
@@ -93,10 +96,45 @@ export class ApiState {
     readonly accessEnv: NodeJS.ProcessEnv = process.env
   ) {
     this.providerVault = new ProviderVault(accessEnv);
+    this.durable=durableConfigured(accessEnv)?new DurableStore(accessEnv):undefined;
     this.intelligence = intelligence;
     this.datasets = datasets;
     this.evaluators = evaluators;
-    this.missionKernel = new MissionKernel(missionStore, undefined, brain);
+    this.missionKernel = new MissionKernel(missionStore??(this.durable?new DurableMissionStore(this.durable,(accessEnv.OSA_OPERATOR_ORGANIZATION_ID||"org_dev_local")+":"+(operatorProject(accessEnv)||"osa-proof")):undefined), undefined, brain);
+  }
+
+  cacheExecution(result:Awaited<ReturnType<typeof executeUnified>>){
+    this.runs.set(result.run.run_id,structuredClone(result.run));
+    this.teams.set(this.teamKey(result.team.team_id,result.team.version),structuredClone(result.team));
+    this.missions.set(result.mission.mission_id,structuredClone(result.mission));
+  }
+  async rememberExecution(result:Awaited<ReturnType<typeof executeUnified>>){
+    if(this.durable){
+      if(!verifyUnifiedBundle(result).ok)throw new StorageError("EXECUTION_STORAGE_INTEGRITY_FAILED");
+      const scope=result.team.organization_id+":"+result.team.project_id;
+      try{await this.durable.put(scope,"executions",result.execution_id,result);}
+      catch(e){
+        if(!(e instanceof StorageError)||e.status!==409)throw e;
+        const saved=await this.durable.get(scope,"executions",result.execution_id);
+        if(!saved||digest(saved.payload)!==digest(result))throw e;
+      }
+    }
+    this.cacheExecution(result);
+  }
+  async execution(organization:string,project:string,id:string){
+    if(!this.durable)return undefined;
+    const row=await this.durable.get<Awaited<ReturnType<typeof executeUnified>>>(organization+":"+project,"executions",id);
+    if(!row)return undefined;
+    const bundle=row.payload;
+    if(bundle.execution_id!==id||bundle.team.organization_id!==organization||bundle.team.project_id!==project||!verifyUnifiedBundle(bundle).ok)throw new StorageError("EXECUTION_STORAGE_INTEGRITY_FAILED");
+    this.cacheExecution(bundle);return bundle;
+  }
+  async restoreExecutions(organization:string,project:string){
+    if(!this.durable)return;
+    for(const row of await this.durable.list<Awaited<ReturnType<typeof executeUnified>>>(organization+":"+project,"executions")){
+      const b=row.payload;if(b.team.organization_id!==organization||b.team.project_id!==project||b.execution_id!==row.record_id||!verifyUnifiedBundle(b).ok)throw new StorageError("EXECUTION_STORAGE_INTEGRITY_FAILED");
+      this.cacheExecution(b);
+    }
   }
 
   teamKey(teamId: string, version: string): string {
@@ -202,6 +240,11 @@ export async function handleApiRequest(
       if (parts[0] === "unified") {
         const session = requireSession(request,response,state);
         if (!session) return;
+        if(method==="GET"&&parts[1]==="executions"&&parts.length===3){
+          if(!/^exec_[a-f0-9-]{36}$/.test(parts[2]))return send(response,400,{code:"INVALID_EXECUTION_ID",error:"Nieprawidłowy identyfikator wykonania."});
+          const b=await state.execution(session.identity.organization_id!,operatorProject(state.accessEnv)||"osa-proof",parts[2]);
+          return b?send(response,200,{...b,persistence:"DURABLE_POSTGRES"}):send(response,404,{code:"EXECUTION_NOT_FOUND",error:"Nie znaleziono trwałego zapisu wykonania."});
+        }
         if (method === "POST" && ["/unified/execute","/unified/verify"].includes(url.pathname)) {
           const chunks:Buffer[]=[];let size=0;
           for await (const chunk of request) { size+=Buffer.byteLength(chunk); if(size>512000)return send(response,413,{status:"BLOCKED",error:"UNIFIED_BODY_TOO_LARGE"});chunks.push(Buffer.from(chunk)); }
@@ -226,9 +269,7 @@ export async function handleApiRequest(
           let result;
           try {result = await executeUnified(body,session.identity.organization_id,registry,operatorProject(state.accessEnv));}
           catch {return send(response,400,{status:"BLOCKED",error:"UNIFIED_INVALID_INPUT"});}
-          state.runs.set(result.run.run_id,structuredClone(result.run));
-          state.teams.set(state.teamKey(result.team.team_id,result.team.version),result.team);
-          state.missions.set(result.mission.mission_id,result.mission);
+          await state.rememberExecution(result);
           return send(response,200,result);
         }
         return send(response,404,{status:"BLOCKED",error:"UNIFIED_ROUTE_NOT_FOUND"});
@@ -268,9 +309,7 @@ export async function handleApiRequest(
         return handleProviderRequest(request,response,url.pathname,{env:state.accessEnv,scope:organization+":"+project,vault:state.providerVault,dispatch:async input=>{
           installUnifiedTools(registry,state.accessEnv);
           const result=await executeUnified(input,organization,registry,project);
-          state.runs.set(result.run.run_id,structuredClone(result.run));
-          state.teams.set(state.teamKey(result.team.team_id,result.team.version),result.team);
-          state.missions.set(result.mission.mission_id,result.mission);
+          await state.rememberExecution(result);
           return result;
         }});
       }
@@ -280,9 +319,7 @@ export async function handleApiRequest(
         return handleNvidiaRequest(request, response, url.pathname, {env:state.accessEnv, dispatch:async input=>{
           installUnifiedTools(registry,state.accessEnv);
           const result=await executeUnified(input,session.identity.organization_id!,registry,operatorProject(state.accessEnv));
-          state.runs.set(result.run.run_id,structuredClone(result.run));
-          state.teams.set(state.teamKey(result.team.team_id,result.team.version),result.team);
-          state.missions.set(result.mission.mission_id,result.mission);
+          await state.rememberExecution(result);
           return result;
         }});
       }
@@ -382,7 +419,7 @@ export async function handleApiRequest(
       }
 
       if (url.pathname === "/build/status" && method === "GET") {
-        return send(response, 200, { ...executionDescription, auth_mode: scoped?"operator":state.authMode, executors: registry.refs(), persistence: "PROCESS_MEMORY", durable_cloud_storage: false, persistence_notice: "Stan procesu znika po restarcie lub zmianie instancji. Historia rozmów jest lokalna w przeglądarce.", mission_persistence: state.missionKernel.store.persistence, brain: state.missionKernel.brain.describe(), protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
+        return send(response, 200, { ...executionDescription, auth_mode: scoped?"operator":state.authMode, executors: registry.refs(), persistence: state.durable?"DURABLE_POSTGRES_SCOPED":"PROCESS_MEMORY", durable_cloud_storage:Boolean(state.durable), persistence_scope:state.durable?["unified_executions","events","evidence","proof_receipts","mission_kernel","provider_connections"]:[],process_memory_scope:["queue","workers","build_workspace","policies","knowledge"],persistence_notice:state.durable?"Wykonania Unified, dowody, misje Mission Kernel i połączenia API mają trwały zapis Postgres. Kolejki i pozostała konfiguracja pozostają w pamięci procesu; historia czatu jest lokalna.":"Stan procesu znika po restarcie lub zmianie instancji. Historia rozmów jest lokalna w przeglądarce.", mission_persistence: state.missionKernel.store.persistence, brain: state.missionKernel.brain.describe(), protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
       }
 
       if (url.pathname === "/build/workspace" && method === "GET") {
@@ -676,6 +713,7 @@ export async function handleApiRequest(
       if (method === "GET" && parts[0] === "runs" && parts.length >= 2) {
         const session = requireSession(request, response, state);
         if (!session) return;
+        if(!state.runs.has(parts[1]))await state.restoreExecutions(session.identity.organization_id!,operatorProject(state.accessEnv)||"osa-proof");
         const run = state.runs.get(parts[1]);
         if (!run) return send(response, 404, { error: "run not found" });
         if (run.proof.organization_id !== session.identity.organization_id || (scoped && run.proof.project_id !== operatorProject(state.accessEnv))) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
@@ -687,6 +725,7 @@ export async function handleApiRequest(
 
     return send(response, 404, { error: "not found" });
   } catch (error) {
+    if(error instanceof StorageError)return send(response,error.status,{code:error.code,error:"Trwały magazyn nie potwierdził operacji. Nie zadeklarowano poprawnego zapisu."});
     if(protectedRuntime(state.accessEnv)) return send(response,400,{code:"REQUEST_REJECTED",error:"Żądanie odrzucone. Sprawdź dane i uprawnienia."});
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof KnowledgeError || error instanceof ExperimentError) {

@@ -109,6 +109,17 @@ export default function JeversonChat() {
     inspectExecution(bundle.team,bundle.mission,bundle.run);
     setLastRun({sessionId,run:bundle.run,verified:true});
   }
+  useEffect(()=>{
+    const executionId=new URLSearchParams(location.search).get("execution_id");
+    if(!executionId||!/^exec_[a-f0-9-]{36}$/.test(executionId))return;
+    let active=true;const sessionId=current.id;
+    void api<Bundle>("/unified/executions/"+executionId).then(async bundle=>{
+      if(!active)return;await verify(bundle,sessionId);if(!active)return;
+      const output=bundle.run.final_output as {sha256?:string};
+      addMessage(sessionId,"assistant","Przywrócono z trwałego zapisu Postgres · SHA-256: "+(output.sha256||"wynik wykonania"),"VERIFIED",{executionId:bundle.execution_id,runId:bundle.run.run_id});
+    }).catch(()=>{if(active)setError("Nie udało się odtworzyć i zweryfikować trwałego wykonania.");});
+    return()=>{active=false;};
+  },[]);
   async function submit(e?:FormEvent) {
     e?.preventDefault();const text=draft.trim();if(!text||busy)return;
     const sessionId=current.id;setError("");

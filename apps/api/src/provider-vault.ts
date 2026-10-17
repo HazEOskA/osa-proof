@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile, rename, rm, link } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { neon } from "@neondatabase/serverless";
 import { protectedRuntime } from "./operator-access";
+import { DurableStore, durableConfigured } from "./durable-store";
 
 export const PROVIDER_IDS=["nvidia","openrouter","openai","anthropic","compatible"] as const;
 export type ChatProvider = typeof PROVIDER_IDS[number];
@@ -30,15 +31,15 @@ export function validateConnection(value:unknown):ProviderConnection {
 export class ProviderVault {
   private initialized?:Promise<void>;
   constructor(private readonly env:Env=process.env) {}
-  mode(){return this.env.OSA_CONNECTIONS_DATABASE_URL?"POSTGRES_ENCRYPTED":protectedRuntime(this.env)?"PROCESS_MEMORY":"LOCAL_ENCRYPTED_FILE";}
-  ready(){const supplied=this.env.OSA_CONNECTIONS_ENCRYPTION_KEY;return supplied?/^[a-f0-9]{64}$/i.test(supplied):!this.env.OSA_CONNECTIONS_DATABASE_URL;}
+  mode(){return durableConfigured(this.env)?"DURABLE_SERVER_ENCRYPTED":this.env.OSA_CONNECTIONS_DATABASE_URL?"POSTGRES_ENCRYPTED":protectedRuntime(this.env)?"PROCESS_MEMORY":"LOCAL_ENCRYPTED_FILE";}
+  ready(){const supplied=this.env.OSA_CONNECTIONS_ENCRYPTION_KEY;return supplied?/^[a-f0-9]{64}$/i.test(supplied):!this.env.OSA_CONNECTIONS_DATABASE_URL&&!durableConfigured(this.env);}
   ttl(){return this.mode()==="PROCESS_MEMORY"?3600:30*86400;}
   private directory(){return resolve(this.env.OSA_CONNECTIONS_DIR||".osa-proof/connections");}
   private async key():Promise<Buffer>{
     const supplied=this.env.OSA_CONNECTIONS_ENCRYPTION_KEY;
     if(supplied&&/^[a-f0-9]{64}$/i.test(supplied))return Buffer.from(supplied,"hex");
     if(supplied)throw new ConnectionError(503,"CONNECTION_ENCRYPTION_NOT_CONFIGURED","Serwerowy klucz szyfrowania ma nieprawidłową konfigurację.");
-    if(this.env.OSA_CONNECTIONS_DATABASE_URL)throw new ConnectionError(503,"CONNECTION_STORE_NOT_CONFIGURED","Zapis kluczy wymaga serwerowego klucza szyfrowania.");
+    if(this.env.OSA_CONNECTIONS_DATABASE_URL||durableConfigured(this.env))throw new ConnectionError(503,"CONNECTION_STORE_NOT_CONFIGURED","Zapis kluczy wymaga serwerowego klucza szyfrowania.");
     if(protectedRuntime(this.env))return sessionKey;
     const dir=this.directory();await mkdir(dir,{recursive:true,mode:0o700});const file=join(dir,".encryption-key");
     const tmp=file+"."+randomBytes(8).toString("hex");
@@ -56,7 +57,8 @@ export class ProviderVault {
   async get(scope:string,cookie:string,provider:ChatProvider):Promise<ProviderConnection|undefined>{
     if(!this.ready())return undefined;
     const key=await this.key(),owner=await this.owner(scope,cookie);let ciphertext:string|undefined;
-    if(this.mode()==="PROCESS_MEMORY"){const entry=sessionConnections.get(owner+":"+provider);if(entry&&entry.expiresAt>Date.now())ciphertext=entry.ciphertext;else sessionConnections.delete(owner+":"+provider);}
+    if(this.mode()==="DURABLE_SERVER_ENCRYPTED"){const row=await new DurableStore(this.env).get<{ciphertext:string}>(scope,"provider_connections",owner+"-"+provider);ciphertext=row?.payload.ciphertext;}
+    else if(this.mode()==="PROCESS_MEMORY"){const entry=sessionConnections.get(owner+":"+provider);if(entry&&entry.expiresAt>Date.now())ciphertext=entry.ciphertext;else sessionConnections.delete(owner+":"+provider);}
     else if(this.env.OSA_CONNECTIONS_DATABASE_URL){await this.initialize();try{const rows=await this.db().query("SELECT ciphertext FROM osa_provider_connections WHERE owner_id=$1 AND provider=$2",[owner,provider]);ciphertext=rows[0]?.ciphertext as string|undefined;}catch{throw new ConnectionError(503,"CONNECTION_STORE_UNAVAILABLE","Serwerowy magazyn połączeń nie odpowiada.");}}
     else{try{ciphertext=await readFile(join(this.directory(),owner+"-"+provider+".enc"),"utf8");}catch(e){if((e as NodeJS.ErrnoException).code!=="ENOENT")throw new ConnectionError(503,"CONNECTION_STORE_UNAVAILABLE","Nie można odczytać zapisanego połączenia.");}}
     if(!ciphertext)return undefined;
@@ -65,7 +67,12 @@ export class ProviderVault {
   async put(scope:string,cookie:string,value:ProviderConnection){
     if(!this.ready())throw new ConnectionError(503,"CONNECTION_STORE_NOT_CONFIGURED","Trwały zapis kluczy API wymaga podłączenia serwerowego magazynu. Klucz nie został zapisany.");
     const key=await this.key(),owner=await this.owner(scope,cookie),ciphertext=this.encrypt(value,key,owner);
-    if(this.mode()==="PROCESS_MEMORY"){
+    if(this.mode()==="DURABLE_SERVER_ENCRYPTED"){
+      const store=new DurableStore(this.env),id=owner+"-"+value.provider;
+      const current=await store.get(scope,"provider_connections",id);
+      await store.put(scope,"provider_connections",id,{ciphertext},current?.revision);
+    }
+    else if(this.mode()==="PROCESS_MEMORY"){
       for(const [id,entry] of sessionConnections)if(entry.expiresAt<=Date.now())sessionConnections.delete(id);
       const id=owner+":"+value.provider;
       if(!sessionConnections.has(id)&&sessionConnections.size>=500)throw new ConnectionError(503,"CONNECTION_SESSION_LIMIT","Limit tymczasowych połączeń serwera. Spróbuj później.");
@@ -77,7 +84,8 @@ export class ProviderVault {
   async remove(scope:string,cookie:string,provider:ChatProvider){
     if(!this.ready())throw new ConnectionError(503,"CONNECTION_STORE_NOT_CONFIGURED","Magazyn połączeń nie jest podłączony.");
     const owner=await this.owner(scope,cookie);
-    if(this.mode()==="PROCESS_MEMORY")sessionConnections.delete(owner+":"+provider);
+    if(this.mode()==="DURABLE_SERVER_ENCRYPTED"){const store=new DurableStore(this.env),id=owner+"-"+provider,current=await store.get(scope,"provider_connections",id);if(current)await store.remove(scope,"provider_connections",id,current.revision);}
+    else if(this.mode()==="PROCESS_MEMORY")sessionConnections.delete(owner+":"+provider);
     else if(this.env.OSA_CONNECTIONS_DATABASE_URL){await this.initialize();try{await this.db().query("DELETE FROM osa_provider_connections WHERE owner_id=$1 AND provider=$2",[owner,provider]);}catch{throw new ConnectionError(503,"CONNECTION_STORE_UNAVAILABLE","Serwerowy magazyn połączeń nie odpowiada.");}}
     else await rm(join(this.directory(),owner+"-"+provider+".enc"),{force:true});
   }

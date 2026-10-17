@@ -1,15 +1,17 @@
 # Macierz możliwości i ograniczeń v0.1.0
 
+Aktualny raport modelu i trwałości: [DURABILNOSC_2026-10-17.md](DURABILNOSC_2026-10-17.md). Odbiór browser nowego Preview i aktualny deployment są zapisywane w PR #16.
+
 Macierz dotyczy zakresu dowodów z tego PR, nie deklarowanej gotowości wszystkich środowisk. `VERIFIED` zawsze ma podany zakres. Zielony test z symulowanym dostawcą nie dowodzi działania usługi zewnętrznej.
 
 | Warstwa | Status | Dowód i zakres | Ograniczenie / warunek |
 |---|---|---|---|
 | Agenci i profile floty | PARTIAL | Jeff domyślny, Hermes i pozostałe profile; wybór oraz odtworzenie po odświeżeniu w testach UI 320/390/1440 | Profile rozmowy nie dowodzą autonomicznej pracy ról |
 | Team Graph | VERIFIED | `tests/backend.test.ts`, `tests/build-workspace.test.ts`, `tests/mission-kernel.test.ts`: walidacja, zakres, handoff, wersja | Zweryfikowany kontrakt i lokalne wykonanie; nie cała flota cloud |
-| Modele NVIDIA | IMPLEMENTED_UNVERIFIED | Serwerowy klucz, transport i testy odmów; usunięta sesja operatora w open; oficjalny katalog podaje bezpłatny endpoint domyślnego Nemotrona | Brak udanego bieżącego testu konta/modelu; próba live odrzucona przez automatyczną kontrolę. Bez Redis limit open jest lokalny |
+| Modele NVIDIA | VERIFIED | Rzeczywisty bezpłatny Nemotron na Preview; provider_response_id i execution_id w raporcie trwałości; tool_call uruchomił SHA-256 | Zakres jednego modelu i testu; bez Redis limit pozostaje lokalny |
 | OpenRouter / OpenAI / Anthropic / zgodne API | IMPLEMENTED_UNVERIFIED | Istniejące adaptery rozszerzone o zwykły czat i historię; lokalne kontrakty HTTP oraz formularz 320/390/1440 | Nie wykonano rzeczywistego wywołania tych dostawców ani płatnego fallbacku; wymagany własny klucz/model |
-| Połączenia i klucze API | PARTIAL | Rzeczywisty lokalny szyfrowany zapis, restart, zapis współbieżny, integralność, izolacja cookie i brak klucza w odpowiedziach; test UI bez frontend storage | Vercel PROCESS_MEMORY do godziny/zmiany instancji; Postgres niepodłączony i niezweryfikowany |
-| Modelowe tool_calls | IMPLEMENTED_UNVERIFIED | Symulowany dostawca → rzeczywisty Runtime w `tests/release-security.test.ts` | Nie wykonano rzeczywistego modelowego testu NVIDIA |
+| Połączenia i klucze API | PARTIAL | Lokalny zapis i rzeczywisty szyfrowany Postgres przez podpisany adapter: nowa instancja i odmowa obcego właściciela PASS | Nowe Preview wymaga odbioru wdrożonego SHA; stare wdrożenie bez konfiguracji nadal PROCESS_MEMORY |
+| Modelowe tool_calls | VERIFIED | Rzeczywista odpowiedź NVIDIA → osa_sha256 → Runtime → oba dowody → receipt; niezależny verifier PASS i odmowa zmiany | Pełny odbiór UI/Replay nowego Preview zapisywany w PR #16; nie jest to podpis wystawiony przez NVIDIA |
 | Runtime | VERIFIED | Lokalny SHA-256 przez HTTP i przeglądarkę; testy Runtime oraz Mission Kernel | Dowód dotyczy natywnego wykonawcy, nie modelu i infrastruktury cloud |
 | Narzędzia natywne | VERIFIED | SHA-256, odmowa obcego narzędzia, integralność receipt; `tests/unified-runtime.test.ts`, `tests/unified-p0.test.ts` | Ścieżka deterministyczna jest oznaczona osobno; do modelu dopuszczono tylko SHA-256 |
 | Zapytaj OSĘ | PARTIAL | Globalny dock, kontekst i przejścia 320/390/1440; `scripts/test-osa-guide-browser.mjs` | Odpowiedź dostawcy w teście jest symulowana; brak live testu przewodnika |
@@ -32,7 +34,7 @@ Macierz dotyczy zakresu dowodów z tego PR, nie deklarowanej gotowości wszystki
 | Dostęp operatora | PARTIAL | Testy podpisu, originu, projektu, wygaśnięcia i odmów w session; open obejmuje teraz NVIDIA bez sesji operatora | Publiczny wspólny panel na życzenie operatora; brak pełnej izolacji użytkowników. Prywatne połączenia API należą do osobnych cookies HttpOnly |
 | Wielu użytkowników / IAM | PLANNED | Jawny zakres pojedynczego operatora | Brak OIDC, zarządzania użytkownikami, pełnego RBAC i odwoływania pojedynczych sesji |
 | Control plane | PARTIAL | Istniejący wspólny ApiState i polski UI; testy API | Brak drugiego control plane; PROCESS_MEMORY pozostaje ograniczeniem |
-| Trwałość serverless | BLOCKED | `/api/build/status`, nowa instancja nie posiada poprzednich rekordów | Wymagany rzeczywisty trwały backend; localStorage i lokalne pliki nie wystarczą |
-| Pełny ONE FLOW na Preview | BLOCKED | Natywny Runtime i Replay działają; brak potwierdzonego modelowego cloud execution_id | Wymagany rzeczywisty modelowy tool_call, oba weryfikatory, Replay i jawna akceptacja publicznego trybu open; test live odrzucony przez automatyczną kontrolę |
+| Trwałość serverless | PARTIAL | Rzeczywisty Postgres: wykonania/dowody/receipts, Mission Kernel i klucze API; nowy proces, instancja API i CAS PASS | Kolejki, szkic Buildera, polityki i część konfiguracji pozostają PROCESS_MEMORY; zwykły czat lokalny |
+| Pełny ONE FLOW na Preview | BLOCKED | Natywny Runtime i Replay działają; brak potwierdzonego modelowego cloud execution_id | Pierwszy prawdziwy modelowy tool_call i niezależna weryfikacja przeszły; odbiór browser/Replay nowego Preview i stan produkcji w PR #16 |
 
 Raport wykonanych kontroli i identyfikatory: [WERYFIKACJA.md](WERYFIKACJA.md).

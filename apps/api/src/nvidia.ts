@@ -4,6 +4,7 @@ import { protectedRuntime, openVercelAccess } from "./operator-access";
 import { ModelQuotaError, sharedQuotaConfigured, takeModelQuota } from "./model-quota";
 import type { executeUnified, UnifiedRequest } from "./unified";
 import { chatContext } from "./chat-context";
+import { StorageError } from "./durable-store";
 
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
@@ -139,6 +140,7 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new NvidiaError(400, "INVALID_JSON", "Nieprawidłowy JSON."); }
     return send(200,await nvidiaChat(body,options,fleet));
   } catch (error) {
+    if(error instanceof StorageError)return send(error.status,{code:error.code,error:"Model odpowiedział, ale trwały magazyn nie potwierdził zapisu dowodu."});
     if (error instanceof NvidiaError||error instanceof ModelQuotaError) return send(error.status, { error: error.message, code: error.code });
     return send(500, { error: "Błąd mostu NVIDIA.", code: "NVIDIA_INTERNAL_ERROR" });
   }

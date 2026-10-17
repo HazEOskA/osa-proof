@@ -1,0 +1,19 @@
+{
+  "real_postgres": true,
+  "network_replacements": 0,
+  "model_calls": 0,
+  "concurrent_cas": "PASS",
+  "encrypted_key_new_instance": "PASS",
+  "foreign_owner_denied": "PASS",
+  "mission_kernel_new_instance": "PASS",
+  "persisted_mission_execution_id": "exec_79b1eed6-a694-4f6a-9808-16a3e3368a46",
+  "new_process_read": {
+    "execution_id": "exec_b2457490-e018-4a09-9de9-4cfefaf072cf",
+    "proof_id": "proof_4927d3d59f94b5888d0de8883e816a27f71d43efe0b7a3d1d8886be3f51e54dd"
+  },
+  "provider_response_id": "chatcmpl-c093039d-48e3-4762-8336-f02b24d5214d",
+  "tampered_proof_rejected": true,
+  "new_api_instance_read": "PASS",
+  "unsigned_storage_denied": true,
+  "preview_signer_cannot_access_production": true
+}
