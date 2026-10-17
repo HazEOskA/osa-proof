@@ -86,3 +86,11 @@ Wynik testów 17 października 2026: 245 testów, 242 PASS, 3 SKIP, 0 FAIL; buil
 Potrzebne są: konfiguracja aplikacji GitHub OAuth i dozwolonych kont, stały origin oraz klucz sesji, potwierdzony HTTPS do VM, bezpieczne poświadczenia, zweryfikowany docelowy scope, archiwum rozmów, zatwierdzony backup poza VM i konkretny zakres operacji Preview. Należy sprawdzić wersję API działającą na VM względem odczytanego kontraktu repo NeurOSA (`90edd1d58ff1c04a33286165e8e643662e48289e`).
 
 Po zatwierdzeniu operacji zdalnych wymagane są: health/status, zapis i recall, restart zatwierdzonego kontenera, nowa rozmowa bez starej historii, odświeżenie przeglądarki, weryfikacja źródeł/ledgeru/receipt oraz odmowa bez autoryzacji. Import, rzeczywiste liczby dokumentów, konfiguracja Vercel i deployment nie zostały wykonane w ramach implementacji lokalnej.
+
+## Single-operator v0.1 — tylko chroniony Preview PR #17
+
+Na gałęzi `codex/neurosa-chat-memory` można włączyć `OSA_PREVIEW_SINGLE_OPERATOR=enabled` jako **Vercel Preview env przypięte wyłącznie do tej gałęzi**. Kod wymaga `VERCEL=1`, `VERCEL_ENV=preview`, dokładnego ref gałęzi, właściciela `HazEOskA` i repo `osa-proof`. Przy innej konfiguracji odmawia uruchomienia. Production nie obsługuje trybu operatora.
+
+Warunkiem bezpieczeństwa jest aktywna Vercel Authentication (Deployment Protection) dla Preview, niezależna od kodu. To tryb **jednego zaufanego obszaru Preview**, a nie identyfikacji konkretnego konta GitHub. Wszyscy użytkownicy mogący otworzyć chroniony Preview, w tym przez share link lub automation bypass, działają jako ten sam operator z tym samym zakresem `OSA_NEUROSA_ORGANIZATION_ID` / `OSA_NEUROSA_PROJECT_ID`. Nie udostępniać linków i bypassów, nie wyłączać protection, nie używać do produkcji ani danych innych operatorów. Mutacje wymagają HTTPS same-origin i kontroli `Sec-Fetch-Site`, a recall/remember nadal wykonuje kontrolę scope, auth i evidence.
+
+Aktywacja nie oznacza potwierdzonego LIVE recall ani trwałości SQLite. Pamięć UI nie zapisuje prywatnej historii w localStorage w trybie operatora.

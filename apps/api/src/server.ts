@@ -8,6 +8,7 @@ import { AgentExecutor } from "../../../packages/contracts/src";
 import { ExecutorRegistry, FileMissionStore } from "../../../packages/runtime/src";
 import { BrainControlPlane } from "../../../packages/brain/src";
 import { GithubAuth } from "./github-auth";
+import { PreviewOperator } from "./preview-operator";
 import {
   createBuilderBridgeExecutor,
   createCapabilityRouterExecutor,
@@ -189,7 +190,7 @@ export function startApiServer(env: Env = process.env): Server {
   const execution = createDevExecution(env);
   const authMode = loadAuthMode(env);
   const missionStore = env.OSA_MISSION_STORE_DIR ? new FileMissionStore(env.OSA_MISSION_STORE_DIR) : undefined;
-  const server = createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, authMode, missionStore, execution.brain, createConfiguredWeb3(env), GithubAuth.fromEnvironment(env)), execution.description);
+  const server = createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, authMode, missionStore, execution.brain, createConfiguredWeb3(env), GithubAuth.fromEnvironment(env), PreviewOperator.fromEnvironment(env)), execution.description);
   server.listen(port, host, () => {
     console.log(JSON.stringify({
       service: "osa-proof-api",

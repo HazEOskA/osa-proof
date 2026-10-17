@@ -10,7 +10,7 @@ export class MemoryAccessError extends Error {
 // may populate project_ids; accepting a project supplied by the browser is unsafe.
 export function requireMemoryIdentity(memory: BrainMemory, session?: SessionRecord): void {
   const identity = session?.identity;
-  if (!identity || identity.verified !== true || !["github", "google", "microsoft"].includes(identity.provider) ||
+  if (!identity || identity.verified !== true || !["github", "google", "microsoft", "vercel-preview"].includes(identity.provider) ||
       !identity.subject || !identity.identity_id || !(Date.parse(session!.expires_at) > Date.now()))
     throw new MemoryAccessError(401, "MEMORY_IDENTITY_REQUIRED", "Pamięć wymaga potwierdzonej tożsamości. Konto developerskie nie daje dostępu.");
   if (!memory.binding || identity.organization_id !== memory.binding.organization_id ||

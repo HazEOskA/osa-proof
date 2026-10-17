@@ -3,6 +3,7 @@ import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unif
 import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { GithubAuth, GithubAuthError } from "./github-auth";
+import { PreviewOperator } from "./preview-operator";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 import { Web3Service } from "../../../packages/web3/src";
@@ -89,7 +90,8 @@ export class ApiState {
     missionStore?: MissionStore,
     brain?: BrainControlPlane,
     readonly web3: Web3Service = new Web3Service(),
-    readonly github?: GithubAuth
+    readonly github?: GithubAuth,
+    readonly previewOperator?: PreviewOperator
   ) {
     this.intelligence = intelligence;
     this.datasets = datasets;
@@ -125,7 +127,9 @@ function authenticatedSession(request: IncomingMessage, state: ApiState): Sessio
   const token = bearerToken(request);
   if (!request.headers.authorization && state.github?.hasSessionCookie(request)) return state.github.session(request);
   const session = token ? state.sessions.get(token) : undefined;
-  return session ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
+  if (session) return session;
+  if (!request.headers.authorization && state.previewOperator) return structuredClone(state.previewOperator.session);
+  return state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined;
 }
 
 function requireSession(
@@ -175,9 +179,13 @@ export async function handleApiRequest(
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
 
+      if (state.previewOperator && !state.previewOperator.sameOriginMutation(request))
+        return send(response, 403, { code: "PREVIEW_ORIGIN_REJECTED", error: "Operacja wymaga tego samego chronionego originu Preview." });
       if (state.github?.hasSessionCookie(request) && !["GET", "HEAD", "OPTIONS"].includes(method)) state.github.requireSameOrigin(request);
       if (parts[0] === "auth" && parts[1] === "github") {
         if (method === "GET" && url.pathname === "/auth/github/status") {
+          if (state.previewOperator) return send(response, 200, { enabled: true, signed_in: true,
+            display_name: state.previewOperator.session.identity.display_name, mode: "preview-operator" });
           const session = state.github?.session(request);
           return send(response, 200, { enabled: Boolean(state.github), signed_in: Boolean(session),
             ...(session ? { display_name: session.identity.display_name } : {}) });

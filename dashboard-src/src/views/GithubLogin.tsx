@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { requestJson } from "../data/data";
 
-interface GithubSession { enabled: boolean; signed_in: boolean; display_name?: string }
+interface GithubSession { enabled: boolean; signed_in: boolean; display_name?: string; mode?: "preview-operator" }
 export function useGithubSession() {
   const [status, setStatus] = useState<GithubSession | null>(null);
   const [error, setError] = useState("");
@@ -27,7 +27,7 @@ export default function GithubLogin({ auth }: { auth: ReturnType<typeof useGithu
     } catch { setError("Nie udało się wylogować. Spróbuj ponownie."); setBusy(false); }
   }
   return <div className="flex flex-wrap items-center gap-2 text-xs">
-    {auth.status?.signed_in ? <><span>GitHub: {auth.status.display_name}</span><button type="button" className="underline" disabled={busy} onClick={() => void logout()}>Wyloguj</button></> :
+    {auth.status?.mode === "preview-operator" ? <span>Operator Vercel Preview · dostęp chroniony</span> : auth.status?.signed_in ? <><span>GitHub: {auth.status.display_name}</span><button type="button" className="underline" disabled={busy} onClick={() => void logout()}>Wyloguj</button></> :
       auth.status?.enabled ? <a className="underline" href="/api/auth/github/login">Zaloguj przez GitHub</a> :
       <span className="text-dim">{auth.error || (auth.status ? "Logowanie GitHub nie jest skonfigurowane." : "Sprawdzanie logowania…")}</span>}
     {(error || loginResult) && <span role="alert" className="text-warn">{error || (loginResult === "access_denied" ? "To konto GitHub nie ma dostępu do projektu." : "Logowanie GitHub nie powiodło się. Spróbuj ponownie.")}</span>}
