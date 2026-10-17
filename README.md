@@ -163,3 +163,9 @@ osa-proof/
 </p>
 
 <p align="center"><strong>OSA / AGENTS RUN. EVENTS STAY. PROOF DECIDES.</strong></p>
+
+## Agent Trust Fabric v0.1
+
+The `@ai` Agent Trust Fabric extends Proof Protocol v2 with cryptographic agent identity, bounded delegation, runtime attestation, signed causal action receipts, Merkle proof batching and a chain-neutral anchor interface. It does **not** change `osa.proof_receipt.v2` and does not submit live blockchain transactions in this slice.
+
+See [`docs/AGENT_TRUST_FABRIC_V0_1.md`](docs/AGENT_TRUST_FABRIC_V0_1.md).
