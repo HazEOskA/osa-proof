@@ -48,4 +48,290 @@
     "valid_until": "2026-10-17T12:25:01.357Z",
     "delegation_digest": "8db2cf95fc4f02f72f3f8449084a858a8e81afbaa79d1f42ef9b72bce5fa629e",
     "signature": {
-      "alg": "...[truncated]
+      "alg": "Ed25519",
+      "key_id": "ed25519:c0f37829855b22c74a7191360dca49ac",
+      "value": "AMWhEwBY5g1f0cK7u6e7L4KldzRJhL_y3bnADxcxGRcnuyK9KaIv2tPsW37XDEG8o7luPF9KkkEf0Xk4PjzcCA"
+    }
+  },
+  "runtime_attestation": {
+    "schema": "osa.runtime_attestation.v1",
+    "agent_ai_id": "@ai:osatechgpt.dev/agents/genesis",
+    "runtime_id": "runtime_genesis_1c88cae1-aaf0-45d5-b69d-54dfd6796e7f",
+    "execution_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7",
+    "build_digest": "51f0a6f69588467f62080475bcf777d476dd266bdfeef97fbbbb62259cf498e7",
+    "policy_digest": "51f8ef445a1f445e6f67d2ab5825e88709652b64a484742564e74e960145cd30",
+    "delegation_digest": "8db2cf95fc4f02f72f3f8449084a858a8e81afbaa79d1f42ef9b72bce5fa629e",
+    "started_at": "2026-10-17T12:10:01.357Z",
+    "attestation_digest": "3ebcf11b4c805383c454718b711c0a015cf563ab82ec49516055fd301477fdcc",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "ed25519:ffd5c5d194dc98e70ee547d58911b27e",
+      "value": "Mm95Yvet2MnuEQKYA1ozbOpRZW8IzibqfDm_gEjsAkiJLrbw27LdcCTQg_6ZOR7Aylx_kjp-vaKW5Y8Kxa3kAg"
+    }
+  },
+  "evidence": [
+    {
+      "evidence_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:evidence:1",
+      "run_id": "run_genesis_000001",
+      "execution_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7",
+      "sequence": 1,
+      "organization_id": "org_osatechgpt",
+      "project_id": "project_osa_proof",
+      "team_id": "team_genesis",
+      "team_version": "1",
+      "mission_id": "mission_genesis_000001",
+      "agent_id": "genesis",
+      "provenance": "EXECUTOR_EVIDENCE",
+      "binding": {
+        "organization_id": "org_osatechgpt",
+        "project_id": "project_osa_proof",
+        "team_id": "team_genesis",
+        "team_version": "1",
+        "mission_id": "mission_genesis_000001",
+        "run_id": "run_genesis_000001",
+        "execution_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7"
+      },
+      "producer": {
+        "type": "executor",
+        "agent_id": "genesis",
+        "executor_ref": "genesis.repo-read.v1",
+        "operation_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:op:1:genesis"
+      },
+      "kind": "repo_read",
+      "data": {
+        "status": "READ_OK",
+        "path": "package.json",
+        "content_sha256": "62fcb7056977532a83655f85ca02036fe058fc514612073cf8ee9a409dbd8fa1",
+        "approved_base_sha": "42306c18c819ebabe1c3aa27506b780d61aa0fd4",
+        "execution_branch_head": "1c09c07be7a475ae03ea1ba45cb288933401cf3a"
+      },
+      "content_sha256": "62fcb7056977532a83655f85ca02036fe058fc514612073cf8ee9a409dbd8fa1",
+      "content_bytes": 896,
+      "evidence_sha256": "913402a63e7f89698c4afe09a202e8034f57e4223d10fe98c954bd856d776aca"
+    }
+  ],
+  "observations": [
+    {
+      "observation_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:observation:1",
+      "sequence": 1,
+      "provenance": "VERIFIER_OBSERVATION",
+      "binding": {
+        "organization_id": "org_osatechgpt",
+        "project_id": "project_osa_proof",
+        "team_id": "team_genesis",
+        "team_version": "1",
+        "mission_id": "mission_genesis_000001",
+        "run_id": "run_genesis_000001",
+        "execution_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7"
+      },
+      "producer": {
+        "type": "verifier",
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "evidence_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:evidence:1",
+      "check": "binding",
+      "ok": true,
+      "reason": "evidence bound to this execution",
+      "observation_sha256": "49c8ed568316f34379e38364a02ec92ea188ca036f9774ed4b4397f889b334f2"
+    },
+    {
+      "observation_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:observation:2",
+      "sequence": 2,
+      "provenance": "VERIFIER_OBSERVATION",
+      "binding": {
+        "organization_id": "org_osatechgpt",
+        "project_id": "project_osa_proof",
+        "team_id": "team_genesis",
+        "team_version": "1",
+        "mission_id": "mission_genesis_000001",
+        "run_id": "run_genesis_000001",
+        "execution_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7"
+      },
+      "producer": {
+        "type": "verifier",
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "evidence_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:evidence:1",
+      "check": "evidence_digest",
+      "ok": true,
+      "expected": "913402a63e7f89698c4afe09a202e8034f57e4223d10fe98c954bd856d776aca",
+      "observed": "913402a63e7f89698c4afe09a202e8034f57e4223d10fe98c954bd856d776aca",
+      "reason": "evidence digest recomputed",
+      "observation_sha256": "7a41d6fca5ff524190e9481e2a9d1af7b0f75eef67a8873e211eb519950cc442"
+    },
+    {
+      "observation_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:observation:3",
+      "sequence": 3,
+      "provenance": "VERIFIER_OBSERVATION",
+      "binding": {
+        "organization_id": "org_osatechgpt",
+        "project_id": "project_osa_proof",
+        "team_id": "team_genesis",
+        "team_version": "1",
+        "mission_id": "mission_genesis_000001",
+        "run_id": "run_genesis_000001",
+        "execution_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7"
+      },
+      "producer": {
+        "type": "verifier",
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "evidence_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:evidence:1",
+      "check": "content_digest",
+      "ok": true,
+      "expected": "62fcb7056977532a83655f85ca02036fe058fc514612073cf8ee9a409dbd8fa1",
+      "observed": "62fcb7056977532a83655f85ca02036fe058fc514612073cf8ee9a409dbd8fa1",
+      "reason": "claimed content digest matches core-computed digest",
+      "observation_sha256": "de2819d712889408f6c37d17cde115de94312a89499e7f6bec95da5aab8bb0bc"
+    }
+  ],
+  "action_receipts": [
+    {
+      "schema": "osa.action_receipt.v1",
+      "agent_ai_id": "@ai:osatechgpt.dev/agents/genesis",
+      "runtime_id": "runtime_genesis_1c88cae1-aaf0-45d5-b69d-54dfd6796e7f",
+      "run_id": "run_genesis_000001",
+      "execution_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7",
+      "operation_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:op:1:genesis",
+      "authority_digest": "8db2cf95fc4f02f72f3f8449084a858a8e81afbaa79d1f42ef9b72bce5fa629e",
+      "policy_digest": "51f8ef445a1f445e6f67d2ab5825e88709652b64a484742564e74e960145cd30",
+      "input_digest": "43fe9e33cad69260688d12f8d89262a1ceb1bb83a696b08880a67242cfc41308",
+      "request_digest": "6b0763768cd0531748ecf64976b7fc21cdc85a747bca68f611e9884b51093f2e",
+      "result_digest": "f85d53ee62dedeff3e3b559d47ca475851a2ce4af7008ebf8747ee738fc257cf",
+      "evidence_refs": [
+        {
+          "evidence_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:evidence:1",
+          "evidence_sha256": "913402a63e7f89698c4afe09a202e8034f57e4223d10fe98c954bd856d776aca"
+        }
+      ],
+      "timestamp": "2026-10-17T12:10:01.357Z",
+      "receipt_digest": "b98a9bca4290c948504a6019021b26b02464f6e4bc7c96cb8973e20cd457d1d0",
+      "signature": {
+        "alg": "Ed25519",
+        "key_id": "ed25519:ffd5c5d194dc98e70ee547d58911b27e",
+        "value": "DwsnnRhynKIuoVANo4x3MIyXdIIN5iOFEIUpsKIZaRS-JCdln6eJFraDNpqH2c4gA3KhokKDp6NS0Svmcy7mBg"
+      }
+    }
+  ],
+  "proof_receipt": {
+    "schema": "osa.proof_receipt.v2",
+    "run_id": "run_genesis_000001",
+    "execution_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7",
+    "organization_id": "org_osatechgpt",
+    "project_id": "project_osa_proof",
+    "team_id": "team_genesis",
+    "team_version": "1",
+    "mission_id": "mission_genesis_000001",
+    "binding": {
+      "organization_id": "org_osatechgpt",
+      "project_id": "project_osa_proof",
+      "team_id": "team_genesis",
+      "team_version": "1",
+      "mission_id": "mission_genesis_000001",
+      "run_id": "run_genesis_000001",
+      "execution_id": "exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7"
+    },
+    "verdict": "VERIFIED",
+    "requirement_verdicts": [
+      {
+        "requirement_id": "genesis_repo_read",
+        "verdict": "VERIFIED",
+        "evidence_ids": [
+          "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:evidence:1"
+        ],
+        "reason": "evidence satisfied the explicit acceptance requirement"
+      }
+    ],
+    "evidence_ids": [
+      "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:evidence:1"
+    ],
+    "evidence_refs": [
+      {
+        "evidence_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:evidence:1",
+        "evidence_sha256": "913402a63e7f89698c4afe09a202e8034f57e4223d10fe98c954bd856d776aca"
+      }
+    ],
+    "evidence_root": "f9411d7c6e6c1c181e76fe9e52eb47b07d6ae00738bc6c3c106431b70e294781",
+    "observation_refs": [
+      {
+        "observation_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:observation:1",
+        "observation_sha256": "49c8ed568316f34379e38364a02ec92ea188ca036f9774ed4b4397f889b334f2"
+      },
+      {
+        "observation_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:observation:2",
+        "observation_sha256": "7a41d6fca5ff524190e9481e2a9d1af7b0f75eef67a8873e211eb519950cc442"
+      },
+      {
+        "observation_id": "run_genesis_000001:exec_genesis_a6d76d7a-fcb3-4c4b-88c7-14b504dce7b7:observation:3",
+        "observation_sha256": "de2819d712889408f6c37d17cde115de94312a89499e7f6bec95da5aab8bb0bc"
+      }
+    ],
+    "final_output_sha256": "f85d53ee62dedeff3e3b559d47ca475851a2ce4af7008ebf8747ee738fc257cf",
+    "created_at": "2026-10-17T12:10:01.357Z",
+    "verifier": {
+      "name": "osa-proof-deterministic",
+      "version": "2"
+    },
+    "proof_id": "proof_bd4bfbc7e50b36f21b83b8e27871d86cfc32c4e09d7d36b8a83cbfbdd9608ebd",
+    "receipt_sha256": "bd4bfbc7e50b36f21b83b8e27871d86cfc32c4e09d7d36b8a83cbfbdd9608ebd"
+  },
+  "proof_batch": {
+    "schema": "osa.proof_batch.v1",
+    "proof_receipt_sha256": "bd4bfbc7e50b36f21b83b8e27871d86cfc32c4e09d7d36b8a83cbfbdd9608ebd",
+    "receipt_digests": [
+      "b98a9bca4290c948504a6019021b26b02464f6e4bc7c96cb8973e20cd457d1d0"
+    ],
+    "leaf_digests": [
+      "bd4bfbc7e50b36f21b83b8e27871d86cfc32c4e09d7d36b8a83cbfbdd9608ebd",
+      "b98a9bca4290c948504a6019021b26b02464f6e4bc7c96cb8973e20cd457d1d0"
+    ],
+    "merkle_root": "6d3bc05a9ba5fd1f803444fc9674f8b94db062bbaa8d38609f278d4eaefdbe96",
+    "created_at": "2026-10-17T12:10:01.357Z",
+    "batch_id": "batch_c05abfbf2eafe96d558cb231de440e94ec49da3b8b92be216909ca89343bda74"
+  },
+  "merkle_proofs": {
+    "proof_receipt": {
+      "schema": "osa.merkle_proof.v1",
+      "leaf_index": 0,
+      "leaf_digest": "bd4bfbc7e50b36f21b83b8e27871d86cfc32c4e09d7d36b8a83cbfbdd9608ebd",
+      "steps": [
+        {
+          "side": "RIGHT",
+          "hash": "f7a32752442f7fb5c419aaa4fbd28df49485c7e2cb05e57ba0fc780a94fb3462"
+        }
+      ],
+      "merkle_root": "6d3bc05a9ba5fd1f803444fc9674f8b94db062bbaa8d38609f278d4eaefdbe96"
+    },
+    "action_receipt": {
+      "schema": "osa.merkle_proof.v1",
+      "leaf_index": 1,
+      "leaf_digest": "b98a9bca4290c948504a6019021b26b02464f6e4bc7c96cb8973e20cd457d1d0",
+      "steps": [
+        {
+          "side": "LEFT",
+          "hash": "a835ddaf52f182f608e34b6d6d4d4d3e9d1062b2c9a52df61b2bf715a49ffa0f"
+        }
+      ],
+      "merkle_root": "6d3bc05a9ba5fd1f803444fc9674f8b94db062bbaa8d38609f278d4eaefdbe96"
+    }
+  },
+  "verification": {
+    "identity_canonical": true,
+    "delegation_verified": true,
+    "repo_read_scope_allowed": true,
+    "denied_scopes_blocked": true,
+    "runtime_attestation_verified": true,
+    "action_receipt_verified": true,
+    "proof_receipt_verified": true,
+    "proof_merkle_verified": true,
+    "action_merkle_verified": true,
+    "tampered_action_rejected": true,
+    "tampered_evidence_rejected": true,
+    "no_private_keys_persisted": true
+  },
+  "generated_at": "2026-10-17T12:10:01.357Z",
+  "artifact_sha256": "b93fd5a1c54d89598ab74f52bfbeaaa4f47bef64317c2ab6649bc03fec6f6018"
+}
