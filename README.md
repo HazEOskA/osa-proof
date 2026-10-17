@@ -1,53 +1,119 @@
-# OSA Proof
+<p align="center">
+  <img src="./apps/web/docs/osa-frameworks-banner.webp" alt="OSA Frameworks — rozpoznawalna muskularna osa OSA, czarno-złota identyfikacja i niebieska energia systemu" width="100%" />
+</p>
 
-**Jeden framework do budowania, uruchamiania, obserwacji i weryfikacji systemów agentowych AI.**
+<h1 align="center">OSA PROOF</h1>
 
-> **CLAIM ≠ PROOF** — model może zadeklarować sukces, ale o wyniku decydują zdarzenia wykonania, dowody i niezależna weryfikacja ProofReceipt.
+<p align="center"><strong>Agent Runtime · Control Plane · Evidence & Verification</strong></p>
 
-**Aktualny status:** kandydat `v0.1.0` — **BLOCKED**, bez tagu i GitHub Release. [PR wydawniczy #16](https://github.com/HazEOskA/osa-proof/pull/16) jest otwarty jako DRAFT. Kod jest wdrożony również pod produkcyjnym adresem odbioru `https://osa-proof-three.vercel.app` (odczyt 17.10.2026: `4c375e8`, `READY`), ale **to nie jest formalnie wydane v0.1.0** i nie potwierdza modelowego end-to-end ani trwałości serverless.
+<p align="center">
+  Jeden framework do budowania i uruchamiania systemów agentowych AI — z dowodami, których nie zastąpi deklaracja modelu.
+</p>
 
-[Dokumentacja PL — indeks](docs/README.md) · [Bramki wydania](docs/release-v0.1.0/BRAMKI.md) · [Macierz funkcji](docs/release-v0.1.0/MACIERZ.md) · [Dodatkowy audyt](docs/release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md) · [Dowody i testy](docs/release-v0.1.0/WERYFIKACJA.md)
+<p align="center">
+  <a href="https://github.com/HazEOskA/osa-proof/pull/16"><img alt="Release candidate v0.1.0 — BLOCKED" src="https://img.shields.io/badge/v0.1.0-RELEASE%20CANDIDATE-DAA520?style=for-the-badge" /></a>
+  <a href="https://github.com/HazEOskA/osa-proof/actions/workflows/osa-fleet-slice1-ci.yml?query=branch%3Arelease%2Fosa-proof-v0.1.0"><img alt="Build i testy" src="https://github.com/HazEOskA/osa-proof/actions/workflows/osa-fleet-slice1-ci.yml/badge.svg?branch=release%2Fosa-proof-v0.1.0" /></a>
+  <a href="./docs/release-v0.1.0/WERYFIKACJA.md"><img alt="Evidence linked" src="https://img.shields.io/badge/PROOF-EVIDENCE%20LINKED-007A7A?style=flat-square" /></a>
+</p>
 
-## Co tworzy OSA Proof
+<p align="center"><code>TEAM GRAPH</code> · <code>AGENTS</code> · <code>RUNTIME</code> · <code>TRACING</code> · <code>PROOF</code> · <code>REPLAY</code></p>
 
-```text
-Polski interfejs / API / agenci
-  → Team Graph (wersjonowany graf zespołu)
-  → Misja / Mission Kernel
-  → OsaRuntime / autoryzowany executor
-  → Tracing i zdarzenia
-  → Evidence i ProofReceipt
-  → niezależna weryfikacja / Replay
+> **CLAIM ≠ PROOF.** Agent nie kończy pracy dlatego, że napisał „gotowe”. O zakończeniu decydują zarejestrowane wykonanie, materiał dowodowy oraz weryfikacja `ProofReceipt`.
+
+**Status:** `v0.1.0` pozostaje **kandydatem (BLOCKED)**, bez tagu i GitHub Release. Istnieje wdrożenie aplikacji pod [stałym adresem odbioru](https://osa-proof-three.vercel.app), ale jego `READY` nie oznacza zaliczenia pełnego modelowego E2E ani trwałości cloud. [Bramki wydania](./docs/release-v0.1.0/BRAMKI.md) · [Aktualny audyt](./docs/release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md).
+
+---
+
+## ⚡ System w jednym spojrzeniu
+
+```mermaid
+flowchart LR
+  A["Cel / Użytkownik"] --> B["Team Graph"]
+  B --> C["Mission Kernel"]
+  C --> D["OSA Runtime"]
+  D --> E["Tracing + Events"]
+  E --> F["Evidence + ProofReceipt"]
+  F --> G{"Verifier"}
+  G -->|Verified| H["Replay / Odbiór"]
+  G -->|Failed / Incomplete| I["Blocked / Diagnoza"]
+
+  classDef input fill:#141D2E,stroke:#E6B450,color:#FFFFFF,stroke-width:2px;
+  classDef core fill:#0C2435,stroke:#34BFF3,color:#FFFFFF,stroke-width:2px;
+  classDef evidence fill:#123027,stroke:#4FD5A8,color:#FFFFFF,stroke-width:2px;
+  classDef blocked fill:#32171C,stroke:#E35A66,color:#FFFFFF,stroke-width:2px;
+  class A input;
+  class B,C,D,E core;
+  class F,G,H evidence;
+  class I blocked;
 ```
 
-OSA Proof pozostaje **jednym produktem i jedną kanoniczną warstwą proof**. Istniejące adaptery NVIDIA, innych providerów, Build, Workera, NeurOSA, Fleet i Web3 współpracują z tym core; nie tworzą drugiego control plane.
+**WHAT:** infrastruktura do budowania, obserwowania i weryfikowania przepływów agentowych.  
+**CONNECTS:** agenci, modele, Team Graph, misje, Runtime, zdarzenia i dowody w jednym kontrakcie.  
+**EDGE:** `ProofReceipt`, niezależny verifier oraz jawna granica między **odpowiedzią AI** a **potwierdzonym wykonaniem**.
 
-### Moduły aplikacji
+## Dlaczego to istnieje?
 
-| Moduł | Co udostępnia | Granica bieżącego wydania |
-| --- | --- | --- |
-| Budowanie | Agenci, Team Graph, przepływy, narzędzia, prompty, Studio, plac testowy | Konfiguracja grafu nie dowodzi uruchomionego workera |
-| Czat floty agentów | Natychmiastowe odpowiedzi NVIDIA, profil rozmowy i oddzielny tryb narzędzi | Prawdziwe modelowe `tool_calls` w chmurze nadal wymagają odbioru |
-| Zapytaj OSĘ | Globalny kontekstowy samouczek i przejścia między ekranami | Pomaga nawigować, sam nie wykonuje operacji |
-| Misje i Runtime | Rejestracja, planowanie, wykonanie, policy gate | Część stanu na Vercel istnieje tylko w pamięci procesu |
-| Śledzenie, Dowody, Replay | Weryfikacja integralności receipt i odtwarzanie dostępnego bundle | Odtwarzanie nie uruchamia agentów ponownie; nie jest zewnętrzną atestacją providera |
-| Builder / Workery | Native Builder i adapter izolowanego workspace | W chmurze `GATED` bez rzeczywistego hosta i zgody operatora |
-| Inteligencja / Memory | Modele, wiedza, dane, ewaluatory, opcjonalna NeurOSA | Memory live oraz część integracji wymagają konfiguracji i testów |
-| Web3 / Regulated | Polityki odczytu i bramki regulowane | Brak zgody na podpisywanie/wykonywanie transakcji i niezweryfikowane uprawnienia |
+Sam tekst wygenerowany przez LLM nie odpowiada na najważniejsze pytania: **który agent wykonał pracę, jakim narzędziem, według jakiej polityki i gdzie jest dowód?** OSA Proof spina warstwę wykonawczą z obserwowalnością oraz deterministyczną weryfikacją. Model może proponować. Runtime wykonuje. **Verifier rozstrzyga zakres dowodu.**
 
-Dokładny, aktualny status każdego obszaru: [MACIERZ.md](docs/release-v0.1.0/MACIERZ.md). W menu istnieją także sekcje planowane — **nie** oznacza to ich aktywnej implementacji.
+Nie jest to pojedynczy APR ani kolejny samodzielny chatbot. To kanoniczne repo całego frameworka, którego moduły współdzielą architekturę i konwencje dowodowe.
 
-### Trzy warstwy produktu
+## 🐝 Jeden ekosystem, wiele warstw
 
-- **OSA Academy / SCHOOL:** edukacja na tym samym core, z ograniczonym zestawem możliwości.
-- **OSA Builder / DEV:** główna warstwa grafów agentowych, modeli, wykonania, obserwowalności, dowodów i adapterów.
-- **OSA Regulated:** kontrolowane wejścia dla branż regulowanych; bez weryfikacji uprawnień funkcje pozostają zamknięte.
+| Warstwa | Funkcja | Kod / dokumentacja | Status obecnego zakresu |
+| :--- | :--- | :--- | :--- |
+| **Team Graph / Agenci** | Role, executor refs, wersjonowany graf i handoff | [team-graph](./packages/team-graph), [kontrakt](./docs/TEAM_GRAPH_CONTRACT_V1.md) | **VERIFIED** — lokalne kontrakty i wykonanie |
+| **Mission Kernel + Runtime** | Planowanie, polityki, egzekucja i przebieg misji | [runtime](./packages/runtime), [misje](./docs/MISSION_KERNEL_V1.md) | **VERIFIED** — natywny przepływ lokalny |
+| **Czat floty + NVIDIA** | Profile agentów, historia, odpowiedzi providera, ograniczone `tool_calls` | [API](./apps/api/src/nvidia.ts), [most](./docs/NVIDIA_BRIDGE.md) | **PARTIAL** — modelowy cloud E2E niezaliczony |
+| **Zapytaj OSĘ** | Globalny, kontekstowy samouczek i nawigacja po UI | [panel](./dashboard-src/src/views/OsaHelpDock.tsx) | **PARTIAL** — test UI, model live nieweryfikowany |
+| **Evidence / Proof / Replay** | Weryfikacja bundle, integrality check, odtworzenie zapisanych zdarzeń | [proof-core](./packages/proof-core), [protokół](./docs/PROOF_PROTOCOL_V2.md) | **VERIFIED** dla natywnego lokalnego wykonania |
+| **Builder / Worker Host** | Narzędzia budowania i izolowane wykonanie | [worker](./apps/worker), [kontrakt](./docs/OSA_WORKER_HOST_V0.1.md) | **GATED** — brak dowodu live sandbox |
+| **NeurOSA / Memory** | Opcjonalny kontekst pamięci i planowania | [Brain](./packages/brain), [S2](./docs/NEUROSA_BRAIN_S2.md) | **GATED** — brak live recall i trwałości |
+| **Web3 / Regulated** | Obserwacje i zasady uprawnień | [Web3](./packages/web3), [warstwy](./docs/LAYER_BOUNDARIES.md) | **PARTIAL / GATED** — bez swobodnych mutacji |
 
-Kontrakt produktu: [PRODUCT_CONTRACT.md](docs/PRODUCT_CONTRACT.md), [LAYER_BOUNDARIES.md](docs/LAYER_BOUNDARIES.md).
+Szczegółowe kryteria i ograniczenia: **[macierz możliwości v0.1.0](./docs/release-v0.1.0/MACIERZ.md)**. Implementacja lub widoczna zakładka nie wystarczają do nadania statusu VERIFIED.
 
-## Uruchomienie lokalne (offline, bez kosztów modelu)
+### Trzy profile produktu, jeden Core
 
-Wymagany Node.js `>=20` oraz npm. Dla zgodności z CI zalecana jest wersja Node.js 24.
+```text
+OSA ACADEMY / SCHOOL    →  nauka i kontrolowany zakres funkcji
+OSA BUILDER / DEV       →  podstawowy agentic runtime + control plane
+OSA REGULATED           →  bramki dla środowisk wymagających uprawnień
+                               ↳ WSPÓLNY CORE / KONTRAKTY / PROOF
+```
+
+Regulated pozostaje zamknięte bez odpowiednich uprawnień. Nie ma osobnego frameworka ani „drugiego mózgu”.
+
+---
+
+## 🗺️ Mapa repo
+
+```text
+osa-proof/
+├── api/                     # jedno wejście Vercel API
+├── apps/
+│   ├── api/src/             # HTTP, auth, model bridge, dispatch
+│   ├── worker/              # host izolowanych zadań (gated)
+│   └── web/                 # web + istniejący brand OSA Frameworks
+├── dashboard-src/           # polski control plane, flota, przewodnik, replay
+├── packages/
+│   ├── contracts/           # wspólne kontrakty i typy
+│   ├── team-graph/          # graf i walidacja
+│   ├── runtime/             # misje i egzekucja
+│   ├── brain/               # planowanie i opcjonalny context
+│   ├── adapters/            # modele i integracje
+│   ├── events/              # zdarzenia
+│   ├── evidence/            # dowody
+│   └── proof-core/          # digest + weryfikacja
+├── tests/                   # testy kontraktowe i negatywne
+├── scripts/                 # build i testy przeglądarkowe
+└── docs/                    # kontrakty, release gate, evidence i runbook
+```
+
+Wszystkie widoczne obszary działają na istniejących kontraktach. Nie dokładaj osobnego control plane.
+
+## 🧪 Uruchomienie lokalne
+
+**Node.js 20+**, npm. Tryb offline/fixture; **bez kluczy modeli i bez płatnych wywołań**.
 
 ```bash
 npm ci
@@ -57,37 +123,73 @@ node scripts/build-dashboard.cjs
 OSA_EXECUTION_MODE=fixture OSA_AUTH_MODE=open npm start
 ```
 
-- `fixture` jest świadomie **trybem testowym**, a nie dowodem wykonania przez komercyjny model.
-- `OSA_EXECUTION_MODE` musi być jawnie wskazany (`fixture` lub `provider`).
-- `npm test` obejmuje kontrakty i regresje; nie zastępuje rzeczywistych testów usług zewnętrznych.
-- W trybie lokalnego developmentu otwarty `OSA_AUTH_MODE=open` jest odpowiedni wyłącznie dla zaufanego środowiska.
-- Przykładowy provider w natywnym `provider` executorze jest konfigurowany oddzielnie od czatu NVIDIA przez `OSA_PROVIDER`, `OSA_MODEL` i właściwy sekret dostawcy. Zobacz [INTELLIGENCE_LAYER_V1.md](docs/INTELLIGENCE_LAYER_V1.md).
+`OSA_EXECUTION_MODE=fixture` wykonuje deterministyczne testowe ścieżki — nie jest dowodem pracy modelu ani izolowanego workera. `provider` wymaga osobnej, bezpiecznej konfiguracji. [Instrukcja operatora](./docs/release-v0.1.0/OPERATOR.md) · [Model bridge](./docs/NVIDIA_BRIDGE.md).
 
-## Bezpieczeństwo Preview i Production
+## 🔐 Granica zaufania
 
-**Uwaga: odbiór pod publicznym adresem nie oznacza bezpiecznej produkcji dla prywatnych danych.**
+| Działanie | Zasada |
+| :--- | :--- |
+| **Otwarty panel** (`OSA_AUTH_MODE=open`) | Wyłącznie publiczne dane demonstracyjne; współdzielony stan, **brak izolacji użytkowników** |
+| **Wywołania NVIDIA** | Osobna sesja operatora, serwerowy klucz, dokładny origin i bramka kosztów |
+| **Narzędzia modelu** | Tylko allowlistowany odczytowy SHA-256; brak dowolnego dispatchu |
+| **Trwałość danych** | `PROCESS_MEMORY` i `localStorage` **nie są** trwałym magazynem serverless |
+| **Sekrety i prywatne eksporty** | Nie zapisuj ich do otwartego panelu, README, logów, screenshotów ani repo |
+| **Cloud deploy i mutacje** | Jawna autoryzacja, fail-closed; sam opis możliwości nie oznacza aktywacji |
 
-- `VERCEL=1`, `VERCEL_ENV=preview|production` i `OSA_AUTH_MODE=open` pozwalają korzystać z panelu demo bez logowania. Część API korzysta ze **wspólnego** kontekstu `org_dev_local`; nie ma pełnego IAM/tenant isolation.
-- **Nie umieszczaj** tu prywatnego eksportu ChatGPT, tokenów, danych klientów, osobistych wspomnień NeurOSA ani innych wrażliwych artefaktów.
-- Żądania do modelu NVIDIA w chmurze wymagają oddzielnej sesji operatora, odpowiedniego originu, potwierdzonego darmowego modelu i wspólnego limitu. Sama konfiguracja klucza `NVIDIA_API_KEY` nie oznacza aktywnego modelu.
-- `OSA_ZERO_COST_ONLY=true` to część warunku kosztowego; operator musi potwierdzić dokładny model, darmowy dostęp i ważność polityki. Bez potwierdzenia **nie wykonuj testu providerem**.
-- Dane wielu modułów są w `PROCESS_MEMORY`; `localStorage` zapisuje historię wyłącznie w danej przeglądarce. Nie myl tego z trwałą bazą cloud.
-- Worker, MCP/A2A, live Memory i deployment cloud są nadal częściowo `GATED` lub `PLANNED`. Nie odblokowuj ich wyłącznie flagą.
+**Uwaga:** w publicznym odbiorowym `OPEN_PRODUCTION` część innych tras nadal operuje na wspólnym stanie. Ochrona NVIDIA nie stanowi pełnego zabezpieczenia wszystkich zapisów. Szczegóły: [audyt dodatkowy](./docs/release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md).
 
-Konfiguracja: [OPERATOR.md](docs/release-v0.1.0/OPERATOR.md). Rozdzielenie publicznego demo od uprawnień i szczegóły weryfikacji: [AUDYT](docs/release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md) i [BRAMKI](docs/release-v0.1.0/BRAMKI.md).
+## ✅ Proof zamiast deklaracji
 
-## Modelowe wykonanie i zakres proof
+| Kontrola | Wynik i zakres | Evidence |
+| :--- | :--- | :--- |
+| Testy / build na kandydacie | CI **3/3 SUCCESS** na `4c375e8`; nie są to testy live providera | [CI](https://github.com/HazEOskA/osa-proof/actions/runs/38985293601) · [Browser](https://github.com/HazEOskA/osa-proof/actions/runs/38985293682) · [HTTP/SSE](https://github.com/HazEOskA/osa-proof/actions/runs/38985293598) |
+| Natywny Runtime → receipt → Replay | **PASS** w kontrolowanych testach 320/390/1440 px | [Weryfikacja / execution_id](./docs/release-v0.1.0/WERYFIKACJA.md) |
+| Zmodyfikowany bundle / nieautoryzowane narzędzia | **Odrzucenie sprawdzone w testach** | [Dowody](./docs/evidence/release-v0.1.0) |
+| Rzeczywiste NVIDIA `tool_calls` → Proof | **NOT VERIFIED / BLOCKED** | Brak zatwierdzonej sesji live i nowego cloud `execution_id` |
+| Redis quota na dwóch instancjach | **NOT VERIFIED** | Brak dowodu użycia realnej usługi |
+| Durable cloud state / odczyt po restarcie | **BLOCKED** | `PROCESS_MEMORY` nie spełnia warunku |
+| GitHub Release `v0.1.0` | **NOT RELEASED** | [Bramki](./docs/release-v0.1.0/BRAMKI.md) |
 
-Dla zatwierdzonego scenariusza `NVIDIA → tool_calls → osa_sha256 → Runtime → Evidence → ProofReceipt → Replay` model musi rzeczywiście zwrócić poprawne `tool_calls`; deterministyczny router SHA-256 nie zastępuje tego dowodu. Narzędzie `osa_sha256` jest odczytowe. Brak `provider_response_id`, niezatwierdzone narzędzie lub niespełniona polityka kosztowa kończą się odmową.
+**ProofReceipt potwierdza określoną integralność i przebieg wykonania w zaufanym procesie. Nie jest kryptograficznym certyfikatem NVIDIA ani dowodem prawdziwości całej treści wygenerowanej przez AI.**
 
-`ProofReceipt` potwierdza integralność i zakres wykonania **w zaufanym procesie**. Nie stanowi niezależnej atestacji NVIDIA ani obiektywnego poświadczenia prawdziwości odpowiedzi modelu.
+---
 
-Źródła: [NVIDIA_BRIDGE.md](docs/NVIDIA_BRIDGE.md), [PROOF_PROTOCOL_V2.md](docs/PROOF_PROTOCOL_V2.md), [OSA_UNIFIED_RUNTIME_V1.md](docs/OSA_UNIFIED_RUNTIME_V1.md).
+## 🖥️ OSA w praktyce
 
-## Domknięcie v0.1.0
+<p align="center">
+  <img src="./docs/evidence/release-v0.1.0/guide-telefon-390.png" alt="Zapytaj OSĘ — kontekstowy przewodnik na telefonie (transport modelu w tym teście symulowany)" width="29%" />
+  &nbsp;
+  <img src="./docs/evidence/release-v0.1.0/desktop-replay.png" alt="Replay — przegląd dowodu w desktopowym control plane" width="68%" />
+</p>
 
-Pierwsze wydanie wymaga oddzielnych dowodów dla: bezpieczeństwa publicznego demo, autoryzowanego bezpłatnego modelu, prawdziwego Redis, pełnego modelowego E2E, trwałego odczytu między instancjami i zaakceptowanego wydania.
+<sub>Zrzuty z testów — ich zakres opisano w [WERYFIKACJA.md](./docs/release-v0.1.0/WERYFIKACJA.md). Nie są demonstracją prawdziwego tool-call modelu.</sub>
 
-Po zaliczeniu bramek — i dopiero za zgodą operatora na dokładny commit i środowisko — nastąpi merge PR #16, tag `v0.1.0` i GitHub Release. Kolejne zmiany powinny być inkrementalne (`v0.1.x`), bez przebudowy całego frameworka.
+## 📚 Dokumentacja i następny checkpoint
 
-[Historia zmian](CHANGELOG.md) · [Projekt release notes](docs/release-v0.1.0/RELEASE_NOTES.md) · [Weryfikacja z execution_id](docs/release-v0.1.0/WERYFIKACJA.md)
+**[Indeks wszystkich docs](./docs/README.md)** · [Architektura](./docs/BACKEND_ARCHITECTURE_LOCK_V1.md) · [Runtime](./docs/OSA_UNIFIED_RUNTIME_V1.md) · [Proof V2](./docs/PROOF_PROTOCOL_V2.md) · [Release candidate](./docs/release-v0.1.0/BRAMKI.md) · [Changelog](./CHANGELOG.md)
+
+Aby zamknąć `v0.1.0`: oddzielić publiczne demo od prywatnych danych, potwierdzić bezpłatny model NVIDIA, atomowy limit Redis, pełny prawdziwy przepływ model → Runtime → Proof oraz trwałość serverless. **Nie tworzyć kolejnego repo, osobnego dashboardu ani nowego frameworka.**
+
+## Identyfikacja OSA
+
+<p align="center">
+  <img src="./dashboard-src/public/favicon.svg" alt="Istniejący znak OSA Proof" width="60" />
+</p>
+
+Identyfikacja korzysta z **istniejącego** brandu OSA Frameworks: czerni, złota, błękitnej energii i muskularnej osy. [Manifest tożsamości](./docs/assets/identity.json) dokumentuje rzeczywiste ścieżki. Obecny banner jest `WEBP`; kanoniczny eksport `hero-banner.png` 16:9 i `logo-square.png` 1:1 wg `osa-readme-forge V3` nadal wymaga osobnego, rzeczywistego zapisu PNG i **nie jest oznaczany jako wykonany**. Nie podmieniaj maskotki na obcego generycznego robota.
+
+---
+
+<p align="center">
+<code>OSA / AGENTS RUN. EVENTS STAY. PROOF DECIDES.</code>
+</p>
+
+```text
+  ░█▀█░█▀▀░█▀█░  /  OSA PROOF
+  ░█░█░▀▀█░█▀█░
+  ░▀▀▀░▀▀▀░▀░▀░  CLAIM != PROOF
+
+  NO RECEIPT. NO DONE.
+```
+
+<p align="center"><sub>OSA ecosystem · Bartosz „Osa” Osiński · <a href="https://github.com/HazEOskA/osa-proof">HazEOskA/osa-proof</a></sub></p>
