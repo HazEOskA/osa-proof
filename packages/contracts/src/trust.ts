@@ -1,3 +1,29 @@
+export interface AiProfileLinkV01 {
+  rel: string;
+  href: string;
+  type?: string;
+  protocol?: string;
+  version?: string;
+  title?: string;
+}
+
+export interface AiProfileReferenceV01 {
+  id: string;
+  href: string;
+}
+
+export interface AiProfileV01 {
+  spec: "ai-profile/0.1";
+  id: string;
+  type: "person" | "organization" | "agent" | "project" | "service" | "other";
+  name: string;
+  canonical: string;
+  description?: string;
+  links: AiProfileLinkV01[];
+  profiles?: AiProfileReferenceV01[];
+  updated_at?: string;
+}
+
 export type AgentTrustStatus = "ACTIVE" | "REVOKED";
 
 export interface TrustSignature {
