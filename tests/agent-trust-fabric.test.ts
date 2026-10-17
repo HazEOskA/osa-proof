@@ -23,6 +23,7 @@ import {
   verifyMerkleProofV1,
 } from "../packages/proof-core/src";
 import { verifyProofAnchorBinding } from "../packages/web3/src";
+import { buildAiProfile } from "../apps/api/src/trust";
 
 const START = "2026-10-17T03:00:00.000Z";
 const END = "2026-10-17T04:00:00.000Z";
@@ -159,6 +160,49 @@ test("@ai resolver validates root and subprofile identity", async () => {
     () => resolveAiId("@ai:example.com/missing", fetcher),
     /AI_SUBPROFILE_NOT_FOUND/
   );
+});
+
+test("@ai resolver blocks cross-authority subprofiles", async () => {
+  const fetcher = async (url: string) => ({
+    ok: true,
+    status: 200,
+    json: async () =>
+      url.endsWith("/.well-known/ai-profile.json")
+        ? {
+            spec: "ai-profile/0.1",
+            id: "@ai:example.com",
+            type: "organization",
+            name: "Example",
+            canonical: "https://example.com",
+            links: [],
+            profiles: [{ id: "@ai:example.com/agent", href: "https://evil.example/agent.json" }],
+          }
+        : {},
+  });
+
+  await assert.rejects(
+    () => resolveAiId("@ai:example.com/agent", fetcher),
+    /AI_PROFILE_SECURITY_BLOCKED/
+  );
+});
+
+test("AI profile publication is fail-closed and HTTPS-only", () => {
+  assert.equal(buildAiProfile({}), null);
+  assert.throws(
+    () =>
+      buildAiProfile({
+        OSA_AI_AUTHORITY: "osatechgpt.dev",
+        OSA_AI_CANONICAL_URL: "http://osatechgpt.dev",
+      }),
+    /HTTPS/
+  );
+  const profile = buildAiProfile({
+    OSA_AI_AUTHORITY: "OSAtechGPT.DEV",
+    OSA_AI_CANONICAL_URL: "https://osatechgpt.dev",
+    OSA_AI_NAME: "OsaTechGPT",
+  });
+  assert.equal(profile?.id, "@ai:osatechgpt.dev");
+  assert.equal(profile?.name, "OsaTechGPT");
 });
 
 test("delegation and runtime attestation are cryptographically verifiable", () => {
