@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { chromium } from "playwright";
+import { createRequire } from "node:module";
+const { chromium } = createRequire(import.meta.url)("playwright");
 
 const base = process.env.OSA_UI_TEST_BASE || "http://127.0.0.1:3100";
 const out = "artifacts/osa-native-chat";
 fs.mkdirSync(out,{recursive:true});
-const browser = await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
+const browser = await chromium.launch({headless:true,...(process.env.OSA_CHROMIUM_EXECUTABLE?{executablePath:process.env.OSA_CHROMIUM_EXECUTABLE}:{}),args:["--no-sandbox","--disable-dev-shm-usage"]});
 try {
   for (const [name,width,height] of [["android-320",320,640],["android-390",390,844],["desktop",1440,900]]) {
     const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce"});
@@ -13,6 +14,10 @@ try {
     page.on("pageerror",error=>pageErrors.push(error.message));
     page.on("request",request=>{if(/\/api\/(nvidia\/chat|unified\/execute|chat\/complete)/.test(request.url()))network.push(request.url());});
     await page.route("**/api/build/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({mode:"fixture",auth_mode:"open",persistence:"PROCESS_MEMORY"})}));
+    // Explicit public/development state; a failed auth check must never restore a private cache.
+    await page.route("**/api/auth/github/status",route=>route.fulfill({json:{enabled:false,signed_in:false}}));
+    await page.route("**/api/memory/status",route=>route.fulfill({json:{state:"UNCONFIGURED",persistence_verified:false}}));
+    await page.route("**/api/nvidia/status",route=>route.fulfill({json:{provider:"NVIDIA",configured:false,model:"test-model"}}));
     const opened=await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     assert.equal(opened?.status(),200,"Dashboard HTTP 200");
     const home=page.locator('section[aria-label="Uruchamianie"]');
@@ -21,6 +26,8 @@ try {
     assert.equal(await home.getByRole("button",{name:"Czat floty agentów",exact:true}).count(),1,"Chat Fleet is an optional Home module");
     await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     const shell=page.getByTestId("osa-native-chat");await shell.waitFor({state:"visible",timeout:15000});
+    await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).waitFor();
+    await page.getByText("TRYB TESTOWY · MODEL NIEDOSTĘPNY",{exact:true}).waitFor();
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
     assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
     assert.equal(await page.getByRole("heading",{name:"Czat floty agentów"}).count(),1,"One chat-module header");
@@ -63,6 +70,7 @@ try {
     await home.waitFor({state:"visible"});
     await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     await shell.waitFor({state:"visible"});
+    await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).waitFor();
     assert.match(await page.getByTestId("osa-message").innerText(),/sesji A/);
     assert.equal(await page.getByTestId("osa-session").count(),2,"Session persists after refresh");
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
