@@ -44,6 +44,7 @@ export async function runGenesisAnchor(inputPath: string, outputPath: string) {
   const execution = await anchorGenesisProofOnSolanaDevnet(anchorInput, {
     confirm: process.env.OSA_GENESIS_ANCHOR_CONFIRM ?? "",
     airdrop_lamports: requestedAirdrop,
+    on_event: (event) => process.stderr.write(JSON.stringify(event) + "\n"),
   });
   const body = {
     schema: "osa.genesis_anchor.v1" as const,
