@@ -111,7 +111,11 @@ function extractMemoFromTransaction(raw: unknown, memoProgramAddress: string): s
 
 export async function anchorGenesisProofOnSolanaDevnet(
   input: GenesisAnchorInput,
-  options: { confirm: string; airdrop_lamports?: bigint },
+  options: {
+    confirm: string;
+    airdrop_lamports?: bigint;
+    on_event?: (event: Record<string, string>) => void;
+  },
 ): Promise<GenesisAnchorExecution> {
   validateGenesisAnchorInput(input);
   if (options.confirm !== GENESIS_ANCHOR_CONFIRM) throw new Error("GENESIS_ANCHOR_CONFIRMATION_REQUIRED");
@@ -127,6 +131,11 @@ export async function anchorGenesisProofOnSolanaDevnet(
   const airdropTransactionRef = String(
     await client.rpc.requestAirdrop(payer.address, kit.lamports(airdropLamports), { commitment: "confirmed" }).send(),
   );
+  options.on_event?.({
+    event: "GENESIS_ANCHOR_AIRDROP_SUBMITTED",
+    payer_address: String(payer.address),
+    transaction_ref: airdropTransactionRef,
+  });
   await waitForFundedBalance(client.rpc, String(payer.address), airdropLamports);
 
   const memo = buildGenesisAnchorMemo(input);
@@ -142,6 +151,11 @@ export async function anchorGenesisProofOnSolanaDevnet(
   const transactionRef = String(kit.getSignatureFromTransaction(signedTransaction));
   const sendWithoutConfirming = kit.sendTransactionWithoutConfirmingFactory({ rpc: client.rpc });
   await sendWithoutConfirming(signedTransaction, { commitment: "confirmed" });
+  options.on_event?.({
+    event: "GENESIS_ANCHOR_MEMO_SUBMITTED",
+    payer_address: String(payer.address),
+    transaction_ref: transactionRef,
+  });
   const transaction = await waitForFinalizedTransaction(client.rpc, transactionRef);
   const slot = Number(transaction.slot);
   if (!Number.isSafeInteger(slot) || slot < 0) throw new Error("GENESIS_ANCHOR_SLOT_INVALID");
