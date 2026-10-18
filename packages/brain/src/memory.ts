@@ -11,10 +11,18 @@ export function sealMemoryEvent(body: Omit<MemoryEvent, "schema" | "event_sha256
 export function verifyMemoryEvent(event: MemoryEvent): void {
   if (!event || event.schema !== "osa.memory_event.v1" || !event.scope ||
       ![event.scope.organization_id, event.scope.project_id, event.scope.mission_id].every(v => typeof v === "string" && v.length > 0 && v.length <= 200) ||
-      !["AUTHENTICATED_USER_STATEMENT", "VERIFIED_RUNTIME", "CHAT_PROVENANCE"].includes(event.kind) ||
+      !["AUTHENTICATED_USER_STATEMENT", "VERIFIED_RUNTIME", "CHAT_PROVENANCE", "DIAGNOSTIC_TEST"].includes(event.kind) ||
       typeof event.verification_scope !== "string" || !event.verification_scope ||
       !event.data || typeof event.data !== "object" || Array.isArray(event.data) ||
       event.event_sha256 !== digestWithout(event, "event_sha256")) throw new BrainPlanningError("MEMORY_EVENT_REJECTED");
+  if (event.kind === "DIAGNOSTIC_TEST") {
+    const nonce = event.data.nonce;
+    if (event.data.run_kind !== "NEUROSA_LIVE_E2E_V1" ||
+        typeof nonce !== "string" || !/^[0-9a-f]{32}$/.test(nonce) ||
+        event.data.statement !== `NEUROSA_DIAGNOSTIC_${nonce}` ||
+        Object.keys(event.data).sort().join(",") !== "nonce,run_kind,statement")
+      throw new BrainPlanningError("MEMORY_EVENT_REJECTED");
+  }
   if (event.kind === "CHAT_PROVENANCE") {
     const memory = event.data.memory as BrainMemoryContext;
     const response = event.data.response as { text?: unknown; request_sha256?: unknown } | undefined;

@@ -44,7 +44,7 @@ export interface BrainMemory {
 export interface MemoryEvent {
   schema: "osa.memory_event.v1";
   scope: BrainScope;
-  kind: "AUTHENTICATED_USER_STATEMENT" | "VERIFIED_RUNTIME" | "CHAT_PROVENANCE";
+  kind: "AUTHENTICATED_USER_STATEMENT" | "VERIFIED_RUNTIME" | "CHAT_PROVENANCE" | "DIAGNOSTIC_TEST";
   // Integrity/provenance verification does not establish semantic truth.
   verification_scope: string;
   data: Record<string, unknown>;

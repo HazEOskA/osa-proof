@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { BrainMemory, BrainMemoryContext, BrainScope, MemoryWriteReceipt, SessionRecord, WritableBrainMemory } from "../../../packages/contracts/src";
 import { sealMemoryEvent, verifyMemoryContext } from "../../../packages/brain/src/memory";
 import { canonicalJson, digest } from "../../../packages/proof-core/src/canonical";
@@ -77,6 +78,52 @@ export class MemoryService {
     return writable(this.adapter!).observe(sealMemoryEvent({ scope, kind: "VERIFIED_RUNTIME",
       verification_scope: "Integralność dowodu wykonania narzędzia OSA.", data: { execution_id: execution.run.execution_id,
         tool: execution.tool, proof_receipt_sha256: execution.run.proof.receipt_sha256 } }));
+  }
+  /**
+   * Explicit, operator-initiated Preview probe. Never invokes a model, performs a deploy
+   * or claims restart durability/external attestation. Exactly one synthetic event is
+   * written; its identical retry must be deduplicated by NeurOSA.
+   */
+  async diagnostic(session: SessionRecord) {
+    if (!this.adapter) throw new MemoryAccessError(503, "MEMORY_UNCONFIGURED", "Brak pamięci NeurOSA.");
+    const nonce = randomBytes(16).toString("hex");
+    const scope = this.scope(session, `diagnostic_${nonce}`);
+    const statement = `NEUROSA_DIAGNOSTIC_${nonce}`;
+    const store = writable(this.adapter);
+    const event = sealMemoryEvent({
+      scope, kind: "DIAGNOSTIC_TEST",
+      verification_scope: "Wyłącznie syntetyczny test I/O. Bez poświadczenia prawdziwości, trwałości po restarcie ani kotwiczenia.",
+      data: { run_kind: "NEUROSA_LIVE_E2E_V1", nonce, statement },
+    });
+    await store.probe(scope);
+    const receipt = await store.observe(event);
+    const retried = await store.observe(event);
+    if (receipt.receipt_sha256 !== retried.receipt_sha256 ||
+        receipt.document_id !== retried.document_id || receipt.event_sha256 !== event.event_sha256)
+      throw new MemoryAccessError(502, "MEMORY_DIAGNOSTIC_REJECTED", "Idempotencja zapisu nie została potwierdzona.");
+    const recovered = await store.readEvent(scope, receipt.document_id);
+    if (recovered.receipt.receipt_sha256 !== receipt.receipt_sha256 ||
+        recovered.event.event_sha256 !== event.event_sha256 ||
+        recovered.event.data.statement !== statement)
+      throw new MemoryAccessError(502, "MEMORY_DIAGNOSTIC_REJECTED", "Odczyt kontrolny jest niespójny.");
+    // Different session key, no chat history. Cross-session recall must find the saved statement.
+    const recallScope = { ...scope, mission_id: `diagnostic_recall_${nonce}` };
+    const context = await this.adapter.recall(recallScope, statement, 12000);
+    verifyMemoryContext(context);
+    const foundRef = context.references.some(ref => Boolean(ref && typeof ref === "object" &&
+      "documentId" in ref && ref.documentId === receipt.document_id));
+    if (digest(context.scope) !== digest(recallScope) || context.brain_id !== receipt.brain_id ||
+        !context.text.includes(nonce) || !foundRef)
+      throw new MemoryAccessError(502, "MEMORY_DIAGNOSTIC_REJECTED", "Recall nie potwierdził źródłowego dokumentu.");
+    return {
+      status: "VERIFIED" as const, assurance: "LIVE_MEMORY_IO_INTEGRITY" as const,
+      checks: ["SCOPED_PROBE", "SEALED_WRITE", "IDEMPOTENT_RETRY", "DOCUMENT_READBACK", "CROSS_SESSION_RECALL", "SOURCE_REFERENCE"],
+      brain_id: receipt.brain_id, document_id: receipt.document_id,
+      event_sha256: event.event_sha256, receipt_sha256: receipt.receipt_sha256,
+      context_sha256: context.context_sha256, ledger_head: context.ledger_head,
+      persistence_verified: false, external_attestation_verified: false,
+      checked_at: new Date().toISOString(),
+    };
   }
   async read(session: SessionRecord, documentId: string) {
     const scope = this.scope(session, "memory-receipt-read");

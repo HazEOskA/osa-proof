@@ -87,6 +87,12 @@ Potrzebne są: konfiguracja aplikacji GitHub OAuth i dozwolonych kont, stały or
 
 Po zatwierdzeniu operacji zdalnych wymagane są: health/status, zapis i recall, restart zatwierdzonego kontenera, nowa rozmowa bez starej historii, odświeżenie przeglądarki, weryfikacja źródeł/ledgeru/receipt oraz odmowa bez autoryzacji. Import, rzeczywiste liczby dokumentów, konfiguracja Vercel i deployment nie zostały wykonane w ramach implementacji lokalnej.
 
+## Diagnostyka Memory LIVE — Preview (bez płatnego modelu)
+
+Nowy endpoint `POST /memory/diagnostic` dostępny jest **wyłącznie** w trybie `PreviewOperator`, po kontroli Vercel Deployment Protection i same-origin. Pojedyncze jawne uruchomienie z widoku Pamięć zapisuje **jedno syntetyczne zdarzenie** `DIAGNOSTIC_TEST` do istniejącego dedykowanego brain, ponawia identyczny zapis w celu potwierdzenia idempotencji, odczytuje dokument i wykonuje recall z nowej sesji. Wymaga poprawnej referencji do dokładnie tego samego dokumentu i digestów receipt, w przeciwnym razie zwraca błąd (fail closed). Nie wykonuje wywołania modelu, nie ingeruje w Production i nie restartuje infrastruktury.
+
+`status=VERIFIED, assurance=LIVE_MEMORY_IO_INTEGRITY` oznacza **tylko** rzeczywisty cykl HTTP→NeurOSA (pod warunkiem, że deployment wskazuje kanoniczne upstream i chroni Preview). Nie oznacza końcowego E2E 8/8, poprawności odpowiedzi modelu, trwałości po restarcie, poświadczenia niezależnego ani blockchain anchor. Wydrukowane identyfikatory i digests służą jako wejście do późniejszej zewnętrznej kontroli; należy porównać je z aktywnym upstream.
+
 ## Single-operator v0.1 — tylko chroniony Preview PR #17
 
 Na gałęzi `codex/neurosa-chat-memory` można włączyć `OSA_PREVIEW_SINGLE_OPERATOR=enabled` jako **Vercel Preview env przypięte wyłącznie do tej gałęzi**. Kod wymaga `VERCEL=1`, `VERCEL_ENV=preview`, dokładnego ref gałęzi, właściciela `HazEOskA` i repo `osa-proof`. Przy innej konfiguracji odmawia uruchomienia. Production nie obsługuje trybu operatora.

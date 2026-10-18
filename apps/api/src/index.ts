@@ -212,6 +212,13 @@ export async function handleApiRequest(
       if (parts[0] === "memory") {
         const session = requireSession(request, response, state);
         if (!session) return;
+        if (method === "POST" && parts[1] === "diagnostic" && parts.length === 2) {
+          // The operator has already passed protected Preview entry and same-origin gate.
+          // Never enable this write-test on Production, Github OAuth or anonymous mode.
+          if (!state.previewOperator) return send(response, 404, { code: "MEMORY_DIAGNOSTIC_PREVIEW_ONLY" });
+          try { return send(response, 200, await state.memory.diagnostic(session)); }
+          catch { return send(response, 502, { code: "MEMORY_DIAGNOSTIC_FAILED", error: "Nie udało się udowodnić pełnego cyklu zapisu i recall." }); }
+        }
         if (method === "GET" && parts[1] === "receipts" && parts.length === 3) {
           if (!state.memory.adapter) return send(response, 503, { error: "Pamięć NeurOSA nie jest skonfigurowana." });
           try { return send(response, 200, await state.memory.read(session, parts[2])); }
