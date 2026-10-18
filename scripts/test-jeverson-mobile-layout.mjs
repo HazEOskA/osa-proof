@@ -25,7 +25,7 @@ try {
     assert.equal(await home.getByRole("button",{name:"Czat floty agentów",exact:true}).count(),1,"Chat Fleet is an optional Home module");
     await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     const shell=page.getByTestId("osa-native-chat");await shell.waitFor({state:"visible",timeout:15000});
-    await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).waitFor();
+    assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
     await page.getByText("TRYB TESTOWY · MODEL NIEDOSTĘPNY",{exact:true}).waitFor();
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
     assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
@@ -69,7 +69,7 @@ try {
     await home.waitFor({state:"visible"});
     await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     await shell.waitFor({state:"visible"});
-    await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).waitFor();
+    assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
     assert.match(await page.getByTestId("osa-message").innerText(),/sesji A/);
     assert.equal(await page.getByTestId("osa-session").count(),2,"Session persists after refresh");
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
