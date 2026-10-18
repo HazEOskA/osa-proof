@@ -169,6 +169,16 @@ export class NeurosaMemoryAdapter implements WritableBrainMemory {
       // The exception object may include full upstream URLs, so never log or return it.
       if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
         throw new BrainPlanningError("NEUROSA_TIMEOUT");
+      // Classify allowlisted Node.js transport error codes only. Never expose URL,
+      // internal IP, DNS hostname, upstream message, TLS certificate, or token.
+      const cause: unknown = error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
+      const code = cause && typeof cause === "object" && "code" in cause ? (cause as {code:unknown}).code : undefined;
+      if (code === "ENOTFOUND" || code === "EAI_AGAIN") throw new BrainPlanningError("NEUROSA_DNS_FAILED");
+      if (code === "ECONNREFUSED" || code === "ECONNRESET") throw new BrainPlanningError("NEUROSA_CONNECTION_REJECTED");
+      if (code === "ETIMEDOUT" || code === "UND_ERR_CONNECT_TIMEOUT") throw new BrainPlanningError("NEUROSA_TIMEOUT");
+      if (typeof code === "string" && ["CERT_HAS_EXPIRED", "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+          "DEPTH_ZERO_SELF_SIGNED_CERT", "ERR_TLS_CERT_ALTNAME_INVALID"].includes(code))
+        throw new BrainPlanningError("NEUROSA_TLS_REJECTED");
       throw new BrainPlanningError("NEUROSA_UNAVAILABLE");
     }
   }

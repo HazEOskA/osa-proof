@@ -53,6 +53,26 @@ test("NeurOSA preview probe fail-closes transport errors and still requires iden
   assert.ok(!("diagnostic_code" in anonymous));
 });
 
+test("NeurOSA preview probe safely classifies transport causes without leaking host or token", async () => {
+  const cases = [
+    ["ENOTFOUND", "NEUROSA_DNS_FAILED"], ["EAI_AGAIN", "NEUROSA_DNS_FAILED"],
+    ["ECONNREFUSED", "NEUROSA_CONNECTION_REJECTED"], ["ECONNRESET", "NEUROSA_CONNECTION_REJECTED"],
+    ["ETIMEDOUT", "NEUROSA_TIMEOUT"], ["UND_ERR_CONNECT_TIMEOUT", "NEUROSA_TIMEOUT"],
+    ["CERT_HAS_EXPIRED", "NEUROSA_TLS_REJECTED"],
+    ["ERR_TLS_CERT_ALTNAME_INVALID", "NEUROSA_TLS_REJECTED"]
+  ] as const;
+  for (const [code, expected] of cases) {
+    const adapter = new NeurosaMemoryAdapter({ ...options,
+      fetch: async () => { throw Object.assign(new TypeError("fetch failed"), {
+        cause: Object.assign(new Error("private hostname: https://private.example"), { code })
+      }); }
+    });
+    const result = await new MemoryService(adapter).status(session());
+    assert.equal(result.diagnostic_code, expected);
+    assert.doesNotMatch(JSON.stringify(result), /private.example|test-token/i);
+  }
+});
+
 test("NeurOSA preview probe returns available only after matching valid ledger", async () => {
   const adapter = new NeurosaMemoryAdapter({ ...options,
     fetch: async () => Response.json({ brainId: "OsaBrain", ledgerValid: true }) });

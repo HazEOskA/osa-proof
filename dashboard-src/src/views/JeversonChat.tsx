@@ -30,7 +30,7 @@ const AGENTS: Array<{id:AgentId;name:string;purpose:string;state:string;icon:str
 ];
 const id = () => crypto.randomUUID();
 const stamp = () => new Date().toISOString();
-const empty = ():Session => ({id:id(),title:"Nowa rozmowa",agent:"leader",model:"auto",updated:stamp(),messages:[]});
+const empty = (selected:AgentId="leader"):Session => ({id:id(),title:"Nowa rozmowa",agent:selected,model:"auto",updated:stamp(),messages:[]});
 function restore():Session[] {
   try {
     const value:unknown = JSON.parse(localStorage.getItem(KEY)||"null");
@@ -97,7 +97,7 @@ export default function JeversonChat() {
   },[]);
   function cancel(){seq.current++;controller.current?.abort();controller.current=null;setBusy(false);}
   function openSession(sessionId:string){cancel();setActiveId(sessionId);setMobileHistory(false);setAgentOpen(false);setInspector(false);setError("");}
-  function createChat(){const next=empty();setSessions(old=>[next,...old].slice(0,50));openSession(next.id);setDraft("");}
+  function createChat(){const next=empty(current.agent);setSessions(old=>[next,...old].slice(0,50));openSession(next.id);setDraft("");}
   function update(sessionId:string,fn:(s:Session)=>Session){setSessions(old=>old.map(s=>s.id===sessionId?fn(s):s));}
   function addMessage(sessionId:string,role:Msg["role"],text:string,msgStatus:Msg["status"],extra:Partial<Msg>={}) {
     const msg:Msg={id:id(),role,text,at:stamp(),status:msgStatus,...extra};
@@ -183,7 +183,7 @@ export default function JeversonChat() {
       <div className="flex min-h-[30px] shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#0b111c] px-3 text-[10px] sm:px-5"><button type="button" aria-label="Powrót do frameworka OSA Proof" onClick={()=>go("home")} className="focus-ring rounded px-2 py-1 font-semibold text-cyan hover:bg-white/5">← OSA Proof / Framework</button><span className="truncate text-dim">BUDOWANIE / CZAT FLOTY AGENTÓW</span></div>
       <header className="flex min-h-[60px] shrink-0 items-center gap-2 border-b border-white/10 bg-[#0b111c] px-3 sm:px-5">
         <button onClick={()=>setMobileHistory(true)} aria-label="Otwórz historię" className="p-2 md:hidden">☰</button>
-        <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-semibold">Czat floty agentów</h1><div className="truncate text-[10px] text-dim">Agenci · Silnik wykonawczy · APR · Dowody</div></div>
+        <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-semibold">Czat floty agentów</h1><div className="truncate text-[10px] text-dim">Jeverson · Agenci · Runtime · APR · Dowody</div></div>
         <button aria-label="Wybierz agenta" aria-expanded={agentOpen} onClick={()=>setAgentOpen(!agentOpen)} className="focus-ring max-w-[125px] truncate rounded-lg border border-line bg-panel px-2 py-2 text-xs sm:max-w-[195px]">{agent.icon} {agent.name} ▾</button>
         <button onClick={()=>setInspector(!inspector)} aria-expanded={inspector} className="focus-ring rounded-lg border border-line px-2 py-2 text-xs">{inspector?"Zamknij":"Inspektor"}</button>
       </header>
@@ -192,7 +192,7 @@ export default function JeversonChat() {
         {AGENTS.map(a=><button key={a.id} onClick={()=>selectAgent(a.id)} aria-pressed={a.id===current.agent} className={(a.id===current.agent?"bg-cyan/10":"hover:bg-white/5")+" mb-1 w-full rounded-lg p-3 text-left"}><span className="flex items-center justify-between text-xs"><strong>{a.icon} {a.name}</strong><span className="text-[9px] text-dim">{a.state}</span></span><span className="mt-1 block text-[11px] text-dim">{a.purpose}</span></button>)}
         <p className="mt-2 text-[10px] text-warn">Widoczność agenta nie oznacza uruchomionego runtime. Mutacje wymagają Approval Gate.</p>
       </div>}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-3 py-2"><span className="flex min-w-0 items-center gap-2 text-[11px] text-dim"><button type="button" onClick={()=>selectAgent("hermes")} aria-label="Wybierz Hermesa" title="Hermes · wybierz agenta" className="osa-hermes-orb inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-cyan/40 bg-cyan/10 text-cyan">✦</button><span className="truncate">Hermes · propozycje zatwierdzane przez operatora</span></span><span className="shrink-0 rounded-full border border-warn/40 px-2 py-1 text-[9px] text-warn">{modelReplied?"NVIDIA · ODPOWIADA":!modelStatus?"MODEL · STAN NIEZNANY":modelStatus.configured?"NVIDIA · KLUCZ GOTOWY":status?.mode==="fixture"?"TRYB TESTOWY · MODEL NIEDOSTĘPNY":"MODEL NIEDOSTĘPNY"}</span></div>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-3 py-2"><button type="button" data-testid="osa-hermes-switch" onClick={()=>selectAgent("hermes")} aria-label="Wybierz Hermesa" title="Hermes · wybierz agenta" aria-pressed={current.agent==="hermes"} className={"osa-hermes-orb inline-flex min-w-0 items-center gap-2 rounded-xl border px-2 py-1 text-xs "+(current.agent==="hermes"?"border-cyan bg-cyan/15 text-cyan":"border-cyan/40 bg-cyan/5 text-fg")}><span aria-hidden className="osa-hermes-hero inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan/40 text-xl text-cyan">✦</span><span className="font-semibold">Hermes</span><span className="hidden text-[10px] text-dim sm:inline">{current.agent==="hermes"?"Aktywny · tylko propozycje":"Wybierz agenta"}</span></button><span className="shrink-0 rounded-full border border-warn/40 px-2 py-1 text-[9px] text-warn">{modelReplied?"NVIDIA · ODPOWIADA":!modelStatus?"MODEL · STAN NIEZNANY":modelStatus.configured?"NVIDIA · KLUCZ GOTOWY":status?.mode==="fixture"?"TRYB TESTOWY · MODEL NIEDOSTĘPNY":"MODEL NIEDOSTĘPNY"}</span></div>
       {inspector?
         <div data-testid="osa-inspector" aria-label="Inspektor wykonania" className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"><div className="mx-auto max-w-3xl"><h2 className="text-lg font-semibold">Śledzenie / Materiał dowodowy / Weryfikacja / Odtwarzanie</h2><p className="mt-2 text-xs text-dim">Tylko rzeczywiste wykonania; żadnych fikcyjnych dowodów.</p>
           <div className="mt-4 rounded-xl border border-line bg-panel p-4 text-xs">Tryb: {status?.mode||"NIEZNANY"}<div className="mt-2">Zapisywanie: {status?.persistence||"NIEZNANE"}</div><div className="mt-2 break-all font-mono">Wykonanie: {activeRun?.execution_id||"BRAK ZWERYFIKOWANEGO WYKONANIA"}</div><div className="mt-2">Weryfikacja: {activeRun?statusText(activeRun.verdict):"NIEZWERYFIKOWANO"} · Materiały: {activeRun?.evidence.length||0} · Zdarzenia: {activeRun?.events.length||0}</div></div>

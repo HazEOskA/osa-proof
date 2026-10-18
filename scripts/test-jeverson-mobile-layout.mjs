@@ -30,6 +30,7 @@ try {
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
     assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
     assert.equal(await page.getByRole("heading",{name:"Czat floty agentów"}).count(),1,"One chat-module header");
+    assert.equal(await page.getByTestId("osa-hermes-switch").count(),1,"Persistent Hermes switch is present");
     assert.equal(await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).count(),1,"Framework return always accessible");
     assert.equal(await page.getByRole("button",{name:"Powrót do OSA Proof"}).count(),1,"Workspace exit remains reachable");
     assert.equal(await page.getByTestId("osa-session").count(),1,"Exactly one initial session");
@@ -94,6 +95,20 @@ try {
     await page.getByTestId("osa-send").click();
     await page.getByText("Witaj, jestem asystentem OSA.").waitFor({state:"visible"});
     assert.equal(providerRequests,1,"AI transport contract called exactly once");
+    // Hermes must not disappear when a conversation has messages or when starting
+    // a fresh chat; its agent selection must survive browser refresh.
+    await page.getByTestId("osa-hermes-switch").click();
+    assert.equal(await page.getByTestId("osa-hermes-switch").getAttribute("aria-pressed"),"true");
+    assert.match(await page.getByRole("button",{name:"Wybierz agenta"}).innerText(),/Hermes/);
+    if(width<768)await page.getByRole("button",{name:"Otwórz historię"}).click();
+    await page.getByTestId("osa-new-chat").click();
+    assert.match(await page.getByRole("button",{name:"Wybierz agenta"}).innerText(),/Hermes/);
+    assert.equal(await page.getByTestId("osa-hermes-switch").count(),1);
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+    await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
+    await page.getByRole("button",{name:"Wybierz agenta"}).filter({hasText:"Hermes"}).waitFor();
+    assert.equal(await page.getByTestId("osa-hermes-switch").getAttribute("aria-pressed"),"true");
     assert.match(await page.getByTestId("osa-message").last().innerText(),/ODPOWIEDŹ MODELU AI/);
     console.log(JSON.stringify({name,ai_transport_contract:"PASS",real_provider:"NOT_TESTED",intercepted_responses:providerRequests}));
 

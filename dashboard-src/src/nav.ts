@@ -24,7 +24,7 @@ export const NAV: NavGroup[] = [
     pick("Replay", "replay", true, I.play), pick("Weryfikacja", "proofs", true, I.security), pick("Historia audytu", "ops:audit", true, I.logs) ] },
   { title: "INTELIGENCJA", items: [
     pick("Modele", "intel:models", true, I.minions), pick("Sieć modeli", "intel:model-mesh", true, I.minionBot), pick("Bramka LLM", "intel:llm-gateway", true, I.workerBot),
-    pick("Pamięć", "intel:memory", false, I.storage), pick("Wiedza", "ops:knowledge", true, I.cube), pick("Centrum kontekstu", "intel:context-hub", false, I.knowledge),
+    pick("Pamięć", "intel:memory", true, I.storage), pick("Wiedza", "ops:knowledge", true, I.cube), pick("Centrum kontekstu", "intel:context-hub", false, I.knowledge),
     pick("Zbiory danych", "intel:datasets", true, I.logs), pick("Eksperymenty", "ops:experiments", true, I.playground), pick("Ewaluatory", "intel:evaluators", true, I.target) ] },
   { title: "WEB3", items: [
     pick("Przegląd Web3", "web3:overview", true, I.planet), pick("Sieci blockchain", "web3:chains", true, I.world),
