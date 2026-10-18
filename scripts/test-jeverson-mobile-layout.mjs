@@ -95,6 +95,7 @@ try {
     await page.getByTestId("osa-send").click();
     await page.getByText("Witaj, jestem asystentem OSA.").waitFor({state:"visible"});
     assert.equal(providerRequests,1,"AI transport contract called exactly once");
+    assert.match(await page.getByTestId("osa-message").last().innerText(),/ODPOWIEDŹ MODELU AI/);
     // Hermes must not disappear when a conversation has messages or when starting
     // a fresh chat; its agent selection must survive browser refresh.
     await page.getByTestId("osa-hermes-switch").click();
@@ -109,7 +110,6 @@ try {
     await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
     await page.getByRole("button",{name:"Wybierz agenta"}).filter({hasText:"Hermes"}).waitFor();
     assert.equal(await page.getByTestId("osa-hermes-switch").getAttribute("aria-pressed"),"true");
-    assert.match(await page.getByTestId("osa-message").last().innerText(),/ODPOWIEDŹ MODELU AI/);
     console.log(JSON.stringify({name,ai_transport_contract:"PASS",real_provider:"NOT_TESTED",intercepted_responses:providerRequests}));
 
     console.log(JSON.stringify({name,result:"PASS",sessions:2,agent_selector:true,model_selector:true,blocked_model_requests:network.length,verified_proof:"NOT_TESTED",overflow,page_errors:pageErrors.length}));
