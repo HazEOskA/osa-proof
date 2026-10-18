@@ -122,11 +122,13 @@ function bearerToken(request: IncomingMessage): string | undefined {
 }
 
 function authenticatedSession(request: IncomingMessage, state: ApiState): SessionRecord | undefined {
+  // Vercel Deployment Protection is the entry gate for this isolated Preview.
+  // App-level bearer tokens (including stale ones) must never override its
+  // fixed, server-bound operator identity or NeurOSA organization/project scope.
+  if (state.previewOperator) return structuredClone(state.previewOperator.session);
   const token = bearerToken(request);
   const session = token ? state.sessions.get(token) : undefined;
-  if (session) return session;
-  if (!request.headers.authorization && state.previewOperator) return structuredClone(state.previewOperator.session);
-  return state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined;
+  return session ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
 }
 
 function requireSession(
