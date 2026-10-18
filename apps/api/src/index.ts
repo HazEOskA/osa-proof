@@ -179,6 +179,9 @@ export async function handleApiRequest(
       if (state.previewOperator && !state.previewOperator.sameOriginMutation(request))
         return send(response, 403, { code: "PREVIEW_ORIGIN_REJECTED", error: "Operacja wymaga tego samego chronionego originu Preview." });
       
+      // Anonymous Preview exposes no application login endpoints.
+      if (state.authMode === "open" && parts[0] === "auth")
+        return send(response, 404, { code: "LOGIN_DISABLED" });
       if (method === "GET" && url.pathname === "/memory/status")
         return send(response, 200, await state.memory.status(authenticatedSession(request, state)));
       // Configuring private memory closes all data routes, including mission plans,

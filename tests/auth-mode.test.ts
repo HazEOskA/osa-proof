@@ -46,6 +46,9 @@ test("open mode: no login needed, identity is the explicit OPEN MODE identity, s
   await withServer("open", async (base) => {
     assert.equal((await fetch(`${base}/teams`, { method: "POST", headers: json, body: JSON.stringify(graph) })).status, 201);
     assert.equal((await fetch(`${base}/layers/dev/enter`, { method: "POST" })).status, 200);
+    assert.equal((await fetch(`${base}/auth/providers`)).status, 404);
+    assert.equal((await fetch(`${base}/auth/dev-login`, { method: "POST", body: "{}" })).status, 404);
+    assert.equal((await fetch(`${base}/auth/github/status`)).status, 404);
     const session = (await (await fetch(`${base}/session`)).json()) as { identity: { identity_id: string; display_name: string } };
     assert.equal(session.identity.identity_id, "idn_open_mode");
     assert.match(session.identity.display_name, /OPEN MODE/);
