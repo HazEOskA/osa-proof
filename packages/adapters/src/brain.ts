@@ -78,7 +78,8 @@ export class NeurosaMemoryAdapter implements WritableBrainMemory {
   async probe(scope: BrainScope): Promise<{ brain_id: string; ledger_valid: true }> {
     this.checkScope(scope);
     const status = await this.request("brain/status", scope);
-    if (status.brainId !== this.options.brainId || status.ledgerValid !== true) throw new BrainPlanningError("NEUROSA_LEDGER_REJECTED");
+    if (status.brainId !== this.options.brainId) throw new BrainPlanningError("NEUROSA_BRAIN_ID_MISMATCH");
+    if (status.ledgerValid !== true) throw new BrainPlanningError("NEUROSA_LEDGER_REJECTED");
     return { brain_id: this.options.brainId, ledger_valid: true };
   }
   private checkEvent(event: MemoryEvent): void {
@@ -138,7 +139,16 @@ export class NeurosaMemoryAdapter implements WritableBrainMemory {
           "x-neurosa-brain-id": this.options.brainId, "x-correlation-id": digest(scope), "x-osa-mission-id": encodeURIComponent(scope.mission_id) },
         signal: AbortSignal.timeout(this.options.timeoutMs ?? 15000), ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
-      if (!response.ok || !response.body) throw new BrainPlanningError("NEUROSA_UNAVAILABLE");
+      // Stable diagnostic categories only: never leak the upstream URL, request,
+      // response body, bearer token, or headers to callers.
+      if (!response.ok) {
+        if ([401, 403, 404, 429].includes(response.status))
+          throw new BrainPlanningError(`NEUROSA_HTTP_${response.status}`);
+        if (response.status >= 500)
+          throw new BrainPlanningError("NEUROSA_HTTP_5XX");
+        throw new BrainPlanningError("NEUROSA_HTTP_REJECTED");
+      }
+      if (!response.body) throw new BrainPlanningError("NEUROSA_EMPTY_RESPONSE");
       const reader = response.body.getReader();
       const chunks: Uint8Array[] = []; let bytes = 0;
       try {
@@ -149,12 +159,16 @@ export class NeurosaMemoryAdapter implements WritableBrainMemory {
           chunks.push(chunk.value);
         }
       } finally { reader.releaseLock(); }
-      const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+      let value: unknown;
+      try { value = JSON.parse(Buffer.concat(chunks).toString("utf8")); }
+      catch { throw new BrainPlanningError("NEUROSA_INVALID_RESPONSE"); }
       if (!value || typeof value !== "object" || Array.isArray(value)) throw new BrainPlanningError("NEUROSA_INVALID_RESPONSE");
       return value as Record<string, unknown>;
     } catch (error) {
       if (error instanceof BrainPlanningError) throw error;
-      // Never relay remote bodies, URLs, tokens or fetch error messages into receipts/API.
+      // The exception object may include full upstream URLs, so never log or return it.
+      if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
+        throw new BrainPlanningError("NEUROSA_TIMEOUT");
       throw new BrainPlanningError("NEUROSA_UNAVAILABLE");
     }
   }

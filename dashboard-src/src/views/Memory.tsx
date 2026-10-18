@@ -7,6 +7,7 @@ export interface MemoryStatus {
   message: string;
   checked_at?: string;
   brain_id?: string;
+  diagnostic_code?: string;
   persistence_verified: boolean;
 }
 const LABEL: Record<MemoryStatus["state"], string> = {
@@ -32,6 +33,7 @@ export default function Memory() {
     <h1 className="text-2xl">Pamięć NeurOSA</h1>
     <p role="status"><MemoryStatusLine status={status} /></p>
     <p className="text-sm text-dim">{error || status?.message}</p>
+    {status?.diagnostic_code && <p role="alert" className="break-all font-mono text-xs text-warn">Diagnostyka: {status.diagnostic_code}</p>}
     {status?.checked_at && <p className="text-xs text-dim">Sprawdzono: {new Date(status.checked_at).toLocaleString("pl-PL")}</p>}
     <p className="text-sm">NeurOSA jest podłączana wyłącznie pod chronionym adresem Preview PR #17 — bez GitHub OAuth. Dostępność wymaga prawidłowej odpowiedzi serwera i integralnego ledgeru.</p>
     <p className="text-sm text-dim">Status „Pamięć odpowiada” potwierdza jedynie bieżący kontakt z NeurOSA. Trwałość po restarcie i pełny test E2E wymagają odrębnego dowodu.</p>

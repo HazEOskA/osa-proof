@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { BrainMemory, BrainMemoryContext, BrainScope, MemoryWriteReceipt, SessionRecord, WritableBrainMemory } from "../../../packages/contracts/src";
 import { sealMemoryEvent, verifyMemoryContext } from "../../../packages/brain/src/memory";
+import { BrainPlanningError } from "../../../packages/brain/src/plan";
 import { canonicalJson, digest } from "../../../packages/proof-core/src/canonical";
 
 export class MemoryAccessError extends Error {
@@ -42,7 +43,15 @@ export class MemoryService {
     try {
       const probe = await writable(this.adapter).probe(this.scope(session!, "memory-status"));
       return { state: "AVAILABLE", message: "NeurOSA odpowiada; trwałość po restarcie wymaga osobnego testu.", ...probe, checked_at, persistence_verified: false };
-    } catch { return { state: "UNAVAILABLE", message: "Nie udało się potwierdzić dostępności lub integralności pamięci.", checked_at, persistence_verified: false }; }
+    } catch (error) {
+      // Fail closed, but return a bounded machine-readable category to the operator.
+      // Raw exceptions can contain upstream addresses/headers; never send or log them.
+      const diagnostic_code = error instanceof BrainPlanningError && /^NEUROSA_[A-Z0-9_]{3,80}$/.test(error.code)
+        ? error.code : error instanceof MemoryAccessError ? error.code : "NEUROSA_PROBE_FAILED";
+      console.warn(JSON.stringify({ event: "neurosa_status_probe_failed", diagnostic_code }));
+      return { state: "UNAVAILABLE", message: "Nie udało się potwierdzić dostępności lub integralności pamięci.",
+        diagnostic_code, checked_at, persistence_verified: false };
+    }
   }
   async remember(session: SessionRecord, conversationId: string, text: string): Promise<MemoryWriteReceipt> {
     const scope = this.scope(session, `chat_${conversationId}`);
