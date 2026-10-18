@@ -147,6 +147,10 @@ test("HTTP memory contract: anonymous/dev/foreign access denied; new conversatio
     if (String(url) !== "https://integrate.api.nvidia.com/v1/chat/completions") return originalFetch(url, init);
     modelCalls++;
     const body = JSON.parse(String(init?.body));
+    if (modelCalls === 3) {
+      assert.equal(body.messages.length, 2, "No failed memory context is passed to NVIDIA");
+      return Response.json({ id: "test-response-no-memory", choices: [{ message: { content: "Nie mam dostępu do pamięci NeurOSA." } }] });
+    }
     assert.match(body.messages[1].content, /bursztynowy/);
     assert.equal(body.messages.length, 3); // No browser history is needed.
     return new Response(JSON.stringify({ id: "test-provider-response", choices: [{ message: { content: "Twój kolor to bursztynowy." } }] }));
@@ -206,8 +210,15 @@ test("HTTP memory contract: anonymous/dev/foreign access denied; new conversatio
     assert.equal(invalid.status, 400); assert.equal(remote.calls.length, before);
     remote.invalidLedger();
     const unavailable = await request("Jaki kolor?", false);
-    assert.equal(unavailable.status, 502);
-    assert.equal(modelCalls, 2);
+    assert.equal(unavailable.status, 200, "Read-only chat still works if NeurOSA fails");
+    const degraded = await unavailable.json() as { text:string; memory_status?:string; memory?:unknown };
+    assert.equal(degraded.memory_status, "UNAVAILABLE");
+    assert.match(degraded.text, /Nie mam dostępu do pamięci/);
+    assert.equal(degraded.memory, undefined, "No forged memory proof");
+    assert.equal(modelCalls, 3);
+    const blockedWrite = await request("Zapamiętaj tajne zdanie", true);
+    assert.equal(blockedWrite.status, 502, "Explicit remember fails closed");
+    assert.equal(modelCalls, 3);
     assert.equal(remote.calls.at(-1), "/api/v1/brain/status");
   } finally {
     if (server) await close(server);

@@ -34,6 +34,7 @@ function prepareNvidiaRequest(prompt: unknown, env: NodeJS.ProcessEnv, context?:
   if (!key) throw new NvidiaError(503, "NVIDIA_NOT_CONFIGURED", "Dodaj NVIDIA_API_KEY w środowisku serwera.");
   // Use an explicit profile to guide the assistant; these are chat-only roles, never execution authority.
   const agents: Record<string,string> = {
+    jeverson: "Jesteś Jeversonem, konwersacyjnym agentem OSA. Pracujesz z informacjami dostępnymi w rozmowie, wyraźnie rozróżniasz dowody od planów. Nie twierdzisz, że pamięć, narzędzia lub runtime działały, jeśli nie masz dowodów.",
     leader: "Jesteś Liderem floty OSA. Pomagasz planować, delegować w planie i analizować architekturę.",
     coding: "Jesteś Agentem programistycznym OSA. Doradzasz w projektowaniu kodu, testach i przeglądach. Nie deklaruj zapisania zmian.",
     commerce: "Jesteś Agentem handlu internetowego OSA. Pomagasz planować e-commerce, integracje i analitykę.",
@@ -106,18 +107,33 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     prepareNvidiaRequest(body.prompt, config, conversation);
     if (fleet || memory.adapter) fleetLimit();
     let context: BrainMemoryContext | undefined;
+    let memoryUnavailable = false;
     if (memory.adapter || body.remember) {
       if (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 8000 ||
           typeof body.conversation_id !== "string" || !/^[a-f0-9-]{36}$/i.test(body.conversation_id))
         throw new NvidiaError(400,"INVALID_MEMORY_REQUEST","Wymagane są wiadomość i identyfikator rozmowy.");
       memory.scope(session!, `chat_${body.conversation_id}`); // Authorize before every external call.
-      if (body.remember) remembered = await memory.remember(session!, body.conversation_id, body.prompt.trim());
-      context = await memory.recall(session!, body.conversation_id, body.prompt.trim());
+      if (body.remember) {
+        // Explicit write must be confirmed; never silently discard a requested write.
+        remembered = await memory.remember(session!, body.conversation_id, body.prompt.trim());
+        context = await memory.recall(session!, body.conversation_id, body.prompt.trim());
+      } else {
+        try { context = await memory.recall(session!, body.conversation_id, body.prompt.trim()); }
+        catch { memoryUnavailable = true; } // Read-only chat may continue without untrusted memory.
+      }
     }
     const answer = await nvidiaComplete(body.prompt, config, fetch,
       { ...conversation, ...(context ? { memory: context } : {}) });
-    const evidence = context ? await memory.recordAnswer(session!, context, (body.prompt as string).trim(), answer, remembered) : undefined;
-    return send(200, { ...answer, ...(evidence ? { memory: evidence } : {}) });
+    let evidence: Awaited<ReturnType<MemoryService["recordAnswer"]>> | undefined;
+    if (context) {
+      if (body.remember) evidence = await memory.recordAnswer(session!, context, (body.prompt as string).trim(), answer, remembered);
+      else {
+        try { evidence = await memory.recordAnswer(session!, context, (body.prompt as string).trim(), answer); }
+        catch { memoryUnavailable = true; } // Never forge a provenance receipt.
+      }
+    }
+    return send(200, { ...answer, ...(evidence ? { memory: evidence } : {}),
+      ...(memoryUnavailable ? { memory_status: "UNAVAILABLE" } : {}) });
   } catch (error) {
     if (error instanceof NvidiaError) return send(error.status, { error: error.message + (remembered ? " Zapis Twojej wiadomości w pamięci został potwierdzony." : ""), code: error.code, ...(remembered ? { memory_write: remembered } : {}) });
     if (error instanceof MemoryAccessError) return send(error.status, { error: error.message, code: error.code, ...(remembered ? { memory_write: remembered } : {}) });
