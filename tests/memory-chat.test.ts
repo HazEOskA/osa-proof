@@ -163,8 +163,10 @@ test("HTTP memory contract: anonymous/dev/foreign access denied; new conversatio
     assert.equal((await fetch(base + "/memory/status").then(r => r.json()) as { state: string }).state, "ACCESS_REQUIRED");
     for (const path of ["/nvidia/status", "/nvidia/fleet-chat", "/missions/example/plan", "/runs/example", "/memory/receipts/example"])
       assert.equal((await fetch(base + path)).status, 401);
-    const login = await fetch(base + "/auth/dev-login", { method: "POST", body: JSON.stringify({ display_name: "Attacker", project_ids: ["osa-proof"], provider: "microsoft" }) }).then(r => r.json()) as { session: SessionRecord };
-    assert.equal((await fetch(base + "/nvidia/status", { headers: { authorization: "Bearer " + login.session.token } })).status, 401);
+    const login = await fetch(base + "/auth/dev-login", { method: "POST", body: JSON.stringify({ display_name: "Attacker", project_ids: ["osa-proof"], provider: "microsoft" }) });
+    assert.equal(login.status, 404, "open mode must not expose any app login route");
+    const dev = instance.state.sessions.create({ ...identity, provider: "local-dev", identity_id: "test-dev", subject: "test-dev" });
+    assert.equal((await fetch(base + "/nvidia/status", { headers: { authorization: "Bearer " + dev.token } })).status, 401);
     for (const changes of [{ project_ids: ["other"] }, { organization_id: "other" }]) {
       const foreign = instance.state.sessions.create({ ...identity, ...changes });
       assert.equal((await fetch(base + "/memory/receipts/example", { headers: { authorization: "Bearer " + foreign.token } })).status, 403);
