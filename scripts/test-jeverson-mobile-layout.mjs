@@ -29,8 +29,11 @@ try {
     await page.getByText("TRYB TESTOWY · MODEL NIEDOSTĘPNY",{exact:true}).waitFor();
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
     assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
-    assert.equal(await page.getByRole("heading",{name:"Czat floty agentów"}).count(),1,"One chat-module header");
+    assert.equal(await page.getByRole("heading",{name:"Jeverson · flota OSA"}).count(),1,"One chat-module header");
     assert.equal(await page.getByTestId("osa-hermes-switch").count(),1,"Persistent Hermes switch is present");
+    assert.equal(await page.getByTestId("osa-jeverson-switch").count(),1,"Persistent Jeverson switch is present");
+    await page.getByTestId("osa-jeverson-switch").click();
+    assert.equal(await page.getByTestId("osa-jeverson-switch").getAttribute("aria-pressed"),"true");
     assert.equal(await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).count(),1,"Framework return always accessible");
     assert.equal(await page.getByRole("button",{name:"Powrót do OSA Proof"}).count(),1,"Workspace exit remains reachable");
     assert.equal(await page.getByTestId("osa-session").count(),1,"Exactly one initial session");
