@@ -28,13 +28,12 @@ test("preview operator uses NeurOSA without OAuth, forbids cross-origin writes",
     brainId: "OsaBrain", organizationId: "org_dev_local", projectId: "osa-proof",
     fetch: async () => Response.json({ brainId: "OsaBrain", ledgerValid: true }) });
   const state = new ApiState(undefined, undefined, undefined, "open", undefined,
-    new BrainControlPlane(undefined, memory), undefined, undefined, operator);
+    new BrainControlPlane(undefined, memory), undefined, operator);
   const server = createApiServer(new ExecutorRegistry(), state);
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   try {
     const base = "http://127.0.0.1:" + (server.address() as AddressInfo).port;
-    assert.deepEqual(await (await fetch(base + "/auth/github/status")).json(),
-      { enabled: true, signed_in: true, display_name: "Operator Preview", mode: "preview-operator" });
+    assert.equal((await fetch(base + "/auth/github/status")).status, 404);
     assert.equal((await fetch(base + "/memory/status").then(r => r.json()) as {state:string}).state, "AVAILABLE");
     assert.equal((await fetch(base + "/nvidia/status")).status, 200);
     for (const headers of [{ origin: "https://evil.example" },

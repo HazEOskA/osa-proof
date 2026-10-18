@@ -3,8 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { ApiState, handleApiRequest, loadAuthMode } from "../apps/api/src/index";
 import { createDevExecution, DevExecution } from "../apps/api/src/server";
 import { vercelApiPath } from "../apps/api/src/vercel";
-import { GithubAuth } from "../apps/api/src/github-auth";
-import { PreviewOperator } from "../apps/api/src/preview-operator";
+import { BrainControlPlane } from "../packages/brain/src";
 
 // The single Vercel Function for the OSA API. vercel.json rewrites every API path here, so all routes share
 // one process state. vercel.json sets OSA_AUTH_MODE=open so the preview dashboard runs missions without a login.
@@ -19,6 +18,11 @@ function getExecution(): DevExecution {
 export default async function handler(request: IncomingMessage, response: ServerResponse): Promise<void> {
   request.url = vercelApiPath(request.url);
   const current = getExecution();
-  state ??= new ApiState(undefined, undefined, undefined, loadAuthMode(process.env), undefined, current.brain, createConfiguredWeb3(process.env), GithubAuth.fromEnvironment(process.env), PreviewOperator.fromEnvironment(process.env));
+  // Never expose private NeurOSA through the anonymous Preview.
+  // Vercel deployment protection is unchanged; Production keeps its own brain configuration.
+  const brain = process.env.VERCEL_ENV === "preview"
+    ? new BrainControlPlane(current.brain.planner)
+    : current.brain;
+  state ??= new ApiState(undefined, undefined, undefined, loadAuthMode(process.env), undefined, brain, createConfiguredWeb3(process.env));
   return handleApiRequest(request, response, current.registry, state, current.description);
 }

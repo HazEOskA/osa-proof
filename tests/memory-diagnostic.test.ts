@@ -81,7 +81,7 @@ test("diagnostic event: changed nonce, statement or kind is refused", () => {
 test("operator diagnostic HTTP: reject cross origin and non-operator, avoid model execution", async () => {
   const fixtureMemory=fixture(), operator=PreviewOperator.fromEnvironment(operatorEnv)!;
   const state=new ApiState(undefined,undefined,undefined,"open",undefined,
-    new BrainControlPlane(undefined,fixtureMemory.adapter),undefined,undefined,operator);
+    new BrainControlPlane(undefined,fixtureMemory.adapter),undefined,operator);
   const server=createApiServer(new ExecutorRegistry(),state);
   await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
   try {

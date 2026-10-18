@@ -27,7 +27,8 @@ async function main(){
       await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
       await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
       await page.getByText("Pamięć niepołączona",{exact:true}).waitFor({state:"visible"});
-      await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).waitFor({state:"visible"});
+      assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
+      assert.equal(await page.getByRole("link",{name:"Zaloguj przez GitHub"}).count(),0);
       assert.equal(await page.getByRole("checkbox",{name:"Zapamiętaj moją wiadomość"}).isDisabled(),true);
       assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0);
       const input="OSA Unified Runtime V1";
@@ -57,46 +58,6 @@ async function main(){
       const row={name,result:"PASS",execution_id:execution.match(/exec_[a-f0-9-]{36}/)[0],crypto_sha256:expectedHash,real_runtime:true,verified_receipt:true,replay_ui:true,provider_model_tool_call:"NOT_TESTED",paid_calls:0};
       console.log(JSON.stringify(row));report.push(row);await page.close();
     }
-    // UI-only auth fixture: the real OAuth/cookie contract is covered by github-auth.test.ts.
-    const page=await browser.newPage({viewport:{width:390,height:844}});
-    let signedIn=false,logoutCalls=0;
-    await page.route("**/api/auth/github/status",route=>route.fulfill({json:{enabled:true,signed_in:signedIn,...(signedIn?{display_name:"test-member"}:{})}}));
-    await page.route("**/api/nvidia/status",route=>route.fulfill({status:signedIn?200:401,json:signedIn?{configured:true,provider:"NVIDIA",model:"test-model"}:{error:"Authentication required"}}));
-    await page.route("**/api/memory/status",route=>route.fulfill({json:{state:signedIn?"AVAILABLE":"ACCESS_REQUIRED",persistence_verified:false}}));
-    await page.route("**/api/session/logout",route=>{assert.equal(route.request().method(),"POST");logoutCalls++;signedIn=false;return route.fulfill({json:{signed_out:true}});});
-    await page.goto(base);
-    await page.evaluate(()=>localStorage.setItem("osa.native-chat.v1",JSON.stringify([{id:"old",title:"PRIVATE_OLD_ACCOUNT",agent:"leader",model:"auto",messages:[]}])));
-    const openChat=async()=>{await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();};
-    await openChat();
-    const login=page.getByRole("link",{name:"Zaloguj przez GitHub"});await login.waitFor();
-    assert.equal(await login.getAttribute("href"),"/api/auth/github/login");
-    assert.equal(await page.getByText("PRIVATE_OLD_ACCOUNT",{exact:true}).count(),0);
-    assert.equal(await page.evaluate(()=>localStorage.getItem("osa.native-chat.v1")),null);
-    await page.getByTestId("osa-composer").fill("Jaki jest mój kolor?");await page.getByTestId("osa-send").click();
-    assert.match(await page.getByTestId("osa-chat-notice").innerText(),/Zaloguj się przez GitHub/);
-    assert.ok(!(await page.getByTestId("osa-chat-notice").innerText()).includes("NVIDIA_API_KEY"));
-    signedIn=true;await page.reload();await openChat();await page.getByText("GitHub: test-member",{exact:true}).waitFor();
-    await page.getByTestId("osa-composer").fill("Oblicz SHA-256 tekstu: prywatny");await page.getByTestId("osa-send").click();
-    await page.getByTestId("osa-message").filter({hasText:crypto.createHash("sha256").update("prywatny").digest("hex")}).waitFor({timeout:25000});
-    assert.equal(await page.evaluate(()=>localStorage.getItem("osa.native-chat.v1")),null);
-    const {digest}=require("../dist/packages/proof-core/src/canonical.js");
-    const statement="Mój kolor to bursztynowy";
-    const eventBody={schema:"osa.memory_event.v1",scope:{organization_id:"test-org",project_id:"test-project",mission_id:"test-chat"},kind:"AUTHENTICATED_USER_STATEMENT",verification_scope:"Test transport",data:{subject:"github:12345",text:statement}};
-    const event={...eventBody,event_sha256:digest(eventBody)};
-    const receiptBody={schema:"osa.memory_write_receipt.v1",scope:event.scope,brain_id:"OsaBrain",event_sha256:event.event_sha256,document_id:"test-statement",document_revision:1,content_sha256:digest(event)};
-    const receipt={...receiptBody,receipt_sha256:digest(receiptBody)};
-    await page.route("**/api/nvidia/fleet-chat",route=>route.fulfill({status:502,json:{error:"Zapis Twojej wiadomości w pamięci został potwierdzony. Odczyt jest niedostępny.",code:"MEMORY_OPERATION_FAILED",memory_write:receipt}}));
-    await page.route("**/api/memory/receipts/test-statement",route=>route.fulfill({json:{event,receipt}}));
-    await page.getByRole("checkbox",{name:"Zapamiętaj moją wiadomość"}).check();
-    await page.getByTestId("osa-composer").fill(statement);await page.getByTestId("osa-send").click();
-    await page.getByRole("button",{name:"Sprawdź zapis wiadomości w NeurOSA"}).click();
-    await page.getByText(/Potwierdzono zapis tej wiadomości\. Brain: OsaBrain/).waitFor();
-    assert.equal(await page.getByRole("checkbox",{name:"Zapamiętaj moją wiadomość"}).isChecked(),false);
-    await page.getByRole("button",{name:"Wyloguj",exact:true}).click();await page.locator('section[aria-label="Uruchamianie"]').waitFor();
-    assert.equal(logoutCalls,1);await openChat();await login.waitFor();
-    assert.equal(await page.getByTestId("osa-message").count(),0);
-    const authRow={name:"github-login-ui",result:"PASS",oauth_transport:"FIXTURE",live_login:false,private_local_cache:false};
-    console.log(JSON.stringify(authRow));report.push(authRow);await page.close();
   }finally{await browser.close();}
   fs.writeFileSync(path.join(out,"results.json"),JSON.stringify(report,null,2));
 }

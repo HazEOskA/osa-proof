@@ -2,7 +2,6 @@ import { timingSafeEqual } from "node:crypto";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
-import { GithubAuth, GithubAuthError } from "./github-auth";
 import { PreviewOperator } from "./preview-operator";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
@@ -90,7 +89,6 @@ export class ApiState {
     missionStore?: MissionStore,
     brain?: BrainControlPlane,
     readonly web3: Web3Service = new Web3Service(),
-    readonly github?: GithubAuth,
     readonly previewOperator?: PreviewOperator
   ) {
     this.intelligence = intelligence;
@@ -125,7 +123,6 @@ function bearerToken(request: IncomingMessage): string | undefined {
 
 function authenticatedSession(request: IncomingMessage, state: ApiState): SessionRecord | undefined {
   const token = bearerToken(request);
-  if (!request.headers.authorization && state.github?.hasSessionCookie(request)) return state.github.session(request);
   const session = token ? state.sessions.get(token) : undefined;
   if (session) return session;
   if (!request.headers.authorization && state.previewOperator) return structuredClone(state.previewOperator.session);
@@ -181,28 +178,7 @@ export async function handleApiRequest(
 
       if (state.previewOperator && !state.previewOperator.sameOriginMutation(request))
         return send(response, 403, { code: "PREVIEW_ORIGIN_REJECTED", error: "Operacja wymaga tego samego chronionego originu Preview." });
-      if (state.github?.hasSessionCookie(request) && !["GET", "HEAD", "OPTIONS"].includes(method)) state.github.requireSameOrigin(request);
-      if (parts[0] === "auth" && parts[1] === "github") {
-        if (method === "GET" && url.pathname === "/auth/github/status") {
-          if (state.previewOperator) return send(response, 200, { enabled: true, signed_in: true,
-            display_name: state.previewOperator.session.identity.display_name, mode: "preview-operator" });
-          const session = state.github?.session(request);
-          return send(response, 200, { enabled: Boolean(state.github), signed_in: Boolean(session),
-            ...(session ? { display_name: session.identity.display_name } : {}) });
-        }
-        if (!state.github) return send(response, 503, { error: "Logowanie GitHub nie jest jeszcze skonfigurowane.", code: "GITHUB_UNCONFIGURED" });
-        if (method === "GET" && url.pathname === "/auth/github/login") return state.github.start(response);
-        if (method === "GET" && url.pathname === "/auth/github/callback") {
-          try { return await state.github.callback(request, response, url.searchParams); }
-          catch (error) {
-            const reason = error instanceof GithubAuthError && error.code === "GITHUB_MEMBERSHIP_REQUIRED" ? "access_denied" : "failed";
-            response.writeHead(303, { location: "/?github_login=" + reason, "cache-control": "no-store", "referrer-policy": "no-referrer" });
-            response.end(); return;
-          }
-        }
-        return send(response, 404, { error: "Trasa logowania nie istnieje." });
-      }
-
+      
       if (method === "GET" && url.pathname === "/memory/status")
         return send(response, 200, await state.memory.status(authenticatedSession(request, state)));
       // Configuring private memory closes all data routes, including mission plans,
@@ -384,10 +360,6 @@ export async function handleApiRequest(
       }
 
       if (method === "POST" && url.pathname === "/session/logout") {
-        if (state.github?.hasSessionCookie(request)) {
-          state.github.logout(request, response);
-          return send(response, 200, { signed_out: true });
-        }
         const token = bearerToken(request);
         if (!token || !state.sessions.revoke(token)) {
           return send(response, 401, {
@@ -698,7 +670,7 @@ export async function handleApiRequest(
 
     return send(response, 404, { error: "not found" });
   } catch (error) {
-    if (error instanceof MemoryAccessError || error instanceof GithubAuthError) return send(response, error.status, { error: error.message, code: error.code });
+    if (error instanceof MemoryAccessError) return send(response, error.status, { error: error.message, code: error.code });
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof KnowledgeError || error instanceof ExperimentError) {
       return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });

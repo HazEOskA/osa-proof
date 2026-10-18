@@ -15,7 +15,6 @@ try {
     page.on("request",request=>{if(/\/api\/(nvidia\/chat|unified\/execute|chat\/complete)/.test(request.url()))network.push(request.url());});
     await page.route("**/api/build/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({mode:"fixture",auth_mode:"open",persistence:"PROCESS_MEMORY"})}));
     // Explicit public/development state; a failed auth check must never restore a private cache.
-    await page.route("**/api/auth/github/status",route=>route.fulfill({json:{enabled:false,signed_in:false}}));
     await page.route("**/api/memory/status",route=>route.fulfill({json:{state:"UNCONFIGURED",persistence_verified:false}}));
     await page.route("**/api/nvidia/status",route=>route.fulfill({json:{provider:"NVIDIA",configured:false,model:"test-model"}}));
     const opened=await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});

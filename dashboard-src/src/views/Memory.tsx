@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { requestJson } from "../data/data";
 import { canon, sha256 } from "../lib/verify";
-import GithubLogin, { useGithubSession } from "./GithubLogin";
 
 export interface MemoryStatus {
   state: "UNCONFIGURED" | "ACCESS_REQUIRED" | "AVAILABLE" | "UNAVAILABLE";
@@ -28,42 +27,15 @@ export function MemoryStatusLine({ status }: { status: MemoryStatus | null }) {
   return <span>{status ? LABEL[status.state] ?? "Nieznany stan pamięci" : "Sprawdzanie pamięci…"}</span>;
 }
 export default function Memory() {
-  const auth = useGithubSession();
   const { status, error, refresh } = useMemoryStatus();
-  const [diagnostic, setDiagnostic] = useState<Record<string, unknown> | null>(null);
-  const [diagnosticError, setDiagnosticError] = useState("");
-  const [diagnosticBusy, setDiagnosticBusy] = useState(false);
-  async function runDiagnostic() {
-    if (diagnosticBusy) return;
-    setDiagnosticBusy(true); setDiagnostic(null); setDiagnosticError("");
-    try {
-      const result = await requestJson<Record<string, unknown>>("/memory/diagnostic", { method: "POST", body: "{}" });
-      if (result.status !== "VERIFIED" || result.assurance !== "LIVE_MEMORY_IO_INTEGRITY") throw Error("NIEZWERYFIKOWANE");
-      setDiagnostic(result);
-    } catch { setDiagnosticError("Nie udało się potwierdzić cyklu LIVE. Nie wystawiono VERIFIED."); }
-    finally { setDiagnosticBusy(false); }
-  }
   return <section className="mx-auto max-w-[900px] space-y-4 px-4 py-6 md:px-8">
     <h1 className="text-2xl">Pamięć NeurOSA</h1>
-    <GithubLogin auth={auth} />
     <p role="status"><MemoryStatusLine status={status} /></p>
     <p className="text-sm text-dim">{error || status?.message}</p>
     {status?.checked_at && <p className="text-xs text-dim">Sprawdzono: {new Date(status.checked_at).toLocaleString("pl-PL")}</p>}
-    <p className="text-sm">W czacie możesz zapisać własną wiadomość. Odpowiedzi korzystające z pamięci zawierają dowód i źródła odczytywane z NeurOSA.</p>
+    <p className="text-sm">Na Preview bez logowania prywatna pamięć NeurOSA jest tymczasowo odłączona. Czat i Runtime działają niezależnie; zapis prywatnych danych pozostaje zablokowany.</p>
     <p className="text-sm text-dim">Dostępność API nie potwierdza zachowania pamięci po restarcie. Ten test LIVE pozostaje niepotwierdzony.</p>
     <button className="rounded border border-line px-3 py-2 text-sm" onClick={() => void refresh()}>Sprawdź ponownie</button>
-    {auth.status?.mode === "preview-operator" && status?.state === "AVAILABLE" && <div className="space-y-2 rounded border border-line p-3">
-      <p className="text-sm">Test LIVE: jedna syntetyczna notatka w kanonicznej NeurOSA; zapis → ponowienie → odczyt → recall z nowej sesji. Bez płatnego modelu i restartu.</p>
-      <button disabled={diagnosticBusy} className="rounded border border-line px-3 py-2 text-sm disabled:opacity-50" onClick={() => void runDiagnostic()}>{diagnosticBusy ? "Test trwa…" : "Uruchom test integralności NeurOSA"}</button>
-      {diagnosticError && <p role="alert" className="text-sm text-dim">{diagnosticError}</p>}
-      {diagnostic && <div role="status" className="text-xs break-all">
-        <p>Memory LIVE: {String(diagnostic.status)} ({String(diagnostic.assurance)})</p>
-        <p>Dokument: {String(diagnostic.document_id)}</p>
-        <p>Receipt: {String(diagnostic.receipt_sha256)}</p>
-        <p>Context SHA: {String(diagnostic.context_sha256)}</p>
-        <p>Trwałość po restarcie: NIEZWERYFIKOWANA. Zewnętrzna atestacja: NIEZWERYFIKOWANA.</p>
-      </div>}
-    </div>}
   </section>;
 }
 
