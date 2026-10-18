@@ -58,6 +58,7 @@ test("NeurOSA preview probe returns available only after matching valid ledger",
     fetch: async () => Response.json({ brainId: "OsaBrain", ledgerValid: true }) });
   const result = await new MemoryService(adapter).status(session());
   assert.equal(result.state, "AVAILABLE");
+  assert.ok("brain_id" in result);
   assert.equal(result.brain_id, "OsaBrain");
   assert.ok(!("diagnostic_code" in result));
 });
