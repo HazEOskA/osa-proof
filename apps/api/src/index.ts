@@ -332,7 +332,6 @@ export async function handleApiRequest(
       if (method === "GET" && url.pathname === "/auth/providers") {
         return send(response, 200, [
           { provider: "local-dev", enabled: true, mode: "DEV_ONLY" },
-          { provider: "github", enabled: Boolean(state.github), mode: state.github ? "OAUTH_PKCE" : "OAUTH_NOT_CONFIGURED" },
           { provider: "google", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
           { provider: "microsoft", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
         ]);
