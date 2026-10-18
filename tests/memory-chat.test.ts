@@ -216,9 +216,12 @@ test("HTTP memory contract: anonymous/dev/foreign access denied; new conversatio
     assert.match(degraded.text, /Nie mam dostępu do pamięci/);
     assert.equal(degraded.memory, undefined, "No forged memory proof");
     assert.equal(modelCalls, 3);
+    // Rate limiter correctly blocks a fourth same-minute request before the memory write.
     const blockedWrite = await request("Zapamiętaj tajne zdanie", true);
-    assert.equal(blockedWrite.status, 502, "Explicit remember fails closed");
-    assert.equal(modelCalls, 3);
+    assert.equal(blockedWrite.status, 429, "Per-instance AI request limit remains enforced");
+    // Independently verify that an explicit remember cannot write with invalid ledger.
+    await assert.rejects(instance.state.memory.remember(instance.session, randomUUID(), "Zapamiętaj tajne zdanie"), /NEUROSA_LEDGER_REJECTED/);
+    assert.equal(modelCalls, 3, "No extra provider call for a blocked memory write");
     assert.equal(remote.calls.at(-1), "/api/v1/brain/status");
   } finally {
     if (server) await close(server);
