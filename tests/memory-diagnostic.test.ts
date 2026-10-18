@@ -89,7 +89,7 @@ test("operator diagnostic HTTP: reject cross origin and non-operator, avoid mode
     const denied=await fetch(url,{method:"POST",body:"{}",headers:{origin:"https://evil.test",host:"preview.test"}});
     assert.equal(denied.status,403);
     assert.equal(fixtureMemory.writes,0);
-    const accepted=await fetch(url,{method:"POST",body:"{}",headers:{origin:"https://preview.test",host:"preview.test","sec-fetch-site":"same-origin"}});
+    const accepted=await fetch(url,{method:"POST",body:"{}",headers:{origin:"https://"+new URL(url).host,"sec-fetch-site":"same-origin"}});
     assert.equal(accepted.status,200);
     assert.equal((await accepted.json() as {status:string}).status,"VERIFIED");
     assert.equal(fixtureMemory.writes,1);
