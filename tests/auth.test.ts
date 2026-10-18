@@ -37,7 +37,7 @@ test("HTTP DEV login creates a session that authorizes DEV and can be revoked", 
     assert.equal(response.status, 200);
     const providers = (await response.json()) as Array<{ provider: string; enabled: boolean }>;
     assert.equal(providers.find((item) => item.provider === "local-dev")?.enabled, true);
-    assert.equal(providers.find((item) => item.provider === "github")?.enabled, false);
+    assert.equal(providers.some((item) => item.provider === "github"), false);
 
     response = await fetch(`${base}/teams`, {
       method: "POST",

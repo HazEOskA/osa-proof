@@ -1,6 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
+import { MemoryAccessError, MemoryService } from "./memory";
+import { PreviewOperator } from "./preview-operator";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 import { Web3Service } from "../../../packages/web3/src";
@@ -77,6 +79,7 @@ export class ApiState {
   readonly policies = new PolicyStore();
   readonly organizations = new OrganizationStore();
   readonly missionKernel: MissionKernel;
+  readonly memory: MemoryService;
 
   constructor(
     intelligence: IntelligenceRegistry = createBuiltinIntelligence(),
@@ -85,12 +88,14 @@ export class ApiState {
     readonly authMode: AuthMode = "session",
     missionStore?: MissionStore,
     brain?: BrainControlPlane,
-    readonly web3: Web3Service = new Web3Service()
+    readonly web3: Web3Service = new Web3Service(),
+    readonly previewOperator?: PreviewOperator
   ) {
     this.intelligence = intelligence;
     this.datasets = datasets;
     this.evaluators = evaluators;
     this.missionKernel = new MissionKernel(missionStore, undefined, brain);
+    this.memory = new MemoryService(this.missionKernel.brain.memory);
   }
 
   teamKey(teamId: string, version: string): string {
@@ -105,7 +110,7 @@ async function readJson<T>(request: IncomingMessage): Promise<T> {
 }
 
 function send(response: ServerResponse, status: number, body: unknown): void {
-  response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+  response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
   response.end(JSON.stringify(body));
 }
 
@@ -117,6 +122,10 @@ function bearerToken(request: IncomingMessage): string | undefined {
 }
 
 function authenticatedSession(request: IncomingMessage, state: ApiState): SessionRecord | undefined {
+  // Vercel Deployment Protection is the entry gate for this isolated Preview.
+  // App-level bearer tokens (including stale ones) must never override its
+  // fixed, server-bound operator identity or NeurOSA organization/project scope.
+  if (state.previewOperator) return structuredClone(state.previewOperator.session);
   const token = bearerToken(request);
   const session = token ? state.sessions.get(token) : undefined;
   return session ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
@@ -169,6 +178,39 @@ export async function handleApiRequest(
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
 
+      if (state.previewOperator && !state.previewOperator.sameOriginMutation(request))
+        return send(response, 403, { code: "PREVIEW_ORIGIN_REJECTED", error: "Operacja wymaga tego samego chronionego originu Preview." });
+      
+      // Anonymous Preview exposes no application login endpoints.
+      if (state.authMode === "open" && parts[0] === "auth")
+        return send(response, 404, { code: "LOGIN_DISABLED" });
+      if (method === "GET" && url.pathname === "/memory/status")
+        return send(response, 200, await state.memory.status(authenticatedSession(request, state)));
+      // Configuring private memory closes all data routes, including mission plans,
+      // evidence and run reads. Otherwise open/dev-login could bypass the chat gate.
+      if (state.memory.adapter && !["/build/status", "/auth/providers", "/auth/dev-login", "/session", "/session/logout", "/layers"].includes(url.pathname))
+        state.memory.authorize(authenticatedSession(request, state));
+      if (parts[0] === "memory") {
+        const session = requireSession(request, response, state);
+        if (!session) return;
+        if (method === "POST" && parts[1] === "diagnostic" && parts.length === 2) {
+          // The operator has already passed protected Preview entry and same-origin gate.
+          // Never enable this write-test on Production, Github OAuth or anonymous mode.
+          if (!state.previewOperator) return send(response, 404, { code: "MEMORY_DIAGNOSTIC_PREVIEW_ONLY" });
+          try { return send(response, 200, await state.memory.diagnostic(session)); }
+          catch { return send(response, 502, { code: "MEMORY_DIAGNOSTIC_FAILED", error: "Nie udało się udowodnić pełnego cyklu zapisu i recall." }); }
+        }
+        if (method === "GET" && parts[1] === "receipts" && parts.length === 3) {
+          if (!state.memory.adapter) return send(response, 503, { error: "Pamięć NeurOSA nie jest skonfigurowana." });
+          try { return send(response, 200, await state.memory.read(session, parts[2])); }
+          catch (error) {
+            if (error instanceof MemoryAccessError) throw error;
+            return send(response, 502, { error: "Nie udało się odczytać i zweryfikować dowodu pamięci.", code: "MEMORY_RECEIPT_REJECTED" });
+          }
+        }
+        return send(response, 404, { error: "Trasa pamięci nie istnieje." });
+      }
+
       if (parts[0] === "unified") {
         const session = requireSession(request,response,state);
         if (!session) return;
@@ -188,13 +230,20 @@ export async function handleApiRequest(
               return send(response,403,{status:"BLOCKED",error:"MODEL_DISPATCH_SERVICE_AUTH_REQUIRED"});
           }
           if(!session.identity.organization_id)return send(response,403,{status:"BLOCKED",error:"UNIFIED_ORGANIZATION_REQUIRED"});
+          // Recheck the server-bound organization/project before invoking a tool.
+          // Browser-supplied scope never selects the execution or memory tenant.
+          const memoryScope = state.memory.adapter ? state.memory.scope(session, "unified-execute") : undefined;
           installUnifiedTools(registry);
           let result;
-          try {result = await executeUnified(body,session.identity.organization_id,registry);}
+          try {result = await executeUnified(body,session.identity.organization_id,registry,memoryScope?.project_id);}
           catch {return send(response,400,{status:"BLOCKED",error:"UNIFIED_INVALID_INPUT"});}
           state.runs.set(result.run.run_id,structuredClone(result.run));
           state.teams.set(state.teamKey(result.team.team_id,result.team.version),result.team);
           state.missions.set(result.mission.mission_id,result.mission);
+          if (state.memory.adapter && result.status === "EXECUTED") {
+            try { return send(response, 200, { ...result, memory_write: await state.memory.recordExecution(session, result) }); }
+            catch { return send(response, 502, { error: "Wykonanie zakończono, ale nie potwierdzono zapisu pamięci. Nie ponawiaj automatycznie narzędzia.", code: "MEMORY_WRITE_UNCONFIRMED", execution_id: result.execution_id, run_id: result.run.run_id }); }
+          }
           return send(response,200,result);
         }
         return send(response,404,{status:"BLOCKED",error:"UNIFIED_ROUTE_NOT_FOUND"});
@@ -228,8 +277,9 @@ export async function handleApiRequest(
       }
 
       if (parts[0] === "nvidia") {
-        if (!requireSession(request, response, state)) return;
-        return handleNvidiaRequest(request, response, url.pathname);
+        const session = requireSession(request, response, state);
+        if (!session) return;
+        return handleNvidiaRequest(request, response, url.pathname, state.memory, session);
       }
 
       if (parts[0] === "templates" && parts[1] === "delivery-lab") {
@@ -287,7 +337,6 @@ export async function handleApiRequest(
       if (method === "GET" && url.pathname === "/auth/providers") {
         return send(response, 200, [
           { provider: "local-dev", enabled: true, mode: "DEV_ONLY" },
-          { provider: "github", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
           { provider: "google", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
           { provider: "microsoft", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
         ]);
@@ -625,6 +674,7 @@ export async function handleApiRequest(
 
     return send(response, 404, { error: "not found" });
   } catch (error) {
+    if (error instanceof MemoryAccessError) return send(response, error.status, { error: error.message, code: error.code });
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof KnowledgeError || error instanceof ExperimentError) {
       return send(response, error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400, { error: message });

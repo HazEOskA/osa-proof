@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { chromium } from "playwright";
+import { createRequire } from "node:module";
+const { chromium } = createRequire(import.meta.url)("playwright");
 
 const base = process.env.OSA_UI_TEST_BASE || "http://127.0.0.1:3100";
 const out = "artifacts/osa-native-chat";
 fs.mkdirSync(out,{recursive:true});
-const browser = await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
+const browser = await chromium.launch({headless:true,...(process.env.OSA_CHROMIUM_EXECUTABLE?{executablePath:process.env.OSA_CHROMIUM_EXECUTABLE}:{}),args:["--no-sandbox","--disable-dev-shm-usage"]});
 try {
   for (const [name,width,height] of [["android-320",320,640],["android-390",390,844],["desktop",1440,900]]) {
     const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce"});
@@ -13,6 +14,9 @@ try {
     page.on("pageerror",error=>pageErrors.push(error.message));
     page.on("request",request=>{if(/\/api\/(nvidia\/chat|unified\/execute|chat\/complete)/.test(request.url()))network.push(request.url());});
     await page.route("**/api/build/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({mode:"fixture",auth_mode:"open",persistence:"PROCESS_MEMORY"})}));
+    // Explicit public/development state; a failed auth check must never restore a private cache.
+    await page.route("**/api/memory/status",route=>route.fulfill({json:{state:"UNCONFIGURED",persistence_verified:false}}));
+    await page.route("**/api/nvidia/status",route=>route.fulfill({json:{provider:"NVIDIA",configured:false,model:"test-model"}}));
     const opened=await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     assert.equal(opened?.status(),200,"Dashboard HTTP 200");
     const home=page.locator('section[aria-label="Uruchamianie"]');
@@ -21,9 +25,15 @@ try {
     assert.equal(await home.getByRole("button",{name:"Czat floty agentów",exact:true}).count(),1,"Chat Fleet is an optional Home module");
     await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     const shell=page.getByTestId("osa-native-chat");await shell.waitFor({state:"visible",timeout:15000});
+    assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
+    await page.getByText("TRYB TESTOWY · MODEL NIEDOSTĘPNY",{exact:true}).waitFor();
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
     assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
-    assert.equal(await page.getByRole("heading",{name:"Czat floty agentów"}).count(),1,"One chat-module header");
+    assert.equal(await page.getByRole("heading",{name:"Jeverson · flota OSA"}).count(),1,"One chat-module header");
+    assert.equal(await page.getByTestId("osa-hermes-switch").count(),1,"Persistent Hermes switch is present");
+    assert.equal(await page.getByTestId("osa-jeverson-switch").count(),1,"Persistent Jeverson switch is present");
+    await page.getByTestId("osa-jeverson-switch").click();
+    assert.equal(await page.getByTestId("osa-jeverson-switch").getAttribute("aria-pressed"),"true");
     assert.equal(await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).count(),1,"Framework return always accessible");
     assert.equal(await page.getByRole("button",{name:"Powrót do OSA Proof"}).count(),1,"Workspace exit remains reachable");
     assert.equal(await page.getByTestId("osa-session").count(),1,"Exactly one initial session");
@@ -63,6 +73,7 @@ try {
     await home.waitFor({state:"visible"});
     await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     await shell.waitFor({state:"visible"});
+    assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
     assert.match(await page.getByTestId("osa-message").innerText(),/sesji A/);
     assert.equal(await page.getByTestId("osa-session").count(),2,"Session persists after refresh");
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
@@ -88,6 +99,20 @@ try {
     await page.getByText("Witaj, jestem asystentem OSA.").waitFor({state:"visible"});
     assert.equal(providerRequests,1,"AI transport contract called exactly once");
     assert.match(await page.getByTestId("osa-message").last().innerText(),/ODPOWIEDŹ MODELU AI/);
+    // Hermes must not disappear when a conversation has messages or when starting
+    // a fresh chat; its agent selection must survive browser refresh.
+    await page.getByTestId("osa-hermes-switch").click();
+    assert.equal(await page.getByTestId("osa-hermes-switch").getAttribute("aria-pressed"),"true");
+    assert.match(await page.getByRole("button",{name:"Wybierz agenta"}).innerText(),/Hermes/);
+    if(width<768)await page.getByRole("button",{name:"Otwórz historię"}).click();
+    await page.getByTestId("osa-new-chat").click();
+    assert.match(await page.getByRole("button",{name:"Wybierz agenta"}).innerText(),/Hermes/);
+    assert.equal(await page.getByTestId("osa-hermes-switch").count(),1);
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+    await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
+    await page.getByRole("button",{name:"Wybierz agenta"}).filter({hasText:"Hermes"}).waitFor();
+    assert.equal(await page.getByTestId("osa-hermes-switch").getAttribute("aria-pressed"),"true");
     console.log(JSON.stringify({name,ai_transport_contract:"PASS",real_provider:"NOT_TESTED",intercepted_responses:providerRequests}));
 
     console.log(JSON.stringify({name,result:"PASS",sessions:2,agent_selector:true,model_selector:true,blocked_model_requests:network.length,verified_proof:"NOT_TESTED",overflow,page_errors:pageErrors.length}));

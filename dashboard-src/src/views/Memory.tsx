@@ -1,0 +1,95 @@
+import { useEffect, useState } from "react";
+import { requestJson } from "../data/data";
+import { canon, sha256 } from "../lib/verify";
+
+export interface MemoryStatus {
+  state: "UNCONFIGURED" | "ACCESS_REQUIRED" | "AVAILABLE" | "UNAVAILABLE";
+  message: string;
+  checked_at?: string;
+  brain_id?: string;
+  diagnostic_code?: string;
+  persistence_verified: boolean;
+}
+const LABEL: Record<MemoryStatus["state"], string> = {
+  UNCONFIGURED: "Pamięć niepołączona", ACCESS_REQUIRED: "Pamięć wymaga dostępu",
+  AVAILABLE: "Pamięć odpowiada", UNAVAILABLE: "Pamięć niedostępna",
+};
+export function useMemoryStatus() {
+  const [status, setStatus] = useState<MemoryStatus | null>(null);
+  const [error, setError] = useState("");
+  async function refresh() {
+    try { setStatus(await requestJson<MemoryStatus>("/memory/status")); setError(""); }
+    catch { setStatus(null); setError("Nie udało się sprawdzić stanu pamięci."); }
+  }
+  useEffect(() => { void refresh(); }, []);
+  return { status, error, refresh };
+}
+export function MemoryStatusLine({ status }: { status: MemoryStatus | null }) {
+  return <span>{status ? LABEL[status.state] ?? "Nieznany stan pamięci" : "Sprawdzanie pamięci…"}</span>;
+}
+export default function Memory() {
+  const { status, error, refresh } = useMemoryStatus();
+  return <section className="mx-auto max-w-[900px] space-y-4 px-4 py-6 md:px-8">
+    <h1 className="text-2xl">Pamięć NeurOSA</h1>
+    <p role="status"><MemoryStatusLine status={status} /></p>
+    <p className="text-sm text-dim">{error || status?.message}</p>
+    {status?.diagnostic_code && <p role="alert" className="break-all font-mono text-xs text-warn">Diagnostyka: {status.diagnostic_code}</p>}
+    {status?.checked_at && <p className="text-xs text-dim">Sprawdzono: {new Date(status.checked_at).toLocaleString("pl-PL")}</p>}
+    <p className="text-sm">NeurOSA jest podłączana wyłącznie pod chronionym adresem Preview PR #17 — bez GitHub OAuth. Dostępność wymaga prawidłowej odpowiedzi serwera i integralnego ledgeru.</p>
+    <p className="text-sm text-dim">Status „Pamięć odpowiada” potwierdza jedynie bieżący kontakt z NeurOSA. Trwałość po restarcie i pełny test E2E wymagają odrębnego dowodu.</p>
+    <button className="rounded border border-line px-3 py-2 text-sm" onClick={() => void refresh()}>Sprawdź ponownie</button>
+  </section>;
+}
+
+export interface MemoryPointer { document_id: string; receipt_sha256: string }
+async function readVerifiedMemory(pointer: MemoryPointer) {
+  const value = await requestJson<{ receipt: Record<string, unknown>; event: Record<string, unknown> }>(`/memory/receipts/${encodeURIComponent(pointer.document_id)}`);
+  const { receipt_sha256, ...receipt } = value.receipt;
+  const { event_sha256, ...event } = value.event;
+  if (receipt_sha256 !== pointer.receipt_sha256 || receipt.document_id !== pointer.document_id ||
+      receipt_sha256 !== await sha256(canon(receipt)) || event_sha256 !== await sha256(canon(event)) ||
+      receipt.event_sha256 !== event_sha256 || receipt.content_sha256 !== await sha256(canon(value.event)) ||
+      canon(receipt.scope) !== canon(event.scope)) throw Error("Niezgodny dowód");
+  return { receipt, event };
+}
+export function MemoryStatementEvidence({ pointer, statement }: { pointer: MemoryPointer; statement: string }) {
+  const [detail, setDetail] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function verify() {
+    setBusy(true); setDetail("");
+    try {
+      const { receipt, event } = await readVerifiedMemory(pointer);
+      if (event.kind !== "AUTHENTICATED_USER_STATEMENT" || (event.data as Record<string, unknown>).text !== statement.trim()) throw Error("Niezgodna wiadomość");
+      setDetail("Potwierdzono zapis tej wiadomości. Brain: " + receipt.brain_id + "\nDokument: " + pointer.document_id + "\nDowód: " + pointer.receipt_sha256);
+    } catch { setDetail("Nie udało się ponownie zweryfikować zapisu wiadomości w NeurOSA."); }
+    finally { setBusy(false); }
+  }
+  return <div className="mt-2 text-xs"><button className="underline" disabled={busy} onClick={() => void verify()}>{busy ? "Weryfikowanie…" : "Sprawdź zapis wiadomości w NeurOSA"}</button>{detail && <p role="status" className="mt-2 whitespace-pre-wrap break-all">{detail}</p>}</div>;
+}
+export function MemoryEvidence({ pointer, answer }: { pointer: MemoryPointer; answer: string }) {
+  const [detail, setDetail] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function verify() {
+    setBusy(true); setDetail("");
+    try {
+      const { receipt, event } = await readVerifiedMemory(pointer);
+      const data = event.data as Record<string, unknown>;
+      const memory = data.memory as Record<string, unknown>;
+      const { context_sha256, ...context } = memory;
+      const response = data.response as { text: string };
+      if (event.kind !== "CHAT_PROVENANCE" ||
+          canon(memory.scope) !== canon(event.scope) || memory.brain_id !== receipt.brain_id ||
+          context_sha256 !== await sha256(canon(context)) || response.text !== answer || data.response_sha256 !== await sha256(canon(answer)))
+        throw Error("Niezgodny dowód");
+      setDetail("Integralność dowodu potwierdzona. Źródło: " + memory.brain_id +
+        "\nŹródła dokumentów: " + JSON.stringify(memory.references, null, 2) +
+        "\nLedger: " + memory.ledger_head + "\nDowód: " + pointer.receipt_sha256 +
+        "\nPotwierdzenie integralności nie oznacza prawdziwości odpowiedzi modelu.");
+    } catch { setDetail("Nie udało się odzyskać i zweryfikować dowodu. Sprawdź dostęp do pamięci; odpowiedź pozostaje niezweryfikowana."); }
+    finally { setBusy(false); }
+  }
+  return <div className="mt-3 border-t border-white/10 pt-2 text-xs">
+    <button className="underline" disabled={busy} onClick={() => void verify()}>{busy ? "Weryfikowanie…" : "Sprawdź źródła i dowód w NeurOSA"}</button>
+    {detail && <p role="status" className="mt-2 whitespace-pre-wrap break-all text-dim">{detail}</p>}
+  </div>;
+}

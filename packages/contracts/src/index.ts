@@ -252,7 +252,7 @@ export type OsaLayerId =
 
 export type OsaProductLayer = "ACADEMY" | "BUILDER" | "REGULATED";
 
-export type IdentityProvider = "local-dev" | "github" | "google" | "microsoft";
+export type IdentityProvider = "local-dev" | "github" | "google" | "microsoft" | "vercel-preview";
 
 export interface Identity {
   identity_id: string;
@@ -261,6 +261,8 @@ export interface Identity {
   display_name: string;
   email?: string;
   organization_id?: string;
+  // Membership asserted by a trusted identity provider, never by dev-login input.
+  project_ids?: string[];
   roles: string[];
   verified: boolean;
 }

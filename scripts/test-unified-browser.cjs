@@ -12,7 +12,7 @@ async function main(){
   const log=fs.openSync(path.join(out,"local-runtime.log"),"w");
   children.push(spawn(process.execPath,["scripts/unified-e2e-server.cjs"],{cwd:root,stdio:["ignore",log,log],env:{...process.env,OSA_E2E_API_PORT:"3199",OSA_EXECUTION_MODE:"fixture",NVIDIA_API_KEY:"",OPENROUTER_API_KEY:""}}));
   await ready(base+"/api/build/status");
-  const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
+  const browser=await chromium.launch({headless:true,...(process.env.OSA_CHROMIUM_EXECUTABLE?{executablePath:process.env.OSA_CHROMIUM_EXECUTABLE}:{}),args:["--no-sandbox","--disable-dev-shm-usage"]});
   const report=[];
   try {
     for(const [name,width,height] of [["android-390",390,844],["desktop",1440,900]]){
@@ -26,6 +26,10 @@ async function main(){
       assert.equal(await page.getByTestId("osa-native-chat").count(),0,"Framework Home must load first");
       await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
       await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
+      await page.getByText("Pamięć niepołączona",{exact:true}).waitFor({state:"visible"});
+      assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
+      assert.equal(await page.getByRole("link",{name:"Zaloguj przez GitHub"}).count(),0);
+      assert.equal(await page.getByRole("checkbox",{name:"Zapamiętaj moją wiadomość"}).isDisabled(),true);
       assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0);
       const input="OSA Unified Runtime V1";
       const expectedHash=crypto.createHash("sha256").update(input).digest("hex");
