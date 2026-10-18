@@ -46,9 +46,9 @@ export default async function handler(request: IncomingMessage, response: Server
     // session is created on the server, pinned to the configured NeurOSA scope.
     const operator = privatePreview ? PreviewOperator.fromEnvironment(process.env) : undefined;
     if (privatePreview && !operator) throw new Error("Protected Preview operator is not configured");
-    const brain = preview && !privatePreview
-      ? new BrainControlPlane(current.brain.planner)
-      : current.brain;
+    // Never mount private memory outside the one protected Preview host.
+    // This includes custom-domain aliases and accidental Production routing.
+    const brain = privatePreview ? current.brain : new BrainControlPlane(current.brain.planner);
     state = new ApiState(undefined, undefined, undefined, loadAuthMode(process.env),
       undefined, brain, createConfiguredWeb3(process.env), operator);
     states.set(kind, state);
