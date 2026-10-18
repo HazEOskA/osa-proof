@@ -215,7 +215,7 @@ test("NeurOSA response size is bounded and remote error text never escapes", asy
   const huge = new NeurosaMemoryAdapter({ ...options, fetch: async () => new Response("x".repeat(1024 * 1024 + 1)) });
   await assert.rejects(huge.recall(scope, "objective", 512), /RESPONSE_TOO_LARGE/);
   const denied = new NeurosaMemoryAdapter({ ...options, fetch: async () => new Response("SUPER_SECRET", { status: 403 }) });
-  await assert.rejects(denied.recall(scope, "objective", 512), (error: Error) => error.message === "NEUROSA_UNAVAILABLE");
+  await assert.rejects(denied.recall(scope, "objective", 512), (error: Error) => error.message === "NEUROSA_HTTP_403" && !error.message.includes("SUPER_SECRET"));
 });
 
 test("unknown model routing and malformed JSON cannot produce a planning receipt", async () => {

@@ -112,6 +112,6 @@ test("NeurOSA adapter aborts a stalled real HTTP request within its configured t
   try {
     const base = await listen(server);
     const adapter = new NeurosaMemoryAdapter({ baseUrl: base, token: "x".repeat(24), brainId: "brain", organizationId: "org_dev_local", projectId: "project", timeoutMs: 30 });
-    await assert.rejects(adapter.recall({ organization_id: "org_dev_local", project_id: "project", mission_id: "mission" }, "objective", 512), /NEUROSA_UNAVAILABLE/);
+    await assert.rejects(adapter.recall({ organization_id: "org_dev_local", project_id: "project", mission_id: "mission" }, "objective", 512), /NEUROSA_TIMEOUT/);
   } finally { server.closeAllConnections(); await close(server); }
 });
