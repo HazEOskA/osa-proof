@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ApiState, createApiServer } from "../apps/api/src";
 import { PreviewOperator } from "../apps/api/src/preview-operator";
+import { isNeurosaProtectedPreview } from "../api/osa";
 import { ExecutorRegistry } from "../packages/runtime/src";
 import { BrainControlPlane } from "../packages/brain/src";
 import { NeurosaMemoryAdapter } from "../packages/adapters/src";
@@ -22,6 +23,24 @@ test("single operator is restricted to protected PR Preview and server scope", (
     { VERCEL_GIT_REPO_OWNER: "other" }, { OSA_NEUROSA_PROJECT_ID: "" }])
     assert.throws(() => PreviewOperator.fromEnvironment({ ...env, ...change }));
 });
+test("private Preview memory is limited to the protected PR branch alias", () => {
+  const hostname = "osa-proof-git-codex-neurosa-chat-memory-osabarca-1680s-projects.vercel.app";
+  assert.equal(isNeurosaProtectedPreview(hostname, env), true);
+  for (const hostnameInvalid of ["agentworlds.dev", "osa-proof-three.vercel.app",
+    "osa-proof-qtyczc1ue-osabarca-1680s-projects.vercel.app", "evil.example", ""]) {
+    assert.equal(isNeurosaProtectedPreview(hostnameInvalid, env), false);
+  }
+  for (const changes of [{ VERCEL_ENV: "production" }, { VERCEL: "0" },
+    { OSA_PREVIEW_SINGLE_OPERATOR: undefined }]) {
+    assert.equal(isNeurosaProtectedPreview(hostname, { ...env, ...changes }), false);
+  }
+  assert.equal(isNeurosaProtectedPreview(hostname, env, "agentworlds.dev"), false);
+  assert.equal(isNeurosaProtectedPreview(hostname, env, hostname), true);
+  assert.ok(PreviewOperator.fromEnvironment({ ...env, VERCEL_GIT_REPO_OWNER: undefined,
+    VERCEL_GIT_REPO_SLUG: undefined }), "Vercel may omit optional git metadata at runtime");
+  assert.throws(() => PreviewOperator.fromEnvironment({ ...env, VERCEL_GIT_REPO_OWNER: "other" }));
+});
+
 test("preview operator uses NeurOSA without OAuth, forbids cross-origin writes", async () => {
   const operator = PreviewOperator.fromEnvironment(env)!;
   const memory = new NeurosaMemoryAdapter({ baseUrl: "https://memory.example", token: "test-token-".repeat(4),

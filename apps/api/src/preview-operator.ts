@@ -2,6 +2,8 @@ import type { IncomingMessage } from "node:http";
 import type { SessionRecord } from "../../../packages/contracts/src";
 
 // Vercel Deployment Protection enforces entry before this code runs.
+// IMPORTANT: Shareable Links and automation bypass can also grant entry; treat
+// possession of the protected alias access as a full operator capability.
 // This identity is an operator of the protected Preview, not a GitHub user.
 export class PreviewOperator {
   readonly session: SessionRecord;
@@ -18,7 +20,8 @@ export class PreviewOperator {
     if (env.OSA_PREVIEW_SINGLE_OPERATOR === undefined) return undefined;
     if (env.OSA_PREVIEW_SINGLE_OPERATOR !== "enabled" || env.VERCEL !== "1" ||
         env.VERCEL_ENV !== "preview" || env.VERCEL_GIT_COMMIT_REF !== "codex/neurosa-chat-memory" ||
-        env.VERCEL_GIT_REPO_OWNER !== "HazEOskA" || env.VERCEL_GIT_REPO_SLUG !== "osa-proof")
+        (env.VERCEL_GIT_REPO_OWNER !== undefined && env.VERCEL_GIT_REPO_OWNER !== "HazEOskA") ||
+        (env.VERCEL_GIT_REPO_SLUG !== undefined && env.VERCEL_GIT_REPO_SLUG !== "osa-proof"))
       throw new Error("Single operator is limited to the protected approved Vercel Preview branch.");
     const organization = env.OSA_NEUROSA_ORGANIZATION_ID;
     const project = env.OSA_NEUROSA_PROJECT_ID;

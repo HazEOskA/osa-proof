@@ -33,8 +33,8 @@ export default function Memory() {
     <p role="status"><MemoryStatusLine status={status} /></p>
     <p className="text-sm text-dim">{error || status?.message}</p>
     {status?.checked_at && <p className="text-xs text-dim">Sprawdzono: {new Date(status.checked_at).toLocaleString("pl-PL")}</p>}
-    <p className="text-sm">Na Preview bez logowania prywatna pamięć NeurOSA jest tymczasowo odłączona. Czat i Runtime działają niezależnie; zapis prywatnych danych pozostaje zablokowany.</p>
-    <p className="text-sm text-dim">Dostępność API nie potwierdza zachowania pamięci po restarcie. Ten test LIVE pozostaje niepotwierdzony.</p>
+    <p className="text-sm">NeurOSA jest podłączana wyłącznie pod chronionym adresem Preview PR #17 — bez GitHub OAuth. Dostępność wymaga prawidłowej odpowiedzi serwera i integralnego ledgeru.</p>
+    <p className="text-sm text-dim">Status „Pamięć odpowiada” potwierdza jedynie bieżący kontakt z NeurOSA. Trwałość po restarcie i pełny test E2E wymagają odrębnego dowodu.</p>
     <button className="rounded border border-line px-3 py-2 text-sm" onClick={() => void refresh()}>Sprawdź ponownie</button>
   </section>;
 }
