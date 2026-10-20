@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Pobierz kanoniczne repozytorium OSA Proof
+      - name: Pobierz kanoniczne repozytorium OSA ProofFixes #16 
         uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
