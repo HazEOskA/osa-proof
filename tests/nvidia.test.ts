@@ -30,6 +30,14 @@ test("NVIDIA: provider errors are sanitized and never become success", async () 
   await assert.rejects(nvidiaComplete("hello", env, (async () => { throw Error("test-secret"); }) as typeof fetch), (e: unknown) => e instanceof NvidiaError && e.status === 504 && !e.message.includes("test-secret"));
 });
 
+test("NVIDIA: valid catalog key may still fail inference 404/410 without leaking secrets",async()=>{
+  for(const [status,code] of [[404,"NVIDIA_INFERENCE_HTTP_404"],[410,"NVIDIA_INFERENCE_HTTP_410"]] as const){
+    await assert.rejects(nvidiaComplete("test",{NVIDIA_API_KEY:"test-secret"},(async()=>new Response("test-secret", {status})) as typeof fetch),
+      (error:unknown)=>error instanceof NvidiaError&&error.status===502&&error.code===code&&
+        error.message.includes("Public API Endpoints")&&!error.message.includes("test-secret"));
+  }
+});
+
 test("NVIDIA HTTP: session gate and malformed requests", async () => {
   const { createApiServer, ApiState } = await import("../apps/api/src");
   const { ExecutorRegistry } = await import("../packages/runtime/src");
