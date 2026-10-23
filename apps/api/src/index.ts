@@ -261,6 +261,28 @@ export async function handleApiRequest(
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
       response.setHeader("cache-control","no-store");
       if (await handleOperatorAuth(request,response,url.pathname,state.accessEnv)) return;
+      // Synthetic preview memory diagnostic only: no provider execution or source-NeurOSA data.
+      if (method === "GET" && url.pathname === "/memory/preview-smoke" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.OSA_PREVIEW_GUEST_MEMORY === "1") {
+        const session = authenticatedSession(request,state);
+        if (!session || session.identity.organization_id !== "org_osa_preview_test_20261023")
+          return send(response,403,{state:"BLOCKED",code:"TEST_SCOPE_REQUIRED"});
+        const conversationId="a5c9372e-2fb2-4dbe-8c73-0cc48d515a11";
+        const synthetic="OSA_PREVIEW_SYNTHETIC_MEMORY_PROBE_20261023";
+        if(url.searchParams.get("verify")==="1"){
+          const context=await state.memory.recall(session,conversationId,synthetic);
+          return send(response,200,{state:context.text.includes(synthetic)?"PASS":"FAIL",test_only:true,
+            brain_id:context.brain_id,has_marker:context.text.includes(synthetic),ledger_head:context.ledger_head});
+        }
+        const receipt=await state.memory.remember(session,conversationId,synthetic);
+        const check=await state.memory.read(session,receipt.document_id);
+        const context=await state.memory.recall(session,conversationId,synthetic);
+        const ok=check.receipt.receipt_sha256===receipt.receipt_sha256 && context.text.includes(synthetic);
+        return send(response,ok?200:502,{state:ok?"PASS":"FAIL",test_only:true,brain_id:context.brain_id,
+          readback_verified:check.receipt.receipt_sha256===receipt.receipt_sha256,
+          recall_verified:context.text.includes(synthetic),document_id:receipt.document_id});
+      }
       if (method === "GET" && url.pathname === "/memory/status")
         return send(response,200,await state.memory.status(authenticatedSession(request,state)));
       // Prywatna pamięć nigdy nie dziedziczy uprawnień anonimowego trybu open.
