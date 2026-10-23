@@ -291,6 +291,43 @@ export async function handleApiRequest(
             code:error instanceof StorageError?error.code:"STORAGE_PROBE_UNAVAILABLE"});
         }
       }
+      // Strictly one bounded NVIDIA Build *free endpoint* inference smoke.
+      // The durable reservation is created BEFORE provider traffic; no retry on uncertain outcome.
+      if (method === "GET" && url.pathname === "/diagnostics/nvidia-infer-once" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023" &&
+          state.accessEnv.OSA_STORAGE_NAMESPACE === "osa-p1-preview-20261024") {
+        if (!state.durable || !state.accessEnv.NVIDIA_API_KEY?.trim())
+          return send(response,503,{state:"BLOCKED",code:"PROBE_CONFIGURATION_REQUIRED"});
+        const scope="org_osa_preview_test_20261023:prj_osa_preview_test_20261023";
+        const id="nvidia_once_probe_20261024";
+        const current=await state.durable.get<{status:string,http?:number}>(scope,"executions",id);
+        if (current) return send(response,200,{state:current.payload.status,http:current.payload.http??null,
+          one_shot:true,replayed:true});
+        let reserved;
+        try { reserved=await state.durable.put(scope,"executions",id,{status:"STARTED_UNCONFIRMED"}); }
+        catch(error){ if(error instanceof StorageError && error.status===409)
+          return send(response,200,{state:"IN_PROGRESS_OR_COMPLETE",one_shot:true});
+          throw error; }
+        if(reserved.revision!==1)return send(response,503,{state:"BLOCKED",code:"RESERVATION_INVALID"});
+        let http:number|null=null;
+        try {
+          const upstream=await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+            method:"POST",redirect:"error",signal:AbortSignal.timeout(12000),
+            headers:{authorization:"Bearer "+state.accessEnv.NVIDIA_API_KEY.trim(),"content-type":"application/json"},
+            body:JSON.stringify({model:"nvidia/nemotron-3-super-120b-a12b",
+              messages:[{role:"user",content:"Answer with OK only."}],max_tokens:8,stream:false})
+          });
+          http=upstream.status;
+          await upstream.body?.cancel().catch(()=>{});
+        }catch{ /* Uncertain requests must never be automatically retried */ }
+        const finalStatus=http===200?"PROVIDER_HTTP_OK":http===401||http===403?"PROVIDER_AUTH_DENIED":
+          http===410?"PROVIDER_ENDPOINT_GONE":http===429?"PROVIDER_RATE_LIMIT":
+          http===null?"PROVIDER_TIMEOUT_OR_NETWORK":"PROVIDER_REJECTED";
+        await state.durable.put(scope,"executions",id,{status:finalStatus,http},reserved.revision);
+        return send(response,200,{state:finalStatus,http,one_shot:true,replayed:false,
+          response_content_discarded:true});
+      }
       // Read-only NVIDIA API catalog test; no model tokens, no credentials returned.
       if (method === "GET" && url.pathname === "/diagnostics/nvidia-auth" &&
           state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
