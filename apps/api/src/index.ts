@@ -291,6 +291,34 @@ export async function handleApiRequest(
             code:error instanceof StorageError?error.code:"STORAGE_PROBE_UNAVAILABLE"});
         }
       }
+      // Read-only NVIDIA API catalog test; no model tokens, no credentials returned.
+      if (method === "GET" && url.pathname === "/diagnostics/nvidia-auth" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023") {
+        const configured = Boolean(state.accessEnv.NVIDIA_API_KEY?.trim());
+        if(!configured)return send(response,200,{state:"UNCONFIGURED",catalog_http:null,model_listed:false});
+        let upstream:Response;
+        try{
+          upstream=await fetch("https://integrate.api.nvidia.com/v1/models", {
+            method:"GET",redirect:"error",signal:AbortSignal.timeout(8000),
+            headers: {authorization:"Bearer "+state.accessEnv.NVIDIA_API_KEY!.trim(),accept:"application/json"}
+          });
+        }catch{return send(response,200,{state:"NETWORK_UNAVAILABLE",catalog_http:null,model_listed:false});}
+        let found=false;
+        if(upstream.status===200){
+          try{
+            const text=await upstream.text();
+            if(text.length<=250000){
+              const catalog=JSON.parse(text);
+              found=Array.isArray(catalog?.data)&&catalog.data.some((x:unknown)=>!!x&&typeof x==="object"&&
+                (x as {id?:unknown}).id===(state.accessEnv.NVIDIA_MODEL?.trim()||"nvidia/nemotron-3-super-120b-a12b"));
+            }
+          }catch{ /* status remains authoritative; model inventory is not guaranteed */ }
+        } else await upstream.body?.cancel().catch(()=>{});
+        return send(response,200,{state:upstream.status===200?"CATALOG_REACHABLE":"CATALOG_REJECTED",
+          catalog_http:upstream.status,model_listed:found,
+          inference_verified:false,key_exposed:false});
+      }
       // Narrow, preview-only transport probe for the explicitly provided Railway hostname.
       // No token, no input URL, no private records and no provider/model execution.
       if (method === "GET" && url.pathname === "/diagnostics/railway-neurosa" &&
