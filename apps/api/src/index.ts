@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { handleOperatorAuth, operatorAccessStatus, operatorOriginAllowed, operatorProject, operatorSession, protectedRuntime } from "./operator-access";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle, createExecutionGuard, isExecutionReservation, type ExecutionPermit, type UnifiedRequest } from "./unified";
-import { handleNvidiaRequest } from "./nvidia";
+import { handleNvidiaRequest, nvidiaChat } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { handleProviderRequest } from "./provider-chat";
 import { ProviderVault } from "./provider-vault";
@@ -289,6 +289,41 @@ export async function handleApiRequest(
         } catch(error) {
           return send(response,503,{state:"BLOCKED",test_only:true,
             code:error instanceof StorageError?error.code:"STORAGE_PROBE_UNAVAILABLE"});
+        }
+      }
+      // Fixed one-shot full OSA->NVIDIA chat acceptance with a durable execution reservation.
+      // Never expose model text, secrets, or user data; never retry an uncertain inference.
+      if(method==="GET" && url.pathname==="/diagnostics/nvidia-chat-runtime-once" &&
+         state.accessEnv.VERCEL==="1" && state.accessEnv.VERCEL_ENV==="preview" &&
+         state.accessEnv.VERCEL_GIT_COMMIT_REF==="codex/osa-preview-brain-test-20261023" &&
+         state.accessEnv.OSA_STORAGE_NAMESPACE==="osa-p1-preview-20261024" &&
+         state.accessEnv.OSA_ZERO_COST_ONLY==="true" &&
+         state.accessEnv.NVIDIA_MODEL==="openai/gpt-oss-20b") {
+        const executionId="exec_4603b98b-b0bd-413d-9466-ff5c370e2026";
+        const scope="org_osa_preview_test_20261023:prj_osa_preview_test_20261023";
+        const previous=await state.durable?.get(scope,"executions","reservation_"+executionId);
+        if(previous)return send(response,200,{state:"ALREADY_EXECUTED_OR_RESERVED",one_shot:true});
+        const session=authenticatedSession(request,state);
+        if(!session)return send(response,403,{state:"BLOCKED",code:"TEST_SESSION_UNAVAILABLE"});
+        try{
+          const result=await nvidiaChat({
+             prompt:"Odpowiedz krótko po polsku: GOTOWE.",
+             execution_id:executionId,agent:"jeff",
+             conversation_id:"5760ec43-3922-498e-a3f7-f72e43dd8200",remember:false
+          },{env:state.accessEnv,memory:state.memory,session,
+             guard:state.executionGuard(session,"prj_osa_preview_test_20261023")},true);
+          const textOk=result.status==="PROVIDER_RESPONSE"&&typeof result.text==="string"&&!!result.text.trim();
+          return send(response,textOk?200:502,{
+            state:textOk?"PASS":"BLOCKED",execution_id:executionId,
+            provider_http_accepted:true,model:result.model,
+            response_text_present:textOk,response_text_hidden:true,
+            durable_reservation:true,one_shot:true
+          });
+        }catch(error){
+          const code=error&&typeof error==="object"&&"code" in error&&
+            typeof (error as {code?:unknown}).code==="string"?
+            (error as {code:string}).code:"RUNTIME_EXECUTION_UNCONFIRMED";
+          return send(response,502,{state:"BLOCKED",code,execution_id:executionId,one_shot:true});
         }
       }
       // Read-only NVIDIA API catalog test; no model tokens, no credentials returned.
