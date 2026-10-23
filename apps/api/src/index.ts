@@ -261,6 +261,31 @@ export async function handleApiRequest(
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
       response.setHeader("cache-control","no-store");
       if (await handleOperatorAuth(request,response,url.pathname,state.accessEnv)) return;
+      // Narrow, preview-only transport probe for the explicitly provided Railway hostname.
+      // No token, no input URL, no private records and no provider/model execution.
+      if (method === "GET" && url.pathname === "/diagnostics/railway-neurosa" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023") {
+        const base = "https://neurosabrain-web-production.up.railway.app";
+        const probe = async (path: string) => {
+          try {
+            const upstream = await fetch(base + path, {
+              method: "GET", redirect: "error", signal: AbortSignal.timeout(7000),
+              headers: {"x-neurosa-brain-id": "OsaBrain"}
+            });
+            return { http: upstream.status, content_type: (upstream.headers.get("content-type") || "").slice(0,80) };
+          } catch { return { http: null, code: "NETWORK_UNAVAILABLE" }; }
+        };
+        const health = await probe("/health");
+        const without_token = await probe("/api/v1/brain/status");
+        return send(response, 200, {
+          probe: "OSA_RAILWAY_TRANSPORT_V1", production_untouched: true,
+          health, without_token,
+          connectivity: health.http === 200 ? "REACHABLE" : "UNKNOWN_OR_UNREACHABLE",
+          token_protection: without_token.http === 401 ? "PASS" : "UNCONFIRMED",
+          memory_write_tested: false, volume_verified: false
+        });
+      }
       // Synthetic preview memory diagnostic only: no provider execution or source-NeurOSA data.
       if (method === "GET" && url.pathname === "/memory/preview-smoke" &&
           state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
