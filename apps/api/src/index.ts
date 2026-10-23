@@ -261,6 +261,36 @@ export async function handleApiRequest(
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
       response.setHeader("cache-control","no-store");
       if (await handleOperatorAuth(request,response,url.pathname,state.accessEnv)) return;
+      // One fixed synthetic record for deployment acceptance; no user input, models or private data.
+      if (method === "GET" && url.pathname === "/diagnostics/p1-durable-smoke" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023" &&
+          state.accessEnv.OSA_STORAGE_NAMESPACE === "osa-p1-preview-20261024") {
+        if (!state.durable) return send(response,503,{state:"BLOCKED",code:"STORAGE_NOT_CONFIGURED"});
+        const scope="org_osa_preview_test_20261023:prj_osa_preview_test_20261023";
+        const id="osa_p1_durable_smoke_20261024";
+        const payload={schema:"osa.storage.preview_probe.v1",marker:"SYNTHETIC_ONLY_20261024",scope};
+        try {
+          const verificationOnly=url.searchParams.get("verify")==="1";
+          let record=await state.durable.get<typeof payload>(scope,"executions",id);
+          let written=false;
+          if (!record && !verificationOnly) {
+            const saved=await state.durable.put(scope,"executions",id,payload);
+            if (saved.record_id!==id || saved.revision!==1 || digest(saved.payload)!==digest(payload))
+              throw new StorageError("STORAGE_ACK_UNCONFIRMED");
+            written=true;
+            record=await state.durable.get<typeof payload>(scope,"executions",id);
+          }
+          const ok=!!record && record.record_id===id && record.revision===1 &&
+            digest(record.payload)===digest(payload);
+          return send(response,ok?200:503,{state:ok?"PASS":"FAIL",test_only:true,
+            verified_read:ok,written_in_this_request:written,verification_only:verificationOnly,
+            namespace:"osa-p1-preview-20261024",record_id:id});
+        } catch(error) {
+          return send(response,503,{state:"BLOCKED",test_only:true,
+            code:error instanceof StorageError?error.code:"STORAGE_PROBE_UNAVAILABLE"});
+        }
+      }
       // Narrow, preview-only transport probe for the explicitly provided Railway hostname.
       // No token, no input URL, no private records and no provider/model execution.
       if (method === "GET" && url.pathname === "/diagnostics/railway-neurosa" &&
