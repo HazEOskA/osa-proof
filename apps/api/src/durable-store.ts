@@ -17,7 +17,13 @@ export class DurableStore {
     let url:URL,key;
     try{
       url=new URL(this.env.OSA_STORAGE_URL||"");
-      if(url.protocol!=="https:"||!url.hostname.endsWith(".supabase.co")||url.username||url.password||url.port||url.search||url.hash||url.pathname!=="/functions/v1/osa-proof-storage")throw Error();
+      const p1Preview = this.env.VERCEL === "1" && this.env.VERCEL_ENV === "preview" &&
+        this.env.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023" &&
+        this.env.OSA_STORAGE_NAMESPACE === "osa-p1-preview-20261024" &&
+        url.hostname === "rzuhgklbuujvciargkwi.supabase.co" &&
+        url.pathname === "/functions/v1/osa-proof-storage-p1-preview";
+      if(url.protocol!=="https:"||!url.hostname.endsWith(".supabase.co")||url.username||url.password||url.port||url.search||url.hash||
+        (!p1Preview&&url.pathname!=="/functions/v1/osa-proof-storage"))throw Error();
       key=createPrivateKey({key:Buffer.from(this.env.OSA_STORAGE_PRIVATE_KEY_B64||"","base64"),format:"der",type:"pkcs8"});
       if(key.asymmetricKeyType!=="ed25519")throw Error();
     }catch{throw new StorageError("STORAGE_NOT_CONFIGURED");}
