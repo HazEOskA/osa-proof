@@ -62,13 +62,15 @@ export class NeurosaMemoryAdapter implements WritableBrainMemory {
   readonly binding: Readonly<{ organization_id: string; project_id: string }>;
   constructor(options: NeurosaMemoryOptions) {
     const url = new URL(options.baseUrl);
-    if (url.username || url.password || url.search || url.hash || url.pathname !== "/" ||
+    const previewEdge = url.protocol === "https:" && url.hostname === "rzuhgklbuujvciargkwi.supabase.co" &&
+      url.pathname === "/functions/v1/osa-preview-brain" && options.brainId === "osa_preview_brain_v1";
+    if (url.username || url.password || url.search || url.hash || (!previewEdge && url.pathname !== "/") ||
         (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)))) throw new Error("invalid NeurOSA origin; remote connections require HTTPS");
     if (options.token.length < 24 || !options.brainId.trim() || !options.organizationId.trim() || !options.projectId.trim()) throw new Error("NeurOSA token, brain and tenant/project binding required");
     if (options.timeoutMs !== undefined && (!Number.isInteger(options.timeoutMs) || options.timeoutMs < 1 || options.timeoutMs > 60000)) throw new Error("invalid NeurOSA timeout");
     this.options = { ...options };
     this.binding = Object.freeze({ organization_id: options.organizationId, project_id: options.projectId });
-    this.base = url.origin;
+    this.base = previewEdge ? url.origin + url.pathname : url.origin;
     this.fetcher = options.fetch ?? globalThis.fetch;
   }
   private checkScope(scope: BrainScope): void {
@@ -201,7 +203,15 @@ export function createConfiguredBrain(env: Record<string, string | undefined>, p
   const names = ["OSA_NEUROSA_BASE_URL", "OSA_NEUROSA_TOKEN", "OSA_NEUROSA_BRAIN_ID", "OSA_NEUROSA_ORGANIZATION_ID", "OSA_NEUROSA_PROJECT_ID"];
   const configured = names.filter((name) => env[name] !== undefined);
   if (configured.length && configured.length !== names.length) throw new Error("NeurOSA connection requires all origin, credential, brain and tenant/project fields");
-  const memory = configured.length ? new NeurosaMemoryAdapter({ baseUrl: env.OSA_NEUROSA_BASE_URL!, token: env.OSA_NEUROSA_TOKEN!,
+  // Explicitly branch-scoped synthetic Brain API; never reuse private NeurOSA credentials or content.
+  const preview = env.VERCEL === "1" && env.VERCEL_ENV === "preview" && env.OSA_PREVIEW_GUEST_MEMORY === "1";
+  const previewUrl = "https://rzuhgklbuujvciargkwi.supabase.co/functions/v1/osa-preview-brain";
+  if (preview && (env.OSA_PREVIEW_BRAIN_URL !== previewUrl || !env.OSA_PREVIEW_BRAIN_TOKEN))
+    throw new Error("isolated preview brain configuration missing");
+  const memory = preview ? new NeurosaMemoryAdapter({
+    baseUrl: previewUrl, token: env.OSA_PREVIEW_BRAIN_TOKEN!, brainId: "osa_preview_brain_v1",
+    organizationId: "org_osa_preview_test_20261023", projectId: "prj_osa_preview_test_20261023"
+  }) : configured.length ? new NeurosaMemoryAdapter({ baseUrl: env.OSA_NEUROSA_BASE_URL!, token: env.OSA_NEUROSA_TOKEN!,
     brainId: env.OSA_NEUROSA_BRAIN_ID!, organizationId: env.OSA_NEUROSA_ORGANIZATION_ID!, projectId: env.OSA_NEUROSA_PROJECT_ID! }) : undefined;
   return new BrainControlPlane(mode === "model" ? new ModelBrainPlanner(provider!, modelRefs) : new NativeBrainPlanner(), memory);
 }
