@@ -79,7 +79,15 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
     response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: AbortSignal.timeout(25000), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: serialized });
   } catch { throw new NvidiaError(504, "NVIDIA_UNAVAILABLE", "NVIDIA nie odpowiedziała w wymaganym czasie lub połączenie nie powiodło się."); }
   if (!response.ok) {
-    throw new NvidiaError(response.status === 429 ? 429 : 502, "NVIDIA_REJECTED", response.status === 401 || response.status === 403 ? "NVIDIA odrzuciła autoryzację. Sprawdź klucz i dostęp do modelu." : response.status === 429 ? "Limit wywołań NVIDIA. Spróbuj później." : `NVIDIA odrzuciła żądanie (HTTP ${response.status}).`);
+    // Catalog acceptance is not proof that the account can execute inference.
+    // Do not retry an uncertain request, reveal upstream bodies, or switch to a paid model.
+    if (response.status === 404 || response.status === 410)
+      throw new NvidiaError(502, response.status === 404 ? "NVIDIA_INFERENCE_HTTP_404" : "NVIDIA_INFERENCE_HTTP_410",
+        `NVIDIA odrzuciła generowanie (HTTP ${response.status}). Sprawdź uprawnienie Public API Endpoints konta NVIDIA i dostępność tego modelu. Klucz może działać dla katalogu /v1/models, lecz nie dla inferencji.`);
+    if (response.status === 401 || response.status === 403)
+      throw new NvidiaError(502, "NVIDIA_INFERENCE_ACCESS_DENIED", "NVIDIA odrzuciła autoryzację inferencji. Sprawdź dostęp API na koncie NVIDIA.");
+    throw new NvidiaError(response.status === 429 ? 429 : 502, "NVIDIA_REJECTED",
+      response.status === 429 ? "Limit wywołań NVIDIA. Spróbuj później." : `NVIDIA odrzuciła żądanie (HTTP ${response.status}).`);
   }
   let data: {id?:string;model?:string;choices?:{message?:{content?:string;tool_calls?:unknown};finish_reason?:string}[]};
   try {
