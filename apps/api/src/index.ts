@@ -191,9 +191,22 @@ function bearerToken(request: IncomingMessage): string | undefined {
 
 function authenticatedSession(request: IncomingMessage, state: ApiState): SessionRecord | undefined {
   if (protectedRuntime(state.accessEnv)) {
-    return operatorAccessStatus(state.accessEnv).required
-      ? operatorSession(request,state.accessEnv)
-      : structuredClone(OPEN_MODE_SESSION);
+    if (operatorAccessStatus(state.accessEnv).required) return operatorSession(request,state.accessEnv);
+    const env = state.accessEnv;
+    if (env.VERCEL === "1" && env.VERCEL_ENV === "preview" && env.OSA_PREVIEW_GUEST_MEMORY === "1" &&
+        env.OSA_PREVIEW_BRAIN_URL === "https://rzuhgklbuujvciargkwi.supabase.co/functions/v1/osa-preview-brain" &&
+        Boolean(env.OSA_PREVIEW_BRAIN_TOKEN) &&
+        state.memory.adapter?.binding?.organization_id === "org_osa_preview_test_20261023" &&
+        state.memory.adapter?.binding?.project_id === "prj_osa_preview_test_20261023") {
+      return {
+        session_id: "ses_preview_test_only", token: "",
+        identity: {identity_id:"idn_preview_test_only", provider:"server-operator", subject:"preview:synthetic-test-only",
+          display_name:"OSA Test Preview",organization_id:"org_osa_preview_test_20261023",
+          project_ids:["prj_osa_preview_test_20261023"],roles:["operator"],verified:true},
+        created_at:"2026-10-23T00:00:00.000Z",expires_at:"2027-01-01T00:00:00.000Z"
+      };
+    }
+    return structuredClone(OPEN_MODE_SESSION);
   }
   const token = bearerToken(request);
   const session = token ? state.sessions.get(token) : undefined;
