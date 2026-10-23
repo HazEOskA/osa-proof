@@ -291,6 +291,46 @@ export async function handleApiRequest(
             code:error instanceof StorageError?error.code:"STORAGE_PROBE_UNAVAILABLE"});
         }
       }
+      // One-shot isolated free NVIDIA model comparison. No private content; never retry unknown requests.
+      if (method === "GET" && url.pathname === "/diagnostics/nvidia-gptoss-once" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023" &&
+          state.accessEnv.OSA_STORAGE_NAMESPACE === "osa-p1-preview-20261024") {
+        if (!state.durable || !state.accessEnv.NVIDIA_API_KEY?.trim())
+          return send(response,503,{state:"BLOCKED",code:"PROBE_CONFIGURATION_REQUIRED"});
+        const scope="org_osa_preview_test_20261023:prj_osa_preview_test_20261023";
+        const id="nvidia_gptoss20b_once_20261024";
+        const seen=await state.durable.get<{status:string;http?:number;error_category?:string}>(scope,"executions",id);
+        if(seen)return send(response,200,{state:seen.payload.status,http:seen.payload.http??null,
+          error_category:seen.payload.error_category??null,replayed:true});
+        let held;
+        try{held=await state.durable.put(scope,"executions",id,{status:"STARTED_UNCONFIRMED"});}
+        catch(error){if(error instanceof StorageError&&error.status===409)
+          return send(response,200,{state:"ALREADY_RESERVED",replayed:true});
+          throw error;}
+        if(held.revision!==1)return send(response,503,{state:"BLOCKED",code:"RESERVATION_INVALID"});
+        let http:number|null=null,error_category="UNKNOWN";
+        try{
+          const upstream=await fetch("https://integrate.api.nvidia.com/v1/chat/completions",{
+            method:"POST",redirect:"error",signal:AbortSignal.timeout(16000),
+            headers:{authorization:"Bearer "+state.accessEnv.NVIDIA_API_KEY.trim(),"content-type":"application/json"},
+            body:JSON.stringify({model:"openai/gpt-oss-20b",messages:[{role:"user",content:"Reply OK."}],
+              max_tokens:16,stream:false})
+          });
+          http=upstream.status;
+          const text=await upstream.text().then(t=>t.slice(0,1200)).catch(()=>"");
+          if(http!==200&&http!==202){
+            if(/Not found for account/i.test(text))error_category="FUNCTION_UNAVAILABLE_FOR_ACCOUNT";
+            else if(/model.*not found|unknown model/i.test(text))error_category="MODEL_NOT_FOUND";
+            else if(/denied|unauthorized|forbidden/i.test(text))error_category="AUTH_DENIED";
+          }
+        }catch{error_category="NETWORK_OR_TIMEOUT";}
+        const status=http===200?"INFERENCE_HTTP_OK":http===202?"INFERENCE_PENDING":
+          http===null?"INFERENCE_UNCONFIRMED":"INFERENCE_HTTP_REJECTED";
+        await state.durable.put(scope,"executions",id,{status,http,error_category},held.revision);
+        return send(response,200,{state:status,http,error_category,replayed:false,model:"openai/gpt-oss-20b",
+          private_data_used:false,inference_text_discarded:true});
+      }
       // Read-only NVIDIA API catalog test; no model tokens, no credentials returned.
       if (method === "GET" && url.pathname === "/diagnostics/nvidia-auth" &&
           state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
