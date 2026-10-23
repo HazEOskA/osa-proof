@@ -8,7 +8,9 @@ import {createDevExecution} from "../apps/api/src/server";
 import {operatorAccessStatus,operatorSession} from "../apps/api/src/operator-access";
 import {handleNvidiaRequest,nvidiaComplete,nvidiaCostGate} from "../apps/api/src/nvidia";
 import {takeModelQuota,MODEL_QUOTA_LUA} from "../apps/api/src/model-quota";
-import {executeUnified,verifyUnifiedBundle} from "../apps/api/src/unified";
+import {executeUnified,verifyUnifiedBundle,createExecutionGuard} from "../apps/api/src/unified";
+
+import {contractStore} from "./p1-fix-01-fixtures";
 
 const origin="https://preview.osa.invalid";
 function config():NodeJS.ProcessEnv {return {VERCEL:"1",OSA_AUTH_MODE:"open",OSA_OPERATOR_TOKEN:randomBytes(32).toString("base64url"),
@@ -25,7 +27,7 @@ test("chmura: open i dev-login nie obchodzą ochrony żadnego API ani modelu",as
     for(const path of ["/nvidia/status","/build/status","/organizations","/permissions","/queue","/datasets","/knowledge","/secrets","/runs/unknown/evidence","/missions/unknown","/build/workspace"])
       assert.equal((await fetch(base+path)).status,401,path);
     for(const path of ["/nvidia/chat","/nvidia/fleet-chat","/unified/execute","/teams","/missions"])
-      assert.equal((await fetch(base+path,{method:"POST",headers:{origin,"content-type":"application/json"},body:JSON.stringify({prompt:"test"})})).status,401,path);
+      assert.equal((await fetch(base+path,{method:"POST",headers:{origin,"content-type":"application/json"},body:JSON.stringify({prompt:"test",execution_id:"exec_"+randomUUID()})})).status,401,path);
     assert.equal((await fetch(base+"/auth/dev-login",{method:"POST",body:JSON.stringify({display_name:"forged"})})).status,403);
     const access=await (await fetch(base+"/auth/access")).json() as {required:boolean;authenticated:boolean};
     assert.equal(access.required,true);assert.equal(access.authenticated,false);assert.equal((access as {scope?:unknown}).scope,null);
@@ -76,7 +78,7 @@ for (const environment of ["preview","production"]) test(`${environment} open: c
     const verified=await fetch(base+"/unified/verify",{method:"POST",headers:json,body:JSON.stringify(bundle)});
     assert.equal(verified.status,200);assert.equal((await verified.json()).ok,true);
     for(const path of ["/nvidia/chat","/nvidia/fleet-chat"]){
-      const denied=await fetch(base+path,{method:"POST",headers:json,body:JSON.stringify({prompt:"test"})});
+      const denied=await fetch(base+path,{method:"POST",headers:json,body:JSON.stringify({prompt:"test",execution_id:"exec_"+randomUUID()})});
       assert.equal(denied.status,503);assert.equal((await denied.json()).code,"NVIDIA_NOT_CONFIGURED");
     }
     assert.equal((await fetch(base+"/unified/execute",{method:"POST",headers:json,body:JSON.stringify({tool:"osa.crypto.sha256.v1"})})).status,403);
@@ -119,15 +121,17 @@ test("tool_calls: symulowany dostawca → prawdziwy Runtime → receipt; niedozw
     const body=JSON.parse(String(init?.body));assert.equal(body.tools[0].function.name,"osa_sha256");
     return new Response(JSON.stringify({id:"SIMULATED_PROVIDER_RESPONSE",model:"nvidia/test-model",choices:[{finish_reason:"tool_calls",message:{content:null,tool_calls:[{id:"simulated-call",type:"function",function:{name:denied?"shell_exec":"osa_sha256",arguments:JSON.stringify({text:"OSA Proof"})}}]}}]}));
   }) as typeof fetch;
-  const server=createServer((req,res)=>void handleNvidiaRequest(req,res,"/nvidia/fleet-chat",{env,fetch:fake,dispatch:async input=>{dispatches++;return executeUnified(input,"org_dev_local",runtime.registry);}}));
+  const guard=createExecutionGuard(contractStore().store,"org_dev_local:osa-proof","release-test");
+  const server=createServer((req,res)=>void handleNvidiaRequest(req,res,"/nvidia/fleet-chat",{env,fetch:fake,guard,dispatch:async input=>{dispatches++;return executeUnified(input,"org_dev_local",runtime.registry);}}));
   const base=await listen(server),execution_id="exec_"+randomUUID();
   try{
-    const post=()=>fetch(base,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prompt:"Oblicz digest",agent:"runtime",execute_tools:true,execution_id})});
+    const post=(id=execution_id)=>fetch(base,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prompt:"Oblicz digest",agent:"runtime",execute_tools:true,execution_id:id})});
     const r=await post();assert.equal(r.status,200);const answer=await r.json();
     assert.equal(answer.status,"TOOL_EXECUTED");assert.equal(answer.bundle.routing,"MODEL_TOOL_CALL");assert.equal(answer.bundle.execution_id,execution_id);
     assert.equal(verifyUnifiedBundle(answer.bundle).ok,true);assert.ok(answer.bundle.run.events.every((e:{execution_id:string})=>e.execution_id===execution_id));
     assert.equal(answer.bundle.run.final_output.sha256,createHash("sha256").update("OSA Proof").digest("hex"));
-    denied=true;const blocked=await post();assert.equal(blocked.status,502);assert.equal((await blocked.json()).code,"NVIDIA_TOOL_NOT_ALLOWED");assert.equal(dispatches,1);
+    denied=true;const replay=await post();assert.equal(replay.status,200);assert.equal(dispatches,1);
+    const blocked=await post("exec_"+randomUUID());assert.equal(blocked.status,502);assert.equal((await blocked.json()).code,"NVIDIA_TOOL_NOT_ALLOWED");assert.equal(dispatches,1);
   }finally{await close(server);}
 });
 test("HTTP NVIDIA: klucz klienta i obcy model są odrzucane przed dostępem do sieci",async()=>{

@@ -16,13 +16,18 @@ Deno.serve(async(req:Request)=>{
     if(!key||signature.length!==88||!await crypto.subtle.verify("Ed25519",await key,bytes(signature),data))return json(403,{code:"STORAGE_SIGNATURE_DENIED"});
     if(!Number.isSafeInteger(input.issued_at)||Math.abs(Date.now()-input.issued_at)>30000||typeof input.nonce!=="string"||!/^[a-f0-9-]{36}$/.test(input.nonce))return json(403,{code:"STORAGE_REQUEST_EXPIRED"});
     if(!identifier(input.namespace)||!identifier(input.scope)||!["executions","missions","provider_connections"].includes(input.kind)||!["get","list","put","delete"].includes(input.op)||input.op!=="list"&&!identifier(input.record_id))return json(400,{code:"STORAGE_INVALID_INPUT"});
+    if(input.op==="list"&&(input.page_size!==5||input.cursor!==null&&!identifier(input.cursor)))return json(400,{code:"STORAGE_INVALID_PAGE"});
     const root=Deno.env.get("SUPABASE_URL"),secret=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if(!root||!secret)return json(503,{code:"STORAGE_BACKEND_UNAVAILABLE"});
     const url=new URL(root+"/rest/v1/osa_runtime_records");
     for(const name of ["namespace","scope","kind"])url.searchParams.set(name,"eq."+input[name]);
     if(input.op!=="list")url.searchParams.set("record_id","eq."+input.record_id);
     url.searchParams.set("select","record_id,revision,payload");
-    if(input.op==="list"){url.searchParams.set("order","updated_at.desc");url.searchParams.set("limit","100");}
+    if(input.op==="list"){
+      // Niezmienny klucz, nie updated_at: checkpoint nie przesuwa wiersza między stronami.
+      url.searchParams.set("order","record_id.asc");url.searchParams.set("limit","6");
+      if(input.cursor!==null)url.searchParams.set("record_id","gt."+input.cursor);
+    }
     const headers:Record<string,string>={authorization:"Bearer "+secret,apikey:secret,"content-type":"application/json",prefer:"return=representation"};
     let method="GET",body:string|undefined;
     if(input.op==="put"){
@@ -42,6 +47,10 @@ Deno.serve(async(req:Request)=>{
     if(!response.ok)return json(503,{code:"STORAGE_DATABASE_UNAVAILABLE"});
     const rows=await response.json();
     if(["put","delete"].includes(input.op)&&rows.length!==1)return json(409,{code:"STORAGE_REVISION_CONFLICT"});
-    return json(200,input.op==="list"?{records:rows}:input.op==="delete"?{removed:true}:{record:rows[0]??null});
+    if(input.op==="list"){
+      const page=rows.slice(0,5);
+      return json(200,{records:page,next_cursor:rows.length>5?page[page.length-1].record_id:null});
+    }
+    return json(200,input.op==="delete"?{removed:true}:{record:rows[0]??null});
   }catch{return json(503,{code:"STORAGE_REQUEST_FAILED"});}
 });

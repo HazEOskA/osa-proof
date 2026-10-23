@@ -1,3 +1,19 @@
+import { digest } from "../../proof-core/src";
+
+export interface WorkspaceCleanupResult {
+  schema: "osa.workspace_cleanup.v1";
+  workspace_id: string;
+  scope_sha256: string;
+  state: "REMOVED" | "ABSENT" | "UNKNOWN";
+  confirmed: boolean;
+  method: "DOCKER_REMOVE" | "DOCKER_INSPECT" | "UNCONFIRMED";
+}
+export function confirmedWorkspaceCleanup(value: unknown, id: string, scope: unknown): value is WorkspaceCleanupResult {
+  const v=value as WorkspaceCleanupResult|undefined;
+  return !!v && v.schema==="osa.workspace_cleanup.v1" && v.workspace_id===id && v.scope_sha256===digest(scope??null) && v.confirmed===true &&
+    ((v.state==="REMOVED"&&v.method==="DOCKER_REMOVE")||(v.state==="ABSENT"&&v.method==="DOCKER_INSPECT"));
+}
+
 export interface WorkspaceCommandOptions {
   cwd?: string;
   env?: Record<string, string>;
@@ -35,13 +51,15 @@ export interface WorkspaceHandle {
 
   exposePort?(port: number): Promise<string | undefined>;
 
-  stop(): Promise<void>;
+  // Starsze implementacje mogą zwrócić void, ale nie jest to dowód cleanupu.
+  stop(): Promise<void | WorkspaceCleanupResult>;
 }
 
 export interface WorkspaceProvider {
   readonly id: string;
 
   create(request: WorkspaceCreateRequest): Promise<WorkspaceHandle>;
+  recoverCleanup?(id: string, request: WorkspaceCreateRequest): Promise<WorkspaceCleanupResult>;
 }
 
 export class WorkspaceProviderRegistry {

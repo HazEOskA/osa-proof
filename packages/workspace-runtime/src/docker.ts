@@ -1,12 +1,14 @@
 import { spawn } from "node:child_process";
 import { posix } from "node:path";
 import { randomUUID } from "node:crypto";
+import { digest } from "../../proof-core/src";
 import type {
   WorkspaceCommandOptions,
   WorkspaceCommandResult,
   WorkspaceCreateRequest,
   WorkspaceHandle,
   WorkspaceProvider,
+  WorkspaceCleanupResult,
 } from "./index";
 
 export interface DockerCliRunOptions {
@@ -117,6 +119,7 @@ class DockerWorkspaceHandle implements WorkspaceHandle {
   readonly rootDir = "/workspace";
   readonly metadata: Record<string, unknown>;
   private stopped = false;
+  private cleanup?: WorkspaceCleanupResult;
   private readonly lifetimeTimer?: NodeJS.Timeout;
 
   constructor(
@@ -205,20 +208,34 @@ class DockerWorkspaceHandle implements WorkspaceHandle {
     return parsePublishedPort(result.stdout);
   }
 
-  async stop(): Promise<void> {
-    if (this.stopped) return;
+  async stop(): Promise<WorkspaceCleanupResult> {
+    if (this.stopped) return this.cleanup!;
     if (this.lifetimeTimer) clearTimeout(this.lifetimeTimer);
 
-    const result = await this.cli.run(["rm", "-f", this.containerName]);
-    if (result.exitCode !== 0 && !/No such container/i.test(result.stderr)) {
-      throw new Error(`WORKSPACE_STOP_FAILED: ${result.stderr.trim() || result.exitCode}`);
+    // Usuwamy niezmienny identyfikator, nigdy nazwę, którą można ponownie zająć.
+    const result = await this.cli.run(["rm", "-f", this.id],{timeoutMs:15000});
+    let state: "REMOVED"|"ABSENT"="REMOVED";
+    if (result.exitCode !== 0) {
+      if(!await dockerAbsent(this.cli,this.id))throw new Error("WORKSPACE_STOP_FAILED");
+      state="ABSENT";
     }
+    this.cleanup={schema:"osa.workspace_cleanup.v1",workspace_id:this.id,scope_sha256:digest(this.metadata.scope??null),state,confirmed:true,method:state==="REMOVED"?"DOCKER_REMOVE":"DOCKER_INSPECT"};
     this.stopped = true;
+    return this.cleanup;
   }
 }
 
 function safePath(path: string): void {
   if (path.includes("\0") || !path.startsWith("/workspace/") || posix.normalize(path) !== path || path.split("/").includes("..")) throw new Error("WORKSPACE_PATH_INVALID");
+}
+
+function isAbsent(result: WorkspaceCommandResult,id:string): boolean {
+  // Błąd demona, timeout ani pusty stdout nie są dowodem nieistnienia.
+  const match=result.stderr.match(/^\s*(?:Error response from daemon: |Error: )No such (?:container|object):\s*(\S+)\s*$/i);
+  return result.exitCode===1 && match?.[1]===id;
+}
+async function dockerAbsent(cli:DockerCli,id:string):Promise<boolean>{
+  return isAbsent(await cli.run(["inspect",id],{timeoutMs:15000}),id);
 }
 
 export class DockerWorkspaceProvider implements WorkspaceProvider {
@@ -241,6 +258,23 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
     this.cli =
       options.cli ??
       new SpawnDockerCli(options.dockerBinary?.trim() || process.env.DOCKER_BIN?.trim() || "docker");
+  }
+
+  async recoverCleanup(id:string,request:WorkspaceCreateRequest):Promise<WorkspaceCleanupResult>{
+    const unknown:WorkspaceCleanupResult={schema:"osa.workspace_cleanup.v1",workspace_id:id,scope_sha256:digest(request.scope??null),state:"UNKNOWN",confirmed:false,method:"UNCONFIRMED"};
+    // Odzyskiwanie wymaga pełnego ID Dockera i pełnego zakresu zadania.
+    if(!/^[a-f0-9]{64}$/.test(id)||!request.scope||
+      ["organization_id","project_id","mission_id","task_id"].some(k=>!/^[A-Za-z0-9_.:-]{1,128}$/.test(String((request.scope as any)[k]??""))))return unknown;
+    const inspected=await this.cli.run(["inspect",id],{timeoutMs:15000});
+    if(isAbsent(inspected,id))return {...unknown,state:"ABSENT",confirmed:true,method:"DOCKER_INSPECT"};
+    if(inspected.exitCode!==0)return unknown;
+    let container:any;try{const rows=JSON.parse(inspected.stdout);if(!Array.isArray(rows)||rows.length!==1)return unknown;container=rows[0];}catch{return unknown;}
+    const labels=container?.Config?.Labels;
+    if(container?.Id!==id||labels?.["osa.managed"]!=="true"||labels?.["osa.workspace.id"]!==request.workspaceId||
+      Object.entries(request.scope).some(([k,v])=>labels?.["osa."+k]!==v))return unknown;
+    const removed=await this.cli.run(["rm","-f",id],{timeoutMs:15000});
+    if(removed.exitCode===0)return {...unknown,state:"REMOVED",confirmed:true,method:"DOCKER_REMOVE"};
+    return await dockerAbsent(this.cli,id)?{...unknown,state:"ABSENT",confirmed:true,method:"DOCKER_INSPECT"}:unknown;
   }
 
   async create(request: WorkspaceCreateRequest): Promise<WorkspaceHandle> {

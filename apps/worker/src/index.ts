@@ -12,7 +12,11 @@ import type {
   WorkspaceCreateRequest,
   WorkspaceHandle,
   WorkspaceProvider,
+  WorkspaceCleanupResult,
 } from "../../../packages/workspace-runtime/src";
+import { confirmedWorkspaceCleanup } from "../../../packages/workspace-runtime/src";
+
+import { digest } from "../../../packages/proof-core/src";
 
 const MAX_JSON_BYTES = 16 * 1024 * 1024;
 
@@ -42,7 +46,7 @@ export class WorkerState {
 
     const expiresAt = this.now() + lifetimeMs;
     const timer = setTimeout(() => {
-      void handle.stop().then(() => this.workspaces.delete(handle.id)).catch(() => undefined);
+      void this.remove(handle.id).catch(() => undefined);
     }, lifetimeMs);
     timer.unref();
 
@@ -64,14 +68,15 @@ export class WorkerState {
     };
   }
 
-  async remove(id: string): Promise<boolean> {
+  async remove(id: string): Promise<WorkspaceCleanupResult | undefined> {
     const record = this.workspaces.get(id);
-    if (!record) return false;
+    if (!record) return undefined;
 
+    const cleanup=await record.handle.stop();
+    if(!confirmedWorkspaceCleanup(cleanup,id,record.handle.metadata?.scope))throw Error("WORKSPACE_CLEANUP_UNCONFIRMED");
     clearTimeout(record.timer);
-    await record.handle.stop();
     this.workspaces.delete(id);
-    return true;
+    return cleanup;
   }
 
   count(): number {
@@ -275,8 +280,22 @@ export async function handleWorkerRequest(
       const workspaceId = decodeURIComponent(parts[2]);
 
       if (method === "DELETE" && parts.length === 3) {
-        const removed = await state.remove(workspaceId);
-        return send(response, 200, { ok: true, removed });
+        const existing=state.get(workspaceId);
+        // Remote przekazuje oryginalny zakres; starsze DELETE bez ciała mogą
+        // zakończyć wyłącznie workspace nadal obecny w rejestrze.
+        const chunks:Buffer[]=[];let size=0;
+        for await(const chunk of request){size+=Buffer.byteLength(chunk);if(size>65536)throw Error("INVALID_CLEANUP_REQUEST");chunks.push(Buffer.from(chunk));}
+        const raw=Buffer.concat(chunks).toString("utf8");
+        const body=raw?JSON.parse(raw) as WorkspaceCreateRequest:undefined;
+        if(body)assertCreateRequest(body);
+        const scope=body?.scope??existing?.metadata?.scope as WorkspaceCreateRequest["scope"];
+        if(options.scope&&(!scope||scope.organization_id!==options.scope.organization_id||scope.project_id!==options.scope.project_id))
+          return send(response,403,{error:"WORKER_SCOPE_DENIED"});
+        if(existing&&body&&digest(existing.metadata?.scope??null)!==digest(body.scope??null))
+          return send(response,403,{error:"WORKER_SCOPE_DENIED"});
+        const cleanup=existing?await state.remove(workspaceId):body&&options.provider.recoverCleanup?await options.provider.recoverCleanup(workspaceId,body):undefined;
+        if(!confirmedWorkspaceCleanup(cleanup,workspaceId,scope))return send(response,409,{ok:false,removed:false,code:"WORKSPACE_CLEANUP_UNCONFIRMED",...(cleanup?{cleanup}:{})});
+        return send(response,200,{ok:true,removed:cleanup.state==="REMOVED",cleanup});
       }
 
       const workspace = state.get(workspaceId);

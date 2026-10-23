@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { JobQueue, Job, ControlError } from "../../control/src";
 import { AgentExecutionContext, AgentExecutionResult, AgentExecutor } from "../../contracts/src";
 import { digest } from "../../proof-core/src";
-import { WorkspaceProvider, WorkspaceHandle } from "../../workspace-runtime/src";
+import { WorkspaceProvider, WorkspaceHandle, confirmedWorkspaceCleanup, type WorkspaceCleanupResult } from "../../workspace-runtime/src";
 
 export interface Worker { worker_id: string; organization_id: string; project_id: string; capacity: number; active: number; heartbeat_at: number; draining: boolean }
 export interface Lease { job_id: string; worker_id: string; token: string; generation: number; expires_at: number }
@@ -70,18 +70,26 @@ export class FleetQueue extends JobQueue {
 }
 
 export type SandboxAgent = (context: AgentExecutionContext, workspace: WorkspaceHandle) => Promise<AgentExecutionResult>;
+export class SandboxLifecycleError extends Error {
+  constructor(readonly evidence:Record<string,unknown>){super("sandbox cleanup or execution unconfirmed");}
+}
 /** Wraps the existing AgentExecutor: one sandbox per pinned task, evidence consumed by the existing verifier. */
 export function sandboxExecutor(provider: WorkspaceProvider, execute: SandboxAgent, timeoutMs = 120000): AgentExecutor {
   return async context => {
     const pinned = context.mission_plan?.tasks.find(t => t.agent_id === context.agent.agent_id);
     const scope = { organization_id: context.mission.organization_id, project_id: context.mission.project_id, mission_id: context.mission.mission_id, task_id: pinned?.task_id ?? context.operation_id };
     const workspace = await provider.create({ workspaceId: `${scope.mission_id}-${context.agent.agent_id}`, scope, timeoutMs, ports: [] });
-    let result: AgentExecutionResult;
+    let result: AgentExecutionResult|undefined,failed=false;
     try { result = await execute(context, workspace); }
-    catch (error) { await workspace.stop(); throw error; }
+    catch { failed=true; }
     // Cleanup is part of success. A failure must not produce successful sandbox evidence.
-    await workspace.stop();
-    const body = { schema: "osa.sandbox_receipt.v1", ...scope, workspace_id: workspace.id, provider: provider.id, execution_id: context.execution_id, output_sha256: digest(result.output), lifecycle: ["CREATE", "EXECUTE", "DESTROY"] };
+    let cleanup:void|WorkspaceCleanupResult;
+    try{cleanup=await workspace.stop();}catch{cleanup=undefined;}
+    if(!confirmedWorkspaceCleanup(cleanup,workspace.id,scope)||failed||!result)
+      throw new SandboxLifecycleError({...scope,workspace_id:workspace.id,execution_id:context.execution_id,status:"BLOCKED",
+        reason:failed?"SANDBOX_EXECUTION_UNCONFIRMED":"SANDBOX_CLEANUP_UNCONFIRMED",cleanup:cleanup??{state:"UNKNOWN",confirmed:false},
+        recovery:"Sprawdź ten workspace w tym samym zakresie; nie ponawiaj automatycznie wykonania."});
+    const body = { schema: "osa.sandbox_receipt.v1", ...scope, workspace_id: workspace.id, provider: provider.id, execution_id: context.execution_id, output_sha256: digest(result.output), cleanup, cleanup_confirmed:true, lifecycle: ["CREATE", "EXECUTE", "DESTROY"] };
     return { ...result, evidence: [...result.evidence, { kind: "sandbox_receipt", data: { ...body, receipt_sha256: digest(body) } }] };
   };
 }

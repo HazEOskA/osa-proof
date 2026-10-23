@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 interface Reply { text: string; model: string; provider_response_id: string | null; request_id: string; latency_ms: number }
 const headers = () => {
@@ -29,13 +29,24 @@ export default function NvidiaChat() {
   const [reply, setReply] = useState<Reply | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [conversationId] = useState(() => crypto.randomUUID());
+  const [retryAvailable, setRetryAvailable] = useState(false);
+  const pending = useRef<string | null>(null);
+  const inFlight = useRef(false);
   useEffect(() => { let active = true; request<{ configured: boolean; model: string }>("status").then(value => { if (active) { setStatus(value); setModel(value.model); } }).catch(e => { if (active) setError(e.message); }); return () => { active = false; }; }, []);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault(); if (busy) return;
-    setBusy(true); setError(""); setReply(null);
-    try { setReply(await request<Reply>("chat", { method: "POST", body: JSON.stringify({ prompt, model }) })); }
-    catch (e) { setError(e instanceof Error ? e.message : "Wywołanie nie powiodło się."); }
-    finally { setBusy(false); }
+  async function submit(e: React.FormEvent, retry = false) {
+    e.preventDefault(); if (inFlight.current) return;
+    if (!retry) {
+      if (!prompt.trim()) return;
+      pending.current = JSON.stringify({ prompt, model, conversation_id: conversationId, execution_id: "exec_" + crypto.randomUUID() });
+    }
+    const body = pending.current;
+    if (!body) return;
+    // Nie odtwarzamy payloadu z formularza po niepewnym wyniku.
+    inFlight.current = true; setRetryAvailable(false); setBusy(true); setError(""); setReply(null);
+    try { setReply(await request<Reply>("chat", { method: "POST", body })); pending.current = null; }
+    catch (e) { setRetryAvailable(true); setError(e instanceof Error ? e.message : "Wywołanie nie powiodło się."); }
+    finally { inFlight.current = false; setBusy(false); }
   }
   return <div className="space-y-3 py-2 text-[12px]">
     <p className="text-dim">{status ? status.configured ? `Klucz skonfigurowany · ${status.model}` : "Brak NVIDIA_API_KEY na serwerze." : "Sprawdzam konfigurację…"}</p>
@@ -53,6 +64,7 @@ export default function NvidiaChat() {
       <button disabled={busy || !prompt.trim() || !status?.configured || !model.trim()} className="focus-ring tap rounded border border-line px-3 disabled:opacity-40">{busy ? "Generuję…" : "Wyślij do NVIDIA"}</button>
     </form>
     {error && <p role="alert" className="text-red-400">{error}</p>}
+    {retryAvailable && <button type="button" data-testid="model-request-retry" disabled={busy} onClick={e => void submit(e, true)} className="focus-ring tap rounded border border-line px-3 disabled:opacity-40">Ponów to samo żądanie</button>}
     {reply && <div aria-live="polite"><p className="whitespace-pre-wrap break-words">{reply.text}</p><p className="mono mt-3 break-all text-[10px] text-dim">{reply.model} · {reply.latency_ms} ms · odpowiedź: {reply.provider_response_id || "brak ID dostawcy"} · żądanie: {reply.request_id}</p></div>}
   </div>;
 }

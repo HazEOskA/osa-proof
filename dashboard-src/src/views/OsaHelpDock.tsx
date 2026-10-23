@@ -40,6 +40,10 @@ export default function OsaHelpDock(){
   const [draft,setDraft]=useState("");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
+  const [conversationId]=useState(()=>crypto.randomUUID());
+  const [retryAvailable,setRetryAvailable]=useState(false);
+  const pending=useRef<{url:string;body:string}|null>(null);
+  const inFlight=useRef(false);
   const [connected,setConnected]=useState<boolean|null>(null);
   const [provider,setProvider]=useState<ProviderId>("nvidia"),[providers,setProviders]=useState<ProviderStatus|null>(null);
   useEffect(()=>{const refresh=()=>{void providerStatus().then(setProviders).catch(()=>{});};refresh();window.addEventListener("osa-api-connections",refresh);return()=>window.removeEventListener("osa-api-connections",refresh);},[]);
@@ -54,24 +58,34 @@ export default function OsaHelpDock(){
   useEffect(()=>{scrollRef.current?.scrollTo({top:scrollRef.current.scrollHeight,behavior:"smooth"});},[messages,busy,open]);
   useEffect(()=>()=>abort.current?.abort(),[]);
   useEffect(()=>{if(!open)return;let alive=true;fetch("/api/nvidia/status",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then((v:ModelStatus)=>{if(alive)setConnected(Boolean(v.configured)&&v.available!==false);}).catch(()=>{if(alive)setConnected(false);});const k=(event:KeyboardEvent)=>{if(event.key==="Escape")setOpen(false);};document.addEventListener("keydown",k);return()=>{alive=false;document.removeEventListener("keydown",k);};},[open]);
-  async function ask(inputText?:string){
-    const text=(inputText??draft).trim();
-    if(!text||busy)return;
-    const history=messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}));
-    setMessages(prev=>[...prev,{role:"user",text}]);
-    setDraft("");setError("");setBusy(true);
+  async function ask(inputText?:string,retry=false){
+    if(inFlight.current)return;
+    let operation=pending.current;
+    if(!retry){
+      const text=(inputText??draft).trim();
+      if(!text)return;
+      const history=messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}));
+      const gateway=provider!=="nvidia"||providers?.providers.find(p=>p.id===provider)?.source==="PRIVATE_SERVER_STORE";
+      operation={url:gateway?"/api/models/chat":"/api/nvidia/fleet-chat",body:JSON.stringify({prompt:text,agent:"guide",view,history,conversation_id:conversationId,execution_id:"exec_"+crypto.randomUUID(),...(gateway?{provider}:{})})};
+      pending.current=operation;
+      setMessages(prev=>[...prev,{role:"user",text}]);setDraft("");
+    }
+    if(!operation)return;
+    // Retry korzysta z zamrożonych bajtów i trasy, także po timeout lub 409.
+    inFlight.current=true;setRetryAvailable(false);setError("");setBusy(true);
     const ctl=new AbortController();abort.current=ctl;
     try{
       const timeout=setTimeout(()=>ctl.abort(),29000);
       let response:Response;
-      try{const gateway=provider!=="nvidia"||providers?.providers.find(p=>p.id===provider)?.source==="PRIVATE_SERVER_STORE";response=await fetch(gateway?"/api/models/chat":"/api/nvidia/fleet-chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prompt:text,agent:"guide",view,history,...(gateway?{provider}:{})}),signal:ctl.signal});}
+      try{response=await fetch(operation.url,{method:"POST",headers:{"content-type":"application/json"},body:operation.body,signal:ctl.signal});}
       finally{clearTimeout(timeout);}
       const data=await response.json().catch(()=>({error:"Odpowiedź serwera ma nieprawidłowy format."})) as Answer&{error?:string};
       if(!response.ok)throw Error(data.error||"Nie udało się połączyć z modelem.");
       if(data.status!=="PROVIDER_RESPONSE"||!data.text?.trim())throw Error("Model nie zwrócił odpowiedzi.");
       setMessages(prev=>[...prev,{role:"assistant",text:data.text!.trim()}]);
-    }catch(e){if(!ctl.signal.aborted)setError(e instanceof Error?e.message:"Błąd połączenia z modelem.");else setError("Żądanie zostało przerwane lub przekroczyło czas oczekiwania.");}
-    finally{if(abort.current===ctl)abort.current=null;setBusy(false);}
+      pending.current=null;
+    }catch(e){setRetryAvailable(true);if(!ctl.signal.aborted)setError(e instanceof Error?e.message:"Błąd połączenia z modelem.");else setError("Żądanie zostało przerwane lub przekroczyło czas oczekiwania.");}
+    finally{if(abort.current===ctl)abort.current=null;inFlight.current=false;setBusy(false);}
   }
   return <>
     <button type="button" data-testid="osa-help-trigger" aria-label="Zapytaj OSĘ" aria-expanded={open}
@@ -97,6 +111,7 @@ export default function OsaHelpDock(){
           {messages.map((m,i)=><div key={i} className={"flex "+(m.role==="user"?"justify-end":"justify-start")}><div className={"max-w-[95%] whitespace-pre-wrap break-words rounded-xl px-3 py-2.5 text-[12px] leading-5 "+(m.role==="user"?"bg-[#1b3b58] text-white":"border border-line bg-panel text-fg")}><div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-dim">{m.role==="user"?"Ty":"OSA · przewodnik"}</div>{m.text}</div></div>)}
           {busy&&<p role="status" className="text-xs text-dim">OSA odpowiada…</p>}
           {error&&<p data-testid="osa-help-error" role="alert" className="rounded-md border border-bad/40 bg-bad/10 p-2 text-xs text-bad">{error}</p>}
+          {retryAvailable&&<button type="button" data-testid="model-request-retry" disabled={busy} onClick={()=>void ask(undefined,true)} className="focus-ring min-h-[44px] rounded-lg border border-cyan/40 px-3 text-xs text-cyan disabled:opacity-50">Ponów to samo żądanie</button>}
         </div>
         <div className="shrink-0 border-t border-line bg-[#0e192b] px-3 pb-3 pt-3">
           <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-dim"><span className="min-w-0 flex-1 truncate" title={label}>Aktualny kontekst: {label}</span><span className="shrink-0">{provider==="nvidia"?(connected===null?"Sprawdzanie NVIDIA":connected?"NVIDIA · klucz gotowy":"NVIDIA · dodaj klucz"):providerLabel}</span></div>
