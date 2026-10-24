@@ -1,0 +1,55 @@
+{
+  "schema": "osa.audit_verification.v1",
+  "date": "2026-10-24",
+  "base_sha": "76e06f33190d573353e76f5816aea0af0ce3e302",
+  "paid_calls": 0,
+  "checks": [
+    {
+      "command": "npm test",
+      "status": "PASS",
+      "counts": {
+        "tests": 256,
+        "pass": 253,
+        "fail": 0,
+        "skipped": 3
+      }
+    },
+    {
+      "command": "node --test tests/mastra-osa-adapter.test.mjs",
+      "status": "PASS",
+      "counts": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "node scripts/audit-product-e2e.cjs",
+      "status": "PASS",
+      "summary": {
+        "routes": 85,
+        "native_tool_flows": 3,
+        "negative_tool_gates": 2,
+        "executors": 18,
+        "result": "PASS",
+        "paid_calls": 0
+      }
+    },
+    {
+      "command": "node scripts/build-dashboard.cjs",
+      "status": "PASS",
+      "observed": "TypeScript and Vite completed; frontend source unchanged"
+    },
+    {
+      "command": "node scripts/test-unified-browser.cjs",
+      "status": "BLOCKED",
+      "reason": "Chromium missing; official browser install failed with corrupt ZIP"
+    },
+    {
+      "command": "browser scripts syntax / git diff --check",
+      "status": "PASS",
+      "scope": "Syntax and whitespace only; browser behavior still unverified"
+    }
+  ]
+}

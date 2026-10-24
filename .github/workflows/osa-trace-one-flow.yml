@@ -1,5 +1,7 @@
 name: OSA TRACE-001 — one observable browser task
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [feature/osa-fleet-chat-slice1-proof]
     paths:

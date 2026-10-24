@@ -103,10 +103,21 @@ export class ApiState {
   }
 }
 
+const MAX_JSON_BYTES = 4 * 1024 * 1024;
+class RequestBodyError extends Error {
+  constructor(readonly status: number, readonly code: string, message: string) { super(message); }
+}
 async function readJson<T>(request: IncomingMessage): Promise<T> {
   const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T;
+  let size = 0;
+  for await (const chunk of request) {
+    const bytes = Buffer.from(chunk);
+    size += bytes.length;
+    if (size > MAX_JSON_BYTES) throw new RequestBodyError(413, "BODY_TOO_LARGE", "Żądanie przekracza limit 4 MiB.");
+    chunks.push(bytes);
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T; }
+  catch { throw new RequestBodyError(400, "INVALID_JSON", "Nieprawidłowy JSON."); }
 }
 
 function send(response: ServerResponse, status: number, body: unknown): void {
@@ -674,6 +685,7 @@ export async function handleApiRequest(
 
     return send(response, 404, { error: "not found" });
   } catch (error) {
+    if (error instanceof RequestBodyError) return send(response, error.status, { error: error.message, code: error.code });
     if (error instanceof MemoryAccessError) return send(response, error.status, { error: error.message, code: error.code });
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof KnowledgeError || error instanceof ExperimentError) {

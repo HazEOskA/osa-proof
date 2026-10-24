@@ -30,6 +30,30 @@ test("NVIDIA: provider errors are sanitized and never become success", async () 
   await assert.rejects(nvidiaComplete("hello", env, (async () => { throw Error("test-secret"); }) as typeof fetch), (e: unknown) => e instanceof NvidiaError && e.status === 504 && !e.message.includes("test-secret"));
 });
 
+test("NVIDIA: partial, filtered and tool responses cannot become successful chat answers", async () => {
+  for (const finish_reason of ["length", "content_filter", "tool_calls", "unknown"]) {
+    await assert.rejects(nvidiaComplete("test", env, async () => Response.json({
+      choices: [{ message: { content: "partial content" }, finish_reason }],
+    })), (e: unknown) => e instanceof NvidiaError && e.code === "NVIDIA_INCOMPLETE_RESPONSE");
+  }
+  for (const extra of [{ refusal: "refused" }, { tool_calls: [{ id: "call-one" }] }]) {
+    await assert.rejects(nvidiaComplete("test", env, async () => Response.json({
+      choices: [{ message: { content: "partial content", ...extra } }],
+    })), (e: unknown) => e instanceof NvidiaError && e.code === "NVIDIA_NON_TEXT_RESPONSE");
+  }
+});
+
+test("NVIDIA: oversized streamed provider JSON is cancelled and rejected", async () => {
+  let cancelled = false;
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) { controller.enqueue(new Uint8Array(64 * 1024)); },
+    cancel() { cancelled = true; },
+  });
+  await assert.rejects(nvidiaComplete("test", env, async () => new Response(stream)),
+    (e: unknown) => e instanceof NvidiaError && e.code === "NVIDIA_INVALID_RESPONSE");
+  assert.equal(cancelled, true);
+});
+
 test("NVIDIA HTTP: session gate and malformed requests", async () => {
   const { createApiServer, ApiState } = await import("../apps/api/src");
   const { ExecutorRegistry } = await import("../packages/runtime/src");

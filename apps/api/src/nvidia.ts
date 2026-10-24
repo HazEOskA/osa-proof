@@ -4,6 +4,7 @@ import type { BrainMemoryContext, MemoryWriteReceipt, SessionRecord } from "../.
 import { digest } from "../../../packages/proof-core/src/canonical";
 import { verifyMemoryContext } from "../../../packages/brain/src/memory";
 import { MemoryAccessError, MemoryService } from "./memory";
+import { readBoundedResponse } from "../../../packages/deployment/src";
 
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
@@ -72,8 +73,16 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
   if (!response.ok) {
     throw new NvidiaError(response.status === 429 ? 429 : 502, "NVIDIA_REJECTED", response.status === 401 || response.status === 403 ? "NVIDIA odrzuciła autoryzację. Sprawdź klucz i dostęp do modelu." : response.status === 429 ? "Limit wywołań NVIDIA. Spróbuj później." : `NVIDIA odrzuciła żądanie (HTTP ${response.status}).`);
   }
-  let data: { id?: string; choices?: { message?: { content?: string }; finish_reason?: string }[] };
-  try { data = await response.json() as typeof data; } catch { throw new NvidiaError(502, "NVIDIA_INVALID_RESPONSE", "NVIDIA zwróciła nieprawidłową odpowiedź."); }
+  let data: { id?: string; choices?: { message?: { content?: string; refusal?: unknown; tool_calls?: unknown }; finish_reason?: string }[] };
+  try { data = JSON.parse(await readBoundedResponse(response, 256 * 1024)) as typeof data; } catch { throw new NvidiaError(502, "NVIDIA_INVALID_RESPONSE", "NVIDIA zwróciła nieprawidłową lub zbyt dużą odpowiedź."); }
+  const choice = data?.choices?.[0];
+  // Missing finish_reason remains compatible with older OpenAI-compatible servers.
+  // Explicit truncation, filtering or a tool request is never a completed chat answer.
+  if (choice?.finish_reason != null && choice.finish_reason !== "stop")
+    throw new NvidiaError(502, "NVIDIA_INCOMPLETE_RESPONSE", "NVIDIA nie ukończyła odpowiedzi tekstowej. Odpowiedź nie została zaakceptowana.");
+  if ((choice?.message?.refusal != null && choice.message.refusal !== "") ||
+      (choice?.message?.tool_calls != null && (!Array.isArray(choice.message.tool_calls) || choice.message.tool_calls.length > 0)))
+    throw new NvidiaError(502, "NVIDIA_NON_TEXT_RESPONSE", "NVIDIA zwróciła odmowę lub żądanie narzędzia zamiast odpowiedzi tekstowej.");
   const text = data?.choices?.[0]?.message?.content;
   if (typeof text !== "string" || !text.trim() || text.length > 40000) throw new NvidiaError(502, "NVIDIA_EMPTY_RESPONSE", "NVIDIA zwróciła pustą lub zbyt dużą odpowiedź.");
   return { provider: "NVIDIA", model, text, request_id: randomUUID(), request_sha256: digest(requestBody), provider_response_id: typeof data.id === "string" ? data.id : null, latency_ms: Date.now() - started, finish_reason: data.choices?.[0]?.finish_reason ?? null, status: "PROVIDER_RESPONSE" };
