@@ -10,8 +10,7 @@ import { verifyMemoryContext } from "../../../packages/brain/src/memory";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { validUnifiedResult, checkpointExecution, executionErrorContext, type ExecutionGuard, type ExecutionPermit } from "./unified";
 
-export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
-export const NVIDIA_FREE_ALTERNATE_MODEL = "openai/gpt-oss-20b"; // NVIDIA hosted, not the OpenAI API
+export const NVIDIA_MODEL = "openai/gpt-oss-20b"; // NVIDIA-hosted Free Endpoint, NOT the OpenAI API
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
 export class NvidiaError extends Error {
   constructor(readonly status: number, readonly code: string, message: string) { super(message); }
@@ -32,17 +31,10 @@ export function nvidiaRequestConfig(options: { apiKey?: unknown; model?: unknown
   return config;
 }
 export function nvidiaCostGate(env: NodeJS.ProcessEnv, model = nvidiaStatus(env).model): void {
-  // NVIDIA Build lists this exact model at the fixed integrate.api.nvidia.com
-  // endpoint as a free API endpoint. No daily operator attestation is needed.
-  // Source verified 2026-10-17: https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b
-  if (model === NVIDIA_MODEL) return;
-  // Only the pinned Preview uses this confirmed free hosted alternative.
-  // Verification: https://build.nvidia.com/openai/gpt-oss-20b (2026-10-24).
-  if (model === NVIDIA_FREE_ALTERNATE_MODEL &&
-      env.OSA_ZERO_COST_ONLY === "true" &&
-      env.VERCEL === "1" && env.VERCEL_ENV === "preview" &&
-      env.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023")
-    return;
+  // NVIDIA Build: verified free API endpoint on 2026-10-24.
+  // https://build.nvidia.com/openai/gpt-oss-20b
+  // Fail closed for other models under OSA_ZERO_COST_ONLY; no paid fallback.
+  if (model === NVIDIA_MODEL && env.OSA_ZERO_COST_ONLY === "true") return;
   if(protectedRuntime(env) && env.OSA_ZERO_COST_ONLY!=="true")
     throw new NvidiaError(403,"ZERO_COST_POLICY_REQUIRED","Model jest zablokowany: wymagana polityka zerowych kosztów.");
   if(env.OSA_ZERO_COST_ONLY!=="true") return;
