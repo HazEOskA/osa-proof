@@ -19,3 +19,13 @@ Dokumentacja dostawcy:
 - https://docs.api.nvidia.com/nim/docs/product
 
 Rzeczywisty ONE FLOW na Preview pozostaje obowiązkową bramką wydania. Aktualny stan: [bramki](release-v0.1.0/BRAMKI.md).
+
+## NVIDIA hotfix — 24 października 2026 (model i parsowanie)
+
+**Model domyślny:** `openai/gpt-oss-20b` na **NVIDIA Build**, endpoint `https://integrate.api.nvidia.com/v1/chat/completions` (to nie jest połączenie z OpenAI API). Dokumentacja NVIDIA oznacza go jako **Free Endpoint**: https://build.nvidia.com/openai/gpt-oss-20b. Production wymaga `OSA_ZERO_COST_ONLY=true`; bez tego nie uznajemy środowiska za spełniające politykę kosztów. Inne modele nie są automatycznym fallbackiem.
+
+**Udokumentowana awaria (2026-10-24):** ten sam klucz NVIDIA zwrócił 200 dla katalogu `GET /v1/models`, 404 dla `nvidia/nemotron-3-super-120b-a12b` przy `POST /v1/chat/completions` i 200 dla `openai/gpt-oss-20b` przy inferencji. Nie wynika z tego brak uprawnień całego konta. Nie należy zmieniać klucza na podstawie samego HTTP 404; nie wolno ponawiać operacji o niepewnym wyniku automatycznie.
+
+**Zgodność odpowiedzi:** dostawca może zwrócić `tool_calls: []`. Pusta tablica oznacza **brak wywołania narzędzia**, natomiast tablica niepusta nadal wymaga zatwierdzonej definicji, argumentów i rzeczywistego, zweryfikowanego proof. Błędy HTTP 404/410 otrzymują osobne, sanitowane kody `NVIDIA_INFERENCE_HTTP_404` / `NVIDIA_INFERENCE_HTTP_410`; 401/403 → `NVIDIA_INFERENCE_ACCESS_DENIED`. Bez ukrytych retry i bez logowania surowych danych od dostawcy.
+
+**Zakres proof:** na izolowanym Preview P1 pełny czat z `openai/gpt-oss-20b` zwrócił `PROVIDER_RESPONSE` z trwałą rezerwacją `exec_2f89a8c3-1be2-4390-9364-abcd529b7421` o stanie `COMPLETED`, rewizja 4 w Postgres. To **nie** jest nowy dowód Worker → ProofReceipt; P1/NeurOSA i osobny PR #18 pozostają odrębnym zakresem. Aktualizacja Production wymaga osobnego health/status i weryfikacji po wdrożeniu, bez wykonywania płatnych modeli.
