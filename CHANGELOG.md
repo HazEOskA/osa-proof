@@ -21,3 +21,10 @@ Status wydania: **BLOCKED**. Nie utworzono tagu ani GitHub Release.
 - Dodano testy odmów dostępu, zakresów, kosztów, transportu i integralności oraz kompilację worker hosta w CI.
 
 Bramki, dowody i ograniczenia: [docs/release-v0.1.0/BRAMKI.md](docs/release-v0.1.0/BRAMKI.md).
+
+## Hotfix NVIDIA 2026-10-24 (kontrolowany zakres)
+
+- Zmiana domyślnego NVIDIA Build Free Endpoint z niedostępnego `nvidia/nemotron-3-super-120b-a12b` (HTTP 404) na działający `openai/gpt-oss-20b` (HTTP 200 w teście prawdziwej inferencji, ten sam klucz).
+- Poprawione przyjmowanie `tool_calls: []` jako braku wywołania narzędzia; niepuste niedozwolone wywołania nadal są odrzucane.
+- Rozróżnienie 404/410 i 401/403, bez przekazywania sekretów i bez automatycznego retry; testy regresji.
+- Bez zmian UI, Workerów, NeurOSA i produkcyjnych sekretów w kodzie. P1/ProofReceipt pozostają osobnym zakresem.
