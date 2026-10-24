@@ -293,13 +293,13 @@ export async function handleApiRequest(
       }
       // Fixed one-shot full OSA->NVIDIA chat acceptance with a durable execution reservation.
       // Never expose model text, secrets, or user data; never retry an uncertain inference.
-      if(method==="GET" && url.pathname==="/diagnostics/nvidia-chat-runtime-once" &&
+      if(method==="GET" && url.pathname==="/diagnostics/nvidia-chat-runtime-v2-once" &&
          state.accessEnv.VERCEL==="1" && state.accessEnv.VERCEL_ENV==="preview" &&
          state.accessEnv.VERCEL_GIT_COMMIT_REF==="codex/osa-preview-brain-test-20261023" &&
          state.accessEnv.OSA_STORAGE_NAMESPACE==="osa-p1-preview-20261024" &&
          state.accessEnv.OSA_ZERO_COST_ONLY==="true" &&
          state.accessEnv.NVIDIA_MODEL==="openai/gpt-oss-20b") {
-        const executionId="exec_4603b98b-b0bd-413d-9466-ff5c370e2026";
+        const executionId="exec_2f89a8c3-1be2-4390-9364-abcd529b7421";
         const scope="org_osa_preview_test_20261023:prj_osa_preview_test_20261023";
         const previous=await state.durable?.get(scope,"executions","reservation_"+executionId);
         if(previous)return send(response,200,{state:"ALREADY_EXECUTED_OR_RESERVED",one_shot:true});
@@ -307,7 +307,7 @@ export async function handleApiRequest(
         if(!session)return send(response,403,{state:"BLOCKED",code:"TEST_SESSION_UNAVAILABLE"});
         try{
           const result=await nvidiaChat({
-             prompt:"Odpowiedz krótko po polsku: GOTOWE.",
+             prompt:"Wypisz dokładnie jedno słowo: GOTOWE.",
              execution_id:executionId,agent:"jeff",
              conversation_id:"5760ec43-3922-498e-a3f7-f72e43dd8200",remember:false
           },{env:state.accessEnv,memory:state.memory,session,
