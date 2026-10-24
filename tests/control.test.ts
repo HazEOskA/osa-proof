@@ -106,6 +106,20 @@ test("HTTP: deploy, run through the pinned deployment, policy blocks with 403, r
   });
 });
 
+test("HTTP manifest is unique, includes previously omitted routes and does not mislabel public writes", () => {
+  const keys = PERMISSIONS.map(row => row.method + " " + row.path);
+  assert.equal(new Set(keys).size, keys.length, "duplicate method/path manifest entries");
+  const matching = (method: string, path: string) => PERMISSIONS.find(row => row.method === method && row.path === path)?.enforced;
+  assert.equal(matching("POST", "/runs/:id/labels"), "session");
+  assert.equal(matching("POST", "/deployments/:id/run"), "session");
+  assert.equal(matching("POST", "/templates/delivery-lab/runs"), "session");
+  assert.equal(matching("POST", "/datasets/:id/versions"), "public");
+  assert.equal(matching("PUT", "/datasets/:id/tags/:tag"), "public");
+  assert.equal(matching("POST", "/evaluators"), "public");
+  assert.equal(matching("GET", "/experiments/compare?a=&b="), "public");
+  assert.equal(matching("GET", "/permissions"), "public");
+});
+
 test("HTTP permissions table matches enforcement: every 'session' row answers 401 without a token", async () => {
   await withServer("session", async (base) => {
     for (const row of PERMISSIONS) {
