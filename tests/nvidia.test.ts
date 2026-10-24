@@ -30,6 +30,30 @@ test("NVIDIA: provider errors are sanitized and never become success", async () 
   await assert.rejects(nvidiaComplete("hello", env, (async () => { throw Error("test-secret"); }) as typeof fetch), (e: unknown) => e instanceof NvidiaError && e.status === 504 && !e.message.includes("test-secret"));
 });
 
+test("NVIDIA free default and empty tool_calls never cause accidental tool dispatch",async()=>{
+  assert.equal(NVIDIA_MODEL,"openai/gpt-oss-20b");
+  let calls=0;
+  const answer=await nvidiaComplete("Cześć",{NVIDIA_API_KEY:"unit-test-only",OSA_ZERO_COST_ONLY:"true"},
+    (async(_url,init)=>{
+      calls++;assert.equal(JSON.parse(String(init?.body)).model,NVIDIA_MODEL);
+      return Response.json({id:"synthetic-id",model:NVIDIA_MODEL,choices:[{message:{content:"GOTOWE",tool_calls:[]}}]});
+    }) as typeof fetch);
+  assert.equal(calls,1);assert.equal(answer.text,"GOTOWE");assert.equal(answer.tool_call,null);
+  await assert.rejects(nvidiaComplete("Cześć",{NVIDIA_API_KEY:"unit-test-only",OSA_ZERO_COST_ONLY:"true"},
+    (async()=>Response.json({choices:[{message:{content:"",tool_calls:[{id:"malicious",type:"function",function:{name:"shell",arguments:"{}"}}]}}]})) as typeof fetch),
+    (e:unknown)=>e instanceof NvidiaError&&e.code==="NVIDIA_TOOL_NOT_ALLOWED");
+});
+
+test("NVIDIA 404/410 has explicit sanitized inference error; no retry",async()=>{
+  for(const [http,code] of [[404,"NVIDIA_INFERENCE_HTTP_404"],[410,"NVIDIA_INFERENCE_HTTP_410"]] as const){
+    let calls=0;
+    await assert.rejects(nvidiaComplete("hi",{NVIDIA_API_KEY:"unit-test-only"},(async()=>{
+      calls++;return new Response("unit-test-only",{status:http});
+    }) as typeof fetch),(e:unknown)=>e instanceof NvidiaError&&e.code===code&&e.status===502&&!e.message.includes("unit-test-only"));
+    assert.equal(calls,1);
+  }
+});
+
 test("NVIDIA HTTP: session gate and malformed requests", async () => {
   const { createApiServer, ApiState } = await import("../apps/api/src");
   const { ExecutorRegistry } = await import("../packages/runtime/src");
