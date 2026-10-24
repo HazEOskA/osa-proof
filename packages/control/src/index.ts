@@ -244,7 +244,6 @@ export function secretStatus(env: Record<string, string | undefined>): Array<{ n
 // What the API enforces today, route by route. "session" means a DEV session is required when
 // OSA_AUTH_MODE=session; tests/control.test.ts checks every "session" row returns 401 without a token.
 export interface PermissionRow { permission: string; method: string; path: string; enforced: "session" | "public" }
-export interface PermissionRow { permission: string; method: string; path: string; enforced: "session" | "public" }
 // Canonical HTTP route inventory for API docs and route-auth regression tests.
 // The handler remains the runtime authority: these rows document behavior, not grant authorization.
 // "session" requires a bearer in OSA_AUTH_MODE=session, while open mode uses an implicit shared identity.
