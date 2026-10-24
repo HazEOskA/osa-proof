@@ -6,7 +6,7 @@ import type { executeUnified, UnifiedRequest } from "./unified";
 import { chatContext } from "./chat-context";
 import { StorageError } from "./durable-store";
 
-export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
+export const NVIDIA_MODEL = "openai/gpt-oss-20b"; // Free Endpoint hosted by NVIDIA, not OpenAI API
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
 export class NvidiaError extends Error {
   constructor(readonly status: number, readonly code: string, message: string) { super(message); }
@@ -27,9 +27,8 @@ export function nvidiaRequestConfig(options: { apiKey?: unknown; model?: unknown
   return config;
 }
 export function nvidiaCostGate(env: NodeJS.ProcessEnv, model = nvidiaStatus(env).model): void {
-  // NVIDIA Build lists this exact model at the fixed integrate.api.nvidia.com
-  // endpoint as a free API endpoint. No daily operator attestation is needed.
-  // Source verified 2026-10-17: https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b
+  // Verified NVIDIA-hosted Free Endpoint: https://build.nvidia.com/openai/gpt-oss-20b
+  // Real Vercel /chat/completions returned HTTP 200 on 2026-10-24. No fallback.
   if (model === NVIDIA_MODEL) return;
   if(protectedRuntime(env) && env.OSA_ZERO_COST_ONLY!=="true")
     throw new NvidiaError(403,"ZERO_COST_POLICY_REQUIRED","Model jest zablokowany: wymagana polityka zerowych kosztów.");
@@ -68,7 +67,13 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
     response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: AbortSignal.timeout(25000), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(requestBody) });
   } catch { throw new NvidiaError(504, "NVIDIA_UNAVAILABLE", "NVIDIA nie odpowiedziała w wymaganym czasie lub połączenie nie powiodło się."); }
   if (!response.ok) {
-    throw new NvidiaError(response.status === 429 ? 429 : 502, "NVIDIA_REJECTED", response.status === 401 || response.status === 403 ? "NVIDIA odrzuciła autoryzację. Sprawdź klucz i dostęp do modelu." : response.status === 429 ? "Limit wywołań NVIDIA. Spróbuj później." : `NVIDIA odrzuciła żądanie (HTTP ${response.status}).`);
+    if (response.status === 404 || response.status === 410)
+      throw new NvidiaError(502, response.status === 404 ? "NVIDIA_INFERENCE_HTTP_404" : "NVIDIA_INFERENCE_HTTP_410",
+        `NVIDIA odrzuciła generowanie (HTTP ${response.status}). Sprawdź dostępność wybranego modelu. Katalog modeli nie potwierdza możliwości inferencji.`);
+    if (response.status === 401 || response.status === 403)
+      throw new NvidiaError(502, "NVIDIA_INFERENCE_ACCESS_DENIED", "NVIDIA odrzuciła autoryzację inferencji. Sprawdź dostęp API na koncie.");
+    throw new NvidiaError(response.status === 429 ? 429 : 502, "NVIDIA_REJECTED",
+      response.status === 429 ? "Limit wywołań NVIDIA. Spróbuj później." : `NVIDIA odrzuciła żądanie (HTTP ${response.status}).`);
   }
   let data: {id?:string;model?:string;choices?:{message?:{content?:string;tool_calls?:unknown};finish_reason?:string}[]};
   try {
@@ -82,7 +87,8 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
   const text=typeof message?.content==="string"?message.content:"";
   const calls=message?.tool_calls;
   let toolCall:{id:string;name:"osa_sha256";args:{text:string}}|null=null;
-  if(calls!==undefined&&calls!==null){
+  // Empty tool_calls is not an invocation. Malformed/nonempty tool calls still fail closed.
+  if(calls!==undefined&&calls!==null&&!(Array.isArray(calls)&&calls.length===0)){
     if(!context?.tools || !Array.isArray(calls) || calls.length!==1)
       throw new NvidiaError(502,"NVIDIA_TOOL_NOT_ALLOWED","Model zwrócił niedozwolone wywołanie narzędzia.");
     const c=calls[0];let args:unknown;
