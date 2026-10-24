@@ -567,65 +567,94 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
       <h2 id="h-api">HTTP API</h2>
       <p>JSON in, JSON out. State is held in memory by the API process. Errors return <code>{"error": "…"}</code> with 400, 401, 404 or 409. With <code>OSA_AUTH_MODE=session</code> (default) teams, missions, runs, run evaluations and the build workspace need a DEV session: <code>POST /auth/dev-login</code>, then <code>Authorization: Bearer &lt;token&gt;</code>. With <code>open</code> they do not. <span class="nx">OAuth providers</span> are not configured.</p>
       <div class="tbl"><table>
-        <thead><tr><th>Method</th><th>Path</th><th>Returns</th></tr></thead>
+        <thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Returns</th></tr></thead>
         <tbody>
-          <tr><td><span class="m">GET</span></td><td><code>/auth/providers</code></td><td>Login providers; only local-dev is enabled.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/auth/dev-login</code></td><td>DEV identity and session token (201).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/session</code></td><td>The current session (401 without one).</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/session/logout</code></td><td>Revoke the session token.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/layers</code></td><td>The six layer profiles.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/layers/:id</code></td><td>One layer profile.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/layers/:id/enter</code></td><td><code>ALLOWED</code> or <code>GATED</code>, decided by the backend.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/teams</code></td><td>The validated Team Graph (201).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/teams/:id?version=</code></td><td>One Team Graph version.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/missions</code></td><td>The stored mission (201).</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/missions/:id/run</code></td><td>The full run result with receipt (201).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/runs/:id</code></td><td>Latest execution of that run.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/runs/:id/events</code></td><td>Runtime events.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/runs/:id/evidence</code></td><td>Evidence records.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/runs/:id/proof</code></td><td>The sealed proof receipt.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/build/status</code></td><td>Execution mode, auth mode, persistence and protocol support.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/build/workspace</code></td><td>The saved Build workspace (404 until one is saved).</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/build/workspace</code></td><td>Validate and save the Build workspace; registers its Team Graph (201).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/deployments</code></td><td>Deployments, newest first.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/deployments</code></td><td>Deploy a registered team version to preview or production (201).</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/deployments/:id/promote</code></td><td>Promote a preview deployment to production (201).</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/deployments/rollback</code></td><td>Reactivate the previous deployment of a team in an environment.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/deployments/:id/run</code></td><td>Run a mission on the pinned graph after policies allow it (201, 403 when denied).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/policies</code></td><td>Policies.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/policies</code></td><td>Add a policy (201).</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/policies/evaluate</code></td><td>Evaluate a team version and mission against enabled policies.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/experiments</code></td><td>Experiments, newest first.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/experiments</code></td><td>Run a dataset version against a team version with evaluators (201).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/experiments/compare?a=&b=</code></td><td>Per-example changes between two experiments.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/queue</code></td><td>Queued, running and finished jobs.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/queue</code></td><td>Queue a mission now or at run_at (201).</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/queue/drain</code></td><td>Run due jobs.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/organizations</code></td><td>Registered and observed organizations.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/secrets</code></td><td>Secret names and whether they are set.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/permissions</code></td><td>Route-by-route enforcement table.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/knowledge</code></td><td>Collections with document and chunk counts.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/knowledge/:collection</code></td><td>Documents in a collection.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/knowledge/:collection/documents</code></td><td>Add a document; chunks and digests are computed by the API (201).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/knowledge/:collection/documents/:id</code></td><td>One document with its chunks.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/knowledge/:collection/search</code></td><td>BM25 search; hits cite chunk and document digests.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/intelligence</code></td><td>Status reports for the nine Intelligence modules.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/intelligence/:id</code></td><td>One module report with its proofs.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/datasets</code></td><td>Create a dataset; version 1 (201).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/datasets</code></td><td>Latest version summary per dataset.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/datasets/:id?as_of=</code></td><td>One version by number, tag or latest.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/datasets/:id/versions</code></td><td>Version history with tags.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/datasets/:id/versions</code></td><td>Commit upserts and removals as a new version (201).</td></tr>
-          <tr><td><span class="m">PUT</span></td><td><code>/datasets/:id/tags/:tag</code></td><td>Pin a tag to a version.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/datasets/:id/verify?as_of=</code></td><td>Recompute example and version digests.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/evaluators</code></td><td>Register a deterministic or labeled evaluator (201).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/evaluators</code></td><td>All evaluator definitions.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/evaluators/:id</code></td><td>One evaluator definition.</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/runs/:id/evaluations</code></td><td>Score a run, optionally against a pinned dataset example (201).</td></tr>
-          <tr><td><span class="m">POST</span></td><td><code>/runs/:id/labels</code></td><td>Record a human label on the evaluator's scale (201).</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/runs/:id/evaluations</code></td><td>Every evaluation result for the run.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code class="nx">/runs</code></td><td class="nx">List and search runs.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code class="nx">/health</code></td><td class="nx">Service health.</td></tr>
+          <!-- AUTO-GENERATED API ROUTES: run npm run docs:sync; do not hand-edit rows -->
+          <tr><td><span class="m">GET</span></td><td><code>/auth/providers</code></td><td><code>public</code></td><td>Login providers; only local-dev is enabled.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/auth/dev-login</code></td><td><code>public</code></td><td>DEV identity and session token (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/session</code></td><td><code>session</code></td><td>The current session (401 without one).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/session/logout</code></td><td><code>session</code></td><td>Revoke the session token.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/build/status</code></td><td><code>public</code></td><td>Execution mode, auth mode, persistence and protocol support.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/build/workspace</code></td><td><code>session</code></td><td>The saved Build workspace (404 until one is saved).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/build/workspace</code></td><td><code>session</code></td><td>Validate and save the Build workspace; registers its Team Graph (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/layers</code></td><td><code>public</code></td><td>The six layer profiles.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/layers/:id</code></td><td><code>public</code></td><td>One layer profile.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/layers/:id/enter</code></td><td><code>public</code></td><td><code>ALLOWED</code> or <code>GATED</code>, decided by the backend.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/intelligence</code></td><td><code>public</code></td><td>Status reports for the nine Intelligence modules.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/intelligence/:id</code></td><td><code>public</code></td><td>One module report with its proofs.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/teams</code></td><td><code>session</code></td><td>The validated Team Graph (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/teams/:id?version=</code></td><td><code>session</code></td><td>One Team Graph version.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/missions</code></td><td><code>session</code></td><td>The stored mission (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/missions/:id</code></td><td><code>session</code></td><td>Read a stored mission (session and matching tenant required).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/missions/:id/timeline</code></td><td><code>session</code></td><td>Mission event timeline.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/missions/:id/run</code></td><td><code>session</code></td><td>Accepted run for the mission, or 404.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/missions/:id/receipt</code></td><td><code>session</code></td><td>Mission proof receipt, if available.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/missions/:id/plan</code></td><td><code>session</code></td><td>Accepted plan, or 404.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/missions/:id/plan</code></td><td><code>session</code></td><td>Create a plan using the configured Brain/runtime.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/missions/:id/cancel</code></td><td><code>session</code></td><td>Cancel a mission in the scoped runtime.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/missions/:id/run</code></td><td><code>session</code></td><td>The full run result with receipt (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/runs/:id</code></td><td><code>session</code></td><td>Latest execution of that run.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/runs/:id/events</code></td><td><code>session</code></td><td>Runtime events.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/runs/:id/evidence</code></td><td><code>session</code></td><td>Evidence records.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/runs/:id/proof</code></td><td><code>session</code></td><td>The sealed proof receipt.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/runs/:id/evaluations</code></td><td><code>session</code></td><td>Every evaluation result for the run.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/runs/:id/evaluations</code></td><td><code>session</code></td><td>Score a run, optionally against a pinned dataset example (201).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/runs/:id/labels</code></td><td><code>session</code></td><td>Record a human label on the evaluator's scale (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/evaluators</code></td><td><code>public</code></td><td>All evaluator definitions.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/evaluators</code></td><td><code>public</code></td><td>Register a deterministic or labeled evaluator (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/evaluators/:id</code></td><td><code>public</code></td><td>One evaluator definition.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/datasets</code></td><td><code>public</code></td><td>Latest version summary per dataset.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/datasets</code></td><td><code>public</code></td><td>Create a dataset; version 1 (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/datasets/:id?as_of=</code></td><td><code>public</code></td><td>One version by number, tag or latest.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/datasets/:id/versions</code></td><td><code>public</code></td><td>Version history with tags.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/datasets/:id/versions</code></td><td><code>public</code></td><td>Commit upserts and removals as a new version (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/datasets/:id/verify?as_of=</code></td><td><code>public</code></td><td>Recompute example and version digests.</td></tr>
+          <tr><td><span class="m">PUT</span></td><td><code>/datasets/:id/tags/:tag</code></td><td><code>public</code></td><td>Pin a tag to a version.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/deployments</code></td><td><code>public</code></td><td>Deployments, newest first.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/deployments</code></td><td><code>session</code></td><td>Deploy a registered team version to preview or production (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/deployments/:id</code></td><td><code>session</code></td><td>Inspect a deployment after session verification.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/deployments/:id/promote</code></td><td><code>session</code></td><td>Promote a preview deployment to production (201).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/deployments/rollback</code></td><td><code>session</code></td><td>Reactivate the previous deployment of a team in an environment.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/deployments/:id/run</code></td><td><code>session</code></td><td>Run a mission on the pinned graph after policies allow it (201, 403 when denied).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/policies</code></td><td><code>public</code></td><td>Policies.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/policies</code></td><td><code>session</code></td><td>Add a policy (201).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/policies/evaluate</code></td><td><code>session</code></td><td>Evaluate a team version and mission against enabled policies.</td></tr>
+          <tr><td><span class="m">DELETE</span></td><td><code>/policies/:id</code></td><td><code>session</code></td><td>Remove a policy after session verification.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/experiments</code></td><td><code>public</code></td><td>Experiments, newest first.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/experiments</code></td><td><code>session</code></td><td>Run a dataset version against a team version with evaluators (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/experiments/:id</code></td><td><code>public</code></td><td>Inspect one recorded experiment.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/experiments/compare?a=&amp;b=</code></td><td><code>public</code></td><td>Per-example changes between two experiments.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/queue</code></td><td><code>public</code></td><td>Queued, running and finished jobs.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/queue</code></td><td><code>session</code></td><td>Queue a mission now or at run_at (201).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/queue/drain</code></td><td><code>session</code></td><td>Run due jobs.</td></tr>
+          <tr><td><span class="m">DELETE</span></td><td><code>/queue/:id</code></td><td><code>session</code></td><td>Cancel a queued job (conflict if already running).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/knowledge</code></td><td><code>public</code></td><td>Collections with document and chunk counts.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/knowledge/:collection</code></td><td><code>public</code></td><td>Documents in a collection.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/knowledge/:collection/search</code></td><td><code>public</code></td><td>BM25 search; hits cite chunk and document digests.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/knowledge/:collection/documents</code></td><td><code>session</code></td><td>Add a document; chunks and digests are computed by the API (201).</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/knowledge/:collection/documents/:id</code></td><td><code>public</code></td><td>One document with its chunks.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/organizations</code></td><td><code>public</code></td><td>Registered and observed organizations.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/organizations</code></td><td><code>session</code></td><td>Register an organization after session verification.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/secrets</code></td><td><code>session</code></td><td>Secret names and whether they are set.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/permissions</code></td><td><code>public</code></td><td>Route-by-route enforcement table.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/templates/delivery-lab</code></td><td><code>session</code></td><td>Read the currently supported Delivery Lab template.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/templates/delivery-lab/runs</code></td><td><code>session</code></td><td>Execute Delivery Lab starter or connected mission; requires a session.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/templates/delivery-lab/missions/:id</code></td><td><code>session</code></td><td>Read a Delivery Lab report in its existing execution scope.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/web3/status</code></td><td><code>session</code></td><td>Inspect read-only Web3 capabilities and current scope.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/web3/observe</code></td><td><code>session</code></td><td>Run a scoped Web3 observation when enabled; requires a developer session.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/web3/missions/:id</code></td><td><code>session</code></td><td>Read a scoped Web3 mission record.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/web3/intents/preview</code></td><td><code>session</code></td><td>Inspect an intent policy decision without executing the intent.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/memory/status</code></td><td><code>public</code></td><td>Memory adapter status; private NeurOSA may additionally require identity.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/memory/diagnostic</code></td><td><code>session</code></td><td>Restricted Preview-only memory write/recall diagnostic.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/memory/receipts/:id</code></td><td><code>session</code></td><td>Read an authorized memory receipt.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/unified/execute</code></td><td><code>session</code></td><td>Execute a scoped Unified mission; tool mode requires service authorization.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/unified/verify</code></td><td><code>session</code></td><td>Verify an existing Unified evidence bundle.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/trace-probe</code></td><td><code>session</code></td><td>Bounded runtime trace diagnostic requiring a session.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/nvidia/status</code></td><td><code>session</code></td><td>Provider configuration and availability (not proof of successful generation).</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/nvidia/chat</code></td><td><code>session</code></td><td>Server-side NVIDIA chat with request validation and cost guard.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/nvidia/fleet-chat</code></td><td><code>session</code></td><td>Agent fleet chat with memory and rate checks.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/platform/status</code></td><td><code>session</code></td><td>Inspect platform status in the current organization scope.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/platform/deployments/review</code></td><td><code>session</code></td><td>Review a scoped deployment plan without running it.</td></tr>
         </tbody>
       </table></div>
     </section>
