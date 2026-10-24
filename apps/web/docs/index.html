@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>OSA Framework Docs</title>
 <meta name="theme-color" content="#0a0a0b" />
-<!-- Docs home. Content reflects code on main @ de91063 (routes, env vars) and a real receipt from a321fd2.
+<!-- Docs home. HTTP route table and count are generated from packages/control/src/index.ts on this branch; historical receipt from a321fd2.
      Logos: OSA PROOF lockup and mark from the OSA Framework design system (low-res rasters, not redrawn).
      Features the backend lacks are underlined (.nx). -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -243,7 +243,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
-            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p>Fifty-five JSON routes for auth, layers, teams, missions, runs, build, intelligence, datasets, evaluators, experiments, knowledge, deployments, policies and the job queue.</p></a>
+            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>85</span> method/path combinations in the main branch reference, including Delivery Lab, NVIDIA, Web3 and runtime. Generated from the same route manifest used for auth tests; Production release versions may differ.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -257,7 +257,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>git clone https://github.com/HazEOskA/osa-proof.git
 cd osa-proof
 npm ci</pre></div></div></li>
-        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Run the tests</div><div class="d">Builds TypeScript and runs the node test suite: 113 pass, 1 live-provider test skipped (opt-in).</div>
+        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Run the tests</div><div class="d">Checks that HTTP documentation matches the source manifest, builds TypeScript and runs the current node test suite. The pass/skip totals come from each actual test run, not this page.</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>npm test</pre></div></div></li>
         <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Start the API in fixture mode</div><div class="d"><code>OSA_EXECUTION_MODE</code> is required. There is no default: a missing or unknown value refuses to start. Login is on by default (<a href="#auth">auth modes</a>).</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>npm run build
@@ -327,7 +327,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
 
     <section id="receipt" aria-labelledby="h-r">
       <h2 id="h-r">Proof receipt</h2>
-      <p>This receipt is real output from the runtime at commit <code>a321fd2</code>, trimmed for length. <code>verifyProofReceipt</code> recomputes every digest it commits to.</p>
+      <p>Historical sample from runtime commit <code>a321fd2</code>, dated <code>2026-09-28</code>, trimmed for length. It is <strong>not</strong> a freshly replayed proof against current HEAD. <code>verifyProofReceipt</code> recomputes committed hashes (integrity within the trusted inputs), not an independent attestation of origin. Without signatures, trusted timestamps or an append-only external log, an actor able to rewrite the store could replace data and recompute matching hashes.</p>
       <div class="code"><div class="bar"><span class="file">GET /runs/:id/proof</span><button class="copy" type="button">Copy</button></div><pre>{
   &quot;proof_id&quot;: &quot;proof_75811c7c721e14f4a0dddfee97259da39064852055b151b7dc0f88aead0ed04f&quot;,
   &quot;schema&quot;: &quot;osa.proof_receipt.v2&quot;,
@@ -393,8 +393,8 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
       <div class="tbl"><table>
         <thead><tr><th>Mode</th><th>Where</th><th>Behaviour</th></tr></thead>
         <tbody>
-          <tr><td><code>session</code></td><td>Default</td><td>Teams, missions, runs, run evaluations and the build workspace need <code>Authorization: Bearer &lt;token&gt;</code> from <code>POST /auth/dev-login</code>. Missing or revoked token: 401.</td></tr>
-          <tr><td><code>open</code></td><td>Vercel preview (<code>vercel.json</code>)</td><td>No login. Requests act as the explicit <code>OPEN MODE</code> identity, and <code>GET /build/status</code> reports <code>auth_mode: "open"</code>. Regulated layers stay gated.</td></tr>
+          <tr><td><code>session</code></td><td>Default</td><td>Routes marked <code>session</code> in the generated API table need <code>Authorization: Bearer &lt;token&gt;</code> from <code>POST /auth/dev-login</code> (development) when session mode is active. Missing or revoked token: 401. This includes <code>POST /runs/:id/labels</code>. Routes marked <code>public</code> have no blanket login in session mode; extra scope or private-memory checks may still apply.</td></tr>
+          <tr><td><code>open</code></td><td>Explicitly configured deployments (including some Preview and Production environments)</td><td>No login. Requests share the explicit <code>OPEN MODE</code> identity, and <code>GET /build/status</code> reports <code>auth_mode: "open"</code>. This is <strong>not</strong> multi-user isolation. Regulated layers stay gated; additional access restrictions are endpoint-specific.</td></tr>
         </tbody>
       </table></div>
     </section>
@@ -518,11 +518,11 @@ curl -s localhost:3000/runs/$RUN/evaluations -H "authorization: Bearer $TOKEN" -
         <li>Search is lexical BM25: deterministic and model-free. The same query over the same collection returns the same hits, sealed with <code>retrieval_sha256</code>.</li>
         <li>Every hit carries <code>doc_id</code>, chunk index, <code>chunk_sha256</code> and <code>document_sha256</code>. The dashboard re-hashes each quoted chunk in the browser.</li>
         <li>A <code>doc_id</code> is immutable: the same id with different text is refused with 409.</li>
-        <li class="nx">Retrieval results are not yet recorded as run evidence.</li>
+        <li>Integration limit: retrieved hits are <strong>not yet attached to run evidence</strong>. The Intelligence module&#39;s LIVE status covers its own cited/digested retrieval checks, <strong>not</strong> end-to-end agent proof.</li>
       </ul>
       <div class="code"><div class="bar"><span class="file">POST /knowledge/:collection/documents · POST /knowledge/:collection/search</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/knowledge/docs/documents -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
   -d '{"doc_id":"receipts","title":"Proof receipt","text":"A proof receipt is sealed after the final verdict."}'
-curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json' -d '{"query":"sealed receipt","k":3}'</pre></div>
+curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json' -d '{"query":"sealed receipt","k":3}'  # public in session mode</pre></div>
     </section>
 
     <section id="control" aria-labelledby="h-ctl">
@@ -550,13 +550,13 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
           <tr><td><code>OSA_PROVIDER</code></td><td>Provider mode</td><td>none</td><td><code>anthropic</code> or <code>openai</code></td></tr>
           <tr><td><code>OSA_MODEL</code></td><td>Provider mode</td><td>none</td><td>Model id sent to the provider.</td></tr>
           <tr><td><code>ANTHROPIC_API_KEY</code> · <code>OPENAI_API_KEY</code></td><td>Provider mode</td><td>none</td><td>Secret of the selected provider.</td></tr>
-          <tr><td><code>OSA_PROVIDER_BASE_URL</code></td><td>No</td><td><code>https://api.anthropic.com</code></td><td>Point at a stub or proxy.</td></tr>
+          <tr><td><code>OSA_PROVIDER_BASE_URL</code></td><td>No</td><td>Provider-dependent: <code>https://api.anthropic.com</code> or <code>https://api.openai.com</code></td><td>Overrides the selected provider&#39;s default. See <code>packages/adapters/src/config.ts</code>.</td></tr>
           <tr><td><code>OSA_PROVIDER_TIMEOUT_MS</code></td><td>No</td><td><code>120000</code></td><td>Per-call timeout; a timeout fails the run.</td></tr>
           <tr><td><code>OSA_PROVIDER_MAX_TOKENS</code></td><td>No</td><td><code>16000</code></td><td>Output token cap per call.</td></tr>
           <tr><td><code>OSA_PROVIDER_MAX_RETRIES</code></td><td>No</td><td><code>2</code></td><td>Retries for connection errors, timeouts, 408, 409, 429 and 5xx (0 to 10).</td></tr>
           <tr><td><code>OSA_MODEL_FALLBACKS</code></td><td>No</td><td>none</td><td>Ordered <code>provider:model</code> fallbacks (max 4) tried after the primary fails; every hop is evidence.</td></tr>
           <tr><td><code>OSA_PROVIDER_RETRY_BASE_MS</code></td><td>No</td><td><code>500</code></td><td>First backoff step; doubles per retry up to 8 s. <code>retry-after</code> wins.</td></tr>
-          <tr><td><code>OSA_AUTH_MODE</code></td><td>No</td><td><code>session</code></td><td><code>session</code> needs a DEV login for teams, missions and runs. <code>open</code> skips login (Vercel preview only). Any other value refuses to start.</td></tr>
+          <tr><td><code>OSA_AUTH_MODE</code></td><td>No</td><td><code>session</code></td><td><code>session</code> requires a DEV token on routes marked session below. <code>open</code> skips login with a shared identity (including where explicitly configured in Production). Other values refuse to start.</td></tr>
           <tr><td><code>PORT</code> · <code>HOST</code></td><td>No</td><td><code>3000</code> · <code>0.0.0.0</code></td><td>Where the API listens.</td></tr>
           <tr><td><code>OSA_LIVE_PROVIDER_TEST</code></td><td>No</td><td>off</td><td>Set to <code>1</code> to run the live provider test.</td></tr>
         </tbody>
@@ -565,7 +565,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
     <section id="api" aria-labelledby="h-api">
       <h2 id="h-api">HTTP API</h2>
-      <p>JSON in, JSON out. State is held in memory by the API process. Errors return <code>{"error": "…"}</code> with 400, 401, 404 or 409. With <code>OSA_AUTH_MODE=session</code> (default) teams, missions, runs, run evaluations and the build workspace need a DEV session: <code>POST /auth/dev-login</code>, then <code>Authorization: Bearer &lt;token&gt;</code>. With <code>open</code> they do not. <span class="nx">OAuth providers</span> are not configured.</p>
+      <p>This generated table lists <strong><span data-api-route-count>85</span> HTTP method/path combinations</strong> for the reviewed <code>main</code> router and delegated handlers. Routes appear without the prefix in the local Node server (<code>http://localhost:3000/teams</code>); Vercel rewrites <code>/api/teams</code> to the same handler (<code>apps/api/src/vercel.ts</code>). Do not add <code>/api</code> to local examples. Error status depends on the route: 400, 401, 403 (<code>POLICY_DENIED</code>), 404, 409, plus validation/provider failures such as 413, 422, 429 and 502. <strong>Auth column:</strong> <code>session</code> needs a Bearer DEV session only when <code>OSA_AUTH_MODE=session</code>; <code>public</code> has no blanket session check. <code>open</code> creates a shared identity and is not a multi-tenant authorization boundary. The dataset create/version/tag and evaluator register mutations are currently public in session mode; do not expose this runtime to untrusted writers without additional access controls. Private NeurOSA may impose stricter identity requirements. <strong>Storage:</strong> on this branch most route indexes are process-local; different serverless instances do not share them, and a restart can discard state. Some separate deployments use persistent storage: verify their status separately; do not infer persistence from this reference.</p>
       <div class="tbl"><table>
         <thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Returns</th></tr></thead>
         <tbody>
@@ -661,20 +661,20 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
     <section id="guides" aria-labelledby="h-g">
       <h2 id="h-g">Guides</h2>
-      <p>Underlined guides describe features that are not in the backend yet.</p>
+      <p>Unavailable functionality is labelled <strong>Planned</strong>. A present control-plane route does not by itself prove a hosted execution service or durable runtime.</p>
       <div class="grid">
         <div class="card planned"><span class="label k">Graph</span><h4 class="nx">Conditional edges and loops</h4><p>Branch on state, fan out and join, bounded loops.</p></div>
         <div class="card planned"><span class="label k">Durability</span><h4 class="nx">Checkpoints and resume</h4><p>Resume after a crash into the same receipt; pause for a human.</p></div>
         <div class="card planned"><span class="label k">Tools</span><h4 class="nx">Tools over MCP</h4><p>Tool calls with digested results and permissions.</p></div>
         <div class="card planned"><span class="label k">Control</span><h4 class="nx">Guardrails and budgets</h4><p>Tripwires that fail the run as a verifier observation.</p></div>
-        <a class="card" href="#evaluators"><span class="label k">Quality</span><h4>Evals</h4><p>Datasets of missions scored by deterministic evaluators and human labels. Experiments that compare runs are next.</p></a>
-        <div class="card planned"><span class="label k">Ship</span><h4 class="nx">Deploy</h4><p>Hosted runtime, persistent storage, signed receipts.</p></div>
+        <a class="card" href="#evaluators"><span class="label k">Quality</span><h4>Evals</h4><p>Datasets and deterministic evaluators are implemented; <code>GET /experiments/compare?a=&amp;b=</code> already compares experiment outcomes.</p></a>
+        <div class="card planned"><span class="label k">Ship · partial</span><h4>Deployments and hosted runtime</h4><p>Deployment records, promotion, rollback and policy-gated runs already have API routes. A durable, independent hosted execution runtime and cryptographically signed receipts are <strong>not</strong> established by these routes.</p></div>
       </div>
     </section>
 
     <section id="delivery-lab" aria-labelledby="h-delivery-lab">
       <h2 id="h-delivery-lab">Delivery Lab · one demonstration team</h2>
-      <p>Open Delivery Lab in the framework navigation. One versioned TeamGraph routes an objective through ten sequential roles: intake, planner, producer, inspector, policy gate, sandbox builder, test verifier, delivery gate, coverage reviewer and evidence reporter. It uses the existing MissionKernel, configured NeurOSA planner, runtime, event timeline and proof receipts.</p>
+      <p><strong>Verified scope: structural output and recorded checks, not semantic correctness of arbitrary objectives.</strong> Open Delivery Lab in the framework navigation. One versioned TeamGraph routes an objective through ten sequential roles: intake, planner, producer, inspector, policy gate, sandbox builder, test verifier, delivery gate, coverage reviewer and evidence reporter. It uses the existing MissionKernel, configured NeurOSA planner, runtime, event timeline and proof receipts.</p>
       <p><strong>Starter</strong> produces actual Markdown scaffold bytes or a working, self-contained task-list HTML starter. It does not interpret arbitrary objectives. <strong>Connected</strong> delegates to the existing provider planner/builder and is BLOCKED when execution mode is fixture. Supported outputs are Markdown documents and standalone HTML; other tasks expose the gap.</p>
       <p>Artifact delivery validates hashes, document structure and inline JavaScript syntax. Remote sandbox delivery additionally requires the existing server-side worker connection and executes fixed packaging and byte-integrity checks through WorkspaceProvider and buildAndTest. Generated code is never run in the API process. These checks are not functional browser tests, a vulnerability audit or a semantic quality assessment.</p>
       <p>Azure delivery is BLOCKED: image publishing, scoped cloud grant and live verification are not wired into this template. Missing required gates produce a failed mission without a MissionReceipt. A completed artifact mission means ready for human review under its declared checks, not an arbitrary task proven correct.</p>
