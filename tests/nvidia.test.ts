@@ -22,6 +22,21 @@ test("NVIDIA: server authorization, Polish prompt and response metadata", async 
   assert.equal(result.status, "PROVIDER_RESPONSE"); assert.ok(result.request_id);
   assert.ok(!JSON.stringify(result).includes("test-secret"));
 });
+test("NVIDIA: empty tool_calls means no tool execution for plain chat",async()=>{
+  const env={NVIDIA_API_KEY:"unit-test-placeholder"};
+  const provider=(async()=>Response.json({id:"provider-accepted",model:"nvidia/nemotron-3-super-120b-a12b",
+    choices:[{message:{content:"GOTOWE",tool_calls:[]},finish_reason:"stop"}]})) as typeof fetch;
+  const answer=await nvidiaComplete("test",env,provider);
+  assert.equal(answer.text,"GOTOWE");
+  assert.equal(answer.tool_call,null);
+  let calls=0;
+  await assert.rejects(nvidiaComplete("test",env,(async()=>{
+    calls++;
+    return Response.json({choices:[{message:{content:"",tool_calls:[{type:"function",id:"fake",function:{name:"x",arguments:"{}"}}]}}]});
+  }) as typeof fetch),(e:unknown)=>e instanceof NvidiaError&&e.code==="NVIDIA_TOOL_NOT_ALLOWED");
+  assert.equal(calls,1);
+});
+
 test("NVIDIA: provider errors are sanitized and never become success", async () => {
   for (const status of [401,403,429,500]) {
     await assert.rejects(nvidiaComplete("hello", env, (async () => new Response("test-secret", { status })) as typeof fetch), (e: unknown) => e instanceof NvidiaError && e.status === (status === 429 ? 429 : 502) && !e.message.includes("test-secret"));
