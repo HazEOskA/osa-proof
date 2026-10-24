@@ -45,3 +45,12 @@ PR-y źródłowe pozostają bez zmian. Zamknięcie ich jako zastąpionych należ
 ## Rollback i zamknięcie
 
 Rollback magazynu: `dpl_72Zv7pX7D5dBUc19J4umiSKNzx7G` / `ef8eed4d3975e1a04801900c4f9d396d8ab60d51`, z zachowaniem bazy i nowych kluczy serwerowych. Dokładna procedura: OPERATOR.md. Dopiero po spełnieniu bramek i zatwierdzonym scaleniu można utworzyć tag v0.1.0, GitHub Release i końcowy checkpoint. Aktualne wdrożenie służy odbiorowi zleconych poprawek.
+
+## NVIDIA incident / review checkpoint — 2026-10-24
+
+- Źródło: `release/osa-proof-v0.1.0` → wąski hotfix `fix/nvidia-free-endpoint-production-20261024`; odrębny **Draft PR #18** pozostaje bez merge (32 zmienione pliki, zakres P1/Worker/NeurOSA/UI).
+- **FAIL historyczny**: poprzedni Nemotron dawał 404 przy rzeczywistej inferencji, chociaż katalog NVIDIA i klucz działały.
+- **PASS zakres ograniczony**: ten sam klucz wykonał rzeczywiste NVIDIA `openai/gpt-oss-20b` → HTTP 200, a izolowane P1 Preview potwierdziło `nvidiaChat` → `PROVIDER_RESPONSE` i trwałą rezerwację `COMPLETED` (rewizja 4). Nie jest to nowy proof workera i nie dowodzi pełnej publicznej produkcji.
+- **PRODUCTION gate**: gałąź release, zielony build/CI, `OSA_ZERO_COST_ONLY=true`, brak zmian UI, aktualny model `openai/gpt-oss-20b`, `GET /api/nvidia/status` z `available=true`, brak automatycznego płatnego fallbacku. **Jeżeli którykolwiek warunek jest niepotwierdzony: BLOCKED**.
+- **Review:** wyłącznie `apps/api/src/nvidia.ts`, `tests/nvidia.test.ts` i docs. Puste `tool_calls=[]` nie uruchamiają narzędzi; niepuste niezatwierdzone są blokowane. Wykonania o niepewnym wyniku nie są automatycznie ponawiane. Klucze wyłącznie server-side.
+- **Pozostałe UNKNOWN/BLOCKED:** pełny Worker → ProofReceipt z nowym modelem, pamięć prywatna Railway po restarcie, równoległa odporność quota (bez skonfigurowanego Redis) i prywatność open-mode. Zostają osobnymi bramkami, niezależnie od tego hotfixu.
