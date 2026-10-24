@@ -110,7 +110,8 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
   const calls=message?.tool_calls;
   const expectedTool=context?.execution_target==="worker"?"osa_worker_sha256":"osa_sha256";
   let toolCall:{id:string;name:"osa_sha256"|"osa_worker_sha256";args:{text:string}}|null=null;
-  if(calls!==undefined&&calls!==null){
+  // A provider may include tool_calls: [] even for a plain chat. An empty list is not an invocation.
+  if(calls!==undefined&&calls!==null&&!(Array.isArray(calls)&&calls.length===0)){
     if(!context?.tools || !Array.isArray(calls) || calls.length!==1)
       throw new NvidiaError(502,"NVIDIA_TOOL_NOT_ALLOWED","Model zwrócił niedozwolone wywołanie narzędzia.");
     const c=calls[0];let args:unknown;
