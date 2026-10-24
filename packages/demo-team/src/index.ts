@@ -21,7 +21,7 @@ export interface DemoOutput {
   request: DemoRequest; checks: DemoCheck[]; artifact?: DemoArtifact;
   plan?: unknown; build_receipt?: BuildReceipt; ready_for_review?: boolean;
 }
-export interface DemoOptions { executionMode: string; workspace?: WorkspaceProvider }
+export interface DemoOptions { executionMode: string; workspace?: WorkspaceProvider; artifactGenerator?: (request: DemoRequest) => Promise<{content: string; evidence: EvidenceInput[]}> }
 export const DEMO_ROLES = [
   ['intake', 'Input & scope'], ['planner', 'Plan'], ['producer', 'Artifact producer'],
   ['inspector', 'Artifact inspector'], ['policy', 'Policy gate'], ['builder', 'Sandbox build'],
@@ -82,6 +82,10 @@ export function installDemoExecutors(registry:ExecutorRegistry, options:DemoOpti
   stage('planner',async(state,c)=>{
     if(state.request.kind==='other')return {status:'BLOCKED',detail:'Unsupported output type.'};
     if(state.request.mode==='connected') {
+      if(options.artifactGenerator) {
+        state.plan={objective:state.request.objective,format:state.request.kind,steps:['Model generates source','Inspect bytes and syntax','Check policy','Seal evidence and deliver artifact']};
+        return {status:'PASS',detail:'Native delivery plan accepted; artifact generation is delegated to the configured model, not a starter template.'};
+      }
       if(options.executionMode!=='provider')return {status:'BLOCKED',detail:'Model execution is not configured; fixture is not substituted.'};
       try {const result=await registry.get('dev.planner.v1')(c);const output=result.output as {plan?:unknown};if(!output?.plan || typeof output.plan!=='object')return {status:'FAIL',detail:'Existing planner rejected the plan.',evidence:result.evidence};state.plan=output.plan;return {status:'PASS',detail:'Existing provider planner returned a validated plan; semantic quality is not proven.',evidence:result.evidence};}catch{return {status:'FAIL',detail:'Provider planning failed; no fallback claim.'};}
     }
@@ -94,12 +98,17 @@ export function installDemoExecutors(registry:ExecutorRegistry, options:DemoOpti
     let evidence:EvidenceInput[]=[];
     if(state.request.mode==='connected') {
       try {
+        if(options.artifactGenerator) {
+          const generated=await options.artifactGenerator(state.request);
+          content=generated.content;evidence=generated.evidence;
+        } else {
         const format=state.request.kind==='webapp'?'a self-contained HTML webapp beginning with <!doctype html>, with no external dependencies':'a complete Markdown document beginning with a heading';
         const result=await registry.get('dev.builder.v1')({...c,mission:{...c.mission,objective:`${c.mission.objective}\nDeliver ${format}. Return the full source in artifact.content. Do not claim tests, deployment or factual accuracy.`},input:{plan:state.plan}});
         const artifact=(result.output as {artifact?:{content?:unknown}})?.artifact;
         if(typeof artifact?.content!=='string')return {status:'FAIL',detail:'Existing builder did not return artifact bytes.',evidence:result.evidence};
         content=artifact.content;evidence=result.evidence;
-      }catch{return {status:'FAIL',detail:'Existing provider builder failed.'};}
+        }
+      }catch{return {status:'FAIL',detail:'Model artifact generation failed. No starter substituted.',evidence:[{kind:'model_generation_failure',data:{code:'MODEL_GENERATION_FAILED'}}]};}
     }else content=starter(state.request);
     if(Buffer.byteLength(content)>128*1024)return {status:'FAIL',detail:'Artifact exceeds 128 KB.'};
     state.artifact={name:state.request.kind==='webapp'?'index.html':'document.md',media_type:state.request.kind==='webapp'?'text/html':'text/markdown',content,sha256:sha(content),bytes:Buffer.byteLength(content)};

@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { ChatDelivery } from "./chat-delivery";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
@@ -63,6 +64,7 @@ const OPEN_MODE_SESSION: SessionRecord = Object.freeze({
 }) as SessionRecord;
 
 export class ApiState {
+  delivery = new ChatDelivery();
   buildWorkspace?: BuildWorkspace;
   readonly teams = new Map<string, TeamGraph>();
   readonly missions = new Map<string, Mission>();
@@ -287,6 +289,13 @@ export async function handleApiRequest(
         }
       }
 
+      if (["/chat/delivery/status","/chat/delivery"].includes(url.pathname)) {
+        const session = requireSession(request,response,state);
+        if (!session) return;
+        if ((url.pathname.endsWith("/status") && method !== "GET") || (!url.pathname.endsWith("/status") && method !== "POST"))
+          return send(response,405,{code:"METHOD_NOT_ALLOWED"});
+        return state.delivery.handle(request,response,session,state.missionKernel);
+      }
       if (parts[0] === "nvidia") {
         const session = requireSession(request, response, state);
         if (!session) return;
