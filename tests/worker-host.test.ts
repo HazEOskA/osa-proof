@@ -11,6 +11,8 @@ import {
   type WorkspaceProvider,
 } from "../packages/workspace-runtime/src";
 
+import { fixtureCleanup } from "./p1-fix-01-fixtures";
+
 class FakeWorkspace implements WorkspaceHandle {
   readonly rootDir = "/workspace";
   readonly metadata = { provider: "fake" };
@@ -42,8 +44,9 @@ class FakeWorkspace implements WorkspaceHandle {
     return `http://127.0.0.1:${port + 10000}`;
   }
 
-  async stop(): Promise<void> {
+  async stop() {
     this.stopped = true;
+    return fixtureCleanup(this.id,undefined);
   }
 }
 

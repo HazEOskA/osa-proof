@@ -1,12 +1,14 @@
 import { readBoundedResponse } from "../../deployment/src";
 import { digest } from "../../proof-core/src";
 import { Buffer } from "node:buffer";
+import { confirmedWorkspaceCleanup } from "./index";
 import type {
   WorkspaceCommandOptions,
   WorkspaceCommandResult,
   WorkspaceCreateRequest,
   WorkspaceHandle,
   WorkspaceProvider,
+  WorkspaceCleanupResult,
 } from "./index";
 
 type FetchLike = typeof fetch;
@@ -84,13 +86,15 @@ class RemoteWorkspaceHandle implements WorkspaceHandle {
   readonly rootDir: string;
   readonly metadata?: Record<string, unknown>;
   private stopped = false;
+  private cleanup?: WorkspaceCleanupResult;
 
   constructor(
     descriptor: RemoteWorkspaceDescriptor,
     private readonly baseUrl: string,
     private readonly token: string,
     private readonly fetchImpl: FetchLike,
-    private readonly requestTimeoutMs: number
+    private readonly requestTimeoutMs: number,
+    private readonly request: WorkspaceCreateRequest
   ) {
     this.id = descriptor.id;
     this.rootDir = descriptor.rootDir;
@@ -156,17 +160,21 @@ class RemoteWorkspaceHandle implements WorkspaceHandle {
     return result.url;
   }
 
-  async stop(): Promise<void> {
-    if (this.stopped) return;
+  async stop(): Promise<WorkspaceCleanupResult> {
+    if (this.stopped) return this.cleanup!;
 
-    await requestJson<{ ok: true }>(
+    const result=await requestJson<{ ok: boolean; removed: boolean; cleanup?: WorkspaceCleanupResult }>(
       this.fetchImpl,
       `${this.baseUrl}/v1/workspaces/${encodeURIComponent(this.id)}`,
       this.token,
-      { method: "DELETE" },
+      { method: "DELETE", body: JSON.stringify(this.request) },
       this.requestTimeoutMs
     );
+    if(result?.ok!==true||!confirmedWorkspaceCleanup(result.cleanup,this.id,this.request.scope)||result.removed!==(result.cleanup.state==="REMOVED"))
+      throw new Error("WORKSPACE_CLEANUP_UNCONFIRMED");
+    this.cleanup=result.cleanup;
     this.stopped = true;
+    return this.cleanup;
   }
 }
 
@@ -210,7 +218,8 @@ export class RemoteWorkspaceProvider implements WorkspaceProvider {
       this.baseUrl,
       this.token,
       this.fetchImpl,
-      this.requestTimeoutMs
+      this.requestTimeoutMs,
+      structuredClone(request)
     );
   }
 }

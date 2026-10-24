@@ -48,8 +48,8 @@ export function operatorSession(request: IncomingMessage, env: Env, now = Date.n
     const seconds = Math.floor(now/1000);
     if (v.v!==1 || v.org!==cfg.organization || v.project!==cfg.project || v.aud!==cfg.origin ||
         !Number.isSafeInteger(v.iat) || !Number.isSafeInteger(v.exp) || v.iat>seconds || v.exp<=seconds || v.exp-v.iat!==TTL || typeof v.id!=="string") return undefined;
-    return {session_id:v.id, token:"", identity:{identity_id:"idn_operator", provider:"local-dev", subject:"operator:server-verified",
-      display_name:"Operator OSA", organization_id:cfg.organization, roles:["operator"], verified:true},
+    return {session_id:v.id, token:"", identity:{identity_id:"idn_operator", provider:"server-operator", subject:"operator:server-verified",
+      display_name:"Operator OSA", organization_id:cfg.organization, project_ids:[cfg.project], roles:["operator"], verified:true},
       created_at:new Date(v.iat*1000).toISOString(), expires_at:new Date(v.exp*1000).toISOString()};
   } catch { return undefined; }
 }

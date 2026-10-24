@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { handleOperatorAuth, operatorAccessStatus, operatorOriginAllowed, operatorProject, operatorSession, protectedRuntime } from "./operator-access";
-import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
+import { executeUnified, installUnifiedTools, verifyUnifiedBundle, createExecutionGuard, isExecutionReservation, type ExecutionPermit, type UnifiedRequest } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
+import { MemoryAccessError, MemoryService } from "./memory";
 import { handleProviderRequest } from "./provider-chat";
 import { ProviderVault } from "./provider-vault";
 import { DurableStore, DurableMissionStore, StorageError, durableConfigured } from "./durable-store";
@@ -66,6 +67,7 @@ const OPEN_MODE_SESSION: SessionRecord = Object.freeze({
 }) as SessionRecord;
 
 export class ApiState {
+  readonly memory: MemoryService;
   readonly providerVault: ProviderVault;
   readonly durable?:DurableStore;
   buildWorkspace?: BuildWorkspace;
@@ -101,6 +103,7 @@ export class ApiState {
     this.datasets = datasets;
     this.evaluators = evaluators;
     this.missionKernel = new MissionKernel(missionStore??(this.durable?new DurableMissionStore(this.durable,(accessEnv.OSA_OPERATOR_ORGANIZATION_ID||"org_dev_local")+":"+(operatorProject(accessEnv)||"osa-proof")):undefined), undefined, brain);
+    this.memory = new MemoryService(this.missionKernel.brain.memory);
   }
 
   cacheExecution(result:Awaited<ReturnType<typeof executeUnified>>){
@@ -108,9 +111,15 @@ export class ApiState {
     this.teams.set(this.teamKey(result.team.team_id,result.team.version),structuredClone(result.team));
     this.missions.set(result.mission.mission_id,structuredClone(result.mission));
   }
-  async rememberExecution(result:Awaited<ReturnType<typeof executeUnified>>){
+  async rememberExecution(result:Awaited<ReturnType<typeof executeUnified>>, session?:SessionRecord){
+    if(this.memory.adapter){
+      this.memory.authorize(session);
+      const scope=this.memory.scope(session!,result.mission.mission_id);
+      if(result.team.organization_id!==scope.organization_id||result.team.project_id!==scope.project_id)
+        throw new MemoryAccessError(403,"MEMORY_SCOPE_DENIED","Dowód należy do innego zakresu pamięci.");
+    }
+    if((this.durable||this.memory.adapter)&&!verifyUnifiedBundle(result).ok)throw new StorageError("EXECUTION_STORAGE_INTEGRITY_FAILED");
     if(this.durable){
-      if(!verifyUnifiedBundle(result).ok)throw new StorageError("EXECUTION_STORAGE_INTEGRITY_FAILED");
       const scope=result.team.organization_id+":"+result.team.project_id;
       try{await this.durable.put(scope,"executions",result.execution_id,result);}
       catch(e){
@@ -120,6 +129,10 @@ export class ApiState {
       }
     }
     this.cacheExecution(result);
+    if(this.memory.adapter && result.status === "EXECUTED") {
+      try { return await this.memory.recordExecution(session!,result); }
+      catch { throw new MemoryAccessError(502,"MEMORY_WRITE_UNCONFIRMED","Dowód wykonania zachowano, ale nie potwierdzono zapisu NeurOSA. Nie ponawiaj automatycznie narzędzia.",result.execution_id); }
+    }
   }
   async execution(organization:string,project:string,id:string){
     if(!this.durable)return undefined;
@@ -131,10 +144,25 @@ export class ApiState {
   }
   async restoreExecutions(organization:string,project:string){
     if(!this.durable)return;
+    const restored:Awaited<ReturnType<typeof executeUnified>>[]=[];
     for(const row of await this.durable.list<Awaited<ReturnType<typeof executeUnified>>>(organization+":"+project,"executions")){
+      if(isExecutionReservation(row.record_id,row.payload))continue;
       const b=row.payload;if(b.team.organization_id!==organization||b.team.project_id!==project||b.execution_id!==row.record_id||!verifyUnifiedBundle(b).ok)throw new StorageError("EXECUTION_STORAGE_INTEGRITY_FAILED");
-      this.cacheExecution(b);
+      restored.push(b);
     }
+    // Nie publikuj częściowej historii, jeśli późniejsza strona lub dowód zawiedzie.
+    for(const b of restored)this.cacheExecution(b);
+  }
+
+  executionGuard(session:SessionRecord,project:string){
+    return createExecutionGuard(this.durable,session.identity.organization_id+":"+project,
+      {provider:session.identity.provider,subject:session.identity.subject,identity_id:session.identity.identity_id});
+  }
+  async executeUnified(input:UnifiedRequest,organization:string,registry:ExecutorRegistry,project:string,session:SessionRecord,permit?:ExecutionPermit){
+    return executeUnified(input,organization,registry,project,{store:this.durable,permit,actor:{provider:session.identity.provider,subject:session.identity.subject,identity_id:session.identity.identity_id},finish:async result=>{
+      const memory_write=await this.rememberExecution(result,session);
+      return {...result,...(memory_write?{memory_write}:{})};
+    }});
   }
 
   teamKey(teamId: string, version: string): string {
@@ -163,9 +191,22 @@ function bearerToken(request: IncomingMessage): string | undefined {
 
 function authenticatedSession(request: IncomingMessage, state: ApiState): SessionRecord | undefined {
   if (protectedRuntime(state.accessEnv)) {
-    return operatorAccessStatus(state.accessEnv).required
-      ? operatorSession(request,state.accessEnv)
-      : structuredClone(OPEN_MODE_SESSION);
+    if (operatorAccessStatus(state.accessEnv).required) return operatorSession(request,state.accessEnv);
+    const env = state.accessEnv;
+    if (env.VERCEL === "1" && env.VERCEL_ENV === "preview" && env.OSA_PREVIEW_GUEST_MEMORY === "1" &&
+        env.OSA_PREVIEW_BRAIN_URL === "https://rzuhgklbuujvciargkwi.supabase.co/functions/v1/osa-preview-brain" &&
+        Boolean(env.OSA_PREVIEW_BRAIN_TOKEN) &&
+        state.memory.adapter?.binding?.organization_id === "org_osa_preview_test_20261023" &&
+        state.memory.adapter?.binding?.project_id === "prj_osa_preview_test_20261023") {
+      return {
+        session_id: "ses_preview_test_only", token: "",
+        identity: {identity_id:"idn_preview_test_only", provider:"server-operator", subject:"preview:synthetic-test-only",
+          display_name:"OSA Test Preview",organization_id:"org_osa_preview_test_20261023",
+          project_ids:["prj_osa_preview_test_20261023"],roles:["operator"],verified:true},
+        created_at:"2026-10-23T00:00:00.000Z",expires_at:"2027-01-01T00:00:00.000Z"
+      };
+    }
+    return structuredClone(OPEN_MODE_SESSION);
   }
   const token = bearerToken(request);
   const session = token ? state.sessions.get(token) : undefined;
@@ -220,6 +261,123 @@ export async function handleApiRequest(
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
       response.setHeader("cache-control","no-store");
       if (await handleOperatorAuth(request,response,url.pathname,state.accessEnv)) return;
+      // One fixed synthetic record for deployment acceptance; no user input, models or private data.
+      if (method === "GET" && url.pathname === "/diagnostics/p1-durable-smoke" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023" &&
+          state.accessEnv.OSA_STORAGE_NAMESPACE === "osa-p1-preview-20261024") {
+        if (!state.durable) return send(response,503,{state:"BLOCKED",code:"STORAGE_NOT_CONFIGURED"});
+        const scope="org_osa_preview_test_20261023:prj_osa_preview_test_20261023";
+        const id="osa_p1_durable_smoke_20261024";
+        const payload={schema:"osa.storage.preview_probe.v1",marker:"SYNTHETIC_ONLY_20261024",scope};
+        try {
+          const verificationOnly=url.searchParams.get("verify")==="1";
+          let record=await state.durable.get<typeof payload>(scope,"executions",id);
+          let written=false;
+          if (!record && !verificationOnly) {
+            const saved=await state.durable.put(scope,"executions",id,payload);
+            if (saved.record_id!==id || saved.revision!==1 || digest(saved.payload)!==digest(payload))
+              throw new StorageError("STORAGE_ACK_UNCONFIRMED");
+            written=true;
+            record=await state.durable.get<typeof payload>(scope,"executions",id);
+          }
+          const ok=!!record && record.record_id===id && record.revision===1 &&
+            digest(record.payload)===digest(payload);
+          return send(response,ok?200:503,{state:ok?"PASS":"FAIL",test_only:true,
+            verified_read:ok,written_in_this_request:written,verification_only:verificationOnly,
+            namespace:"osa-p1-preview-20261024",record_id:id});
+        } catch(error) {
+          return send(response,503,{state:"BLOCKED",test_only:true,
+            code:error instanceof StorageError?error.code:"STORAGE_PROBE_UNAVAILABLE"});
+        }
+      }
+      // Read-only NVIDIA API catalog test; no model tokens, no credentials returned.
+      if (method === "GET" && url.pathname === "/diagnostics/nvidia-auth" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023") {
+        const configured = Boolean(state.accessEnv.NVIDIA_API_KEY?.trim());
+        if(!configured)return send(response,200,{state:"UNCONFIGURED",catalog_http:null,model_listed:false});
+        let upstream:Response;
+        try{
+          upstream=await fetch("https://integrate.api.nvidia.com/v1/models", {
+            method:"GET",redirect:"error",signal:AbortSignal.timeout(8000),
+            headers: {authorization:"Bearer "+state.accessEnv.NVIDIA_API_KEY!.trim(),accept:"application/json"}
+          });
+        }catch{return send(response,200,{state:"NETWORK_UNAVAILABLE",catalog_http:null,model_listed:false});}
+        let found=false;
+        if(upstream.status===200){
+          try{
+            const text=await upstream.text();
+            if(text.length<=250000){
+              const catalog=JSON.parse(text);
+              found=Array.isArray(catalog?.data)&&catalog.data.some((x:unknown)=>!!x&&typeof x==="object"&&
+                (x as {id?:unknown}).id===(state.accessEnv.NVIDIA_MODEL?.trim()||"nvidia/nemotron-3-super-120b-a12b"));
+            }
+          }catch{ /* status remains authoritative; model inventory is not guaranteed */ }
+        } else await upstream.body?.cancel().catch(()=>{});
+        return send(response,200,{state:upstream.status===200?"CATALOG_REACHABLE":"CATALOG_REJECTED",
+          catalog_http:upstream.status,model_listed:found,
+          inference_verified:false,key_exposed:false});
+      }
+      // Narrow, preview-only transport probe for the explicitly provided Railway hostname.
+      // No token, no input URL, no private records and no provider/model execution.
+      if (method === "GET" && url.pathname === "/diagnostics/railway-neurosa" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023") {
+        const base = "https://neurosabrain-web-production.up.railway.app";
+        const probe = async (path: string) => {
+          try {
+            const upstream = await fetch(base + path, {
+              method: "GET", redirect: "error", signal: AbortSignal.timeout(7000),
+              headers: {"x-neurosa-brain-id": "OsaBrain"}
+            });
+            return { http: upstream.status, content_type: (upstream.headers.get("content-type") || "").slice(0,80) };
+          } catch { return { http: null, code: "NETWORK_UNAVAILABLE" }; }
+        };
+        const health = await probe("/health");
+        const without_token = await probe("/api/v1/brain/status");
+        return send(response, 200, {
+          probe: "OSA_RAILWAY_TRANSPORT_V1", production_untouched: true,
+          health, without_token,
+          connectivity: health.http === 200 ? "REACHABLE" : "UNKNOWN_OR_UNREACHABLE",
+          token_protection: without_token.http === 401 ? "PASS" : "UNCONFIRMED",
+          memory_write_tested: false, volume_verified: false
+        });
+      }
+      // Synthetic preview memory diagnostic only: no provider execution or source-NeurOSA data.
+      if (method === "GET" && url.pathname === "/memory/preview-smoke" &&
+          state.accessEnv.VERCEL === "1" && state.accessEnv.VERCEL_ENV === "preview" &&
+          state.accessEnv.OSA_PREVIEW_GUEST_MEMORY === "1") {
+        const session = authenticatedSession(request,state);
+        if (!session || session.identity.organization_id !== "org_osa_preview_test_20261023")
+          return send(response,403,{state:"BLOCKED",code:"TEST_SCOPE_REQUIRED"});
+        const conversationId="a5c9372e-2fb2-4dbe-8c73-0cc48d515a11";
+        const synthetic="OSA_PREVIEW_SYNTHETIC_MEMORY_PROBE_20261023";
+        if(url.searchParams.get("verify")==="1"){
+          const context=await state.memory.recall(session,conversationId,synthetic);
+          return send(response,200,{state:context.text.includes(synthetic)?"PASS":"FAIL",test_only:true,
+            brain_id:context.brain_id,has_marker:context.text.includes(synthetic),ledger_head:context.ledger_head});
+        }
+        const receipt=await state.memory.remember(session,conversationId,synthetic);
+        const check=await state.memory.read(session,receipt.document_id);
+        const context=await state.memory.recall(session,conversationId,synthetic);
+        const ok=check.receipt.receipt_sha256===receipt.receipt_sha256 && context.text.includes(synthetic);
+        return send(response,ok?200:502,{state:ok?"PASS":"FAIL",test_only:true,brain_id:context.brain_id,
+          readback_verified:check.receipt.receipt_sha256===receipt.receipt_sha256,
+          recall_verified:context.text.includes(synthetic),document_id:receipt.document_id});
+      }
+      if (method === "GET" && url.pathname === "/memory/status")
+        return send(response,200,await state.memory.status(authenticatedSession(request,state)));
+      // Prywatna pamięć nigdy nie dziedziczy uprawnień anonimowego trybu open.
+      if(state.memory.adapter && !["/build/status","/layers","/auth/dev-login"].includes(url.pathname))
+        state.memory.authorize(authenticatedSession(request,state));
+      if(parts[0] === "memory") {
+        const session=requireSession(request,response,state);
+        if(!session)return;
+        if(method === "GET" && parts[1] === "receipts" && parts.length === 3)
+          return send(response,200,await state.memory.read(session,parts[2]));
+        return send(response,404,{error:"Trasa pamięci nie istnieje."});
+      }
       const cloud = protectedRuntime(state.accessEnv);
       const access = operatorAccessStatus(state.accessEnv);
       const scoped = access.required;
@@ -242,7 +400,8 @@ export async function handleApiRequest(
         if (!session) return;
         if(method==="GET"&&parts[1]==="executions"&&parts.length===3){
           if(!/^exec_[a-f0-9-]{36}$/.test(parts[2]))return send(response,400,{code:"INVALID_EXECUTION_ID",error:"Nieprawidłowy identyfikator wykonania."});
-          const b=await state.execution(session.identity.organization_id!,operatorProject(state.accessEnv)||"osa-proof",parts[2]);
+          const project=state.memory.adapter?state.memory.scope(session,"execution-read").project_id:operatorProject(state.accessEnv)||"osa-proof";
+          const b=await state.execution(session.identity.organization_id!,project,parts[2]);
           return b?send(response,200,{...b,persistence:"DURABLE_POSTGRES"}):send(response,404,{code:"EXECUTION_NOT_FOUND",error:"Nie znaleziono trwałego zapisu wykonania."});
         }
         if (method === "POST" && ["/unified/execute","/unified/verify"].includes(url.pathname)) {
@@ -265,11 +424,10 @@ export async function handleApiRequest(
               return send(response,403,{status:"BLOCKED",error:"MODEL_DISPATCH_SERVICE_AUTH_REQUIRED"});
           }
           if(!session.identity.organization_id)return send(response,403,{status:"BLOCKED",error:"UNIFIED_ORGANIZATION_REQUIRED"});
-          installUnifiedTools(registry);
+          installUnifiedTools(registry,state.accessEnv);
           let result;
-          try {result = await executeUnified(body,session.identity.organization_id,registry,operatorProject(state.accessEnv));}
-          catch {return send(response,400,{status:"BLOCKED",error:"UNIFIED_INVALID_INPUT"});}
-          await state.rememberExecution(result);
+          try {result = await state.executeUnified(body as UnifiedRequest,session.identity.organization_id,registry,state.memory.adapter?state.memory.scope(session,"unified-execute").project_id:operatorProject(state.accessEnv)||"osa-proof",session);}
+          catch(error) {if(error instanceof StorageError||error instanceof MemoryAccessError)throw error;return send(response,400,{status:"BLOCKED",error:"UNIFIED_INVALID_INPUT"});}
           return send(response,200,result);
         }
         return send(response,404,{status:"BLOCKED",error:"UNIFIED_ROUTE_NOT_FOUND"});
@@ -305,22 +463,19 @@ export async function handleApiRequest(
       if (parts[0] === "models") {
         const session = requireSession(request,response,state);
         if (!session) return;
-        const organization=session.identity.organization_id!,project=operatorProject(state.accessEnv)||"osa-proof";
-        return handleProviderRequest(request,response,url.pathname,{env:state.accessEnv,scope:organization+":"+project,vault:state.providerVault,dispatch:async input=>{
+        const organization=session.identity.organization_id!,project=state.memory.adapter?state.memory.scope(session,"provider-execute").project_id:operatorProject(state.accessEnv)||"osa-proof";
+        return handleProviderRequest(request,response,url.pathname,{env:state.accessEnv,scope:organization+":"+project,vault:state.providerVault,memory:state.memory,session,guard:state.executionGuard(session,project),dispatch:async (input,permit)=>{
           installUnifiedTools(registry,state.accessEnv);
-          const result=await executeUnified(input,organization,registry,project);
-          await state.rememberExecution(result);
-          return result;
+          return state.executeUnified(input,organization,registry,project,session,permit);
         }});
       }
       if (parts[0] === "nvidia") {
         const session = requireSession(request, response, state);
         if (!session) return;
-        return handleNvidiaRequest(request, response, url.pathname, {env:state.accessEnv, dispatch:async input=>{
+        const project=state.memory.adapter?state.memory.scope(session,"nvidia-execute").project_id:operatorProject(state.accessEnv)||"osa-proof";
+        return handleNvidiaRequest(request, response, url.pathname, {env:state.accessEnv,memory:state.memory,session,guard:state.executionGuard(session,project), dispatch:async (input,permit)=>{
           installUnifiedTools(registry,state.accessEnv);
-          const result=await executeUnified(input,session.identity.organization_id!,registry,operatorProject(state.accessEnv));
-          await state.rememberExecution(result);
-          return result;
+          return state.executeUnified(input,session.identity.organization_id!,registry,project,session,permit);
         }});
       }
 
@@ -713,10 +868,13 @@ export async function handleApiRequest(
       if (method === "GET" && parts[0] === "runs" && parts.length >= 2) {
         const session = requireSession(request, response, state);
         if (!session) return;
-        if(!state.runs.has(parts[1]))await state.restoreExecutions(session.identity.organization_id!,operatorProject(state.accessEnv)||"osa-proof");
+        const project=state.memory.adapter?state.memory.scope(session,"history-read").project_id:operatorProject(state.accessEnv)||"osa-proof";
+        if(session.identity.project_ids&&!session.identity.project_ids.includes(project))return send(response,403,{code:"TENANT_SCOPE_DENIED"});
+        if(!state.runs.has(parts[1]))await state.restoreExecutions(session.identity.organization_id!,project);
         const run = state.runs.get(parts[1]);
         if (!run) return send(response, 404, { error: "run not found" });
-        if (run.proof.organization_id !== session.identity.organization_id || (scoped && run.proof.project_id !== operatorProject(state.accessEnv))) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (run.proof.organization_id !== session.identity.organization_id || (scoped && run.proof.project_id !== operatorProject(state.accessEnv)) ||
+            (session.identity.project_ids&&!session.identity.project_ids.includes(run.proof.project_id))) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (parts.length === 2) return send(response, 200, run);
         if (parts[2] === "events") return send(response, 200, run.events);
         if (parts[2] === "evidence") return send(response, 200, run.evidence);
@@ -725,6 +883,7 @@ export async function handleApiRequest(
 
     return send(response, 404, { error: "not found" });
   } catch (error) {
+    if(error instanceof MemoryAccessError)return send(response,error.status,{code:error.code,error:error.message,...(error.execution_id?{execution_id:error.execution_id}:{})});
     if(error instanceof StorageError)return send(response,error.status,{code:error.code,error:"Trwały magazyn nie potwierdził operacji. Nie zadeklarowano poprawnego zapisu."});
     if(protectedRuntime(state.accessEnv)) return send(response,400,{code:"REQUEST_REJECTED",error:"Żądanie odrzucone. Sprawdź dane i uprawnienia."});
     const message = error instanceof Error ? error.message : String(error);

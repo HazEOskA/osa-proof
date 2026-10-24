@@ -8,16 +8,28 @@ try{
   for(const [name,width,height] of [["telefon-320",320,640],["telefon-390",390,844],["desktop",1440,900]]){
     const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce",...(width<768?{isMobile:true,hasTouch:true,userAgent:devices["Pixel 7"].userAgent}:{})});
     const errors=[];page.on("pageerror",e=>errors.push(e.message));
-    let providerCalls=0;
+    let providerCalls=0,nextOutcome="ok";
+    const requests=[],operations=new Map();
     await page.route("**/api/nvidia/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({configured:true,provider:"NVIDIA",model:"nvidia/test"})}));
-    await page.route("**/api/nvidia/fleet-chat",route=>{
+    await page.route("**/api/models/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({providers:[{id:"nvidia",source:"SERVER_ENV",configured:true},{id:"openrouter",source:"SERVER_ENV",configured:true}]})}));
+    await page.route(/\/api\/(nvidia\/fleet-chat|models\/chat)$/,route=>{
       const q=route.request().postDataJSON();
       assert.equal(q.agent,"guide");
       assert.equal(q.view,"home");
-      assert.match(q.prompt,/Jak zacząć pracę/);
       assert.ok(Array.isArray(q.history));
-      providerCalls++;
-      return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({status:"PROVIDER_RESPONSE",text:"Otwórz BUDOWANIE → Agenci."})});
+      assert.match(q.execution_id,/^exec_[a-f0-9-]{36}$/);
+      assert.match(q.conversation_id,/^[a-f0-9-]{36}$/i);
+      const body=route.request().postData(),url=route.request().url();
+      if(requests.length)assert.equal(q.conversation_id,requests[0].payload.conversation_id);
+      else assert.match(q.prompt,/Jak zacząć pracę/);
+      if(url.endsWith("/models/chat"))assert.ok(["nvidia","openrouter"].includes(q.provider));
+      const old=operations.get(q.execution_id);
+      requests.push({body,url,payload:q});
+      if(old){assert.equal(body,old.body,"Retry zachowuje bajty payloadu");assert.equal(url,old.url,"Retry zachowuje trasę");}
+      else{providerCalls++;operations.set(q.execution_id,{body,url,status:nextOutcome==="conflict"?409:200});}
+      const status=operations.get(q.execution_id).status,outcome=nextOutcome;nextOutcome="ok";
+      if(outcome==="lost")return route.abort("timedout");
+      return route.fulfill({status,contentType:"application/json",body:JSON.stringify(status===409?{code:"EXECUTION_PAYLOAD_CONFLICT",error:"Konflikt żądania FIXTURE"}:{status:"PROVIDER_RESPONSE",text:"Otwórz BUDOWANIE → Agenci."})});
     });
     await page.goto(base,{waitUntil:"domcontentloaded"});
     const home=page.locator('section[aria-label="Uruchamianie"]');
@@ -31,6 +43,39 @@ try{
     await panel.getByRole("button",{name:/Jak zacząć pracę z OSA Proof/}).click();
     await panel.getByText("Otwórz BUDOWANIE → Agenci.").waitFor({state:"visible"});
     assert.equal(providerCalls,1);
+    const prompt=panel.getByRole("textbox",{name:"Pytanie do OSA"});
+    nextOutcome="lost";
+    await prompt.fill("Sprawdź utratę odpowiedzi");await panel.getByRole("button",{name:"Wyślij ↑",exact:true}).click();
+    await panel.getByTestId("osa-help-error").waitFor({state:"visible"});
+    await panel.getByRole("combobox",{name:"Dostawca przewodnika OSA"}).selectOption("openrouter");
+    await prompt.fill("Zmieniony szkic nie zmienia retry");
+    const replayResponse=page.waitForResponse(r=>r.url().endsWith("/api/nvidia/fleet-chat")&&r.request().method()==="POST"&&r.status()===200);
+    await panel.getByTestId("model-request-retry").click();
+    await replayResponse;
+    await panel.getByRole("status").waitFor({state:"detached"});
+    await panel.getByTestId("model-request-retry").waitFor({state:"detached"});
+    assert.equal(requests[1].body,requests[2].body);assert.equal(requests[1].url,requests[2].url);
+    assert.equal(providerCalls,2,"Retry nie tworzy nowej operacji");
+    const newResponse=page.waitForResponse(r=>r.url().endsWith("/api/models/chat")&&r.request().method()==="POST"&&r.status()===200);
+    await prompt.fill("Sprawdź utratę odpowiedzi");await panel.getByRole("button",{name:"Wyślij ↑",exact:true}).click();await newResponse;
+    await panel.getByRole("status").waitFor({state:"detached"});
+    assert.notEqual(requests[3].payload.execution_id,requests[2].payload.execution_id);
+    assert.ok(requests[3].url.endsWith("/models/chat"));
+    nextOutcome="conflict";
+    const conflictResponse=page.waitForResponse(r=>r.url().endsWith("/api/models/chat")&&r.request().method()==="POST"&&r.status()===409);
+    await prompt.fill("Sprawdź konflikt");await panel.getByRole("button",{name:"Wyślij ↑",exact:true}).click();await conflictResponse;
+    await panel.getByTestId("osa-help-error").waitFor({state:"visible"});
+    const conflictReplay=page.waitForResponse(r=>r.url().endsWith("/api/models/chat")&&r.request().method()==="POST"&&r.status()===409);
+    await panel.getByTestId("model-request-retry").click();
+    await conflictReplay;
+    await page.waitForFunction(()=>document.querySelector('[data-testid="model-request-retry"]')?.disabled===false);
+    assert.equal(requests[4].body,requests[5].body);assert.equal(providerCalls,4);
+    const explicitNew=page.waitForResponse(r=>r.url().endsWith("/api/models/chat")&&r.request().method()==="POST"&&r.status()===200);
+    await prompt.fill("Sprawdź konflikt");await panel.getByRole("button",{name:"Wyślij ↑",exact:true}).click();await explicitNew;
+    await panel.getByTestId("osa-help-error").waitFor({state:"detached"});
+    await panel.getByRole("status").waitFor({state:"detached"});
+    assert.notEqual(requests[6].payload.execution_id,requests[5].payload.execution_id);
+    assert.equal(providerCalls,5);
     await panel.getByRole("button",{name:/Przejdź dalej: Agenci/}).click();
     await panel.getByText("Na tym ekranie · Agenci").waitFor({state:"visible"});
     assert.match(await panel.innerText(),/Twórz role w grafie zespołu/);
@@ -51,7 +96,7 @@ try{
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
     assert.ok(overflow<=1,"No horizontal overflow: "+overflow);
     assert.deepEqual(errors,[],"No page errors");
-    console.log(JSON.stringify({name,globalGuide:"PASS",homeHelp:true,moduleContext:true,fleetChatContext:true,simulatedProvider:true,realProvider:"NOT_TESTED",providerCalls,overflow}));
+    console.log(JSON.stringify({name,globalGuide:"PASS",homeHelp:true,moduleContext:true,fleetChatContext:true,simulatedProvider:true,realProvider:"NOT_TESTED",providerCalls,httpAttempts:requests.length,stableConversation:true,byteIdenticalRetry:true,conflict409:true,newOperation:true,overflow}));
     await page.close();
   }
 }finally{await browser.close();}

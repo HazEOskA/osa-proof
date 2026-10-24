@@ -126,13 +126,15 @@ export default function JeversonChat() {
     if((modelTools||!command(text))&&!selectedConfigured){
       setError("Dodaj połączenie "+providerLabel+" w Połączeniach API.");setConnectionsOpen(true);return;
     }
-    setDraft("");addMessage(sessionId,"user",text,"USER");
+    // Jeden identyfikator operacji na wiadomość; pozostaje w historii także po błędzie.
+    const executionId="exec_"+id();
+    setDraft("");addMessage(sessionId,"user",text,"USER",{executionId});
     const request=++seq.current,abort=new AbortController();controller.current=abort;setBusy(true);
     try {
       if(modelTools||!command(text)) {
         const history=current.messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}));
         const gateway=selectedProvider!=="nvidia"||selectedConnection?.source==="PRIVATE_SERVER_STORE";
-        const answer=await api<ModelAnswer>(gateway?"/models/chat":"/nvidia/fleet-chat",{prompt:text,agent:current.agent,history,...(gateway?{provider:selectedProvider}:{}),...(modelTools?{execute_tools:true,execution_id:"exec_"+id()}:{})},abort.signal);
+        const answer=await api<ModelAnswer>(gateway?"/models/chat":"/nvidia/fleet-chat",{prompt:text,conversation_id:sessionId,execution_id:executionId,agent:current.agent,history,...(gateway?{provider:selectedProvider}:{}),...(modelTools?{execute_tools:true}:{})},abort.signal);
         setLastProvider(answer.provider||providerLabel);
         if(request!==seq.current)return;
         if(answer.status==="TOOL_EXECUTED" && answer.bundle?.status==="EXECUTED" && answer.bundle.run.verdict==="VERIFIED"){
@@ -147,7 +149,7 @@ export default function JeversonChat() {
         setModelReplied(true);
         return;
       }
-      const bundle=await api<Bundle>("/unified/execute",{message:text,execution_id:"exec_"+id()},abort.signal);
+      const bundle=await api<Bundle>("/unified/execute",{message:text,execution_id:executionId},abort.signal);
       if(request!==seq.current)return;await verify(bundle,sessionId);
       if(request!==seq.current)return;
       const output=bundle.run.final_output as Record<string,unknown>;

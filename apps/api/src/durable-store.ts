@@ -17,7 +17,13 @@ export class DurableStore {
     let url:URL,key;
     try{
       url=new URL(this.env.OSA_STORAGE_URL||"");
-      if(url.protocol!=="https:"||!url.hostname.endsWith(".supabase.co")||url.username||url.password||url.port||url.search||url.hash||url.pathname!=="/functions/v1/osa-proof-storage")throw Error();
+      const p1Preview = this.env.VERCEL === "1" && this.env.VERCEL_ENV === "preview" &&
+        this.env.VERCEL_GIT_COMMIT_REF === "codex/osa-preview-brain-test-20261023" &&
+        this.env.OSA_STORAGE_NAMESPACE === "osa-p1-preview-20261024" &&
+        url.hostname === "rzuhgklbuujvciargkwi.supabase.co" &&
+        url.pathname === "/functions/v1/osa-proof-storage-p1-preview";
+      if(url.protocol!=="https:"||!url.hostname.endsWith(".supabase.co")||url.username||url.password||url.port||url.search||url.hash||
+        (!p1Preview&&url.pathname!=="/functions/v1/osa-proof-storage"))throw Error();
       key=createPrivateKey({key:Buffer.from(this.env.OSA_STORAGE_PRIVATE_KEY_B64||"","base64"),format:"der",type:"pkcs8"});
       if(key.asymmetricKeyType!=="ed25519")throw Error();
     }catch{throw new StorageError("STORAGE_NOT_CONFIGURED");}
@@ -34,7 +40,22 @@ export class DurableStore {
     try{return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T;}catch{throw new StorageError("STORAGE_INVALID_RESPONSE");}
   }
   async get<T>(scope:string,kind:string,id:string){return (await this.request<{record:StoredRecord<T>|null}>({op:"get",scope,kind,record_id:id})).record??undefined;}
-  async list<T>(scope:string,kind:string){return (await this.request<{records:StoredRecord<T>[]}>({op:"list",scope,kind})).records;}
+  async list<T>(scope:string,kind:string){
+    const records:StoredRecord<T>[]=[];let cursor:string|undefined;
+    do{
+      // Pięć maksymalnych rekordów mieści się w limicie odpowiedzi 4 MB.
+      const page=await this.request<{records:StoredRecord<T>[];next_cursor:string|null}>({op:"list",scope,kind,cursor:cursor??null,page_size:5});
+      if(!page||!Array.isArray(page.records)||page.records.length>5||!(page.next_cursor===null||typeof page.next_cursor==="string"))throw new StorageError("STORAGE_PAGINATION_INVALID");
+      let last=cursor;
+      for(const row of page.records){
+        if(!row||typeof row.record_id!=="string"||!Number.isInteger(row.revision)||row.revision<1||last!==undefined&&row.record_id<=last)throw new StorageError("STORAGE_PAGINATION_INVALID");
+        last=row.record_id;
+      }
+      if(page.next_cursor!==null&&(!page.records.length||page.next_cursor!==last))throw new StorageError("STORAGE_PAGINATION_INVALID");
+      records.push(...page.records);cursor=page.next_cursor??undefined;
+    }while(cursor!==undefined);
+    return records;
+  }
   async put<T>(scope:string,kind:string,id:string,payload:T,expectedRevision?:number){return (await this.request<{record:StoredRecord<T>}>({op:"put",scope,kind,record_id:id,payload,expected_revision:expectedRevision??null})).record;}
   async remove(scope:string,kind:string,id:string,expectedRevision:number){await this.request({op:"delete",scope,kind,record_id:id,expected_revision:expectedRevision});}
 }
