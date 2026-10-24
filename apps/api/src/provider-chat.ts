@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomBytes, randomUUID, createHash } from "node:crypto";
 import { AnthropicProvider, OpenAIProvider } from "../../../packages/adapters/src";
 import { chatContext, CHAT_AGENTS } from "./chat-context";
-import { nvidiaChat, nvidiaStatus, NVIDIA_MODEL, NVIDIA_FREE_ALTERNATE_MODEL, NvidiaError, chatMemoryRequest, validModelChatResult, type NvidiaChatBody, type NvidiaChatOptions } from "./nvidia";
+import { nvidiaChat, nvidiaStatus, NVIDIA_MODEL, NvidiaError, chatMemoryRequest, validModelChatResult, type NvidiaChatBody, type NvidiaChatOptions } from "./nvidia";
 import { MemoryAccessError } from "./memory";
 import { checkpointExecution, executionErrorContext, type ExecutionPermit } from "./unified";
 import { StorageError } from "./durable-store";
@@ -17,7 +17,7 @@ const SPEC={
   anthropic:{name:"Anthropic",key:"ANTHROPIC_API_KEY",model:"ANTHROPIC_MODEL",defaultModel:"",url:"https://api.anthropic.com"},
   compatible:{name:"Inne API zgodne z OpenAI",key:"",model:"",defaultModel:"",url:""}
 } as const;
-const isFree=(c:ProviderConnection)=>(c.provider==="nvidia"&&(c.model===NVIDIA_MODEL||c.model===NVIDIA_FREE_ALTERNATE_MODEL))||(c.provider==="openrouter"&&(c.model==="openrouter/free"||c.model.endsWith(":free")));
+const isFree=(c:ProviderConnection)=>(c.provider==="nvidia"&&c.model===NVIDIA_MODEL)||(c.provider==="openrouter"&&(c.model==="openrouter/free"||c.model.endsWith(":free")));
 function cookieName(env:NodeJS.ProcessEnv){return protectedRuntime(env)?"__Host-osa-connections":"osa-connections";}
 function browserId(req:IncomingMessage,env:NodeJS.ProcessEnv){const name=cookieName(env)+"=",v=req.headers.cookie?.split(";").map(v=>v.trim()).find(v=>v.startsWith(name))?.slice(name.length);return v&&/^[a-f0-9]{64}$/.test(v)?v:undefined;}
 function sameOrigin(req:IncomingMessage,env:NodeJS.ProcessEnv){
