@@ -111,7 +111,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   const web3 = useWeb3Data();
   const [drawer, setDrawer] = useState(false);
   // Optional Agent Chat Fleet module retains its immersive layout; Home stays the framework entry point.
-  if (view === "jeverson-chat") return <div className="relative h-[100dvh] min-h-0 min-w-0 overflow-hidden bg-void"><div className="fixed right-2 top-2 z-50 max-w-[calc(100vw-1rem)]"><AccountControl /></div><JeversonChat /></div>;
+  if (view === "jeverson-chat") return <div className="h-[100dvh] min-h-0 min-w-0 overflow-hidden bg-void"><JeversonChat /></div>;
   let body;
   const v: ViewId = view;
   if (v === "nvidia:models") body = <NvidiaModels />;
