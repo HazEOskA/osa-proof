@@ -5,6 +5,8 @@ import JeversonChat from "./JeversonChat";
 import Web3 from "./Web3";
 import { useWeb3Data, type Web3Page } from "../data/web3";
 import { useState } from "react";
+import AccountControl from "./AccountControl";
+import OsaHelpDock from "./OsaHelpDock";
 import { useOsa, type ViewId } from "../ctx";
 import { HOME_ITEM, NAV, type NavItem } from "../nav";
 import { ICON } from "../brand/icons";
@@ -110,7 +112,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
   const web3 = useWeb3Data();
   const [drawer, setDrawer] = useState(false);
   // Optional Agent Chat Fleet module retains its immersive layout; Home stays the framework entry point.
-  if (view === "jeverson-chat") return <div className="h-[100dvh] min-h-0 min-w-0 overflow-hidden bg-void"><JeversonChat /></div>;
+  if (view === "jeverson-chat") return <><div className="h-[100dvh] min-h-0 min-w-0 overflow-hidden bg-void"><JeversonChat /></div><OsaHelpDock /></>;
   let body;
   const v: ViewId = view;
   if (v === "nvidia:models") body = <NvidiaModels />;
@@ -149,6 +151,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
             <Icon d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.5-4.5" /><span className="hidden flex-1 truncate sm:inline">Szukaj agentów, misji i dowodów…</span><span className="flex-1 sm:hidden">Szukaj</span><kbd className="mono hidden rounded border border-line px-1.5 text-[10px] sm:inline">Ctrl K</kbd>
           </button>
           <div className="hidden md:block"><ThemeSwitch /></div>
+          <AccountControl />
           <div className="hidden text-right lg:block">{v.startsWith("web3:") ? <><span className="mono text-[10px] text-dim">{web3.status ? "WEB3 · READ ONLY" : "WEB3 · UNKNOWN"}</span><div className="mono text-[10px] text-dim">OSA API · chain assurance: RPC_VALIDATED</div></> : <><Status v={source.kind} /><div className="mono max-w-[240px] truncate text-[10px] text-dim">{source.detail}</div></>}</div>
         </header>
         <div className="flex min-h-0 flex-1">
@@ -168,6 +171,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
         </div>
       )}
       {palette && <Palette onClose={closePalette} />}
+      <OsaHelpDock />
     </div>
   );
 }

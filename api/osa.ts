@@ -49,7 +49,7 @@ export default async function handler(request: IncomingMessage, response: Server
     // Never mount private memory outside the one protected Preview host.
     // This includes custom-domain aliases and accidental Production routing.
     const brain = privatePreview ? current.brain : new BrainControlPlane(current.brain.planner);
-    state = new ApiState(undefined, undefined, undefined, loadAuthMode(process.env),
+    state = new ApiState(undefined, undefined, undefined, preview && !privatePreview ? "session" : loadAuthMode(process.env),
       undefined, brain, createConfiguredWeb3(process.env), operator);
     states.set(kind, state);
   }

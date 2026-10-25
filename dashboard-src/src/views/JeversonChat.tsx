@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useOsa } from "../ctx";
+import AccountControl from "./AccountControl";
 import { verifyRun } from "../lib/verify";
 import { statusText } from "../ui/primitives";
 import type { Mission, Run, TeamGraph } from "../data/types";
@@ -184,7 +185,7 @@ export default function JeversonChat() {
       </div><button onClick={()=>go("home")} aria-label="Powrót do OSA Proof" className="focus-ring border-t border-white/10 px-3 py-3 text-left text-xs text-cyan hover:bg-white/5">← OSA Proof / Workspace</button><p className="border-t border-white/10 p-3 text-[10px] text-dim">HISTORIA LOKALNA · BEZ SYNCHRONIZACJI</p>
     </aside>
     <div className="relative flex min-w-0 flex-1 flex-col">
-      <div className="flex min-h-[30px] shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#0b111c] px-3 text-[10px] sm:px-5"><button type="button" aria-label="Powrót do frameworka OSA Proof" onClick={()=>go("home")} className="focus-ring rounded px-2 py-1 font-semibold text-cyan hover:bg-white/5">← OSA Proof / Framework</button><span className="truncate text-dim">BUDOWANIE / CZAT FLOTY AGENTÓW</span></div>
+      <div className="flex min-h-[44px] shrink-0 items-center gap-2 border-b border-white/10 bg-[#0b111c] pl-2 pr-6 text-[10px] sm:px-5"><button type="button" aria-label="Powrót do frameworka OSA Proof" onClick={()=>go("home")} className="focus-ring min-w-0 shrink-0 rounded px-1 py-1 font-semibold text-cyan hover:bg-white/5">← OSA Proof<span className="hidden sm:inline"> / Framework</span></button><span className="hidden min-w-0 flex-1 truncate text-dim sm:block">BUDOWANIE / CZAT FLOTY AGENTÓW</span><span className="flex-1 sm:hidden" /><AccountControl /></div>
       <header className="flex min-h-[60px] shrink-0 items-center gap-2 border-b border-white/10 bg-[#0b111c] px-3 sm:px-5">
         <button onClick={()=>setMobileHistory(true)} aria-label="Otwórz historię" className="p-2 md:hidden">☰</button>
         <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-semibold">Jeverson · flota OSA</h1><div className="truncate text-[10px] text-dim">Jeverson · Agenci · Runtime · APR · Dowody</div></div>
