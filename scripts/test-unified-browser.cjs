@@ -24,8 +24,14 @@ async function main(){
       const home=page.locator('section[aria-label="Uruchamianie"]');
       await home.waitFor({state:"visible"});
       assert.equal(await page.getByTestId("osa-native-chat").count(),0,"Framework Home must load first");
+      await page.getByTestId("osa-help-trigger").waitFor({state:"visible"});
+      await page.getByTestId("osa-help-trigger").click();
+      await page.getByTestId("osa-help-panel").waitFor({state:"visible"});
+      assert.match(await page.getByTestId("osa-help-panel").innerText(),/Zapytaj OSĘ/);
+      await page.getByRole("button",{name:"Zamknij pomoc OSA"}).click();
       await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
       await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
+      await page.getByTestId("osa-help-trigger").waitFor({state:"visible"});
       await page.getByText("Pamięć niepołączona",{exact:true}).waitFor({state:"visible"});
       assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
       assert.equal(await page.getByRole("link",{name:"Zaloguj przez GitHub"}).count(),0);
