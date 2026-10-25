@@ -1,3 +1,4 @@
+import { emitTelemetry } from "../../telemetry/src";
 import { createHash, randomUUID } from "node:crypto";
 import { verifyRuntimePlan } from "../../brain/src/plan";
 export * from "./mission-kernel";
@@ -106,6 +107,8 @@ export class OsaRuntime {
         payload,
       };
       await this.eventStore.append(event);
+      emitTelemetry({ component: "runtime", event: "RUNTIME_EVENT", execution_id: executionId,
+        run_id: runId, mission_id: mission.mission_id, outcome: type });
     };
 
     await emit("RUN_CREATED", { objective: mission.objective });
