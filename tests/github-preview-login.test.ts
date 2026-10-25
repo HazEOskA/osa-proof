@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createServer, type IncomingMessage } from "node:http";
+import { createServer, request as httpRequest, type IncomingMessage } from "node:http";
 import { handleGithubAuth, readGithubSession, githubOAuthConfigured } from "../apps/api/src/github-auth";
 
 const env={
@@ -13,6 +13,28 @@ const env={
   OSA_GITHUB_PROJECT_ID:"project_test",
 };
 const preview="osa-proof-git-feature-x.vercel.app";
+
+// Node fetch normalizes Host to the connection host, so use the raw HTTP client
+// to exercise the Vercel Host routing and broker binding explicitly.
+async function localFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  return new Promise((resolve,reject) => {
+    const req=httpRequest(url,{method:init.method??"GET",headers:Object.fromEntries(new Headers(init.headers).entries())},res=>{
+      const chunks:Buffer[]=[];
+      res.on("data",chunk=>chunks.push(Buffer.from(chunk)));
+      res.on("end",()=>{
+        const headers=new Headers();
+        for(const [key,value] of Object.entries(res.headers)){
+          if(typeof value==="string") headers.set(key,value);
+          else if(Array.isArray(value)) for(const v of value)headers.append(key,v);
+        }
+        resolve(new Response(Buffer.concat(chunks),{status:res.statusCode??500,headers}));
+      });
+      res.on("error",reject);
+    });
+    req.on("error",reject);
+    req.end(init.body as string | undefined);
+  });
+}
 async function serve(handler:(req:IncomingMessage)=>Promise<Response|string>, action:(base:string)=>Promise<void>) {
   const server=createServer(async(req,res)=>{
     const handled=await handleGithubAuth(req,res,env,async (input,init)=>{
@@ -52,7 +74,7 @@ test("OAuth config denies missing allowlist and weak secret",()=>{
 test("GitHub preview OAuth: PKCE, signed state, stable broker callback, signed HttpOnly session",async()=>{
   await serve(async()=>new Response(JSON.stringify({id:123456,login:"verified-operator"}),{status:200}),
     async base=>{
-      const start=await fetch(base+"/auth/github/start?return_to=%2F",{headers:{host:preview},redirect:"manual"});
+      const start=await localFetch(base+"/auth/github/start?return_to=%2F",{headers:{host:preview},redirect:"manual"});
       assert.equal(start.status,302);
       const location=start.headers.get("location")!;
       const authUrl=new URL(location);
@@ -62,7 +84,7 @@ test("GitHub preview OAuth: PKCE, signed state, stable broker callback, signed H
       const state=authUrl.searchParams.get("state")!;
       const pending=parseCookie(start.headers.get("set-cookie"),"__Host-osa_oauth");
       assert.match(start.headers.get("set-cookie")??"",/HttpOnly; Secure; SameSite=None/);
-      const callback=await fetch(base+"/auth/github/callback?code=testCode123&state="+encodeURIComponent(state),
+      const callback=await localFetch(base+"/auth/github/callback?code=testCode123&state="+encodeURIComponent(state),
         {headers:{host:"osa-proof-three.vercel.app"},redirect:"manual"});
       assert.equal(callback.status,200);
       const html=await callback.text();
@@ -70,7 +92,7 @@ test("GitHub preview OAuth: PKCE, signed state, stable broker callback, signed H
       assert.match(html,/osa-proof-git-feature-x\.vercel\.app\/api\/auth\/github\/complete/);
       assert.equal(html.includes("transient-test-token"),false);
       const body=new URLSearchParams({code:"testCode123",state});
-      const complete=await fetch(base+"/auth/github/complete",{method:"POST",headers:{
+      const complete=await localFetch(base+"/auth/github/complete",{method:"POST",headers:{
         host:preview,"content-type":"application/x-www-form-urlencoded","cookie":pending,
       },body:body.toString(),redirect:"manual"});
       assert.equal(complete.status,302);
@@ -85,7 +107,7 @@ test("GitHub preview OAuth: PKCE, signed state, stable broker callback, signed H
       assert.equal(result?.identity.project_ids?.[0],"project_test");
       assert.equal(result?.token,"");
       assert.equal(readGithubSession({headers:{cookie:session+"corrupt"}} as IncomingMessage,env),undefined);
-      const replay=await fetch(base+"/auth/github/complete",{method:"POST",headers:{host:preview,"content-type":"application/x-www-form-urlencoded"},
+      const replay=await localFetch(base+"/auth/github/complete",{method:"POST",headers:{host:preview,"content-type":"application/x-www-form-urlencoded"},
         body:body.toString(),redirect:"manual"});
       assert.equal(replay.status,400);
     });
@@ -93,10 +115,10 @@ test("GitHub preview OAuth: PKCE, signed state, stable broker callback, signed H
 test("GitHub preview OAuth: disallows unauthorized GitHub identities",async()=>{
   await serve(async()=>new Response(JSON.stringify({id:222333,login:"not-allowed"}),{status:200}),
     async base=>{
-      const begin=await fetch(base+"/auth/github/start",{headers:{host:preview},redirect:"manual"});
+      const begin=await localFetch(base+"/auth/github/start",{headers:{host:preview},redirect:"manual"});
       const state=new URL(begin.headers.get("location")!).searchParams.get("state")!;
       const pending=parseCookie(begin.headers.get("set-cookie"),"__Host-osa_oauth");
-      const done=await fetch(base+"/auth/github/complete",{method:"POST",headers:{
+      const done=await localFetch(base+"/auth/github/complete",{method:"POST",headers:{
         host:preview,cookie:pending,"content-type":"application/x-www-form-urlencoded"},
         body:new URLSearchParams({code:"valid_code",state}).toString(),redirect:"manual"});
       assert.equal(done.status,403);
@@ -107,7 +129,7 @@ test("GitHub preview OAuth: disallows unauthorized GitHub identities",async()=>{
 test("GitHub preview OAuth: untrusted preview host cannot initiate login",async()=>{
   await serve(async()=>new Response(JSON.stringify({id:123456,login:"user"}),{status:200}),
     async base=>{
-      const r=await fetch(base+"/auth/github/start",{headers:{host:"attacker.example.org"},redirect:"manual"});
+      const r=await localFetch(base+"/auth/github/start",{headers:{host:"attacker.example.org"},redirect:"manual"});
       assert.equal(r.status,400);
       assert.equal((r.headers.get("location")??""), "");
     });
