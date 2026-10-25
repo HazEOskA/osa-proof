@@ -155,7 +155,7 @@ export async function handleGithubAuth(req: IncomingMessage, res: ServerResponse
       if (claims?.kind!=="oauth" || typeof claims.nonce!=="string" || typeof claims.iat!=="number" ||
         Date.now()-claims.iat<0 || Date.now()-claims.iat>PENDING_TTL ||
         typeof claims.origin!=="string" || allowedOrigin(claims.origin,env)!==claims.origin ||
-        typeof claims.returnPath!=="string" || !/^[A-Za-z0-9_/-]{1,256}$/.test(claims.returnPath) ||
+        typeof claims.returnPath!=="string" || safeReturnPath(claims.returnPath)!==claims.returnPath ||
         !/^[a-zA-Z0-9_]+$/.test(code)) throw new Error("OAUTH_STATE_INVALID");
       // POST to the originating deployment; no token in URL and no cross-origin JS access.
       const dest=claims.origin+"/api/auth/github/complete";
