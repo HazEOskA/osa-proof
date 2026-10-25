@@ -8,6 +8,7 @@ import { AgentExecutor } from "../../../packages/contracts/src";
 import { ExecutorRegistry, FileMissionStore } from "../../../packages/runtime/src";
 import { BrainControlPlane } from "../../../packages/brain/src";
 import { PreviewOperator } from "./preview-operator";
+import { createMichaelAngeloFleetExecutor, loadMichaelAngeloFleetOptions, MICHAEL_ANGELO_EXECUTOR_REF } from "../../../packages/fleet/src/michael-angelo";
 import {
   createBuilderBridgeExecutor,
   createCapabilityRouterExecutor,
@@ -141,6 +142,14 @@ function installIntegrationRouter(
   };
 }
 
+function installMichaelAngeloFleet(registry: ExecutorRegistry, env: Env): Record<string, string> {
+  const configured = loadMichaelAngeloFleetOptions(env);
+  if (!configured) return {};
+  // Opt-in only. An external mission is never silently selected or retried.
+  registry.register(MICHAEL_ANGELO_EXECUTOR_REF, createMichaelAngeloFleetExecutor(configured));
+  return { michael_angelo: "REGISTERED_OPT_IN_REMOTE_UNVERIFIED" };
+}
+
 export interface DevExecution {
   brain: BrainControlPlane;
   mode: ExecutionMode;
@@ -157,7 +166,8 @@ export function createDevExecution(env: Env): DevExecution {
     const registry = createDevFixtureRegistry();
     installUnifiedTools(registry,env);
     const integration = installIntegrationRouter(registry, env, fixtureBuilder);
-    return { mode, registry, brain: createConfiguredBrain(env), description: { mode, ...integration } };
+    const michael = installMichaelAngeloFleet(registry, env);
+    return { mode, registry, brain: createConfiguredBrain(env), description: { mode, ...integration, ...michael } };
   }
   const targets = loadMeshConfig(env);
   const [primary, ...fallbacks] = targets;
@@ -165,6 +175,7 @@ export function createDevExecution(env: Env): DevExecution {
   const registry = createDevProviderRegistry(provider);
   installUnifiedTools(registry,env);
   const integration = installIntegrationRouter(registry, env, createProviderBuilderExecutor(provider));
+  const michael = installMichaelAngeloFleet(registry, env);
   return {
     mode,
     registry,
@@ -175,6 +186,7 @@ export function createDevExecution(env: Env): DevExecution {
       model: primary.model,
       ...(fallbacks.length ? { fallbacks: fallbacks.map((t) => `${t.provider}:${t.model}`) } : {}),
       ...integration,
+      ...michael,
     },
   };
 }
