@@ -14,13 +14,24 @@ export default function AccountControl() {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    fetch(STATUS, { signal: controller.signal, credentials: "same-origin", cache: "no-store" })
-      .then(async response => {
-        if (!response.ok) throw new Error("AUTH_STATUS_UNAVAILABLE");
-        return response.json() as Promise<AuthStatus>;
-      })
-      .then(value => setStatus(value))
-      .catch(() => { if (!controller.signal.aborted) setError("Nie udało się sprawdzić sesji."); });
+    (async () => {
+      // The pinned NeurOSA PreviewOperator is authenticated by Vercel protection,
+      // not GitHub; avoid showing a misleading Login/logout control for it.
+      const sessionResponse = await fetch("/api/session", { signal: controller.signal, credentials: "same-origin", cache: "no-store" });
+      if (sessionResponse.ok) {
+        const session = await sessionResponse.json() as {identity?: {provider?: string; display_name?: string}};
+        if (session.identity?.provider === "vercel-preview" ||
+          (session.identity?.provider === "local-dev" && session.identity.display_name === "OPEN MODE (no login)")) {
+          setStatus({configured:false, authenticated:true, identity:{
+            provider:session.identity.provider, display_name:session.identity.display_name
+          }});
+          return;
+        }
+      }
+      const response = await fetch(STATUS, { signal: controller.signal, credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) throw new Error("AUTH_STATUS_UNAVAILABLE");
+      setStatus(await response.json() as AuthStatus);
+    })().catch(() => { if (!controller.signal.aborted) setError("Nie udało się sprawdzić sesji."); });
     return () => controller.abort();
   }, []);
   const signIn = () => {
@@ -44,7 +55,12 @@ export default function AccountControl() {
   };
   return (
     <div className="relative z-30 flex shrink-0 items-center">
-      {status?.authenticated ? (
+      {status?.authenticated && status.identity?.provider !== "github" ? (
+        <span className="mono max-w-[165px] truncate rounded border border-line2 px-2 py-2 text-[10px] text-cyan"
+          title="Dostęp operatora jest zapewniany przez chronione Preview">
+          {status.identity?.display_name ?? "Operator Preview"}
+        </span>
+      ) : status?.authenticated ? (
         <div className="flex items-center gap-2">
           <span className="mono hidden max-w-[120px] truncate text-[10px] text-cyan sm:block" title="Zalogowano przez GitHub">
             {status.identity?.display_name ?? "Operator"}
