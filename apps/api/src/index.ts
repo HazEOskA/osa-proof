@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { observeHttpRequest, validExecutionId } from "../../../packages/telemetry/src";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
@@ -110,6 +111,9 @@ async function readJson<T>(request: IncomingMessage): Promise<T> {
 }
 
 function send(response: ServerResponse, status: number, body: unknown): void {
+  const value = body && typeof body === "object" ? body as { execution_id?: unknown; run?: { execution_id?: unknown } } : undefined;
+  const executionId = validExecutionId(value?.execution_id) ?? validExecutionId(value?.run?.execution_id);
+  if (executionId) response.setHeader("x-osa-execution-id", executionId);
   response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
   response.end(JSON.stringify(body));
 }
@@ -693,6 +697,7 @@ export async function handleApiRequest(
 
 export function createApiServer(registry: ExecutorRegistry, state = new ApiState(), executionDescription: Record<string, unknown> = { mode: "UNKNOWN" }): Server {
   return createServer((request, response) => {
+    observeHttpRequest(request, response, "api");
     void handleApiRequest(request, response, registry, state, executionDescription);
   });
 }
