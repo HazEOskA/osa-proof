@@ -1,0 +1,32 @@
+name: OSA Hermes Fleet P1 Controlled Proof
+on:
+  push:
+    branches:
+      - feature/hermes-fleet-p1-controlled-proof-20261025
+permissions:
+  contents: read
+jobs:
+  controlled-p1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies (no provider keys)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compile actual OSA source
+        run: npm run build
+      - name: Real P1 and proof regression tests
+        run: node --test dist/tests/hermes-fleet-p1.test.js dist/tests/mission-kernel.test.js dist/tests/proof-integrity.test.js
+      - name: Execute real two-worker READ-ONLY mission and seal artifact
+        run: node scripts/run-hermes-fleet-p1.cjs
+      - name: Upload proof bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osa-hermes-fleet-p1-proof
+          path: artifacts/hermes-fleet-p1/*.json
+          if-no-files-found: warn
