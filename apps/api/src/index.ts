@@ -182,9 +182,14 @@ export async function handleApiRequest(
       if (state.previewOperator && !state.previewOperator.sameOriginMutation(request))
         return send(response, 403, { code: "PREVIEW_ORIGIN_REJECTED", error: "Operacja wymaga tego samego chronionego originu Preview." });
       
-      if (await handleGithubAuth(request, response)) return;
+      // Legacy anonymous previews and the isolated NeurOSA operator deliberately
+      // have no app login gate; do not silently enable OAuth in their runtime.
+      if ((state.previewOperator || (state.authMode === "open" && process.env.VERCEL !== "1"))
+        && (url.pathname === "/auth/github/status" || url.pathname === "/auth/providers"))
+        return send(response, 404, { code: "LOGIN_DISABLED" });
+      if (!state.previewOperator && await handleGithubAuth(request, response)) return;
       // Open mode must not offer local dev login endpoints.
-      if (state.authMode === "open" && parts[0] === "auth" && url.pathname !== "/auth/providers")
+      if (state.authMode === "open" && parts[0] === "auth")
         return send(response, 404, { code: "LOGIN_DISABLED" });
       if (method === "GET" && url.pathname === "/memory/status")
         return send(response, 200, await state.memory.status(authenticatedSession(request, state)));
@@ -338,7 +343,7 @@ export async function handleApiRequest(
 
       if (method === "GET" && url.pathname === "/auth/providers") {
         return send(response, 200, [
-          { provider: "github", enabled: githubOAuthConfigured(process.env), mode: githubOAuthConfigured(process.env) ? "OAUTH_PKCE" : "NOT_CONFIGURED" },
+          ...(githubOAuthConfigured(process.env) ? [{ provider: "github", enabled: true, mode: "OAUTH_PKCE" }] : []),
           { provider: "local-dev", enabled: process.env.VERCEL !== "1", mode: "DEV_ONLY" },
           { provider: "google", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
           { provider: "microsoft", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
