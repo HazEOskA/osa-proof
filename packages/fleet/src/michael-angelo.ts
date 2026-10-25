@@ -62,8 +62,22 @@ export function createMichaelAngeloFleetExecutor(options: MichaelAngeloFleetOpti
       });
     } catch { throw new Error("MICHAEL_ANGELO_TRANSPORT_FAILED"); }
     if (!response.ok) throw new Error("MICHAEL_ANGELO_HTTP_" + response.status);
-    const raw = await response.text();
-    if (Buffer.byteLength(raw) > 65536) throw new Error("MICHAEL_ANGELO_RESPONSE_TOO_LARGE");
+    // Bound the stream *before* buffering it: upstream controls its response size.
+    const reader = response.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    if (reader) {
+      try {
+        while (true) {
+          const part = await reader.read();
+          if (part.done) break;
+          size += part.value.byteLength;
+          if (size > 65536) { await reader.cancel(); throw new Error("MICHAEL_ANGELO_RESPONSE_TOO_LARGE"); }
+          chunks.push(part.value);
+        }
+      } finally { reader.releaseLock(); }
+    }
+    const raw = Buffer.concat(chunks.map(chunk => Buffer.from(chunk))).toString("utf8");
     let json: unknown;
     try { json = JSON.parse(raw); } catch { throw new Error("MICHAEL_ANGELO_INVALID_JSON"); }
     if (!json || typeof json !== "object" || Array.isArray(json)) throw new Error("MICHAEL_ANGELO_INVALID_RESPONSE");
