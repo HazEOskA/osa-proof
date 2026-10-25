@@ -58,7 +58,7 @@ export default function AccountControl() {
       {status?.authenticated && status.identity?.provider !== "github" ? (
         <span className="mono max-w-[165px] truncate rounded border border-line2 px-2 py-2 text-[10px] text-cyan"
           title="Dostęp operatora jest zapewniany przez chronione Preview">
-          {status.identity?.display_name ?? "Operator Preview"}
+          <span className="sm:hidden">Operator</span><span className="hidden sm:inline">{status.identity?.display_name ?? "Operator Preview"}</span>
         </span>
       ) : status?.authenticated ? (
         <div className="flex items-center gap-2">
