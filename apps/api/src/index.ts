@@ -3,6 +3,7 @@ import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unif
 import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { PreviewOperator } from "./preview-operator";
+import { handleGithubAuth, readGithubSession, githubOAuthConfigured } from "./github-auth";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 import { Web3Service } from "../../../packages/web3/src";
@@ -128,7 +129,7 @@ function authenticatedSession(request: IncomingMessage, state: ApiState): Sessio
   if (state.previewOperator) return structuredClone(state.previewOperator.session);
   const token = bearerToken(request);
   const session = token ? state.sessions.get(token) : undefined;
-  return session ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
+  return session ?? readGithubSession(request) ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
 }
 
 function requireSession(
@@ -181,8 +182,9 @@ export async function handleApiRequest(
       if (state.previewOperator && !state.previewOperator.sameOriginMutation(request))
         return send(response, 403, { code: "PREVIEW_ORIGIN_REJECTED", error: "Operacja wymaga tego samego chronionego originu Preview." });
       
-      // Anonymous Preview exposes no application login endpoints.
-      if (state.authMode === "open" && parts[0] === "auth")
+      if (await handleGithubAuth(request, response)) return;
+      // Open mode must not offer local dev login endpoints.
+      if (state.authMode === "open" && parts[0] === "auth" && url.pathname !== "/auth/providers")
         return send(response, 404, { code: "LOGIN_DISABLED" });
       if (method === "GET" && url.pathname === "/memory/status")
         return send(response, 200, await state.memory.status(authenticatedSession(request, state)));
@@ -336,13 +338,15 @@ export async function handleApiRequest(
 
       if (method === "GET" && url.pathname === "/auth/providers") {
         return send(response, 200, [
-          { provider: "local-dev", enabled: true, mode: "DEV_ONLY" },
+          { provider: "github", enabled: githubOAuthConfigured(process.env), mode: githubOAuthConfigured(process.env) ? "OAUTH_PKCE" : "NOT_CONFIGURED" },
+          { provider: "local-dev", enabled: process.env.VERCEL !== "1", mode: "DEV_ONLY" },
           { provider: "google", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
           { provider: "microsoft", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
         ]);
       }
 
       if (method === "POST" && url.pathname === "/auth/dev-login") {
+        if (process.env.VERCEL === "1") return send(response, 403, { code: "DEV_LOGIN_DISABLED_IN_CLOUD" });
         const body = await readJson<{ display_name?: string; email?: string }>(request);
         const identity = createLocalDevIdentity({
           display_name: body.display_name ?? "",
