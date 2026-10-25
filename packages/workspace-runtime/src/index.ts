@@ -12,7 +12,7 @@ export interface WorkspaceCommandResult {
 
 export interface WorkspaceCreateRequest {
   workspaceId: string;
-  scope?: { organization_id: string; project_id: string; mission_id: string; task_id: string };
+  scope?: { organization_id: string; project_id: string; mission_id: string; task_id: string; execution_id?: string };
   timeoutMs: number;
   runtime?: string;
   cpu?: number;

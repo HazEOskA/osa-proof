@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { observeHttpRequest } from "../../../packages/telemetry/src";
 import { timingSafeEqual } from "node:crypto";
 import { posix as pathPosix } from "node:path";
 import {
@@ -332,6 +333,7 @@ export function createWorkerServer(
   if (options.maxWorkspaces !== undefined && (!Number.isInteger(options.maxWorkspaces) || options.maxWorkspaces < 1 || options.maxWorkspaces > 64)) throw new Error("WORKER_CAPACITY_INVALID");
 
   return createServer((request, response) => {
+    observeHttpRequest(request, response, "worker");
     void handleWorkerRequest(request, response, options, state);
   });
 }

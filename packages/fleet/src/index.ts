@@ -74,7 +74,7 @@ export type SandboxAgent = (context: AgentExecutionContext, workspace: Workspace
 export function sandboxExecutor(provider: WorkspaceProvider, execute: SandboxAgent, timeoutMs = 120000): AgentExecutor {
   return async context => {
     const pinned = context.mission_plan?.tasks.find(t => t.agent_id === context.agent.agent_id);
-    const scope = { organization_id: context.mission.organization_id, project_id: context.mission.project_id, mission_id: context.mission.mission_id, task_id: pinned?.task_id ?? context.operation_id };
+    const scope = { organization_id: context.mission.organization_id, project_id: context.mission.project_id, mission_id: context.mission.mission_id, task_id: pinned?.task_id ?? context.operation_id, execution_id: context.execution_id };
     const workspace = await provider.create({ workspaceId: `${scope.mission_id}-${context.agent.agent_id}`, scope, timeoutMs, ports: [] });
     let result: AgentExecutionResult;
     try { result = await execute(context, workspace); }
