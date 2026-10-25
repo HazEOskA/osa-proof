@@ -1,5 +1,6 @@
 import { readBoundedResponse } from "../../deployment/src";
 import { digest } from "../../proof-core/src";
+import { validExecutionId } from "../../telemetry/src";
 import { Buffer } from "node:buffer";
 import type {
   WorkspaceCommandOptions,
@@ -90,7 +91,8 @@ class RemoteWorkspaceHandle implements WorkspaceHandle {
     private readonly baseUrl: string,
     private readonly token: string,
     private readonly fetchImpl: FetchLike,
-    private readonly requestTimeoutMs: number
+    private readonly requestTimeoutMs: number,
+    private readonly executionId?: string
   ) {
     this.id = descriptor.id;
     this.rootDir = descriptor.rootDir;
@@ -112,6 +114,7 @@ class RemoteWorkspaceHandle implements WorkspaceHandle {
       this.token,
       {
         method: "POST",
+        headers: this.executionId ? { "x-osa-execution-id": this.executionId } : {},
         body: JSON.stringify({
           command,
           args: [...args],
@@ -134,6 +137,7 @@ class RemoteWorkspaceHandle implements WorkspaceHandle {
       this.token,
       {
         method: "PUT",
+        headers: this.executionId ? { "x-osa-execution-id": this.executionId } : {},
         body: JSON.stringify({
           path,
           encoding: "base64",
@@ -150,7 +154,7 @@ class RemoteWorkspaceHandle implements WorkspaceHandle {
       this.fetchImpl,
       `${this.baseUrl}/v1/workspaces/${encodeURIComponent(this.id)}/ports/${port}`,
       this.token,
-      { method: "GET" },
+      { method: "GET", headers: this.executionId ? { "x-osa-execution-id": this.executionId } : {} },
       this.requestTimeoutMs
     );
     return result.url;
@@ -163,7 +167,7 @@ class RemoteWorkspaceHandle implements WorkspaceHandle {
       this.fetchImpl,
       `${this.baseUrl}/v1/workspaces/${encodeURIComponent(this.id)}`,
       this.token,
-      { method: "DELETE" },
+      { method: "DELETE", headers: this.executionId ? { "x-osa-execution-id": this.executionId } : {} },
       this.requestTimeoutMs
     );
     this.stopped = true;
@@ -196,6 +200,7 @@ export class RemoteWorkspaceProvider implements WorkspaceProvider {
       this.token,
       {
         method: "POST",
+        headers: validExecutionId(request.scope?.execution_id) ? { "x-osa-execution-id": request.scope!.execution_id! } : {},
         body: JSON.stringify(request),
       },
       Math.min(request.timeoutMs, this.requestTimeoutMs)
@@ -210,7 +215,8 @@ export class RemoteWorkspaceProvider implements WorkspaceProvider {
       this.baseUrl,
       this.token,
       this.fetchImpl,
-      this.requestTimeoutMs
+      this.requestTimeoutMs,
+      validExecutionId(request.scope?.execution_id)
     );
   }
 }
