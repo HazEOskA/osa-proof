@@ -33,6 +33,8 @@ jobs:
           done
           cat /tmp/osa-mobile.log
           exit 1
+      - name: Restore OSA guide and tutorial on 320px / 390px / desktop
+        run: node scripts/test-osa-guide-browser.mjs
       - name: Verify native chat sessions, agent selection, no iframe, mobile and desktop
         run: node scripts/test-jeverson-mobile-layout.mjs
       - name: Compile real OSA Runtime for native tool E2E
