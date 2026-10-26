@@ -197,6 +197,9 @@ export async function handleApiRequest(
       
       // The private historical Preview remains protected by its pinned server identity.
       // Production GitHub sessions are accepted only after HMAC verification and ID allowlisting.
+      if ((state.previewOperator || (state.authMode === "open" && process.env.VERCEL !== "1")) &&
+          (url.pathname.startsWith("/auth/github/") || url.pathname === "/auth/providers"))
+        return send(response,404,{code:"LOGIN_DISABLED"});
       if (!state.previewOperator && await handleGithubAuth(request,response)) return;
       if (state.authMode === "open" && parts[0] === "auth")
         return send(response, 404, { code: "LOGIN_DISABLED" });
