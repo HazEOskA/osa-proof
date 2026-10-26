@@ -419,7 +419,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
           <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Run a dataset against team versions and compare receipts. <a href="#control">Details</a></td></tr>
           <tr><td><code>knowledge</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Retrieval where every hit cites a content-addressed source. <a href="#knowledge">Details</a></td></tr>
           <tr><td><code>context-hub</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Shared context for agents. Depends on memory (neurosa) and knowledge.</td></tr>
-          <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Lives in the separate neurosa repository.</td></tr>
+          <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--warn);margin:0 6px 0 0"></span>CODE · GATED</td><td>NeurOSA adapter and scoped recall are merged; <a href="#neurosa-runtime">authenticated live persistence and post-restart recall are not yet verified</a>.</td></tr>
         </tbody>
       </table></div>
     </section>
