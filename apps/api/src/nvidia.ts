@@ -119,6 +119,9 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new NvidiaError(400, "INVALID_JSON", "Nieprawidłowy JSON."); }
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new NvidiaError(400,"INVALID_JSON","Oczekiwano obiektu żądania.");
     if (body.remember !== undefined && typeof body.remember !== "boolean") throw new NvidiaError(400,"INVALID_REMEMBER","Nieprawidłowe żądanie zapisu pamięci.");
+    // The contextual guide is navigation only: no Brain writes or recall, even on a memory-enabled host.
+    const guideOnly = fleet && body.agent === "guide";
+    if (guideOnly && body.remember) throw new NvidiaError(403,"GUIDE_READ_ONLY","Przewodnik nie zapisuje prywatnej pamięci.");
     if(fleet || memory.adapter){if(body.apiKey!==undefined || (memory.adapter && body.model!==undefined))throw new NvidiaError(400,"FLEET_SERVER_KEY_ONLY","Czat z pamięcią korzysta wyłącznie z konfiguracji modelu na serwerze.");}
     const config = nvidiaRequestConfig(fleet || memory.adapter ? {} : body);
     const conversation = fleet ? { agent: body.agent, history: body.history, view: body.view } : {};
@@ -126,7 +129,7 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     if (fleet || memory.adapter) fleetLimit();
     let context: BrainMemoryContext | undefined;
     let memoryUnavailable = false;
-    if (memory.adapter || body.remember) {
+    if ((memory.adapter && !guideOnly) || body.remember) {
       if (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 8000 ||
           typeof body.conversation_id !== "string" || !/^[a-f0-9-]{36}$/i.test(body.conversation_id))
         throw new NvidiaError(400,"INVALID_MEMORY_REQUEST","Wymagane są wiadomość i identyfikator rozmowy.");
