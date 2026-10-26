@@ -18,7 +18,7 @@ try{
       return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({status:"PROVIDER_RESPONSE",text:"Otwórz BUDOWANIE → Agenci."})});
     });
     await page.goto(base,{waitUntil:"domcontentloaded"});
-    const home=page.locator('section[aria-label="Uruchamianie OSA"]');
+    const home=page.locator('section[aria-label="Uruchamianie"]');
     await home.waitFor({state:"visible",timeout:15000});
     const trigger=page.getByTestId("osa-help-trigger");
     await trigger.waitFor({state:"visible"});
