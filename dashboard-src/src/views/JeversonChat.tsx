@@ -124,17 +124,19 @@ export default function JeversonChat() {
     const sessionId=current.id;setDraft("");setError("");addMessage(sessionId,"user",text,"USER");
     if(artifactMode){
       if(text.length>4000){setError("Cel artefaktu może mieć maksymalnie 4000 znaków.");return;}
-      if(remember){setError("Wyłącz zapis pamięci przed generowaniem artefaktu. Ten przepływ dostarcza oddzielny bundle.");return;}
+      
       const request=++seq.current,abort=new AbortController(),execution_id="exec_"+id();controller.current=abort;setBusy(true);setDeliveryBusy(true);setDeliveryProgress(null);
       try {
-        const bundle=await streamDelivery({prompt:text,kind:artifactKind,execution_id,conversation_id:sessionId},(type,data)=>{
+        const bundle=await streamDelivery({prompt:text,kind:artifactKind,execution_id,conversation_id:sessionId,remember},(type,data)=>{
           if(request!==seq.current)return;
           if(type==="progress")setDeliveryProgress(data);
           if(type==="model_error")setError(data.error);
         },abort.signal);
         if(request!==seq.current)return;
         await verify(bundle,sessionId);
-        addMessage(sessionId,"assistant",bundle.artifact?"Zespół zakończył generowanie artefaktu. Poniżej podgląd, dowody i pliki do pobrania.":"Zespół nie dostarczył zaakceptowanego artefaktu. Zachowano faktyczny przebieg i dowody.",bundle.artifact?"VERIFIED":"BLOCKED",{executionId:bundle.execution_id,runId:bundle.run.run_id,delivery:bundle});
+         const memoryVerified=bundle.memory_status!=="UNAVAILABLE";
+         addMessage(sessionId,"assistant",bundle.artifact?"Zespół zakończył generowanie artefaktu. Poniżej podgląd, dowody i pliki do pobrania.":"Zespół nie dostarczył zaakceptowanego artefaktu. Zachowano faktyczny przebieg i dowody.",bundle.artifact&&memoryVerified?"VERIFIED":"BLOCKED",{executionId:bundle.execution_id,runId:bundle.run.run_id,delivery:bundle});
+         if(remember && bundle.memory_statement_receipt)setRemember(false);
       }catch(e){if(request===seq.current&&!abort.signal.aborted)setError("ARTEFAKT · "+(e instanceof Error?e.message:String(e))+" · "+execution_id);}
       finally{if(request===seq.current){controller.current=null;setBusy(false);setDeliveryBusy(false);setDeliveryProgress(null);}}
       return;
