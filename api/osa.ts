@@ -5,10 +5,30 @@ import { createDevExecution, type DevExecution } from "../apps/api/src/server";
 import { vercelApiPath } from "../apps/api/src/vercel";
 import { BrainControlPlane } from "../packages/brain/src";
 import { PreviewOperator } from "../apps/api/src/preview-operator";
+import { githubOAuthConfigured } from "../apps/api/src/github-auth";
 
 // Keep private NeurOSA off custom/production domains, even when those domains
 // happen to alias the same Vercel deployment as this PR Preview.
 const PRIVATE_PREVIEW_HOST = "osa-proof-git-codex-neurosa-chat-memory-osabarca-1680s-projects.vercel.app";
+const PRIVATE_PRODUCTION_HOST = "osa-proof-three.vercel.app";
+export function isNeurosaAuthenticatedProduction(
+  host: string | undefined, env: Record<string, string | undefined>,
+  forwardedHost?: string | string[]
+): boolean {
+  if(env.OSA_NEUROSA_PRODUCTION_ENABLED !== "enabled" || env.VERCEL_ENV !== "production") return false;
+  if(typeof host !== "string" || host.toLowerCase() !== PRIVATE_PRODUCTION_HOST) return false;
+  if(forwardedHost !== undefined &&
+      (typeof forwardedHost !== "string" || forwardedHost.toLowerCase() !== PRIVATE_PRODUCTION_HOST)) return false;
+  // Only a signed, allowlisted GitHub session can receive private memory.
+  // The storage proof must be accepted separately after real restart/readback.
+  if(env.VERCEL !== "1" || env.OSA_AUTH_MODE !== "session" ||
+    env.OSA_NEUROSA_STORAGE_VERIFIED !== "true" || !githubOAuthConfigured(env) ||
+    !env.OSA_NEUROSA_ORGANIZATION_ID || !env.OSA_NEUROSA_PROJECT_ID ||
+    env.OSA_GITHUB_ORGANIZATION_ID !== env.OSA_NEUROSA_ORGANIZATION_ID ||
+    env.OSA_GITHUB_PROJECT_ID !== env.OSA_NEUROSA_PROJECT_ID)
+    throw new Error("NEUROSA_PRODUCTION_GATE_BLOCKED");
+  return true;
+}
 export function isNeurosaProtectedPreview(
   host: string | undefined,
   env: Record<string, string | undefined>,
@@ -39,16 +59,19 @@ export default async function handler(request: IncomingMessage, response: Server
   const privatePreview = isNeurosaProtectedPreview(
     request.headers.host, process.env, request.headers["x-forwarded-host"]
   );
-  const kind = privatePreview ? "preview-private" : preview ? "preview-public" : "other-environment";
+  const privateProduction = isNeurosaAuthenticatedProduction(
+    request.headers.host, process.env, request.headers["x-forwarded-host"]
+  );
+  const kind = privatePreview ? "preview-private" : privateProduction ? "production-private" : preview ? "preview-public" : "other-environment";
   let state = states.get(kind);
   if (!state) {
     // Browser requests to the protected alias need no GitHub OAuth. The operator
     // session is created on the server, pinned to the configured NeurOSA scope.
     const operator = privatePreview ? PreviewOperator.fromEnvironment(process.env) : undefined;
     if (privatePreview && !operator) throw new Error("Protected Preview operator is not configured");
-    // Never mount private memory outside the one protected Preview host.
-    // This includes custom-domain aliases and accidental Production routing.
-    const brain = privatePreview ? current.brain : new BrainControlPlane(current.brain.planner);
+    // Keep host-specific isolated API states: neither agentworlds.dev nor unrelated Preview
+    // can ever inherit another host's private Brain, even within the same Lambda instance.
+    const brain = privatePreview || privateProduction ? current.brain : new BrainControlPlane(current.brain.planner);
     state = new ApiState(undefined, undefined, undefined, loadAuthMode(process.env),
       undefined, brain, createConfiguredWeb3(process.env), operator);
     states.set(kind, state);
