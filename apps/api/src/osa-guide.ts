@@ -45,7 +45,7 @@ export const OSA_GUIDE_PAGES: Record<string,{title:string;what:string;next?:stri
   "intel:models":{title:"Modele",what:"Informacje o modułach modelowych i stanie dostępności; deklaracja nie stanowi dowodu użycia.",next:"nvidia:models"},
   "intel:model-mesh":{title:"Sieć modeli",what:"Status i zależności tras modelowych.",next:"intel:llm-gateway"},
   "intel:llm-gateway":{title:"Bramka LLM",what:"Warstwa routingu do modeli i ich ograniczeń.",next:"nvidia:models"},
-  "intel:memory":{title:"Pamięć",what:"Moduł zapowiedziany, nieposiadający aktywnego widoku. NeurOSA to odrębny system pamięci; nie twierdź, że jest podłączony.",next:"home"},
+  "intel:memory":{title:"Pamięć",what:"Adapter NeurOSA i kod recall są scalone, ale produkcyjny zapis oraz odczyt po restarcie i autoryzacja nie są jeszcze potwierdzone. Nie deklaruj LIVE bez dowodu.",next:"home"},
   "intel:context-hub":{title:"Centrum kontekstu",what:"Widok jeszcze nieaktywny. Nie deklaruj faktycznej integracji kontekstu, jeśli API jej nie raportuje.",next:"home"},
   "pending:Chmura":{title:"Chmura",what:"Funkcja w przygotowaniu; nawigacja nie oferuje jeszcze zrealizowanego panelu chmury.",next:"ops:deployments"},
   "pending:Infrastruktura":{title:"Infrastruktura",what:"Funkcja w przygotowaniu; dashboard nie udostępnia pełnej obsługi infrastruktury.",next:"ops:architecture"},
