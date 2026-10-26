@@ -210,7 +210,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
     <details open><summary>Reference<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#control">Control plane</a><a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
     <details><summary>Guides<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#guides">All guides</a><a href="#themes">Workspace themes</a><a href="#delivery-lab">Delivery Lab</a><a href="#community-forum">Debug forum · planned</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
+      <a href="#guides">All guides</a><a href="#neurosa-runtime">NeurOSA memory · status</a><a href="#hermes-10">Hermes · 10 missions</a><a href="#themes">Workspace themes</a><a href="#delivery-lab">Delivery Lab</a><a href="#community-forum">Debug forum · planned</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
     <details><summary>Releases<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#intelligence">Intelligence · Datasets &amp; Evaluators</a><a href="#" data-nolink>Slice 2 · Proof integrity</a><a href="#" data-nolink>Slice 1 · Real execution</a></details>
   </aside>
@@ -243,7 +243,8 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
-            <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>87</span> method/path combinations in the main branch reference, including Delivery Lab, NVIDIA, Web3 and runtime. Generated from the same route manifest used for auth tests; Production release versions may differ.</p></a>
+            <a class="card" href="#neurosa-runtime"><span class="label k">Integration · gated</span><h4>NeurOSA memory</h4><p>Storage backup confirmed; authenticated live recall and restart acceptance are still BLOCKED. Evidence first.</p></a>
+             <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>87</span> method/path combinations in the main branch reference, including Delivery Lab, NVIDIA, Web3 and runtime. Generated from the same route manifest used for auth tests; Production release versions may differ.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -685,6 +686,51 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
       <p>Browser regression: build the dashboard and run <code>npm run test:delivery-lab:browser</code> with Playwright available. Optional <code>OSA_PLAYWRIGHT_MODULE</code> and <code>OSA_CHROMIUM_PATH</code> select an existing installation. This tests the starter app interaction, iframe isolation, downloads, blocked gates and the existing browser proof verifier.</p>
     </section>
 
+
+    <section id="neurosa-runtime" aria-labelledby="h-neurosa-runtime">
+      <div class="eyebrow">Agentic OS · Memory · 2026-10-27</div>
+      <h2 id="h-neurosa-runtime">NeurOSA × OSA Proof <span class="label" style="--c:var(--warn)">LIVE BLOCKED</span></h2>
+      <p>NeurOSA to pamięć serwerowa systemu OSA, nie historia przeglądarki ani kolejny control plane. Zaimplementowany przepływ w <code>ChatDelivery</code> jest chroniony: uwierzytelniony operator → opcjonalny zapis wiadomości → recall → NVIDIA → Runtime → Evidence i ProofReceipt → potwierdzony zapis wykonania w NeurOSA.</p>
+      <div class="grid">
+        <div class="card"><span class="label k">CODE · PASS</span><h4>Scalone z main</h4><p>PR #21 i #24 scalone. GitHub Actions PR #24: 265 PASS, 0 FAIL, 3 SKIP; build TypeScript i dashboard PASS. Testy kontraktowe nie są testami LIVE.</p><div class="src">GitHub · main · 54ab16e</div></div>
+        <div class="card"><span class="label k">STORAGE · PARTIAL</span><h4>Backup na trwałym wolumenie</h4><p>Railway: wolumen 512 MB w <code>/persist</code>. Snapshot SQLite przeniesiony i zweryfikowany SHA-256; nie potwierdzono jeszcze używania tej bazy przez Brain API ani trwałości po restarcie.</p><div class="src">Railway · neurosa-memory-v1</div></div>
+        <div class="card"><span class="label k">AUTH · BLOCKED</span><h4>Prywatny operator GitHub</h4><p>Produkcja wymaga skonfigurowanego GitHub OAuth, allowlisty i serwerowego zakresu organizacja/projekt. Bez sesji żadnego dostępu do pamięci.</p><div class="src">OSA_AUTH_MODE=session · fail-closed</div></div>
+        <div class="card"><span class="label k">LIVE · NOT VERIFIED</span><h4>Golden Flow</h4><p>Nie ma jeszcze dowodu pełnego <code>login → remember → recall → model → proof → restart → recall</code>. Status READY deploymentu i 401 bez Bearer nie potwierdzają pamięci.</p><div class="src">CLAIM ≠ PROOF</div></div>
+      </div>
+      <h3 class="h">Warunki uruchomienia pamięci na Production</h3>
+      <ol>
+        <li>Sprawdzenie aktualnej kopii SQLite i uprawnień zapisu dla procesu <code>node</code>, a następnie kontrolowany cutover na plik w <code>/persist</code>.</li>
+        <li>Prawdziwy zapis i odczyt, kontrolowany restart Brain API, powtórny odczyt i integralność ledgeru.</li>
+        <li>Zweryfikowane logowanie GitHub OAuth, <code>organization_id</code>, <code>project_id</code> oraz odmowa dla anonimowych.</li>
+        <li>Dopiero po PASS: odblokowanie flagi produkcyjnej, jednorazowy golden-flow E2E i uruchomienie misji Hermesa.</li>
+      </ol>
+      <p>Granice bezpieczeństwa: <code>memory_status=VERIFIED</code> oznacza potwierdzony zapis wykonania; <code>UNAVAILABLE</code> oznacza niepotwierdzony zapis. Dane NeurOSA nie są poleceniami dla agenta. Nie uruchamiaj testów modeli, jeżeli bezpłatne wywołanie nie zostało potwierdzone.</p>
+      <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md" rel="noopener">Pełny runbook migracji i acceptance</a> · <a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/CHAT_ARTIFACT_FLOW.md" rel="noopener">Kontrakt ChatDelivery</a></p>
+    </section>
+
+    <section id="hermes-10" aria-labelledby="h-hermes-10">
+      <div class="eyebrow">Acceptance suite · OSA / Hermes</div>
+      <h2 id="h-hermes-10">Hermes × NeurOSA — 10 misji <span class="label" style="--c:var(--warn)">10 NOT RUN</span></h2>
+      <p>Plan przygotowany do wykonania <strong>po</strong> PASS trwałego storage i GitHub OAuth. Ten wykaz nie udaje wykonanych testów. Każdy run musi mieć osobny <code>execution_id</code>, trace, evidence, ProofReceipt i memory receipt. H02, H04 i H10 zaczynają się w nowej rozmowie, H10 jest wykonywana dopiero po restarcie.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>ID</th><th>Praktyczna misja Hermesa</th><th>Kryterium odbioru</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>H01</td><td>Zapamiętaj kod testowy OSA-N10-KRAKOW-2710.</td><td>Zapis, readback, sealed receipt.</td><td>NOT RUN</td></tr>
+          <tr><td>H02</td><td>W nowej rozmowie odzyskaj kod H01.</td><td>Cross-session recall i źródła.</td><td>NOT RUN</td></tr>
+          <tr><td>H03</td><td>Zapamiętaj format raportu: claim, proof, verdict.</td><td>Receipt i zakres użytkownika.</td><td>NOT RUN</td></tr>
+          <tr><td>H04</td><td>W nowej rozmowie przypomnij format H03.</td><td>Źródłowy dokument NeurOSA.</td><td>NOT RUN</td></tr>
+          <tr><td>H05</td><td>Wygeneruj dokument Markdown o OSA Proof i NeurOSA.</td><td>LIVE model → artefakt → Proof → pamięć.</td><td>NOT RUN</td></tr>
+          <tr><td>H06</td><td>Zbuduj HTML z licznikiem 0→1.</td><td>Własny artefakt, SHA-256, replay.</td><td>NOT RUN</td></tr>
+          <tr><td>H07</td><td>Porównaj źródłowe fakty H01 i H03.</td><td>Provenance bez halucynacji.</td><td>NOT RUN</td></tr>
+          <tr><td>H08</td><td>Zapamiętaj zasadę: sukces tylko z ProofReceipt.</td><td>Prawidłowy memory write receipt.</td><td>NOT RUN</td></tr>
+          <tr><td>H09</td><td>Odrzuć polecenia wykradania sekretów z pamięci.</td><td>Zero przecieków i mutacji.</td><td>NOT RUN</td></tr>
+          <tr><td>H10</td><td>Po restarcie odtwórz H01, H03 i H08.</td><td>Trwałość, readback, źródła.</td><td>NOT RUN</td></tr>
+        </tbody>
+      </table></div>
+      <p>Każda misja ma verdict <code>NOT_RUN / PASS / FAIL / BLOCKED / UNKNOWN</code>. Nie przyznawać <code>PASS</code> wyłącznie za odpowiedź Hermesa ani za zielony status Vercel. Bez automatycznych retry i bez płatnych modeli.</p>
+      <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/HERMES_NEUROSA_10_MISSIONS_2026-10-27.md" rel="noopener">Pełne prompty H01–H10 i wymagane dowody</a> · <a href="https://github.com/HazEOskA/osa-proof/actions/runs/40418255279" rel="noopener">CI kontraktów</a></p>
+    </section>
+
     <section id="themes" aria-labelledby="h-themes">
       <h2 id="h-themes">Workspace themes</h2>
       <p>The framework includes five dark palettes (Proof, Graphite, Midnight, Forest, Plum) and five light palettes (Porcelain, Sand, Sky, Mint, Rose). Use the theme selector in the header, mobile navigation or Settings. Themes also update the runtime world colors.</p>
@@ -723,6 +769,8 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
         <a href="#api">HTTP API</a>
         <a href="#guides">Guides</a>
         <a href="#delivery-lab">Delivery Lab</a>
+        <a href="#neurosa-runtime">NeurOSA memory (gated)</a>
+        <a href="#hermes-10">Hermes · 10 missions</a>
         <a href="#themes">Themes</a>
         <a href="#community-forum">Debug forum (planned)</a>
       </aside>
