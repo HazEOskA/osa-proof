@@ -20,7 +20,14 @@ W czacie floty wybierz **Utwórz artefakt**, format **Aplikacja HTML** albo **Do
 
 Model może oddać wadliwy kod lub niepełny dokument. Pozytywna weryfikacja potwierdza integralność, przebieg i opisane kontrole, nie prawdziwość treści, bezpieczeństwo dowolnego kodu ani spełnienie każdego wymagania użytkownika. Podgląd HTML ma opaque iframe bez same-origin i CSP blokującą sieć.
 
-Przepływ korzysta z istniejącego MissionStore. Cache ogrodzenia execution_id jest per instancja, bez gwarancji globalnego exactly-once. Identyczne ponowienie zakończonej operacji w tej samej instancji zwraca wcześniejszy bundle; konflikt treści, aktywne lub niepewne wykonanie nie jest automatycznie ponawiane. Po zerwaniu połączenia klient pokazuje brak potwierdzenia i zachowuje identyfikator w błędzie. Trwałym eksportem jest pobrany bundle; przeglądarka zachowuje wynik w historii lokalnej, o ile storage jest dostępny. Ten slice nie deklaruje trwałej pamięci NeurOSA ani zdalnego sandboxa.
+Przepływ korzysta z istniejącego MissionStore. Cache ogrodzenia execution_id jest per instancja, bez gwarancji globalnego exactly-once. Identyczne ponowienie zakończonej operacji w tej samej instancji zwraca wcześniejszy bundle; konflikt treści, aktywne lub niepewne wykonanie nie jest automatycznie ponawiane. Po zerwaniu połączenia klient pokazuje brak potwierdzenia i zachowuje identyfikator w błędzie. Trwałym eksportem jest pobrany bundle; przeglądarka zachowuje wynik w historii lokalnej, o ile storage jest dostępny. Od integracji PR #24 przepływ może stosować serwerowe `remember=true → recall → NVIDIA → Runtime/Proof → VERIFIED_RUNTIME readback`, ale **tylko** jeżeli podłączona jest zweryfikowana prywatna NeurOSA. `memory_status=VERIFIED` wymaga prawdziwego receipt; `UNAVAILABLE` oznacza brak potwierdzenia zapisu, bez oszukiwania wyniku. Sam deploy `READY` i lokalne fixture nie potwierdzają trwałości NeurOSA, a zdalny sandbox nadal nie jest deklarowany.
+
+## NeurOSA × ChatDelivery (feature-gated)
+
+- Prywatna produkcja wymaga `OSA_NEUROSA_PRODUCTION_ENABLED=enabled`, `OSA_AUTH_MODE=session`, `OSA_NEUROSA_STORAGE_VERIFIED=true`, poprawnego GitHub OAuth allowlist, powiązanych serwerowych `organization_id` oraz `project_id` i jedynego zatwierdzonego hosta. **Nie włączać flag przed testem realnej trwałości i sesji.**
+- Prawidłowa ścieżka: walidacja tożsamości → opcjonalny zapis wiadomości → recall → rzeczywiste generowanie NVIDIA → kanoniczne evidence/ProofReceipt → potwierdzony zapis `VERIFIED_RUNTIME`. Każdy błąd jest jawnie raportowany.
+- `ChatDelivery` pamięta typ wykonywanej misji i dowód; historia przeglądarki nie jest zamiennikiem persystencji. W trybie anonimowym prywatna pamięć pozostaje odłączona.
+- [Brama migracji/odbioru](./NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md) i [10 misji Hermesa](./HERMES_NEUROSA_10_MISSIONS_2026-10-27.md).
 
 ## Walidacja
 
