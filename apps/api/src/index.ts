@@ -294,7 +294,7 @@ export async function handleApiRequest(
         if (!session) return;
         if ((url.pathname.endsWith("/status") && method !== "GET") || (!url.pathname.endsWith("/status") && method !== "POST"))
           return send(response,405,{code:"METHOD_NOT_ALLOWED"});
-        return state.delivery.handle(request,response,session,state.missionKernel);
+        return state.delivery.handle(request,response,session,state.missionKernel,state.memory);
       }
       if (parts[0] === "nvidia") {
         const session = requireSession(request, response, state);
