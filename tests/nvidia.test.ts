@@ -124,3 +124,26 @@ test("NVIDIA Fleet: invalid persona or forged history fail before any provider r
   }
   assert.equal(network,0);
 });
+
+
+test("Zapytaj OSĘ: contextual guide is scoped, read-only and never gains tool authority",async()=>{
+  let calls=0;
+  const fake=(async(_url,init)=>{
+    calls++;
+    const req=JSON.parse(String(init?.body));
+    assert.match(req.messages[0].content,/Jesteś OSĄ/);
+    assert.match(req.messages[0].content,/Strona główna/);
+    assert.match(req.messages[0].content,/CLAIM/);
+    assert.doesNotMatch(req.messages[0].content,/HERMES_NEUROSA_10_MISSIONS/);
+    assert.equal(req.messages.at(-1).content,"Jak zacząć?");
+    return Response.json({choices:[{message:{content:"Otwórz BUDOWANIE → Agenci."},finish_reason:"stop"}]});
+  }) as typeof fetch;
+  const a=await nvidiaComplete("Jak zacząć?",{NVIDIA_API_KEY:"unit-test",NVIDIA_MODEL:"nvidia/test-model"},fake,{agent:"guide",view:"home",history:[]});
+  assert.equal(calls,1);
+  assert.equal(a.text,"Otwórz BUDOWANIE → Agenci.");
+  const rejects=(async()=>{throw Error("provider must not be called");}) as typeof fetch;
+  for(const bad of [undefined,"invalid_view","home<script>","pending:unknown"]) {
+    await assert.rejects(nvidiaComplete("Cześć",{NVIDIA_API_KEY:"unit-test"},rejects,{agent:"guide",view:bad}),
+      (e:unknown)=>e instanceof NvidiaError&&e.code==="INVALID_GUIDE_VIEW");
+  }
+});
