@@ -21,10 +21,10 @@ Data: 2026-10-26. Cel: bezpiecznie uruchomić rzeczywistą pamięć w ChatDelive
 - Właściciel wykonał online `better-sqlite3.backup('/tmp/neurosa-brain-backup.db')` ze źródłowego `/data/brain.db`; `PRAGMA integrity_check` na Railway i w Termuxie zwróciły `ok`. Transfer Termux `scp` ze zrzutu `/persist/brain-restore.db` potwierdził ten sam SHA-256 obu kopii:
   `e6e627e251e5617fad11b29d284678c001ac073878054a4031a3cc4ebda2127b`.
 - Kopia jest **na trwałym dysku**, ale **nie jest aktualnie używanym plikiem bazy**. Nie traktować tego jako persistence PASS. Ponieważ volume jest montowany pod `/persist`, oryginalna baza na `/data` nie została przykryta.
-- `/persist` ma `root:root 0755` i `brain-restore.db` ma `root:root 0644` (dowód: SSH screenshot). Dockerfile `USER node`: bez przeniesienia własności nie ma prawa zapisania nowego WAL/SHM. Przed cutover zweryfikować i naprawić właściciela katalogu i pliku w kontenerze; nie zmieniać USER procesu na root jako obejścia.
+- `/persist` i `brain-restore.db` początkowo miały właściciela `root:root`. **27.10 użytkownik wykonał przez SSH `chown node:node /persist /persist/brain-restore.db` i potwierdził `node:node 0755` oraz `node:node 0644` na screenie.** Ownership PASS; nadal nie sprawdzono faktycznego zapisu nowych plików WAL/SHM ani odczytu po restarcie. Nie zmieniać USER procesu na root.
 - Brak potwierdzonego snapshotu danych **po** transferze i restarcie; przed cutover porównać z bieżącą `/data/brain.db` i wykonać nowy bezpieczny backup, jeśli były nowe zapisy. Nie aktualizować flagi `OSA_NEUROSA_STORAGE_VERIFIED` w ciemno.
 - Railway musi czytać i pisać `/persist/brain-restore.db` jako `node`, wtedy test `remember → readback → restart → recall` na tym samym pliku. Test `PRAGMA integrity_check=ok` bez zapisu **nie wystarcza**.
-- **OAuth Production nadal BLOCKED**, brak `OSA_GITHUB_*`. `/api/v1/brain/status` zwraca 401 bez Bearer — expected deny, nie health failure. Wsparcie użytkownika: [10 misji dla Hermesa](./HERMES_NEUROSA_10_MISSIONS_2026-10-27.md).
+- **OAuth Production nadal BLOCKED**, brak `OSA_GITHUB_*`. `/api/v1/brain/status` zwraca 401 bez Bearer — expected deny, nie health failure. Wewnętrzne testy operatora nie są publiczną funkcją produktu.
 
 ### Protokół bezpiecznego cutover (operator + zatwierdzenie)
 1. Będąc już w terminalu Railway, porównaj `/data/brain.db` z przywróconym backupem: kontrola count tabel i UTC timestamp ostatnich zapisów, tylko READ. Jeśli źródło ma nowsze dane, przygotuj **nowy** spójny backup z WAL.
@@ -32,7 +32,7 @@ Data: 2026-10-26. Cel: bezpiecznie uruchomić rzeczywistą pamięć w ChatDelive
 3. Sprawdź kompletność bazy `/persist/brain-restore.db` i wersję schematu; zachowaj backup również na telefonie.
 4. Dopiero wtedy ustaw Railway `NEUROSA_DATABASE_PATH=/persist/brain-restore.db` i uruchom wdrożenie **jednej** repliki; sprawdź runtime logi, ledger status i odczyt pamięci. Żadnego drugiego Brain API lub kopii DB.
 5. Wykonaj nowy syntetyczny zapis oraz readback, kontrolowany restart usługi i kolejny readback; weryfikuj SHA/provenance. Bez PASS tego etapu produkcyjna bramka pamięci pozostaje wyłączona.
-6. Skonfiguruj GitHub OAuth i Vercel tenant scope przy użyciu sekretnych wartości poza repo/rozmową, przetestuj login/sesję 401/403; dopiero potem release i 10 misji Hermesa.
+6. Skonfiguruj GitHub OAuth i Vercel tenant scope przy użyciu sekretnych wartości poza repo/rozmową, przetestuj login/sesję 401/403; dopiero potem release oraz testy odbioru operatora.
 
 ## BLOCKER 1: Trwałość oraz ryzyko utraty aktualnej bazy
 Obecny Railway `/data` nie ma persistent volume. **Nie montować pustego wolumenu wprost do pracującej usługi:** nowy mount przesłoni zawartość ścieżki i wykonuje redeploy; możliwa utrata obecnych danych.
@@ -70,6 +70,6 @@ Nie wymuszać merge, promotion ani rollback produkcji automatycznie. Jakakolwiek
 - Code contracts: PASS (265 testów, 0 FAIL, 3 SKIP).
 - Vercel preview build: READY.
 - Railway runtime: ONLINE (brak weryfikacji odpowiedzi /health z tej sesji).
-- Durable NeurOSA: BLOCKED, brak wolumenu i zweryfikowanego backupu.
+- Durable NeurOSA: PARTIAL — wolumen `/persist` 512 MB podłączony; spójna kopia SQLite i SHA-256 potwierdzone; właściciel ustawiony `node:node`. Nadal BLOCKED: aktywna ścieżka SQLite i realny zapis/recall po restarcie.
 - GitHub OAuth Production: BLOCKED, brak konfiguracji.
 - Full LIVE E2E: NOT EXECUTED.
