@@ -18,5 +18,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Audit every HTTP auth contract and native tool proof flow
+        run: node scripts/audit-product-e2e.cjs
+      - name: Upload local product audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-http-audit
+          path: artifacts/product-audit/
+          if-no-files-found: error
       - name: Validate dashboard build
         run: node scripts/build-dashboard.cjs

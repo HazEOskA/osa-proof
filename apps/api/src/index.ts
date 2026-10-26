@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { ChatDelivery } from "./chat-delivery";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
@@ -63,6 +64,7 @@ const OPEN_MODE_SESSION: SessionRecord = Object.freeze({
 }) as SessionRecord;
 
 export class ApiState {
+  delivery = new ChatDelivery();
   buildWorkspace?: BuildWorkspace;
   readonly teams = new Map<string, TeamGraph>();
   readonly missions = new Map<string, Mission>();
@@ -103,10 +105,21 @@ export class ApiState {
   }
 }
 
+const MAX_JSON_BYTES = 4 * 1024 * 1024;
+class RequestBodyError extends Error {
+  constructor(readonly status: number, readonly code: string, message: string) { super(message); }
+}
 async function readJson<T>(request: IncomingMessage): Promise<T> {
   const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T;
+  let size = 0;
+  for await (const chunk of request) {
+    const bytes = Buffer.from(chunk);
+    size += bytes.length;
+    if (size > MAX_JSON_BYTES) throw new RequestBodyError(413, "BODY_TOO_LARGE", "Żądanie przekracza limit 4 MiB.");
+    chunks.push(bytes);
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T; }
+  catch { throw new RequestBodyError(400, "INVALID_JSON", "Nieprawidłowy JSON."); }
 }
 
 function send(response: ServerResponse, status: number, body: unknown): void {
@@ -276,6 +289,13 @@ export async function handleApiRequest(
         }
       }
 
+      if (["/chat/delivery/status","/chat/delivery"].includes(url.pathname)) {
+        const session = requireSession(request,response,state);
+        if (!session) return;
+        if ((url.pathname.endsWith("/status") && method !== "GET") || (!url.pathname.endsWith("/status") && method !== "POST"))
+          return send(response,405,{code:"METHOD_NOT_ALLOWED"});
+        return state.delivery.handle(request,response,session,state.missionKernel);
+      }
       if (parts[0] === "nvidia") {
         const session = requireSession(request, response, state);
         if (!session) return;
@@ -674,6 +694,7 @@ export async function handleApiRequest(
 
     return send(response, 404, { error: "not found" });
   } catch (error) {
+    if (error instanceof RequestBodyError) return send(response, error.status, { error: error.message, code: error.code });
     if (error instanceof MemoryAccessError) return send(response, error.status, { error: error.message, code: error.code });
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof KnowledgeError || error instanceof ExperimentError) {

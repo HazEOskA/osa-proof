@@ -1,0 +1,80 @@
+{
+  "schema": "osa.production_readonly_audit.v1",
+  "captured_at": "2026-10-24T13:55:06.104Z",
+  "origin": "https://osa-proof-three.vercel.app",
+  "source_commit": "76e06f33190d573353e76f5816aea0af0ce3e302",
+  "requests": [
+    {
+      "path": "/api/build/status",
+      "http_status": 200,
+      "observed": {
+        "mode": "fixture",
+        "auth_mode": "open",
+        "persistence": "PROCESS_MEMORY",
+        "executors": [
+          "dev.builder.fixture.v1",
+          "dev.builder.v1",
+          "dev.planner.fixture.v1",
+          "dev.planner.v1",
+          "osa.conversation.record.v1",
+          "osa.crypto.sha256.v1",
+          "osa.native-builder.v1",
+          "osa.runtime.inspect.v1",
+          "osa.unified.blocked.v1",
+          "osa.worker.health.v1",
+          "web3.analyze.v1",
+          "web3.execute.v1",
+          "web3.monitor.v1",
+          "web3.prepareTransaction.v1",
+          "web3.read.v1",
+          "web3.risk.v1",
+          "web3.simulate.v1",
+          "web3.verify.v1"
+        ]
+      }
+    },
+    {
+      "path": "/api/nvidia/status",
+      "http_status": 200,
+      "observed": {
+        "provider": "NVIDIA",
+        "configured": true,
+        "model": "nvidia/nemotron-3-super-120b-a12b"
+      }
+    },
+    {
+      "path": "/api/memory/status",
+      "http_status": 200,
+      "observed": {
+        "state": "UNCONFIGURED",
+        "message": "Pamięć NeurOSA nie jest skonfigurowana.",
+        "persistence_verified": false
+      }
+    },
+    {
+      "path": "/api/platform/status",
+      "http_status": 200,
+      "observed": {
+        "mode": "PRE_DEPLOY",
+        "persistence": "PROCESS_MEMORY",
+        "cloud_providers": [],
+        "deployment_execution_enabled": false,
+        "capability_count": 18
+      }
+    },
+    {
+      "path": "/api/templates/delivery-lab",
+      "http_status": 200,
+      "observed": {
+        "modes": {
+          "starter": "Deterministic document scaffold or working task-list HTML starter; no model interpretation.",
+          "connected": "BLOCKED: existing execution mode is not provider"
+        },
+        "sandbox": "BLOCKED: no remote worker configured",
+        "azure": "BLOCKED: deployment adapter not wired into this template",
+        "persistence": "Mission store as configured; API team/run indexes are PROCESS_MEMORY"
+      }
+    }
+  ],
+  "paid_calls": 0
+}

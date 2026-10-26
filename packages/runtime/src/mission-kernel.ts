@@ -13,7 +13,7 @@ const transitions: Record<MissionState, MissionState[]> = {
   COMPLETED: [], FAILED: [], CANCELLED: [],
 };
 export class MissionKernel {
-  constructor(readonly store: MissionStore = new MemoryMissionStore(), private readonly clock = () => new Date(), readonly brain = new BrainControlPlane()) {}
+  constructor(readonly store: MissionStore = new MemoryMissionStore(), private readonly clock = () => new Date(), readonly brain = new BrainControlPlane(), private readonly onRecord?: (record: MissionRecord) => void) {}
   get(id: string): Promise<MissionRecord | undefined> { return this.store.get(id); }
   private event(record: MissionRecord, type: string, payload: Record<string, unknown> = {}, evidence: string[] = []): void {
     const previous = record.timeline.at(-1);
@@ -29,6 +29,7 @@ export class MissionKernel {
     const revision = record.revision;
     record.revision++;
     await this.store.save(record, revision);
+    this.onRecord?.(structuredClone(record));
   }
   private async transition(record: MissionRecord, next: MissionState): Promise<void> {
     if (!transitions[record.state].includes(next)) throw new MissionConflictError(`illegal mission transition ${record.state} -> ${next}`);
@@ -60,6 +61,7 @@ export class MissionKernel {
     digest(record); // Reject non-serializable input before any persistence or execution.
     this.event(record, "MISSION_CREATED");
     await this.store.save(record);
+    this.onRecord?.(structuredClone(record));
     return structuredClone(record);
   }
   async cancel(id: string): Promise<MissionRecord> {
@@ -111,7 +113,8 @@ export class MissionKernel {
       throw new BrainPlanningError(code);
     }
   }
-  async execute(id: string, registry: ExecutorRegistry): Promise<RunResult> {
+  async execute(id: string, registry: ExecutorRegistry, options: { execution_id?: string } = {}): Promise<RunResult> {
+    if (options.execution_id !== undefined && !/^exec_[a-f0-9-]{36}$/.test(options.execution_id)) throw new Error("INVALID_EXECUTION_ID");
     let record = await this.required(id);
     if (record.state === "COMPLETED" && record.run) {
       verifyCompletedMission(record);
@@ -138,7 +141,7 @@ export class MissionKernel {
         if (event.type === "VERIFICATION_STARTED") await this.transition(record, "VERIFYING");
         else await this.save(record);
       },
-    }, clock: this.clock, missionPlan: record.brain?.plan });
+    }, clock: this.clock, missionPlan: record.brain?.plan, ...(options.execution_id ? { createExecutionId: () => options.execution_id! } : {}) });
     try {
       const run = await runtime.run(record.team, record.mission);
       verifyMissionExecution(record.team, record.mission, run);

@@ -9,6 +9,8 @@ const control = fs.readFileSync(path.join(root,"packages/control/src/index.ts"),
 const htmlPath = path.join(root,"apps/web/docs/index.html");
 const input = fs.readFileSync(htmlPath,"utf8");
 const desc = {
+  "GET /chat/delivery/status": "Server-bound artifact generation availability and model; no provider call.",
+  "POST /chat/delivery": "Stream agent lifecycle events, generate model artifact and deliver sealed bundle; session, free-tier and quota gates.",
   "GET /auth/providers": "Login providers; only local-dev is enabled.",
   "POST /auth/dev-login": "DEV identity and session token (201).",
   "GET /session": "The current session (401 without one).",

@@ -1,0 +1,25 @@
+import { useEffect, useState } from "react";
+import { useOsa } from "../ctx";
+import { ARTIFACT_CSP, downloadDelivery, offlineReplay, verifyDelivery, type DeliveryBundle, type DeliveryProgress } from "../lib/chat-delivery";
+const labels:Record<string,string>={intake:"Wejście i zakres",planner:"Plan",producer:"Model · tworzenie artefaktu",inspector:"Kontrola artefaktu",policy:"Zasady",builder:"Pakowanie",tester:"Weryfikacja",delivery:"Dostarczenie",reviewer:"Zakres dowodów",reporter:"Bundle i Proof"};
+export function ChatDeliveryProgress({value}:{value:DeliveryProgress|null}) {
+  return <section aria-label="Przebieg agentów na żywo" className="mx-3 mb-2 max-h-52 overflow-auto rounded-xl border border-cyan/30 bg-panel p-3 text-xs"><p className="mb-2 text-cyan">{value?"Przebieg z serwera · "+value.state:"Oczekiwanie na przyjęcie zadania…"}</p><p className="mb-2 break-all font-mono text-[10px]">{value?.execution_id}</p><ol className="grid grid-cols-1 gap-1 sm:grid-cols-2">{value?.tasks.map(t=><li key={t.agent_id} className="flex justify-between gap-2 rounded border border-line px-2 py-1"><span>{labels[t.agent_id]||t.agent_id}</span><span className={t.state==="COMPLETED"?"text-ok":"text-dim"}>{t.state==="COMPLETED"?"ZAKOŃCZONO":t.state==="EXECUTING"?"TRWA":t.state==="FAILED"?"BŁĄD":"OCZEKUJE"}</span></li>)}</ol><p className="mt-2 text-[10px] text-dim">Zdarzenia wykonania; końcowa weryfikacja nastąpi po otrzymaniu bundle.</p></section>;
+}
+export default function ChatDeliveryResult({bundle}:{bundle:DeliveryBundle}) {
+  const {inspectExecution,go}=useOsa();const [verified,setVerified]=useState(false),[error,setError]=useState("");const [preview,setPreview]=useState(false);
+  useEffect(()=>{let alive=true;void verifyDelivery(bundle).then(()=>{if(alive)setVerified(true);}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false};},[bundle]);
+  const open=(v:"trace"|"proofs"|"replay")=>{inspectExecution(bundle.team,bundle.mission,bundle.run);go(v,{runId:bundle.run.run_id});};
+  const save=(suffix:string,value:unknown)=>downloadDelivery(bundle.execution_id+suffix,JSON.stringify(value,null,2));
+  if(!verified)return <p role="status" className="mt-2 text-warn">{error?"Integralność niepotwierdzona: "+error:"Sprawdzanie integralności pakietu…"}</p>;
+  return <section data-testid="osa-delivery-result" className="mt-3 space-y-3 border-t border-white/10 pt-3 text-xs"><p className="text-cyan">{bundle.artifact?"ARTEFAKT GOTOWY · integralność zweryfikowana":"WYKONANIE NIEUDANE · przebieg dostępny do kontroli"}</p><p className="break-all font-mono text-[10px]">{bundle.execution_id}</p><p className="text-dim">Model wytworzył treść. Dowód obejmuje przebieg, bajty i kontrolę struktury; jakość wymaga oceny.</p>
+    <div className="flex flex-wrap gap-2">{bundle.artifact&&<><button type="button" onClick={()=>downloadDelivery(bundle.artifact!.name,bundle.artifact!.content,bundle.artifact!.media_type)} className="rounded border border-cyan/50 p-2 text-cyan">Pobierz artefakt</button><button type="button" onClick={()=>setPreview(!preview)} className="rounded border border-line p-2">{preview?"Zamknij podgląd":"Podgląd artefaktu"}</button></>}
+      <button type="button" onClick={()=>save("-bundle.json",bundle)} className="rounded border border-line p-2">Pobierz bundle</button>
+      <button type="button" onClick={()=>save("-evidence.json",bundle.run.evidence)} className="rounded border border-line p-2">Pobierz evidence</button>
+      <button type="button" onClick={()=>downloadDelivery(bundle.execution_id+"-trace.jsonl",bundle.record.timeline.map(e=>JSON.stringify(e)).join("\n")+"\n","application/x-ndjson")} className="rounded border border-line p-2">Pobierz trace</button>
+      <button type="button" onClick={()=>save("-proof.json",bundle.run.proof)} className="rounded border border-line p-2">Pobierz ProofReceipt</button>
+      <button type="button" onClick={()=>downloadDelivery(bundle.execution_id+"-replay.html",offlineReplay(bundle),"text/html")} className="rounded border border-line p-2">Pobierz replay offline</button>
+    </div><div className="flex flex-wrap gap-2">{([["trace","Przebieg agentów"],["proofs","Evidence i Proof"],["replay","Replay wykonania"]] as const).map(([v,label])=><button key={v} type="button" onClick={()=>open(v)} className="rounded border border-line p-2 text-cyan">{label}</button>)}</div>
+    <details><summary>Kontrole wykonania ({bundle.report.checks.length})</summary><ol>{bundle.report.checks.map(c=><li key={c.stage} className="mt-2 border-b border-line pb-2"><strong>{labels[c.stage]||c.stage} · {c.status} · {c.latency_ms} ms</strong><p className="text-dim">{c.detail}</p></li>)}</ol></details>
+    {preview&&bundle.artifact&&(bundle.artifact.name.endsWith(".html")?<iframe title="Odizolowany artefakt z czatu" sandbox="allow-scripts" referrerPolicy="no-referrer" srcDoc={ARTIFACT_CSP+bundle.artifact.content} className="h-[480px] w-full rounded border border-line bg-white"/>:<pre className="max-h-96 overflow-auto whitespace-pre-wrap">{bundle.artifact.content}</pre>)}
+  </section>;
+}

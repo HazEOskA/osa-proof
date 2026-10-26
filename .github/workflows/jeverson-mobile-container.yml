@@ -39,6 +39,10 @@ jobs:
         run: npm run build
       - name: Browser E2E native chat → OSA Runtime → verified Proof → Replay
         run: node scripts/test-unified-browser.cjs
+      - name: Browser E2E Delivery Lab Polish UI, isolated artifact and proof bundle
+        run: node scripts/test-delivery-lab.cjs
+      - name: Browser E2E chat prompt, agent progress, artifact and six verified downloads
+        run: node scripts/test-chat-delivery-browser.cjs
       - name: Upload test screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -47,5 +51,6 @@ jobs:
           path: |
             artifacts/osa-native-chat/
             artifacts/osa-native-chat-e2e/
+            artifacts/chat-delivery/
           if-no-files-found: ignore
           retention-days: 14

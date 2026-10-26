@@ -1,0 +1,1210 @@
+{
+  "schema": "osa.product_audit.v1",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/auth/providers",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/dev-login",
+      "auth": "public",
+      "status": 400,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/session",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/session/logout",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/build/status",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/build/workspace",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/build/workspace",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/layers",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/layers/:id",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/layers/:id/enter",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/intelligence",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/intelligence/:id",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/teams",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/teams/:id?version=",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/missions",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/missions/:id",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/missions/:id/timeline",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/missions/:id/run",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/missions/:id/receipt",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/missions/:id/plan",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/missions/:id/plan",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/missions/:id/cancel",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/missions/:id/run",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/runs/:id",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/runs/:id/events",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/runs/:id/evidence",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/runs/:id/proof",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/runs/:id/evaluations",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/runs/:id/evaluations",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/runs/:id/labels",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/evaluators",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/evaluators",
+      "auth": "public",
+      "status": 400,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/evaluators/:id",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/datasets",
+      "auth": "public",
+      "status": 400,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/:id?as_of=",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/:id/versions",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/datasets/:id/versions",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/:id/verify?as_of=",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "PUT",
+      "path": "/datasets/:id/tags/:tag",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/deployments",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/deployments",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/deployments/:id",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/deployments/:id/promote",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/deployments/rollback",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/deployments/:id/run",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/policies",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/policies",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/policies/evaluate",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "DELETE",
+      "path": "/policies/:id",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/experiments",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/experiments",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/experiments/:id",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/experiments/compare?a=&b=",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/queue",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/queue",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/queue/drain",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "DELETE",
+      "path": "/queue/:id",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/:collection",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/knowledge/:collection/search",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/knowledge/:collection/documents",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/:collection/documents/:id",
+      "auth": "public",
+      "status": 404,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/organizations",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/organizations",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/secrets",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/permissions",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/templates/delivery-lab",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/templates/delivery-lab/runs",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/templates/delivery-lab/missions/:id",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/web3/status",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/web3/observe",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/web3/missions/:id",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/web3/intents/preview",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/memory/status",
+      "auth": "public",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/memory/diagnostic",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/memory/receipts/:id",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/unified/execute",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/unified/verify",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/trace-probe",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/nvidia/status",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/nvidia/chat",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/nvidia/fleet-chat",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/platform/status",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/platform/deployments/review",
+      "auth": "session",
+      "status": 401,
+      "result": "PASS"
+    }
+  ],
+  "tools": [
+    {
+      "ref": "osa.crypto.sha256.v1",
+      "result": "PASS",
+      "execution_id": "exec_8439b03c-4eb4-4f8a-bbf2-927f4a9bd82d",
+      "proof_id": "proof_f5c4045181d72d51a4d1de0533550007c79011d494e7915a63c8ea03ad4ceeda",
+      "tampering_rejected": true
+    },
+    {
+      "ref": "osa.runtime.inspect.v1",
+      "result": "PASS",
+      "execution_id": "exec_4aee1b35-2196-4986-9409-16a9e37173ef",
+      "proof_id": "proof_06d19b32012447ede24a355d7d788300456ebf2cb0b1c486b0195cf20df9a817",
+      "tampering_rejected": true
+    },
+    {
+      "ref": "osa.worker.health.v1",
+      "result": "PASS",
+      "execution_id": "exec_2dff0df2-5081-4e80-837b-e911c3974043",
+      "proof_id": "proof_0657c531055a633af31498e453fb60614089fb4119a090aa995d24bb8230e6c4",
+      "tampering_rejected": true
+    },
+    {
+      "ref": "osa.unified.blocked.v1",
+      "result": "PASS_EXPECTED_BLOCK"
+    },
+    {
+      "ref": "osa.conversation.record.v1",
+      "result": "PASS_SERVICE_AUTH_GATE_ONLY"
+    }
+  ],
+  "paid_calls": 0,
+  "assurance": "LOCAL_HTTP_NATIVE_TOOLS_AND_ROUTE_AUTH_ONLY",
+  "external_model_tool_calls": "NOT_TESTED",
+  "docker_execution": "NOT_TESTED",
+  "browser": "SEPARATE_CHECK_REQUIRED",
+  "executor_inventory": [
+    "dev.builder.fixture.v1",
+    "dev.builder.v1",
+    "dev.planner.fixture.v1",
+    "dev.planner.v1",
+    "osa.conversation.record.v1",
+    "osa.crypto.sha256.v1",
+    "osa.native-builder.v1",
+    "osa.runtime.inspect.v1",
+    "osa.unified.blocked.v1",
+    "osa.worker.health.v1",
+    "web3.analyze.v1",
+    "web3.execute.v1",
+    "web3.monitor.v1",
+    "web3.prepareTransaction.v1",
+    "web3.read.v1",
+    "web3.risk.v1",
+    "web3.simulate.v1",
+    "web3.verify.v1"
+  ],
+  "memory": {
+    "state": "UNCONFIGURED",
+    "message": "Pamięć NeurOSA nie jest skonfigurowana.",
+    "persistence_verified": false
+  },
+  "platform": {
+    "version": "0.5-local-review",
+    "mode": "PRE_DEPLOY",
+    "persistence": "PROCESS_MEMORY",
+    "fleet": [],
+    "capabilities": [
+      {
+        "capability_id": "web3.read",
+        "version": "1",
+        "kind": "API",
+        "capabilities": [
+          "web3.read"
+        ],
+        "permissions": [
+          "web3.read"
+        ],
+        "inputs": {
+          "domain": "web3",
+          "chain": "solana"
+        },
+        "outputs": {
+          "assurance": "RPC_VALIDATED"
+        },
+        "cost": {
+          "unit": "rpc_request",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "UNAVAILABLE",
+        "executor_ref": "web3.read.v1",
+        "sha256": "6702348db1b259c9c71f058cdbfe07151678393b493602c1d21ded3e3cad719a"
+      },
+      {
+        "capability_id": "web3.monitor",
+        "version": "1",
+        "kind": "API",
+        "capabilities": [
+          "web3.monitor"
+        ],
+        "permissions": [
+          "web3.monitor"
+        ],
+        "inputs": {
+          "domain": "web3",
+          "chain": "solana"
+        },
+        "outputs": {
+          "assurance": "RPC_VALIDATED"
+        },
+        "cost": {
+          "unit": "rpc_request",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "UNAVAILABLE",
+        "executor_ref": "web3.monitor.v1",
+        "sha256": "b2217a7ac57480ca1ff331d10c77821fe876757a864bad632b39abc58543d264"
+      },
+      {
+        "capability_id": "web3.analyze",
+        "version": "1",
+        "kind": "API",
+        "capabilities": [
+          "web3.analyze"
+        ],
+        "permissions": [
+          "web3.analyze"
+        ],
+        "inputs": {
+          "domain": "web3",
+          "chain": "solana"
+        },
+        "outputs": {
+          "assurance": "RPC_VALIDATED"
+        },
+        "cost": {
+          "unit": "rpc_request",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "UNAVAILABLE",
+        "executor_ref": "web3.analyze.v1",
+        "sha256": "e4a3ce7ad474cdb9e06ef55dda01cc35998db948a789e8a9e4c8d96f0886f910"
+      },
+      {
+        "capability_id": "web3.verify",
+        "version": "1",
+        "kind": "API",
+        "capabilities": [
+          "web3.verify"
+        ],
+        "permissions": [
+          "web3.verify"
+        ],
+        "inputs": {
+          "domain": "web3",
+          "chain": "solana"
+        },
+        "outputs": {
+          "assurance": "RPC_VALIDATED"
+        },
+        "cost": {
+          "unit": "rpc_request",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "UNAVAILABLE",
+        "executor_ref": "web3.verify.v1",
+        "sha256": "16460043c455aacd33be3879b5eada5ebac0a680ce58739067679a27dd4f89f2"
+      },
+      {
+        "capability_id": "web3.simulate",
+        "version": "1",
+        "kind": "API",
+        "capabilities": [
+          "web3.simulate"
+        ],
+        "permissions": [
+          "web3.simulate"
+        ],
+        "inputs": {
+          "domain": "web3",
+          "chain": "solana"
+        },
+        "outputs": {
+          "assurance": "RPC_VALIDATED"
+        },
+        "cost": {
+          "unit": "rpc_request",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "UNAVAILABLE",
+        "executor_ref": "web3.simulate.v1",
+        "sha256": "364a20e8220d00e78746797f2d57feef742248610de2f1f31415b787ef3b117a"
+      },
+      {
+        "capability_id": "web3.prepareTransaction",
+        "version": "1",
+        "kind": "API",
+        "capabilities": [
+          "web3.prepareTransaction"
+        ],
+        "permissions": [
+          "web3.prepareTransaction"
+        ],
+        "inputs": {
+          "domain": "web3",
+          "chain": "solana"
+        },
+        "outputs": {
+          "assurance": "RPC_VALIDATED"
+        },
+        "cost": {
+          "unit": "rpc_request",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "UNAVAILABLE",
+        "executor_ref": "web3.prepareTransaction.v1",
+        "sha256": "76b91c6a67b66f1a219ee125245c863e77651aefaf30fb507f0468803a406a1d"
+      },
+      {
+        "capability_id": "web3.execute",
+        "version": "1",
+        "kind": "API",
+        "capabilities": [
+          "web3.execute"
+        ],
+        "permissions": [
+          "web3.execute"
+        ],
+        "inputs": {
+          "domain": "web3",
+          "chain": "solana"
+        },
+        "outputs": {
+          "assurance": "RPC_VALIDATED"
+        },
+        "cost": {
+          "unit": "rpc_request",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "UNAVAILABLE",
+        "executor_ref": "web3.execute.v1",
+        "sha256": "efa9c8ff57f380faa794d814055d06efeb6832a45a0998e55c57c6b94bc579e2"
+      },
+      {
+        "capability_id": "web3.risk",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "web3.analyze"
+        ],
+        "permissions": [
+          "web3.analyze"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": 0
+        },
+        "risk": "UNKNOWN",
+        "health": "UNAVAILABLE",
+        "executor_ref": "web3.risk.v1",
+        "sha256": "4d00665801addc6ee02268e93f94e62caee98f2a894bf0a5b68554b48ad7e233"
+      },
+      {
+        "capability_id": "dev.builder.fixture.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "dev.builder.fixture.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "dev.builder.fixture.v1",
+        "sha256": "66caf996745f1190a942d3da995b262a8e47bf0c271a31eea18d3d6dcf364542"
+      },
+      {
+        "capability_id": "dev.builder.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "dev.builder.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "dev.builder.v1",
+        "sha256": "fd2ebdefd5bf87fa83c3c832409b4fb20a78460cdfa67d608c74400f754439de"
+      },
+      {
+        "capability_id": "dev.planner.fixture.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "dev.planner.fixture.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "dev.planner.fixture.v1",
+        "sha256": "841133cc883850cec67182e03379db5b9e1898b46d78104c4f12e9191b85dfe4"
+      },
+      {
+        "capability_id": "dev.planner.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "dev.planner.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "dev.planner.v1",
+        "sha256": "436cc1b6f7b8984aeae0b993cc4de362fa34472699f8a5387d13b56d12564a55"
+      },
+      {
+        "capability_id": "osa.conversation.record.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "osa.conversation.record.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "osa.conversation.record.v1",
+        "sha256": "5b9706d70b3f9c20d0b1c175fdb2fb3980f7d1f7510ffc1822bf31f6cd581665"
+      },
+      {
+        "capability_id": "osa.crypto.sha256.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "osa.crypto.sha256.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "osa.crypto.sha256.v1",
+        "sha256": "caa7fb10134a159b5fafc5022ce1dd886926667ed468c9f032c731b9a5b8a063"
+      },
+      {
+        "capability_id": "osa.native-builder.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "osa.native-builder.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "osa.native-builder.v1",
+        "sha256": "3986cb3c5a5796b54487922ac4e944b4319e182a1d4f39e8b79aee85d448a82b"
+      },
+      {
+        "capability_id": "osa.runtime.inspect.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "osa.runtime.inspect.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "osa.runtime.inspect.v1",
+        "sha256": "1eb2d0b84376b138160544325c6fc5674b8d868963bb2aaa3313506f8402887c"
+      },
+      {
+        "capability_id": "osa.unified.blocked.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "osa.unified.blocked.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "osa.unified.blocked.v1",
+        "sha256": "49b49afa2289ab4d4e9cc36dfc7a678a119a593968a625329410b4d2a159abad"
+      },
+      {
+        "capability_id": "osa.worker.health.v1",
+        "version": "1",
+        "kind": "NATIVE",
+        "capabilities": [
+          "osa.worker.health.v1"
+        ],
+        "permissions": [
+          "executor.invoke"
+        ],
+        "inputs": {},
+        "outputs": {},
+        "cost": {
+          "unit": "execution",
+          "amount": null
+        },
+        "risk": "UNKNOWN",
+        "health": "READY",
+        "executor_ref": "osa.worker.health.v1",
+        "sha256": "cb784b32c376f69066376e1944cefbfcf92321fd73d29d774b933a52f0f80291"
+      }
+    ],
+    "benchmark_results": 0,
+    "cloud_providers": [],
+    "deployment_execution_enabled": false,
+    "web3": {
+      "version": "0.1",
+      "mode": "READ_ONLY",
+      "chain": "solana",
+      "rpcConfigured": false,
+      "persistence": "MISSION_STORE_EVIDENCE",
+      "projection": "REPLAY_FROM_EVIDENCE",
+      "signingEnabled": false,
+      "executionEnabled": false,
+      "capabilities": [
+        {
+          "id": "web3.read",
+          "health": "UNAVAILABLE"
+        },
+        {
+          "id": "web3.monitor",
+          "health": "UNAVAILABLE"
+        },
+        {
+          "id": "web3.analyze",
+          "health": "UNAVAILABLE"
+        },
+        {
+          "id": "web3.simulate",
+          "health": "UNAVAILABLE"
+        },
+        {
+          "id": "web3.prepareTransaction",
+          "health": "UNAVAILABLE"
+        },
+        {
+          "id": "web3.execute",
+          "health": "UNAVAILABLE"
+        },
+        {
+          "id": "web3.verify",
+          "health": "UNAVAILABLE"
+        }
+      ],
+      "agents": [
+        {
+          "role": "MonitoringAgent",
+          "executor_ref": "web3.monitor.v1"
+        },
+        {
+          "role": "AnalysisAgent",
+          "executor_ref": "web3.analyze.v1"
+        },
+        {
+          "role": "RiskAgent",
+          "executor_ref": "web3.risk.v1"
+        },
+        {
+          "role": "VerificationAgent",
+          "executor_ref": "web3.verify.v1"
+        },
+        {
+          "role": "TransactionAgent",
+          "executor_ref": "web3.prepareTransaction.v1",
+          "status": "UNAVAILABLE"
+        }
+      ],
+      "protocols": [
+        {
+          "id": "Tokens",
+          "support": "SPL_READ"
+        },
+        {
+          "id": "DeFi",
+          "support": "CONTRACT_ONLY"
+        },
+        {
+          "id": "NFTs",
+          "support": "CONTRACT_ONLY"
+        },
+        {
+          "id": "DAOs",
+          "support": "CONTRACT_ONLY"
+        },
+        {
+          "id": "Gaming",
+          "support": "CONTRACT_ONLY"
+        }
+      ],
+      "assurance": "RPC_VALIDATED",
+      "cryptographicProof": false
+    }
+  },
+  "intelligence": [
+    {
+      "id": "models",
+      "status": "LIVE"
+    },
+    {
+      "id": "llm-gateway",
+      "status": "LIVE"
+    },
+    {
+      "id": "model-mesh",
+      "status": "LIVE"
+    },
+    {
+      "id": "memory",
+      "status": "SOON"
+    },
+    {
+      "id": "knowledge",
+      "status": "LIVE"
+    },
+    {
+      "id": "context-hub",
+      "status": "SOON"
+    },
+    {
+      "id": "datasets",
+      "status": "LIVE"
+    },
+    {
+      "id": "evaluators",
+      "status": "LIVE"
+    },
+    {
+      "id": "experiments",
+      "status": "LIVE"
+    }
+  ]
+}
