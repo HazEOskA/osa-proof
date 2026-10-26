@@ -24,7 +24,7 @@ Data: 2026-10-26. Cel: bezpiecznie uruchomić rzeczywistą pamięć w ChatDelive
 - `/persist` ma `root:root 0755` i `brain-restore.db` ma `root:root 0644` (dowód: SSH screenshot). Dockerfile `USER node`: bez przeniesienia własności nie ma prawa zapisania nowego WAL/SHM. Przed cutover zweryfikować i naprawić właściciela katalogu i pliku w kontenerze; nie zmieniać USER procesu na root jako obejścia.
 - Brak potwierdzonego snapshotu danych **po** transferze i restarcie; przed cutover porównać z bieżącą `/data/brain.db` i wykonać nowy bezpieczny backup, jeśli były nowe zapisy. Nie aktualizować flagi `OSA_NEUROSA_STORAGE_VERIFIED` w ciemno.
 - Railway musi czytać i pisać `/persist/brain-restore.db` jako `node`, wtedy test `remember → readback → restart → recall` na tym samym pliku. Test `PRAGMA integrity_check=ok` bez zapisu **nie wystarcza**.
-- **OAuth Production nadal BLOCKED**, brak `OSA_GITHUB_*`. `/api/v1/brain/status` zwraca 401 bez Bearer — expected deny, nie health failure. Wsparcie użytkownika: [10 misji dla Hermesa](./HERMES_NEUROSA_10_MISSIONS_2026-10-27.md).
+- **OAuth Production nadal BLOCKED**, brak `OSA_GITHUB_*`. `/api/v1/brain/status` zwraca 401 bez Bearer — expected deny, nie health failure. Wewnętrzne testy operatora nie są publiczną funkcją produktu.
 
 ### Protokół bezpiecznego cutover (operator + zatwierdzenie)
 1. Będąc już w terminalu Railway, porównaj `/data/brain.db` z przywróconym backupem: kontrola count tabel i UTC timestamp ostatnich zapisów, tylko READ. Jeśli źródło ma nowsze dane, przygotuj **nowy** spójny backup z WAL.
@@ -32,7 +32,7 @@ Data: 2026-10-26. Cel: bezpiecznie uruchomić rzeczywistą pamięć w ChatDelive
 3. Sprawdź kompletność bazy `/persist/brain-restore.db` i wersję schematu; zachowaj backup również na telefonie.
 4. Dopiero wtedy ustaw Railway `NEUROSA_DATABASE_PATH=/persist/brain-restore.db` i uruchom wdrożenie **jednej** repliki; sprawdź runtime logi, ledger status i odczyt pamięci. Żadnego drugiego Brain API lub kopii DB.
 5. Wykonaj nowy syntetyczny zapis oraz readback, kontrolowany restart usługi i kolejny readback; weryfikuj SHA/provenance. Bez PASS tego etapu produkcyjna bramka pamięci pozostaje wyłączona.
-6. Skonfiguruj GitHub OAuth i Vercel tenant scope przy użyciu sekretnych wartości poza repo/rozmową, przetestuj login/sesję 401/403; dopiero potem release i 10 misji Hermesa.
+6. Skonfiguruj GitHub OAuth i Vercel tenant scope przy użyciu sekretnych wartości poza repo/rozmową, przetestuj login/sesję 401/403; dopiero potem release oraz testy odbioru operatora.
 
 ## BLOCKER 1: Trwałość oraz ryzyko utraty aktualnej bazy
 Obecny Railway `/data` nie ma persistent volume. **Nie montować pustego wolumenu wprost do pracującej usługi:** nowy mount przesłoni zawartość ścieżki i wykonuje redeploy; możliwa utrata obecnych danych.
