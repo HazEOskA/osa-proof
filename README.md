@@ -6,6 +6,8 @@ Framework do budowania, uruchamiania i weryfikowania systemów agentowych AI. Ł
 
 **CLAIM ≠ PROOF** · `AGENTS` · `RUNTIME` · `TRACING` · `VERIFICATION` · `REPLAY`
 
+> **Integracja NeurOSA × OSA Proof (2026-10-27):** ChatDelivery ma kod serwerowego `recall → NVIDIA → Runtime/Proof → VERIFIED_RUNTIME memory receipt` oraz bramkę prywatnego dostępu GitHub; CI 265 PASS / 0 FAIL / 3 SKIP. Railway volume `neurosa-memory-v1` jest zamontowany pod `/persist`; backup `brain-restore.db` ma potwierdzony SHA-256 i integralność SQLite, ale **Brain API nadal nie zostało przełączone na trwałą bazę ani potwierdzone po restarcie**. Brakuje też produkcyjnego OAuth. 10 misji Hermes × NeurOSA są **zdefiniowane, nieuruchomione**. [Plan odbioru](./docs/NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md) · [10 misji](./docs/HERMES_NEUROSA_10_MISSIONS_2026-10-27.md). **CLAIM ≠ PROOF; bez deklaracji LIVE PASS.**
+
 > **Status v0.1.0: kandydat — BLOCKED.** Lokalne testy działają w trybie `fixture` bez kluczy i płatnych wywołań. Do formalnego wydania brakuje potwierdzonego NVIDIA `tool_calls` → Runtime → Proof, rzeczywistego współdzielonego limitu Redis, trwałości chmurowej i bezpiecznej granicy danych w otwartym demo. Produkcyjne wdrożenie panelu istnieje, ale `READY` ≠ pełne E2E ani GitHub Release. **[Bramki wydania](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/BRAMKI.md) · [Audyt](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md) · [PR #16](https://github.com/HazEOskA/osa-proof/pull/16)**
 
 ## ⚡ Zobacz, że działa — lokalnie
