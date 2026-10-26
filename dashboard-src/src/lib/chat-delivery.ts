@@ -4,6 +4,8 @@ export type DeliveryEvent = {event_id:string;event_type:string;timestamp:string;
 export type DeliveryProgress = {execution_id:string;mission_id:string;state:string;tasks:{agent_id:string;state:string}[];events:DeliveryEvent[]};
 export interface DeliveryBundle {
   schema:string;execution_id:string;conversation_id:string;status:string;bundle_sha256:string;
+  memory_status?:"VERIFIED"|"UNAVAILABLE"|"NOT_RECORDED";memory_context_sha256?:string;
+  memory_write?:{document_id:string;receipt_sha256:string};memory_statement_receipt?:{document_id:string;receipt_sha256:string};
   team:TeamGraph;mission:Mission;run:Run;
   artifact:{name:string;media_type:string;content:string;sha256:string;bytes:number}|null;
   record:{timeline:DeliveryEvent[]};report:{ready_for_review:boolean;checks:{stage:string;status:string;detail:string;latency_ms:number}[]};
@@ -23,7 +25,7 @@ export async function verifyDelivery(bundle:DeliveryBundle) {
   }
   return true;
 }
-export async function streamDelivery(payload:{prompt:string;kind:string;execution_id:string;conversation_id:string},onEvent:(type:string,data:any)=>void,signal:AbortSignal) {
+export async function streamDelivery(payload:{prompt:string;kind:string;execution_id:string;conversation_id:string;remember?:boolean},onEvent:(type:string,data:any)=>void,signal:AbortSignal) {
   const response=await fetch("/api/chat/delivery",{method:"POST",signal,headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
   if(!response.ok){let message="HTTP "+response.status;try{message=(await response.json()).error||message;}catch{}throw Error(message);}
   if(!response.headers.get("content-type")?.includes("text/event-stream")||!response.body)throw Error("DELIVERY_STREAM_REQUIRED");

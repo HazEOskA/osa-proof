@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useOsa } from "../ctx";
+import AccountControl from "./AccountControl";
 import ChatDeliveryResult, { ChatDeliveryProgress } from "./ChatDelivery";
 import { streamDelivery, type DeliveryBundle, type DeliveryProgress } from "../lib/chat-delivery";
 import { verifyRun } from "../lib/verify";
@@ -124,17 +125,19 @@ export default function JeversonChat() {
     const sessionId=current.id;setDraft("");setError("");addMessage(sessionId,"user",text,"USER");
     if(artifactMode){
       if(text.length>4000){setError("Cel artefaktu może mieć maksymalnie 4000 znaków.");return;}
-      if(remember){setError("Wyłącz zapis pamięci przed generowaniem artefaktu. Ten przepływ dostarcza oddzielny bundle.");return;}
+      
       const request=++seq.current,abort=new AbortController(),execution_id="exec_"+id();controller.current=abort;setBusy(true);setDeliveryBusy(true);setDeliveryProgress(null);
       try {
-        const bundle=await streamDelivery({prompt:text,kind:artifactKind,execution_id,conversation_id:sessionId},(type,data)=>{
+        const bundle=await streamDelivery({prompt:text,kind:artifactKind,execution_id,conversation_id:sessionId,remember},(type,data)=>{
           if(request!==seq.current)return;
           if(type==="progress")setDeliveryProgress(data);
           if(type==="model_error")setError(data.error);
         },abort.signal);
         if(request!==seq.current)return;
         await verify(bundle,sessionId);
-        addMessage(sessionId,"assistant",bundle.artifact?"Zespół zakończył generowanie artefaktu. Poniżej podgląd, dowody i pliki do pobrania.":"Zespół nie dostarczył zaakceptowanego artefaktu. Zachowano faktyczny przebieg i dowody.",bundle.artifact?"VERIFIED":"BLOCKED",{executionId:bundle.execution_id,runId:bundle.run.run_id,delivery:bundle});
+         const memoryVerified=bundle.memory_status!=="UNAVAILABLE";
+         addMessage(sessionId,"assistant",bundle.artifact?"Zespół zakończył generowanie artefaktu. Poniżej podgląd, dowody i pliki do pobrania.":"Zespół nie dostarczył zaakceptowanego artefaktu. Zachowano faktyczny przebieg i dowody.",bundle.artifact&&memoryVerified?"VERIFIED":"BLOCKED",{executionId:bundle.execution_id,runId:bundle.run.run_id,delivery:bundle});
+         if(remember && bundle.memory_statement_receipt)setRemember(false);
       }catch(e){if(request===seq.current&&!abort.signal.aborted)setError("ARTEFAKT · "+(e instanceof Error?e.message:String(e))+" · "+execution_id);}
       finally{if(request===seq.current){controller.current=null;setBusy(false);setDeliveryBusy(false);setDeliveryProgress(null);}}
       return;
@@ -207,7 +210,7 @@ export default function JeversonChat() {
       </div><button onClick={()=>go("home")} aria-label="Powrót do OSA Proof" className="focus-ring border-t border-white/10 px-3 py-3 text-left text-xs text-cyan hover:bg-white/5">← OSA Proof / Workspace</button><p className="border-t border-white/10 p-3 text-[10px] text-dim">HISTORIA LOKALNA · BEZ SYNCHRONIZACJI</p>
     </aside>
     <div className="relative flex min-w-0 flex-1 flex-col">
-      <div className="flex min-h-[30px] shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#0b111c] px-3 text-[10px] sm:px-5"><button type="button" aria-label="Powrót do frameworka OSA Proof" onClick={()=>go("home")} className="focus-ring rounded px-2 py-1 font-semibold text-cyan hover:bg-white/5">← OSA Proof / Framework</button><span className="truncate text-dim">BUDOWANIE / CZAT FLOTY AGENTÓW</span></div>
+      <div className="flex min-h-[30px] shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#0b111c] px-3 text-[10px] sm:px-5"><button type="button" aria-label="Powrót do frameworka OSA Proof" onClick={()=>go("home")} className="focus-ring rounded px-2 py-1 font-semibold text-cyan hover:bg-white/5">← OSA Proof / Framework</button><span className="truncate text-dim">BUDOWANIE / CZAT FLOTY AGENTÓW</span><AccountControl /></div>
       <header className="flex min-h-[60px] shrink-0 items-center gap-2 border-b border-white/10 bg-[#0b111c] px-3 sm:px-5">
         <button onClick={()=>setMobileHistory(true)} aria-label="Otwórz historię" className="p-2 md:hidden">☰</button>
         <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-semibold">Jeverson · flota OSA</h1><div className="truncate text-[10px] text-dim">Jeverson · Agenci · Runtime · APR · Dowody</div></div>

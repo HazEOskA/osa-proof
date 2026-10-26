@@ -1,0 +1,30 @@
+name: OSA NeurOSA Artifact Integration (zero paid calls)
+on:
+  push:
+    branches:
+      - fix/neurosa-delivery-gated-20261026
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-memory-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Pobierz kod
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Zależności bez uruchamiania modeli
+        run: npm ci
+      - name: Testy kontraktów NeurOSA i Runtime
+        run: npm test
+      - name: Build API TypeScript
+        run: npm run build
+      - name: Build polskiego UI
+        run: node scripts/build-dashboard.cjs

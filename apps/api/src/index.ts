@@ -4,6 +4,7 @@ import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unif
 import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { PreviewOperator } from "./preview-operator";
+import { handleGithubAuth, readGithubSession } from "./github-auth";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 import { Web3Service } from "../../../packages/web3/src";
@@ -141,7 +142,7 @@ function authenticatedSession(request: IncomingMessage, state: ApiState): Sessio
   if (state.previewOperator) return structuredClone(state.previewOperator.session);
   const token = bearerToken(request);
   const session = token ? state.sessions.get(token) : undefined;
-  return session ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
+  return session ?? readGithubSession(request) ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
 }
 
 function requireSession(
@@ -194,7 +195,12 @@ export async function handleApiRequest(
       if (state.previewOperator && !state.previewOperator.sameOriginMutation(request))
         return send(response, 403, { code: "PREVIEW_ORIGIN_REJECTED", error: "Operacja wymaga tego samego chronionego originu Preview." });
       
-      // Anonymous Preview exposes no application login endpoints.
+      // The private historical Preview remains protected by its pinned server identity.
+      // Production GitHub sessions are accepted only after HMAC verification and ID allowlisting.
+      if ((state.previewOperator || (state.authMode === "open" && process.env.VERCEL !== "1")) &&
+          (url.pathname.startsWith("/auth/github/") || url.pathname === "/auth/providers"))
+        return send(response,404,{code:"LOGIN_DISABLED"});
+      if (!state.previewOperator && await handleGithubAuth(request,response)) return;
       if (state.authMode === "open" && parts[0] === "auth")
         return send(response, 404, { code: "LOGIN_DISABLED" });
       if (method === "GET" && url.pathname === "/memory/status")
@@ -294,7 +300,7 @@ export async function handleApiRequest(
         if (!session) return;
         if ((url.pathname.endsWith("/status") && method !== "GET") || (!url.pathname.endsWith("/status") && method !== "POST"))
           return send(response,405,{code:"METHOD_NOT_ALLOWED"});
-        return state.delivery.handle(request,response,session,state.missionKernel);
+        return state.delivery.handle(request,response,session,state.missionKernel,state.memory);
       }
       if (parts[0] === "nvidia") {
         const session = requireSession(request, response, state);

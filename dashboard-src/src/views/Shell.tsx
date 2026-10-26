@@ -10,6 +10,7 @@ import { HOME_ITEM, NAV, type NavItem } from "../nav";
 import { ICON } from "../brand/icons";
 import { Icon, Logo, Mono, Status, Empty, ThemeSwitch, OsaIcon } from "../ui/primitives";
 import Palette from "./Palette";
+import AccountControl from "./AccountControl";
 import Home from "./Home";
 import World from "./World";
 import Missions from "./Missions";
@@ -148,7 +149,7 @@ export default function Shell({ palette, closePalette }: { palette: boolean; clo
           <button onClick={openPalette} className="focus-ring tap glass ml-auto flex max-w-[380px] flex-1 items-center gap-2 rounded-md px-3 text-left text-[13px] text-dim hover:text-dim md:ml-6 md:mr-auto">
             <Icon d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.5-4.5" /><span className="hidden flex-1 truncate sm:inline">Szukaj agentów, misji i dowodów…</span><span className="flex-1 sm:hidden">Szukaj</span><kbd className="mono hidden rounded border border-line px-1.5 text-[10px] sm:inline">Ctrl K</kbd>
           </button>
-          <div className="hidden md:block"><ThemeSwitch /></div>
+          <div className="hidden md:block"><ThemeSwitch /></div><AccountControl />
           <div className="hidden text-right lg:block">{v.startsWith("web3:") ? <><span className="mono text-[10px] text-dim">{web3.status ? "WEB3 · READ ONLY" : "WEB3 · UNKNOWN"}</span><div className="mono text-[10px] text-dim">OSA API · chain assurance: RPC_VALIDATED</div></> : <><Status v={source.kind} /><div className="mono max-w-[240px] truncate text-[10px] text-dim">{source.detail}</div></>}</div>
         </header>
         <div className="flex min-h-0 flex-1">
