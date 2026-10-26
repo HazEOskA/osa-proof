@@ -27,7 +27,7 @@ Przepływ korzysta z istniejącego MissionStore. Cache ogrodzenia execution_id j
 - Prywatna produkcja wymaga `OSA_NEUROSA_PRODUCTION_ENABLED=enabled`, `OSA_AUTH_MODE=session`, `OSA_NEUROSA_STORAGE_VERIFIED=true`, poprawnego GitHub OAuth allowlist, powiązanych serwerowych `organization_id` oraz `project_id` i jedynego zatwierdzonego hosta. **Nie włączać flag przed testem realnej trwałości i sesji.**
 - Prawidłowa ścieżka: walidacja tożsamości → opcjonalny zapis wiadomości → recall → rzeczywiste generowanie NVIDIA → kanoniczne evidence/ProofReceipt → potwierdzony zapis `VERIFIED_RUNTIME`. Każdy błąd jest jawnie raportowany.
 - `ChatDelivery` pamięta typ wykonywanej misji i dowód; historia przeglądarki nie jest zamiennikiem persystencji. W trybie anonimowym prywatna pamięć pozostaje odłączona.
-- [Brama migracji/odbioru](./NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md) i [10 misji Hermesa](./HERMES_NEUROSA_10_MISSIONS_2026-10-27.md).
+- [Brama migracji/odbioru](./NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md).
 
 ## Walidacja
 
