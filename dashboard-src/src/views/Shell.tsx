@@ -5,7 +5,8 @@ import JeversonChat from "./JeversonChat";
 import OsaHelpDock from "./OsaHelpDock";
 import Web3 from "./Web3";
 import { useWeb3Data, type Web3Page } from "../data/web3";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { SocialLoginScreen, useSocialAuthStatus } from "./SocialLogin";
 import { useOsa, type ViewId } from "../ctx";
 import { HOME_ITEM, NAV, type NavItem } from "../nav";
 import { ICON } from "../brand/icons";
@@ -107,7 +108,7 @@ function LiveRail() {
   );
 }
 
-export default function Shell({ palette, closePalette }: { palette: boolean; closePalette: () => void }) {
+function ShellContent({ palette, closePalette }: { palette: boolean; closePalette: () => void }) {
   const { view, source, openPalette } = useOsa();
   const web3 = useWeb3Data();
   const [drawer, setDrawer] = useState(false);
@@ -185,4 +186,32 @@ function SidebarTop() {
       <div className="glass rounded-md px-2.5 py-1.5"><div className="label">Środowisko pracy</div><Mono className="text-[12px]">{scope.organization_id} / {scope.project_id}</Mono></div>
     </div>
   );
+}
+
+function SocialEntryGate({children}:{children:React.ReactNode}) {
+  const {status} = useSocialAuthStatus();
+  const [authMode,setAuthMode] = useState<"open"|"session"|null>(null);
+  const [sessionChecked,setSessionChecked] = useState(false);
+  const [hasSession,setHasSession] = useState(false);
+  useEffect(()=>{
+    const controller = new AbortController();
+    Promise.all([
+      fetch("/api/build/status",{signal:controller.signal,credentials:"same-origin",cache:"no-store"}),
+      fetch("/api/session",{signal:controller.signal,credentials:"same-origin",cache:"no-store"}),
+    ]).then(async ([mode,session])=>{
+      const config = mode.ok?await mode.json() as {auth_mode?:"open"|"session"}:null;
+      if(!controller.signal.aborted){
+        setAuthMode(config?.auth_mode??"open");
+        setHasSession(session.ok);
+        setSessionChecked(true);
+      }
+    }).catch(()=>{if(!controller.signal.aborted){setAuthMode("open");setSessionChecked(true);}});
+    return ()=>controller.abort();
+  },[]);
+  if(authMode===null || !sessionChecked) return <div className="grid h-[100dvh] place-items-center bg-void text-sm text-dim" role="status">Sprawdzanie sesji OSA…</div>;
+  if(authMode==="session" && !hasSession) return <SocialLoginScreen status={status}/>;
+  return <>{children}</>;
+}
+export default function Shell(props:{palette:boolean;closePalette:()=>void}) {
+  return <SocialEntryGate><ShellContent {...props}/></SocialEntryGate>;
 }

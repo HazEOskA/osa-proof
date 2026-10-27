@@ -5,6 +5,7 @@ import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { PreviewOperator } from "./preview-operator";
 import { handleGithubAuth, readGithubSession } from "./github-auth";
+import { handleSocialAuth, readSocialSession, publicProviderStatus } from "./social-auth";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 import { Web3Service } from "../../../packages/web3/src";
@@ -142,7 +143,7 @@ function authenticatedSession(request: IncomingMessage, state: ApiState): Sessio
   if (state.previewOperator) return structuredClone(state.previewOperator.session);
   const token = bearerToken(request);
   const session = token ? state.sessions.get(token) : undefined;
-  return session ?? readGithubSession(request) ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
+  return session ?? readGithubSession(request) ?? readSocialSession(request) ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
 }
 
 function requireSession(
@@ -200,9 +201,18 @@ export async function handleApiRequest(
       if ((state.previewOperator || (state.authMode === "open" && process.env.VERCEL !== "1")) &&
           (url.pathname.startsWith("/auth/github/") || url.pathname === "/auth/providers"))
         return send(response,404,{code:"LOGIN_DISABLED"});
+      // Public GitHub and owner GitHub share one registered OAuth callback; signed state selects the flow.
+      if (!state.previewOperator && await handleSocialAuth(request,response)) return;
       if (!state.previewOperator && await handleGithubAuth(request,response)) return;
       if (state.authMode === "open" && parts[0] === "auth")
         return send(response, 404, { code: "LOGIN_DISABLED" });
+      // Public OAuth authenticates a person but does not provision a tenant.
+      // Until durable per-user workspaces and route-level tenant enforcement exist,
+      // unprovisioned visitors must not execute, mutate or read shared global state.
+      const social = readSocialSession(request);
+      if (social && !social.identity.roles.includes("operator") &&
+        !["/session","/auth/providers","/build/status","/memory/status"].includes(url.pathname))
+        return send(response,403,{code:"USER_WORKSPACE_NOT_PROVISIONED"});
       if (method === "GET" && url.pathname === "/memory/status")
         return send(response, 200, await state.memory.status(authenticatedSession(request, state)));
       // Configuring private memory closes all data routes, including mission plans,
@@ -362,13 +372,15 @@ export async function handleApiRequest(
 
       if (method === "GET" && url.pathname === "/auth/providers") {
         return send(response, 200, [
-          { provider: "local-dev", enabled: true, mode: "DEV_ONLY" },
-          { provider: "google", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
+          { provider: "local-dev", enabled: process.env.VERCEL !== "1", mode: "DEV_ONLY" },
+          { provider: "google", enabled: publicProviderStatus().google, mode: publicProviderStatus().google ? "OAUTH_ENABLED" : "OIDC_NOT_CONFIGURED" },
+          { provider: "github", enabled: publicProviderStatus().github, mode: publicProviderStatus().github ? "OAUTH_ENABLED" : "OAUTH_NOT_CONFIGURED" },
           { provider: "microsoft", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
         ]);
       }
 
       if (method === "POST" && url.pathname === "/auth/dev-login") {
+        if (process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production" && state.authMode === "session") return send(response,404,{code:"DEV_LOGIN_DISABLED"});
         const body = await readJson<{ display_name?: string; email?: string }>(request);
         const identity = createLocalDevIdentity({
           display_name: body.display_name ?? "",
