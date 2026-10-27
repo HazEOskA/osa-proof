@@ -379,7 +379,7 @@ export async function handleApiRequest(
       }
 
       if (method === "POST" && url.pathname === "/auth/dev-login") {
-        if (process.env.VERCEL === "1" && state.authMode === "session") return send(response,404,{code:"DEV_LOGIN_DISABLED"});
+        if (process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production" && state.authMode === "session") return send(response,404,{code:"DEV_LOGIN_DISABLED"});
         const body = await readJson<{ display_name?: string; email?: string }>(request);
         const identity = createLocalDevIdentity({
           display_name: body.display_name ?? "",
