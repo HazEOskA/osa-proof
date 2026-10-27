@@ -108,8 +108,8 @@ export function readGithubSession(req: IncomingMessage, env: Env = process.env):
   const id=String(signed.github_id);
   return {session_id:"ses_gh_"+String(signed.nonce),token:"",
     identity:{identity_id:"github_"+id,provider:"github",subject:id,display_name:String(signed.github_login),
-      organization_id:env.OSA_GITHUB_ORGANIZATION_ID,
-      project_ids:env.OSA_GITHUB_PROJECT_ID?[env.OSA_GITHUB_PROJECT_ID]:[],
+      organization_id:env.OSA_GITHUB_ORGANIZATION_ID ?? env.OSA_NEUROSA_ORGANIZATION_ID,
+      project_ids:(env.OSA_GITHUB_PROJECT_ID ?? env.OSA_NEUROSA_PROJECT_ID) ? [(env.OSA_GITHUB_PROJECT_ID ?? env.OSA_NEUROSA_PROJECT_ID)!] : [],
       roles:["operator"],verified:true},
     created_at:new Date(signed.iat).toISOString(),expires_at:new Date(signed.exp).toISOString()};
 }
