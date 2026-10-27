@@ -201,8 +201,9 @@ export async function handleApiRequest(
       if ((state.previewOperator || (state.authMode === "open" && process.env.VERCEL !== "1")) &&
           (url.pathname.startsWith("/auth/github/") || url.pathname === "/auth/providers"))
         return send(response,404,{code:"LOGIN_DISABLED"});
-      if (!state.previewOperator && await handleGithubAuth(request,response)) return;
+      // Public GitHub and owner GitHub share one registered OAuth callback; signed state selects the flow.
       if (!state.previewOperator && await handleSocialAuth(request,response)) return;
+      if (!state.previewOperator && await handleGithubAuth(request,response)) return;
       if (state.authMode === "open" && parts[0] === "auth")
         return send(response, 404, { code: "LOGIN_DISABLED" });
       // Public OAuth authenticates a person but does not provision a tenant.
