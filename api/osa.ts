@@ -24,8 +24,8 @@ export function isNeurosaAuthenticatedProduction(
   if(env.VERCEL !== "1" || env.OSA_AUTH_MODE !== "session" ||
     env.OSA_NEUROSA_STORAGE_VERIFIED !== "true" || !githubOAuthConfigured(env) ||
     !env.OSA_NEUROSA_ORGANIZATION_ID || !env.OSA_NEUROSA_PROJECT_ID ||
-    env.OSA_GITHUB_ORGANIZATION_ID !== env.OSA_NEUROSA_ORGANIZATION_ID ||
-    env.OSA_GITHUB_PROJECT_ID !== env.OSA_NEUROSA_PROJECT_ID)
+    (env.OSA_GITHUB_ORGANIZATION_ID ?? env.OSA_NEUROSA_ORGANIZATION_ID) !== env.OSA_NEUROSA_ORGANIZATION_ID ||
+    (env.OSA_GITHUB_PROJECT_ID ?? env.OSA_NEUROSA_PROJECT_ID) !== env.OSA_NEUROSA_PROJECT_ID)
     throw new Error("NEUROSA_PRODUCTION_GATE_BLOCKED");
   return true;
 }
