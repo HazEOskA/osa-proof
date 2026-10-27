@@ -82,10 +82,11 @@ async function withServer(provider:"google"|"github",sub:string,action:(base:str
     assert.equal(loc.searchParams.get("code_challenge_method"),"S256");
     googleNonce=loc.searchParams.get("nonce")??"";
     assert.equal(loc.searchParams.get("redirect_uri"),
-      "https://"+HOST+"/api/auth/social/"+provider+"/callback");
+      "https://"+HOST+(provider==="github"?"/api/auth/github/callback":"/api/auth/social/google/callback"));
     const state=loc.searchParams.get("state")!;
     const originalCookie=cookie(begin,"__Host-osa_social_oauth");
-    const callback=await localFetch(base+"/auth/social/"+provider+"/callback?code=test_code&state="+encodeURIComponent(state),
+    const callbackPath=provider==="github"?"/auth/github/callback":"/auth/social/google/callback";
+    const callback=await localFetch(base+callbackPath+"?code=test_code&state="+encodeURIComponent(state),
       {headers:{host:HOST,cookie:originalCookie},redirect:"manual"});
     assert.equal(callback.status,302);
     assert.equal(callback.headers.get("location"),"/");
@@ -97,7 +98,7 @@ async function withServer(provider:"google"|"github",sub:string,action:(base:str
     assert.equal(session?.token,"");
     assert.equal(readSocialSession({headers:{cookie:sessionCookie+"tamper"}} as IncomingMessage,env),undefined);
     await action(base);
-    const replay=await localFetch(base+"/auth/social/"+provider+"/callback?code=test_code&state="+encodeURIComponent(state),
+    const replay=await localFetch(base+callbackPath+"?code=test_code&state="+encodeURIComponent(state),
       {headers:{host:HOST},redirect:"manual"});
     assert.equal(replay.status,400);
   }finally{await new Promise<void>(resolve=>srv.close(()=>resolve()));}
