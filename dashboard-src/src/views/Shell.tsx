@@ -208,9 +208,8 @@ function SocialEntryGate({children}:{children:React.ReactNode}) {
     }).catch(()=>{if(!controller.signal.aborted){setAuthMode("open");setSessionChecked(true);}});
     return ()=>controller.abort();
   },[]);
-  if(authMode==="session" && sessionChecked &&
-      (status.providers.google||status.providers.github) && !hasSession)
-    return <SocialLoginScreen status={status}/>;
+  if(authMode===null || !sessionChecked) return <div className="grid h-[100dvh] place-items-center bg-void text-sm text-dim" role="status">Sprawdzanie sesji OSA…</div>;
+  if(authMode==="session" && !hasSession) return <SocialLoginScreen status={status}/>;
   return <>{children}</>;
 }
 export default function Shell(props:{palette:boolean;closePalette:()=>void}) {
