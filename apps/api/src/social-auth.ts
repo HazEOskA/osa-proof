@@ -22,7 +22,8 @@ function origin(env: Env): string {
 }
 function client(env: Env, provider: SocialProvider) {
   const prefix = provider === "google" ? "OSA_PUBLIC_GOOGLE_" : "OSA_PUBLIC_GITHUB_";
-  return { id: env[prefix + "CLIENT_ID"] ?? "", secret: env[prefix + "CLIENT_SECRET"] ?? "" };
+  return { id: env[prefix + "CLIENT_ID"] ?? (provider === "github" ? env.OSA_GITHUB_CLIENT_ID : "") ?? "",
+    secret: env[prefix + "CLIENT_SECRET"] ?? (provider === "github" ? env.OSA_GITHUB_CLIENT_SECRET : "") ?? "" };
 }
 export function publicProviderStatus(env: Env = process.env) {
   const enabled = env.OSA_PUBLIC_AUTH_ENABLED === "enabled" && env.OSA_AUTH_MODE === "session" &&
@@ -76,7 +77,7 @@ function requestOrigin(req: IncomingMessage, env: Env) {
   return intended.origin;
 }
 function callbackFor(provider: SocialProvider, env: Env) {
-  return origin(env) + "/api/auth/social/" + provider + "/callback";
+  return origin(env) + (provider === "github" ? "/api/auth/github/callback" : "/api/auth/social/google/callback");
 }
 function returnTo(raw: string | null) {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\") ||
@@ -164,9 +165,14 @@ export async function handleSocialAuth(req: IncomingMessage, res: ServerResponse
     try { requestOrigin(req,env); } catch { answer(res,403,{code:"LOGOUT_FORBIDDEN"});return true; }
     writeCookie(res, SESSION,"",0); answer(res,200,{ok:true});return true;
   }
+  // Reuse the existing single GitHub OAuth App callback for both operator and public accounts.
+  // Existing owner authorization states use kind "oauth", public states use kind "state".
+  const sharedGithubCallback = path === "/auth/github/callback" &&
+    unpack(new URL(req.url ?? "/", "http://local").searchParams.get("state") ?? undefined, env)?.kind === "state";
   const match = /^\/auth\/social\/(google|github)\/(start|callback)$/.exec(path);
-  if (!match) return false;
-  const provider = match[1] as SocialProvider, action = match[2];
+  if (!match && !sharedGithubCallback) return false;
+  const provider = (sharedGithubCallback ? "github" : match![1]) as SocialProvider;
+  const action = sharedGithubCallback ? "callback" : match![2];
   if (!publicProviderStatus(env)[provider]) { answer(res,503,{code:"PROVIDER_NOT_CONFIGURED"});return true; }
   try {
     requestOrigin(req,env);
