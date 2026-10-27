@@ -35,7 +35,7 @@ export default function Memory() {
     <p className="text-sm text-dim">{error || status?.message}</p>
     {status?.diagnostic_code && <p role="alert" className="break-all font-mono text-xs text-warn">Diagnostyka: {status.diagnostic_code}</p>}
     {status?.checked_at && <p className="text-xs text-dim">Sprawdzono: {new Date(status.checked_at).toLocaleString("pl-PL")}</p>}
-    <p className="text-sm">NeurOSA jest podłączana wyłącznie pod chronionym adresem Preview PR #17 — bez GitHub OAuth. Dostępność wymaga prawidłowej odpowiedzi serwera i integralnego ledgeru.</p>
+    <p className="text-sm">Produkcyjna NeurOSA wymaga aktywnej bazy na trwałym wolumenie, zweryfikowanego odczytu po restarcie, poprawnej sesji operatora GitHub i zgodnego zakresu organizacji/projektu. Kod adaptera jest scalony, ale dopóki backend zwraca UNCONFIGURED, pamięć nie jest połączona.</p>
     <p className="text-sm text-dim">Status „Pamięć odpowiada” potwierdza jedynie bieżący kontakt z NeurOSA. Trwałość po restarcie i pełny test E2E wymagają odrębnego dowodu.</p>
     <button className="rounded border border-line px-3 py-2 text-sm" onClick={() => void refresh()}>Sprawdź ponownie</button>
   </section>;

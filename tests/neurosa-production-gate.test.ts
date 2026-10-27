@@ -23,6 +23,15 @@ test("NeurOSA production: only explicitly approved, authenticated, durable host 
   assert.equal(isNeurosaAuthenticatedProduction(origin,{...env,VERCEL_ENV:"preview"}),false);
   assert.equal(isNeurosaAuthenticatedProduction(origin,{...env,OSA_NEUROSA_PRODUCTION_ENABLED:""}),false);
 });
+test("NeurOSA production: derives Github operator scope from pinned Brain tenant and rejects explicit mismatches",()=>{
+  const env=config();
+  delete env.OSA_GITHUB_ORGANIZATION_ID;
+  delete env.OSA_GITHUB_PROJECT_ID;
+  assert.equal(isNeurosaAuthenticatedProduction(origin,env),true);
+  assert.throws(()=>isNeurosaAuthenticatedProduction(origin,{...env,OSA_GITHUB_ORGANIZATION_ID:"foreign"}),/NEUROSA_PRODUCTION_GATE_BLOCKED/);
+  assert.throws(()=>isNeurosaAuthenticatedProduction(origin,{...env,OSA_GITHUB_PROJECT_ID:"foreign"}),/NEUROSA_PRODUCTION_GATE_BLOCKED/);
+  assert.throws(()=>isNeurosaAuthenticatedProduction(origin,{...env,OSA_NEUROSA_PROJECT_ID:""}),/NEUROSA_PRODUCTION_GATE_BLOCKED/);
+});
 test("NeurOSA production: missing auth, unsafe open mode or storage proof fails closed",()=>{
   const base=config();
   for(const changed of [
