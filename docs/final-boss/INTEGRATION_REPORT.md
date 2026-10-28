@@ -6,7 +6,7 @@ Wykonana zmiana: niezależny verifier sprawdza deklarowaną politykę dozwolonyc
 
 `npm test`: 268 PASS, 0 FAIL, 3 SKIP (271 testów). `node --test dist/tests/mission-kernel.test.js`: 12 PASS, 0 FAIL. Wyniki obejmują fixture; nie dowodzą żądanej misji OSA-ULTIMATE-001. Raport testu: `evidence/mission-kernel-test.txt`.
 
-CORE E2E: BLOCKED / nie wykonano misji z dashboardu. NEUROSA E2E: PARTIAL / izolowana lokalna instancja przeszła zapis i restart, brak produkcyjnego auth i trwałości. FULL PRODUCT: UNKNOWN / nie przeprowadzono kompletnego audytu. PRODUCTION READY: BLOCKED. Lokalna misja API ma identyfikatory w `evidence/local-live-neurosa.json`; nie jest pełnym scenariuszem dashboardowym. Brak preview. Wykonanie pozostaje sekwencyjne zgodnie z obecnym TeamGraph.
+CORE E2E: PARTIAL / misja z dashboardu przeszła na lokalnym NeurOSA; executory i sesja testowe, brak sandboxu i replay UI dla tej misji. NEUROSA E2E: PARTIAL / izolowana lokalna instancja przeszła zapis i restart, brak produkcyjnego auth i trwałości. FULL PRODUCT: UNKNOWN / nie przeprowadzono kompletnego audytu. PRODUCTION READY: BLOCKED. Lokalna misja API ma identyfikatory w `evidence/local-live-neurosa.json`; nie jest pełnym scenariuszem dashboardowym. Brak preview. Wykonanie pozostaje sekwencyjne zgodnie z obecnym TeamGraph.
 
 Aktualna aktywna ścieżka produkcyjnego SQLite nie została odczytana. Dockerfile NeurOSA podaje domyślne `/data/brain.db`; historyczny dokument opisuje wolumen `/persist` i brak zakończonego cutover. To nie jest dowód aktualnego stanu produkcji. Nie wykonano zmian produkcyjnych.
 
@@ -29,3 +29,13 @@ Trasy `/teams`, `/missions/:id/*` i `/runs/:id/*` sprawdzają teraz również se
 `node scripts/test-unified-browser.cjs` z lokalnym Chromium przeszedł dla viewportów 390×844 i 1440×900. Scenariusz przez dashboard uruchamia rzeczywiste SHA-256, sprawdza receipt i otwiera replay UI. Wykorzystuje lokalny tryb open/fixture i ścieżkę Unified, bez NeurOSA i bez modelu; nie jest to dashboardowy Final Boss ani test na rzeczywistym telefonie. Wyniki: `evidence/browser-unified-results.json`. Po zmianie izolacji ponowiono test izolowanego NeurOSA; nowe identyfikatory znajdują się w `evidence/local-live-neurosa-project-scope.json`.
 
 Regresja po zmianie: 269 PASS, 0 FAIL, 3 SKIP (272 testy). Dashboard TypeScript/Vite build PASS.
+
+## Studio × lokalny NeurOSA — desktop i mobilny viewport
+
+Dwa niezależne przebiegi `scripts/final-boss-browser-neurosa.cjs` uruchomiły istniejące Studio i właściwy Mission Kernel z prawdziwym BrainApiServer oraz SQLite. Operator wypełnia cel, wskazuje repozytorium `HazEOskA/osa-proof` i pliki `README.md` oraz `package.json`. Testowe executory odczytują tylko te dwa pliki sekwencyjnie; serwer odrzuca inny identyfikator repozytorium. Sesja jest wstrzyknięta przez harness: przetestowano 401 bez niej i 403 dla innego projektu, ale nie realnego dostawcy tożsamości.
+
+Studio wyświetla Proof i oferuje **Pobierz zapis misji**. Test pobrał JSON i przekazał go kanonicznemu verifierowi; osobne polecenie CLI ponownie sprawdziło zapisane rekordy. Po kontrolowanym restarcie NeurOSA i odtworzeniu `FileMissionStore` test sprawdził zapis pamięci i receipt. Manipulacja evidence i niedozwolone repozytorium nie otrzymały VERIFIED. Wyniki: `evidence/browser-neurosa-result.json`, `evidence/browser-neurosa-mobile-result.json` i odpowiadające im rekordy.
+
+Ograniczenia: brak Dockera, `bwrap` zakończył się błędem `open /proc/5/ns/ns`; testowi wykonawcy nie mają izolacji systemowej i nie są produkcyjną funkcją wyboru dowolnego repozytorium. To viewport mobilny Chromium, nie fizyczny telefon. Replay UI dla tej konkretnej misji i kompletny pakiet artefaktów nie zostały sprawdzone; brak zewnętrznego zakotwiczenia, poświadczenia źródła oraz produkcyjnej trwałości. Dwa odczyty nie dowodzą jakości audytu repozytorium.
+
+Komendy: build dashboardu `node scripts/build-dashboard.cjs`; lokalny test `NODE_PATH=<playwright> NEUROSA_CHECKOUT=<checkout> node scripts/final-boss-browser-neurosa.cjs`, wariant mobilny `OSA_BROWSER_VIEWPORT=mobile`. Regresja `npm test`: 269 PASS, 0 FAIL, 3 SKIP.

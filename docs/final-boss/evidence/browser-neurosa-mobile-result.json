@@ -1,0 +1,35 @@
+{
+  "schema": "osa.final-boss.browser-neurosa.v1",
+  "mission_id": "build_c63d6ae4-7f4e-455c-95fe-5655a32941e5",
+  "run_id": "run_3432f4afe55f59d86fe736cf",
+  "execution_id": "exec_d6b789c2-ace9-4b08-b1a3-93efcc0e1c34",
+  "mission_receipt_sha256": "c137ac1d92e994d95cd1355f8ae30f7ade5983a8d3a980c7b2420a0878f8919a",
+  "proof_receipt_sha256": "d8bbcb229431d62a1448b37788f79a76b7be17ea7180a90c9e64c494bf2de661",
+  "memory_receipt_sha256": "e2d0e1e69182b25e4afb969f25897aed99aad1230bb3f7c26c5f310cdc49a978",
+  "memory_context_sha256": "a778a31bbcfe1aa4c721238f95bd11b551715524251a613d26aeb4ebd225d4f2",
+  "record_sha256": "dbfd2efd8b746c04fe7b96c8b9a1d422314cfd7174dccfda50329c1c2107b30a",
+  "events": 22,
+  "evidence": 2,
+  "checks": [
+    "studio_browser_mission_created",
+    "synthetic_authenticated_session",
+    "anonymous_and_foreign_project_denied",
+    "real_neurosa_recall",
+    "native_brain_plan",
+    "two_real_fixed_file_reads_sequential",
+    "unauthorized_repository_not_verified",
+    "proof_displayed",
+    "mission_record_download_and_verification",
+    "tamper_denied",
+    "neurosa_and_mission_store_restart"
+  ],
+  "viewport": "390x844",
+  "limitations": [
+    "test_identity_injected",
+    "test_executors_not_sandboxed",
+    "no_production",
+    "viewport_emulation",
+    "replay_ui_not_exercised_in_this_test",
+    "no_external_attestation"
+  ]
+}
