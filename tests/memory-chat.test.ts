@@ -115,6 +115,8 @@ test("Memory: recall enters the actual model request and provenance binds respon
     modelCalls++;
     const body = JSON.parse(String(init?.body));
     assert.match(body.messages[0].content, /niezaufanymi/);
+    assert.match(body.messages[0].content, /Gdy materiał źródłowy zawiera dosłowną informację użytkownika/);
+    assert.match(body.messages[0].content, /Sam identyfikator dokumentu bez treści nie wystarcza/);
     assert.match(body.messages[1].content, /Bursztyn/);
     assert.equal(body.messages.at(-1).content, "Jaka nazwa?");
     return new Response(JSON.stringify({ id: "test-response", choices: [{ message: { content: "Bursztyn" } }] }));
