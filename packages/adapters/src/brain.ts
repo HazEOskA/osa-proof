@@ -108,7 +108,7 @@ export class NeurosaMemoryAdapter implements WritableBrainMemory {
     const result = await this.request(event.kind === "AUTHENTICATED_USER_STATEMENT" ? "brain/remember" : "brain/observe", event.scope, {
       title: event.kind === "AUTHENTICATED_USER_STATEMENT" ? "Informacja przekazana przez użytkownika OSA" : "Dowód pochodzenia zdarzenia OSA",
       content, projectId: event.scope.project_id, kind: "event", expectedRevision: 0,
-      idempotencyKey: `osa:${event.event_sha256}`, path: `osa/${event.event_sha256}.json`,
+      idempotencyKey: `osa:${event.event_sha256}`, path: `osa/${event.event_sha256}.md`,
       source: { type: "SESSION", id: `osa:${event.event_sha256}`, version: "1" },
     });
     if (result.status !== "ZAPAMIĘTANO" || typeof result.deduplicated !== "boolean" || !result.document ||

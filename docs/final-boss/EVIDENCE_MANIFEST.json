@@ -8,10 +8,24 @@
       "command": "node --test dist/tests/mission-kernel.test.js",
       "scope": "local tests, includes fixtures",
       "result": "12 passed; 0 failed"
+    },
+    {
+      "path": "docs/final-boss/evidence/local-live-neurosa.json",
+      "sha256": "4401114c16b19994890e764eb317e392d5276dd1d1b89c885e2d116cf00becbf",
+      "command": "NEUROSA_CHECKOUT=<checkout> node scripts/final-boss-local-neurosa.cjs",
+      "scope": "isolated real Brain API, SQLite, local API and synthetic test identities",
+      "result": "PASS within stated scope"
+    },
+    {
+      "path": "docs/final-boss/evidence/local-live-neurosa-mission.json",
+      "sha256": "e650878756b2c43ca34c3a1a9cbbadff8cecbd35621b17a3e8245bacaad57b8a",
+      "command": "node scripts/verify-mission-record.cjs <record>",
+      "scope": "saved synthetic mission record; canonical verifier, no external attestation",
+      "result": "PASS within stated scope"
     }
   ],
   "core_e2e": "BLOCKED",
-  "neurosa_e2e": "BLOCKED",
+  "neurosa_e2e": "PARTIAL: isolated restart passed, production unverified",
   "full_product": "UNKNOWN",
   "production_ready": "BLOCKED"
 }

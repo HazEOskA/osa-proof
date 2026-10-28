@@ -43,6 +43,8 @@ function remoteContract() {
         references: statements.map(d => ({ documentId: d.documentId, revision: d.revision, contentHash: d.contentHash })), truncated: false });
     }
     if (path.endsWith("/observe") || path.endsWith("/remember")) {
+      // NeurOSA NativeBrainWorkspace accepts native documents with .md paths.
+      if (!/^osa\/[a-f0-9]{64}\.md$/.test(input.path)) return json({ error: "invalid native document path" }, 400);
       const old = writes.get(input.idempotencyKey);
       if (old && old.input !== canonicalJson(input)) return json({ error: "test-token-must-not-leak" }, 409);
       const document = old?.document ?? { documentId: randomUUID(), revision: 1, content: input.content, contentHash: sha256Hex(input.content) };
