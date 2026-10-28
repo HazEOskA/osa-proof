@@ -208,7 +208,9 @@ export async function handleSocialAuth(req: IncomingMessage, res: ServerResponse
       typeof pending.returnPath !== "string" || returnTo(pending.returnPath) !== pending.returnPath)
       throw new Error("OAUTH_STATE_INVALID");
     const code = query.get("code");
-    if (!code || !/^[A-Za-z0-9_.-]{4,500}$/.test(code)) throw new Error("OAUTH_CODE_INVALID");
+    // OAuth authorization codes are opaque; Google includes `/` in valid codes.
+    // Only allow short printable token characters; URLSearchParams encodes the token POST body.
+    if (!code || !/^[A-Za-z0-9._~+/=-]{4,500}$/.test(code)) throw new Error("OAUTH_CODE_INVALID");
     const endpoint = provider === "google" ? "https://oauth2.googleapis.com/token" :
       "https://github.com/login/oauth/access_token";
     const payload = new URLSearchParams({client_id:providerClient.id,client_secret:providerClient.secret,
