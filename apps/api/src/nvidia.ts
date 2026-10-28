@@ -61,7 +61,11 @@ function prepareNvidiaRequest(prompt: unknown, env: NodeJS.ProcessEnv, context?:
   const previous: {role:string;content:string}[] = Array.isArray(history) ? history : [];
   const model = nvidiaStatus(env).model;
   if (context?.memory) verifyMemoryContext(context.memory);
-  const requestBody = { model, stream: false, max_tokens: context?.artifact ? 4096 : 1024, messages: [
+  const requestBody = { model, stream: false, max_tokens: context?.artifact ? 4096 : 1024,
+    // NVIDIA Nemotron 3.5 Lightning defaults to reasoning; conversational mode
+    // must return a direct answer rather than spending the short request budget on thinking.
+    ...(model === "nvidia/nemotron-3.5-lightning-30b-a3b" ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+    messages: [
     { role: "system", content: "Jesteś asystentem ekosystemu OSA. Zawsze odpowiadaj po polsku. Nie twierdź, że wykonałeś operacje poza tą rozmową. Odpowiedź modelu nie jest dowodem wykonania." +
       (typeof agent === "string" ? " " + agents[agent] : "") +
       (guideContext ? "\n" + guideContext : "") +
@@ -77,8 +81,14 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
   const started = Date.now();
   let response: Response;
   try {
-    response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: AbortSignal.timeout(25000), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(requestBody) });
-  } catch { throw new NvidiaError(504, "NVIDIA_UNAVAILABLE", "NVIDIA nie odpowiedziała w wymaganym czasie lub połączenie nie powiodło się."); }
+    response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: AbortSignal.timeout(45000), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(requestBody) });
+  } catch (error) {
+    // Distinguish provider latency from transport failures without leaking
+    // provider URLs, transport messages, request payloads, or credentials.
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
+      throw new NvidiaError(504, "NVIDIA_TIMEOUT", "NVIDIA nie odpowiedziała w ciągu 45 sekund.");
+    throw new NvidiaError(504, "NVIDIA_UNAVAILABLE", "Nie udało się połączyć z NVIDIA.");
+  }
   if (!response.ok) {
     throw new NvidiaError(response.status === 429 ? 429 : 502, "NVIDIA_REJECTED", response.status === 401 || response.status === 403 ? "NVIDIA odrzuciła autoryzację. Sprawdź klucz i dostęp do modelu." : response.status === 429 ? "Limit wywołań NVIDIA. Spróbuj później." : `NVIDIA odrzuciła żądanie (HTTP ${response.status}).`);
   }
