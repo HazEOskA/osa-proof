@@ -44,7 +44,7 @@ function cookie(res:Response,key:string){
   const match=(res.headers.get("set-cookie")??"").match(new RegExp(key+"=[^;]+"));
   assert.ok(match,"expected "+key+" cookie");return match[0];
 }
-async function withServer(provider:"google"|"github",sub:string,action:(base:string)=>Promise<void>) {
+async function withServer(provider:"google"|"github",sub:string,action:(base:string)=>Promise<void>,authorizationCode="test_code") {
   let googleNonce="";
   const srv=createServer(async(req,res)=>{
     const handled=await handleSocialAuth(req,res,env,async(input,init)=>{
@@ -52,12 +52,14 @@ async function withServer(provider:"google"|"github",sub:string,action:(base:str
       if(url==="https://oauth2.googleapis.com/token"){
         const body=new URLSearchParams(String(init?.body));
         assert.equal(body.get("client_secret"),env.OSA_PUBLIC_GOOGLE_CLIENT_SECRET);
+        assert.equal(body.get("code"),authorizationCode);
         assert.match(body.get("code_verifier")??"",/^[A-Za-z0-9_-]{43,128}$/);
         return Response.json({access_token:"google-test",id_token:signedIdToken(googleNonce,sub)});
       }
       if(url==="https://github.com/login/oauth/access_token"){
         const body=new URLSearchParams(String(init?.body));
         assert.equal(body.get("client_secret"),env.OSA_PUBLIC_GITHUB_CLIENT_SECRET);
+        assert.equal(body.get("code"),authorizationCode);
         assert.match(body.get("code_verifier")??"",/^[A-Za-z0-9_-]{43,128}$/);
         return Response.json({access_token:"github-test"});
       }
@@ -86,7 +88,7 @@ async function withServer(provider:"google"|"github",sub:string,action:(base:str
     const state=loc.searchParams.get("state")!;
     const originalCookie=cookie(begin,"__Host-osa_social_oauth");
     const callbackPath=provider==="github"?"/auth/github/callback":"/auth/social/google/callback";
-    const callback=await localFetch(base+callbackPath+"?code=test_code&state="+encodeURIComponent(state),
+    const callback=await localFetch(base+callbackPath+"?code="+encodeURIComponent(authorizationCode)+"&state="+encodeURIComponent(state),
       {headers:{host:HOST,cookie:originalCookie},redirect:"manual"});
     assert.equal(callback.status,302);
     assert.equal(callback.headers.get("location"),"/");
@@ -113,6 +115,9 @@ test("GitHub social OAuth authenticates ordinary visitor without owner memory te
 });
 test("Google OIDC validates RS256 JWT and establishes ordinary visitor",async()=>{
   await withServer("google","google-user-44",async()=>{});
+});
+test("Google OAuth accepts valid slash-containing opaque codes and exchanges the exact value",async()=>{
+  await withServer("google","google-user-55",async()=>{},"4/P7q7W91a-oMsCeLvIaQm6bTrgtp7");
 });
 test("owner mapping requires server-verified GitHub numeric id",()=>{
   const signed=Buffer.from(JSON.stringify({kind:"osa.social.v1",provider:"github",sub:"123456",name:"owner",
