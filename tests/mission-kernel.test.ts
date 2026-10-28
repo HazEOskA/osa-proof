@@ -36,6 +36,12 @@ test("mission lifecycle comes from real runtime and completion seals the bound r
   const completed = (await kernel.get(created.mission.mission_id))!;
   assert.equal(completed.state, "COMPLETED");
   verifyCompletedMission(completed);
+  const alteredReplay = structuredClone(completed);
+  alteredReplay.run!.events[0].payload.injected = true;
+  assert.throws(() => verifyCompletedMission(alteredReplay), /runtime replay rejected/);
+  const missingReplayEvent = structuredClone(completed);
+  missingReplayEvent.run!.events.pop();
+  assert.throws(() => verifyCompletedMission(missingReplayEvent), /runtime replay rejected/);
   assert.deepEqual(completed.timeline.filter((e) => e.event_type.startsWith("MISSION_")).map((e) => e.event_type), ["MISSION_CREATED", "MISSION_PLANNED", "MISSION_EXECUTING", "MISSION_VERIFYING", "MISSION_COMPLETED"]);
   assert.ok(completed.timeline.every((e) => e.mission_id === mission().mission_id && e.tenant_id === graph.organization_id));
   assert.equal(completed.timeline.find((e) => e.event_type === "EVIDENCE_RECORDED")?.evidence[0], run.evidence[0].evidence_id);

@@ -31,6 +31,17 @@ export function verifyMissionExecution(graph: TeamGraph, mission: Mission, run: 
 export function verifyCompletedMission(record: MissionRecord): void {
   if (record.state !== "COMPLETED" || !record.run || !record.verification_receipt || !record.mission_receipt) throw new Error("completed mission receipts required");
   verifyMissionExecution(record.team, record.mission, record.run);
+  // Runtime events are exported separately from the receipt-sealed mission timeline.
+  // Reconcile the two so a modified replay cannot pass by retaining an intact receipt.
+  const projected = record.timeline.filter(event => event.payload.run_id !== undefined || event.payload.execution_id !== undefined);
+  if (projected.length !== record.run.events.length || record.run.events.some((event, index) => {
+    const entry = projected[index];
+    return event.sequence !== index + 1 || event.event_id !== `${record.run!.run_id}:${record.run!.execution_id}:event:${index + 1}` ||
+      event.run_id !== record.run!.run_id || event.execution_id !== record.run!.execution_id ||
+      event.mission_id !== record.mission.mission_id || event.organization_id !== record.mission.organization_id ||
+      event.project_id !== record.mission.project_id || event.team_id !== record.team.team_id || event.team_version !== record.team.version ||
+      !entry || entry.event_type !== event.type || digest(entry.payload) !== digest({ ...event.payload, run_id: event.run_id, execution_id: event.execution_id, agent_id: event.agent_id });
+  })) throw new Error("MissionReceipt runtime replay rejected");
   const order = getLinearExecutionOrder(record.team, record.mission.entry_agent_id);
   const expectedTasks = { mission_id: record.mission.mission_id, nodes: order.map((agent_id, index) => ({
     task_id: `${record.mission.mission_id}:task:${index + 1}`, mission_id: record.mission.mission_id, agent_id,
