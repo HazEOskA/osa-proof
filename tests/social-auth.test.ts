@@ -128,7 +128,7 @@ test("Google OAuth accepts valid slash-containing opaque codes and exchanges the
   await withServer("google","google-user-55",async()=>{},"4/P7q7W91a-oMsCeLvIaQm6bTrgtp7");
 });
 test("Google OAuth rejects control characters and overlong codes before token exchange",async()=>{
-  await withServer("google","google-user-bad",async()=>{},"4/P7q\\nmalformed".replace("\\\\n","\\n"),true);
+  await withServer("google","google-user-bad",async()=>{},"4/P7q\nmalformed",true);
   await withServer("google","google-user-bad",async()=>{},"4/"+("a".repeat(502)),true);
 });
 test("owner mapping requires server-verified GitHub numeric id",()=>{
