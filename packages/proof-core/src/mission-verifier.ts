@@ -8,6 +8,13 @@ import { reflectOnExecution } from "../../brain/src";
 // requirements and binding. A caller cannot choose the expected tenant or verdict.
 export function verifyMissionExecution(graph: TeamGraph, mission: Mission, run: RunResult): void {
   validateMissionAgainstGraph(graph, mission);
+  // Recheck the pinned executor policy independently of the creation path.
+  // This does not attest that an executor actually ran or that its identity is authentic.
+  const order = getLinearExecutionOrder(graph, mission.entry_agent_id);
+  if (mission.policy && (!Array.isArray(mission.policy.allowed_executor_refs) || order.some(id =>
+    !mission.policy!.allowed_executor_refs.includes(graph.agents.find(agent => agent.agent_id === id)!.executor_ref)))) {
+    throw new Error("VerificationReceipt executor policy rejected");
+  }
   if (run.verdict === "VERIFIED") verifyRequiredReceipts(mission,run);
   const integrity = verifyProofReceipt({ receipt: run.proof, evidence: run.evidence, observations: run.observations, final_output: run.final_output });
   const binding = bindingFor(graph, mission, run.run_id, run.execution_id);

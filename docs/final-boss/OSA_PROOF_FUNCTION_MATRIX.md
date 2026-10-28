@@ -1,0 +1,23 @@
+# Final Boss — wstępna macierz funkcji
+
+Baza: `721cf8cfe7c2fd216fa2a993e5871b0faa26bcdf`. To **nie jest kompletny audyt całego produktu**: wiersze grupują sprawdzone granice; nieocenione funkcje pozostają UNKNOWN. PASS dotyczy tylko wskazanego zakresu testowego, nie produkcji. Historyczny audyt `docs/PRODUCT_AUDIT_2026-10-24.md` dotyczy starszej bazy.
+
+| FUNCTION_ID | MODULE | IMPLEMENTATION_PATH | API | STATUS | TEST | EVIDENCE | DEPENDENCIES | PRIORITY | NEXT_ACTION |
+|---|---|---|---|---|---|---|---|---|---|
+| MK-01 | Mission lifecycle i idempotencja | packages/runtime/src/mission-kernel.ts | /missions/:id/run | PARTIAL | mission-kernel.test | evidence/mission-kernel-test.txt | store, runtime | P0 | test wielu procesów i recovery aktywnych zadań |
+| MK-02 | Anulowanie | packages/runtime/src/mission-kernel.ts | /missions/:id | PARTIAL | mission-kernel.test | aktywne anulowanie odrzucone | executor abort | P0 | rzeczywisty abort i cleanup |
+| TG-01 | TeamGraph | packages/team-graph/src | /teams | PARTIAL | mission-kernel.test | liniowy handoff; brak dowodu równoległości | kernel | P1 | test pełnej ścieżki UI |
+| WK-01 | Supervisor/workers | packages/runtime/src; packages/fleet | /missions/:id/run | PARTIAL | npm test | fixture i lokalne kontrakty; izolowana flota nieudowodniona | sandbox | P1 | realne izolowane zadania i cleanup |
+| PF-01 | Proof/Verifier | packages/proof-core/src/mission-verifier.ts | /runs/:id/proof | PARTIAL | mission-kernel.test | testy zmiany receipt i odmowy polityki | evidence | P0 | niezależny bundle, integralność wszystkich artefaktów i provenance |
+| AR-01 | Artefakty | apps/api/src/chat-delivery.ts | /unified | UNKNOWN | brak pełnego E2E | brak aktualnego dowodu download | storage | P1 | rzeczywisty zapis/download/hash po restarcie |
+| LD-01 | Timeline/replay | packages/events/src; packages/runtime/src | /runs/:id/events | PARTIAL | mission-kernel.test | lokalny snapshot i kontrola hasha | trwały store | P1 | niezależny replay po restarcie procesu |
+| NM-01 | NeurOSA recall | packages/adapters/src/brain.ts | status/recall v1 | PARTIAL | npm test | kontrolowane transporty; dedykowany brain wymagany | auth, NeurOSA | P0 | izolowany реальный BrainApiServer i scope test |
+| NM-02 | NeurOSA live persistence | apps/brain-api/src/server.ts (repo NeurOSA) | remember/recall | BLOCKED | nie uruchomiono | historyczny документ NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md; aktywny runtime nie sprawdzony | trwały storage, oddzielna zgoda na produkcję | P0 | izolowany restart-test; produkcyjny cutover wyłącznie po zgodzie |
+| BR-01 | Brain planner i reflection | packages/brain/src; packages/adapters/src/brain.ts | /missions/:id/plan | PARTIAL | npm test | kontrakty i testy fixture | NM-01 | P0 | realna integracja pamięci, test injection |
+| MM-01 | Model Mesh | packages/adapters/src/mesh.ts | /build/status | PARTIAL | npm test | brak live wywołania | provider, budżet | P1 | ograniczony test rzeczywistego providera |
+| FS-01 | Fleet/Sandbox | packages/fleet; apps/worker | /platform | BLOCKED | 3 testy środowiskowe pominięte w npm test | brak dowodu realnego Dockera | infrastruktura | P1 | izolowany worker i cleanup |
+| AU-01 | Auth/RBAC | apps/api/src/index.ts; packages/session | /session | PARTIAL | npm test | istnieją kontrole sesji i organizacji; enterprise RBAC nieudowodniony | tożsamość, store | P0 | dwa tenanty, wszystkie zasoby, odmowy |
+| TL-01 | Tools/MCP/Skills | packages/adapters/src/integrations.ts | katalogi integracji | PARTIAL | npm test | historyczny audyt wskazuje konfigurację zamiast potwierdzonego połączenia | grants, adapter | P1 | realny tools/call i receipt |
+| QS-01 | Queue/Scheduler | packages/control | endpointy control plane | PARTIAL | npm test | brak dowodu trwałej kolejki | storage | P0 | restart, recovery i concurrency |
+| UI-01 | Dashboard | dashboard-src/src | interfejs | UNKNOWN | browser E2E nieuruchomione | brak dowodu desktop/mobile | auth, API | P1 | test operator → misja → wynik |
+| CI-01 | CI/deploy | .github/workflows; vercel.json | — | UNKNOWN | lokalne npm test | bieżące CI i rollback niezweryfikowane | preview | P1 | kontrole dokładnego SHA i recovery |

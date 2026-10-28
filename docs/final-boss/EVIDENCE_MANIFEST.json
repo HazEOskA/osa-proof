@@ -1,0 +1,17 @@
+{
+  "schema": "osa.final_boss.evidence.v1",
+  "base_sha": "721cf8cfe7c2fd216fa2a993e5871b0faa26bcdf",
+  "evidence": [
+    {
+      "path": "docs/final-boss/evidence/mission-kernel-test.txt",
+      "sha256": "223e8a16585fe51e66dcddf14a03a00fcbceb2e4d8c95c6708db7c70042013a3",
+      "command": "node --test dist/tests/mission-kernel.test.js",
+      "scope": "local tests, includes fixtures",
+      "result": "12 passed; 0 failed"
+    }
+  ],
+  "core_e2e": "BLOCKED",
+  "neurosa_e2e": "BLOCKED",
+  "full_product": "UNKNOWN",
+  "production_ready": "BLOCKED"
+}

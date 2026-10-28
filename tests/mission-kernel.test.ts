@@ -105,6 +105,15 @@ test("receipt tampering, foreign tenant/mission and consistently resealed false 
   assert.throws(() => verifyMissionExecution(graph, input, failed), /rejected/);
 });
 
+test("independent mission verifier rejects a pinned executor excluded by policy", async () => {
+  const input = mission();
+  input.policy = { allowed_executor_refs: ["plan", "build"] };
+  const run = await new OsaRuntime(registry()).run(graph, input);
+  verifyMissionExecution(graph, input, run);
+  const denied = { ...input, policy: { allowed_executor_refs: ["plan"] } };
+  assert.throws(() => verifyMissionExecution(graph, denied, run), /executor policy rejected/);
+});
+
 test("cancellation is terminal and active cancellation fails closed", async () => {
   const kernel = new MissionKernel();
   await kernel.create(mission(), graph);
