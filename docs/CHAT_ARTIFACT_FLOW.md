@@ -34,3 +34,11 @@ Przepływ korzysta z istniejącego MissionStore. Cache ogrodzenia execution_id j
 `npm test` obejmuje rzeczywisty lokalny HTTP/SSE, obserwację postępu przed zakończeniem generowania, powiązania identyfikatorów, odmowy i ogrodzenie ponowień. Kontrolowany generator istnieje wyłącznie w testach, nie jest fallbackiem produkcyjnym.
 
 `node scripts/test-chat-delivery-browser.cjs` sprawdza Android/desktop: prompt, postęp, runtime, sześć pobrań i hashe, funkcjonalny artefakt w izolowanym iframe, replay, offline HTML oraz przywrócenie po odświeżeniu. Domyślnie testuje transport kontrolowany i rzeczywisty runtime; osobny live test modelu wymaga wdrożenia z potwierdzoną bezpłatną konfiguracją. Nie należy mylić tych dwóch dowodów.
+
+## Eksport i niezależny audyt — stan 28.10.2026
+
+Istniejące przyciski pobierają **sześć** plików jednego wykonania: artefakt, `*-bundle.json`, `*-evidence.json`, `*-trace.jsonl`, `*-proof.json` oraz `*-replay.html`. `bundle.schema = osa.chat_delivery.v1`; jego `record` jest rekordem misji. `trace.jsonl` jest zapisem elementów `bundle.record.timeline` (jeden JSON na linię). **Nie podawaj całego bundla** jako argumentu `scripts/verify-mission-record.cjs`; CLI oczekuje obiektu `osa.mission.v1`, tj. wyeksportowanego zapisu misji Studio lub `bundle.record`.
+
+Klient weryfikuje `bundle_sha256`, powiązanie wykonania, Proof i hash bajtów artefaktu. Offline Replay weryfikuje integralność pakietu i odtwarza zdarzenia, lecz nie odtwarza rzeczywistych działań workerów. Operator zgłosił 47 pozycji w Replay; bez eksportu konkretnej misji jest to **obserwacja UI**, nie niezależnie policzone 47 wywołań narzędzi. Nie utożsamiać liczby pozycji timeline, `AGENT_STARTED` i operacji narzędzi.
+
+Do samodzielnego, ograniczonego audytu przez Hermesa: [HERMES_AUDIT_QUICK_START.md](./HERMES_AUDIT_QUICK_START.md). Status produkcyjny pozostaje `BLOCKED` zgodnie z [SECURITY_VERDICT.md](./final-boss/SECURITY_VERDICT.md).
