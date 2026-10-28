@@ -11,3 +11,5 @@ Zweryfikowana tożsamość na ogólnych trasach teams/missions/runs wymaga teraz
 Test Studio z lokalnym NeurOSA obejmuje syntetyczną sesję i ograniczone testowe executory; nie potwierdza systemowej izolacji workerów. Pobierany rekord może zawierać prywatny kontekst pamięci i wymaga ochrony jak dane misji.
 
 Verifier wymaga pełnego liniowego przebiegu runtime i wiąże evidence z właściwą operacją oraz eventem; odrzuca usunięty replay po ponownym obliczeniu lokalnego hasha. To nie dowód rzeczywistego wykonania ani autentyczności całego podrobionego pakietu.
+
+Zewnętrznie dostarczone treści evidence mogą być porównane z zapisanym SHA-256 i długością; brak lub modyfikacja wymaganej treści blokuje VERIFIED w CLI. Brak zobowiązania do treści jest raportowany jawnie, a nie jest dowodem dostępności artefaktu. Hash nie uwierzytelnia źródła.

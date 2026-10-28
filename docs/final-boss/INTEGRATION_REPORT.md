@@ -61,3 +61,11 @@ Podczas testowania wystąpiła kolizja czasowa, w której oba procesy odmówiły
 `node scripts/inspect-mission-store.cjs <directory> <mission-id>` diagnostykuje lokalny snapshot tylko do odczytu, rozróżnia blokadę, aktywne wykonanie i zweryfikowany ukończony rekord. Stan jest obserwacją nieatomową: nie potwierdza, że lock jest osierocony, nie uprawnia do jego usunięcia ani bezpiecznego retry. Aktywne misje nadal wymagają uzgodnienia operatora.
 
 Regresja `npm test`: 271 PASS, 0 FAIL, 3 SKIP; dwa testy procesów powtórzono sześć razy. Dowód: `evidence/mission-store-process-tests.txt`.
+
+## Niezależna kontrola treści evidence
+
+`EvidenceCollector` zapisuje hash oraz liczbę bajtów UTF-8, ale nie zapisuje samej treści. `verifyEvidenceContents` sprawdza dostarczoną treść wobec tego zobowiązania, a CLI przyjmuje opcjonalny drugi argument z mapą JSON `evidence_id → treść UTF-8`. Po zweryfikowaniu MissionRecord CLI odmawia wyniku VERIFIED, jeśli jakakolwiek treść objęta zobowiązaniem nie została dostarczona, jest zmieniona lub mapa zawiera nieznany identyfikator. Jeżeli rekord nie zawiera zobowiązań do treści, wynik mówi `NO_CONTENT_COMMITMENTS`; nie potwierdza to istnienia plików.
+
+Test obejmuje tekst wielobajtowy, brak, podmianę, błędną długość, duplikat i nieznany identyfikator oraz osobny proces CLI. `npm test`: 272 PASS, 0 FAIL, 3 SKIP; `evidence/artifact-content-test.txt`. Ta kontrola nie wprowadza nowego formatu APR, nie zapisuje artefaktów, nie potwierdza ich pochodzenia ani poprawności semantycznej. Pełny bundle i trwały magazyn artefaktów nadal wymagają wdrożenia.
+
+Użycie: `node scripts/verify-mission-record.cjs <record.json> [evidence-content-map.json]`. Mapa może zawierać dane wrażliwe; chronić ją jak oryginalne artefakty.

@@ -127,6 +127,13 @@
       "command": "node --test dist/tests/mission-store-process.test.js (six repetitions)",
       "scope": "two local OS processes, synthetic side effect, SIGKILL, lock denial and diagnostic; no power-loss or distributed-store proof",
       "result": "2 tests passed per repetition; six repetitions passed"
+    },
+    {
+      "path": "docs/final-boss/evidence/artifact-content-test.txt",
+      "sha256": "31bac1141bc2a810f7e523a517262e83233a0f9c502111f5aa6795dc1564a3a7",
+      "command": "node --test dist/tests/artifact-content.test.js",
+      "scope": "UTF-8 content committed in evidence, positive and negative independent CLI tests",
+      "result": "1 passed; 0 failed"
     }
   ],
   "core_e2e": "PARTIAL: real browser/local NeurOSA; test session and unsandboxed test executors",
