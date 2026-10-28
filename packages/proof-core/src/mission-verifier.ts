@@ -62,6 +62,53 @@ export function verifyCompletedMission(record: MissionRecord): void {
       body.mission_sha256 !== digest(record.mission) || body.task_graph_sha256 !== digest(record.task_graph) ||
       body.verification_receipt_sha256 !== record.run.proof.receipt_sha256 || body.timeline_sha256 !== digest(record.timeline) ||
       digest(record.task_graph) !== digest(expectedTasks)) throw new Error("MissionReceipt rejected");
+  verifyReplayCompleteness(record, order);
+}
+
+// Structural consistency only: an unanchored bundle can still be forged in its
+// entirety. Do not confuse this with authenticated provenance of execution.
+function verifyReplayCompleteness(record: MissionRecord, order: string[]): void {
+  const run = record.run!;
+  const fail = (): never => { throw new Error("MissionReceipt replay incomplete or inconsistent"); };
+  for (let i = 0; i < record.timeline.length; i++) {
+    const event = record.timeline[i];
+    if (event.event_id !== `${record.mission.mission_id}:mission:${i + 1}` || event.mission_id !== record.mission.mission_id ||
+        event.tenant_id !== record.mission.organization_id || event.subject !== record.mission.mission_id ||
+        event.correlation_id !== record.mission.mission_id || event.causation_id !== (i ? record.timeline[i - 1].event_id : undefined) ||
+        event.source !== (event.event_type.startsWith("BRAIN_") ? "osa.brain" : "osa.mission-kernel") ||
+        typeof event.timestamp !== "string" || !Number.isFinite(Date.parse(event.timestamp))) fail();
+  }
+  const lifecycle = record.timeline.filter(event => event.event_type.startsWith("MISSION_")).map(event => event.event_type);
+  if (digest(lifecycle) !== digest(["MISSION_CREATED", "MISSION_PLANNED", "MISSION_EXECUTING", "MISSION_VERIFYING", "MISSION_COMPLETED"])) fail();
+  let cursor = 0, evidenceIndex = 0;
+  const take = (type: string, agentId?: string) => {
+    const event = run.events[cursor++];
+    if (!event || event.type !== type || event.agent_id !== agentId) fail();
+    return event;
+  };
+  const created = take("RUN_CREATED");
+  if (created.payload.objective !== record.mission.objective) fail();
+  take("RUN_STARTED");
+  order.forEach((agentId, index) => {
+    const agent = record.team.agents.find(item => item.agent_id === agentId)!;
+    const operation = `${run.execution_id}:op:${index + 1}:${agentId}`;
+    const started = take("AGENT_STARTED", agentId);
+    if (started.payload.executor_ref !== agent.executor_ref || started.payload.role !== agent.role || started.payload.operation_id !== operation) fail();
+    while (run.events[cursor]?.type === "EVIDENCE_RECORDED") {
+      const event = take("EVIDENCE_RECORDED", agentId), evidence = run.evidence[evidenceIndex++];
+      if (!evidence || evidence.sequence !== evidenceIndex || evidence.evidence_id !== `${run.run_id}:${run.execution_id}:evidence:${evidenceIndex}` ||
+          evidence.agent_id !== agentId || evidence.producer.executor_ref !== agent.executor_ref || evidence.producer.operation_id !== operation ||
+          event.payload.evidence_id !== evidence.evidence_id || event.payload.evidence_sha256 !== evidence.evidence_sha256 || event.payload.kind !== evidence.kind) fail();
+    }
+    take("AGENT_COMPLETED", agentId);
+    if (order[index + 1]) {
+      const handoff = take("HANDOFF_CREATED", agentId);
+      if (handoff.payload.from_agent_id !== agentId || handoff.payload.to_agent_id !== order[index + 1]) fail();
+    }
+  });
+  if (evidenceIndex !== run.evidence.length) fail();
+  if (take("VERIFICATION_STARTED").payload.requirement_count !== record.mission.requirements.length) fail();
+  if (take("VERIFICATION_PASSED").payload.proof_id !== run.proof.proof_id || take("RUN_VERIFIED").payload.proof_id !== run.proof.proof_id || cursor !== run.events.length) fail();
 }
 
 // Same-process provenance/integrity gate, not a cryptographic external attestation.

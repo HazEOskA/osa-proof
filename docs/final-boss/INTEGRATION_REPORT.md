@@ -45,3 +45,9 @@ Komendy: build dashboardu `node scripts/build-dashboard.cjs`; lokalny test `NODE
 Studio przekazuje teraz dokładny TeamGraph, misję i wynik istniejącemu widokowi replay bez ponownego wywołania runtime. Etykieta źródła identyfikuje Studio. Rzeczywisty lokalny test przeglądarki na 1440×900 oraz 390×844: Studio → lokalny NeurOSA → dwa sekwencyjne testowe odczyty → download i verifier → replay tej samej misji, z krokiem RUN_VERIFIED. Wykonano kontrolowany restart magazynu misji i Brain API; odmowy i test manipulacji pozostają aktywne. Dowody: `evidence/browser-neurosa-replay-result.json`, `evidence/browser-neurosa-replay-mobile-result.json` i rekordy misji. `npm test`: 269 PASS, 0 FAIL, 3 SKIP; build dashboardu PASS.
 
 Nadal: syntetyczna sesja, testowi executory bez sandboxu, brak produkcyjnej trwałości i zewnętrznej atestacji. Ten wynik nie potwierdza pełnego zakresu audytu repozytorium.
+
+## Spójność kompletności replay po przeliczeniu hashy
+
+W kontrolowanej kopii usunięto wszystkie eventy runtime i ich projekcję w timeline, odtworzono numerację oraz ponownie obliczono hash timeline i MissionReceipt. Poprzednie porównanie dwóch pustych list nie gwarantowało kompletności. Verifier sprawdza teraz wymagane eventy lifecycle, liniową kolejność agentów i handoffów, powiązania producentów oraz każdego evidence z eventem, operacją i wykonawcą, a także numerację i scope timeline. Odrzuca niekompletny replay nawet po ponownym obliczeniu kontrolnych hashy. Osobny test odrzuca timeline z obcym tenantem po przeliczeniu MissionReceipt.
+
+Regresja: `npm test` 269 PASS / 0 FAIL / 3 SKIP. `node --test dist/tests/mission-kernel.test.js`: 12 PASS. Wcześniej zapisane rzeczywiste rekordy browser/NeurOSA nadal przechodzą verifier. To kontrola struktury i spójności; wszystkie dane wraz z niezakotwiczonymi hashami można nadal podrobić, więc pochodzenie wymaga zewnętrznego zakotwiczenia.

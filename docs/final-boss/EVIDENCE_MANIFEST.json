@@ -113,6 +113,13 @@
       "command": "NEUROSA_CHECKOUT=<checkout> NODE_PATH=<playwright> node scripts/final-boss-browser-neurosa.cjs with OSA_BROWSER_VIEWPORT=mobile",
       "scope": "browser local NeurOSA and replay; synthetic session, unsandboxed test executors",
       "result": "PASS within stated scope"
+    },
+    {
+      "path": "docs/final-boss/evidence/replay-completeness-test.txt",
+      "sha256": "acf2ccf3b804dd1f5b01afa885e4ffc9cf857b6ff70abaacb553a9f0a525a8b3",
+      "command": "node --test dist/tests/mission-kernel.test.js",
+      "scope": "local completeness and foreign tenant replay tampering, including resealed hashes",
+      "result": "12 passed; 0 failed"
     }
   ],
   "core_e2e": "PARTIAL: real browser/local NeurOSA; test session and unsandboxed test executors",

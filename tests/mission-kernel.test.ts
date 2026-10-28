@@ -42,6 +42,24 @@ test("mission lifecycle comes from real runtime and completion seals the bound r
   const missingReplayEvent = structuredClone(completed);
   missingReplayEvent.run!.events.pop();
   assert.throws(() => verifyCompletedMission(missingReplayEvent), /runtime replay rejected/);
+  // Rehashing an incomplete timeline must not make an execution complete.
+  const missingAllReplay = structuredClone(completed);
+  missingAllReplay.run!.events = [];
+  missingAllReplay.timeline = missingAllReplay.timeline.filter(e => e.payload.run_id === undefined && e.payload.execution_id === undefined);
+  missingAllReplay.timeline.forEach((e, i, events) => {
+    e.event_id = `${mission().mission_id}:mission:${i + 1}`;
+    if (i) e.causation_id = events[i - 1].event_id; else delete e.causation_id;
+  });
+  const { receipt_sha256: _missingHash, ...missingBody } = missingAllReplay.mission_receipt!;
+  const missingResealed = { ...missingBody, timeline_sha256: digest(missingAllReplay.timeline) };
+  missingAllReplay.mission_receipt = { ...missingResealed, receipt_sha256: digest(missingResealed) };
+  assert.throws(() => verifyCompletedMission(missingAllReplay), /replay incomplete/);
+  const foreignTimeline = structuredClone(completed);
+  foreignTimeline.timeline[0].tenant_id = "foreign";
+  const { receipt_sha256: _foreignHash, ...foreignBody } = foreignTimeline.mission_receipt!;
+  const foreignResealed = { ...foreignBody, timeline_sha256: digest(foreignTimeline.timeline) };
+  foreignTimeline.mission_receipt = { ...foreignResealed, receipt_sha256: digest(foreignResealed) };
+  assert.throws(() => verifyCompletedMission(foreignTimeline), /replay incomplete/);
   assert.deepEqual(completed.timeline.filter((e) => e.event_type.startsWith("MISSION_")).map((e) => e.event_type), ["MISSION_CREATED", "MISSION_PLANNED", "MISSION_EXECUTING", "MISSION_VERIFYING", "MISSION_COMPLETED"]);
   assert.ok(completed.timeline.every((e) => e.mission_id === mission().mission_id && e.tenant_id === graph.organization_id));
   assert.equal(completed.timeline.find((e) => e.event_type === "EVIDENCE_RECORDED")?.evidence[0], run.evidence[0].evidence_id);
