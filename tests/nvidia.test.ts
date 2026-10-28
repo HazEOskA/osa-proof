@@ -22,6 +22,27 @@ test("NVIDIA: server authorization, Polish prompt and response metadata", async 
   assert.equal(result.status, "PROVIDER_RESPONSE"); assert.ok(result.request_id);
   assert.ok(!JSON.stringify(result).includes("test-secret"));
 });
+test("NVIDIA Lightning: direct chat disables lengthy reasoning without affecting other models", async () => {
+  for (const model of ["nvidia/nemotron-3.5-lightning-30b-a3b", "nvidia/other-model"]) {
+    const result = await nvidiaComplete("Siema", {NVIDIA_API_KEY:"test-secret", NVIDIA_MODEL:model}, async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      assert.equal(body.stream, false);
+      assert.equal(body.max_tokens, 1024);
+      if (model === "nvidia/nemotron-3.5-lightning-30b-a3b")
+        assert.deepEqual(body.chat_template_kwargs, { enable_thinking: false });
+      else assert.equal(body.chat_template_kwargs, undefined);
+      return Response.json({choices:[{message:{content:"Cześć!"},finish_reason:"stop"}]});
+    });
+    assert.equal(result.text, "Cześć!");
+  }
+});
+test("NVIDIA timeout is classified separately from failed connection", async () => {
+  await assert.rejects(nvidiaComplete("Test", env, async () => {
+    throw new DOMException("test provider timed out", "TimeoutError");
+  }), (e: unknown) => e instanceof NvidiaError && e.code === "NVIDIA_TIMEOUT" &&
+     e.status === 504 && !e.message.includes("test provider"));
+});
+
 test("NVIDIA: provider errors are sanitized and never become success", async () => {
   for (const status of [401,403,429,500]) {
     await assert.rejects(nvidiaComplete("hello", env, (async () => new Response("test-secret", { status })) as typeof fetch), (e: unknown) => e instanceof NvidiaError && e.status === (status === 429 ? 429 : 502) && !e.message.includes("test-secret"));
