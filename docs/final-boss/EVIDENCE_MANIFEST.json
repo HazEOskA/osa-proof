@@ -29,6 +29,34 @@
       "command": "node --test dist/tests/mission-kernel.test.js",
       "scope": "local replay consistency and tampering regression",
       "result": "12 passed; 0 failed"
+    },
+    {
+      "path": "docs/final-boss/evidence/project-scope-test.txt",
+      "sha256": "eb9e39d2a579312bfecc0b0694a8acd9d356379bb9321b6e4cfc73c8c6b6ebe4",
+      "command": "node --test dist/tests/mission-api.test.js",
+      "scope": "same-organization project authorization with injected test identities",
+      "result": "2 passed; 0 failed"
+    },
+    {
+      "path": "docs/final-boss/evidence/browser-unified-results.json",
+      "sha256": "3408825d28d171eaa35881eea9efd7a92a21acd96944bdd3eaf10063e98bea30",
+      "command": "NODE_PATH=<playwright> node scripts/test-unified-browser.cjs",
+      "scope": "local open/fixture mode; actual SHA-256, browser desktop and mobile viewport; no NeurOSA",
+      "result": "2 viewport checks passed"
+    },
+    {
+      "path": "docs/final-boss/evidence/local-live-neurosa-project-scope.json",
+      "sha256": "b4dd42e6481d77905649cc769c56bdfdc461547be96706b91f84afb7335fdbfe",
+      "command": "NEUROSA_CHECKOUT=<checkout> node scripts/final-boss-local-neurosa.cjs",
+      "scope": "isolated real Brain API and SQLite; test identities; rerun after project access change",
+      "result": "PASS within stated scope"
+    },
+    {
+      "path": "docs/final-boss/evidence/local-live-neurosa-project-scope-mission.json",
+      "sha256": "f48916c0e6c0c8525c97eb257c9d970a77d5e931c1450131015bf749c598b599",
+      "command": "NEUROSA_CHECKOUT=<checkout> node scripts/final-boss-local-neurosa.cjs",
+      "scope": "isolated real Brain API and SQLite; test identities; rerun after project access change",
+      "result": "PASS within stated scope"
     }
   ],
   "core_e2e": "BLOCKED",

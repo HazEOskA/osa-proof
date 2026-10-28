@@ -161,6 +161,14 @@ function requireSession(
   return session;
 }
 
+// Local-dev/open identities are explicitly development-only and have no trusted
+// project grants. Real identities must carry a server-issued project membership.
+function canAccessProject(session: SessionRecord, organization: string, project: string): boolean {
+  const identity = session.identity;
+  return identity.organization_id === organization && typeof project === "string" && project.length > 0 &&
+    (identity.provider === "local-dev" || (identity.verified === true && Array.isArray(identity.project_ids) && identity.project_ids.includes(project)));
+}
+
 export async function handleApiRequest(
   request: IncomingMessage,
   response: ServerResponse,
@@ -632,7 +640,9 @@ export async function handleApiRequest(
         if (!session) return;
         const graph = await readJson<TeamGraph>(request);
         validateTeamGraph(graph);
-        if (graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (!canAccessProject(session, graph.organization_id, graph.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        const existing = state.teams.get(state.teamKey(graph.team_id, graph.version));
+        if (existing && (existing.organization_id !== graph.organization_id || existing.project_id !== graph.project_id)) return send(response, 409, { error: "TEAM_SCOPE_CONFLICT" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         state.teams.set(state.teamKey(graph.team_id, graph.version), structuredClone(graph));
         return send(response, 201, graph);
@@ -644,7 +654,7 @@ export async function handleApiRequest(
         const version = url.searchParams.get("version");
         if (!version) return send(response, 400, { error: "version query parameter is required" });
         const graph = state.teams.get(state.teamKey(parts[1], version));
-        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (graph && !canAccessProject(session, graph.organization_id, graph.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         return graph ? send(response, 200, graph) : send(response, 404, { error: "team not found" });
       }
 
@@ -652,9 +662,9 @@ export async function handleApiRequest(
         const session = requireSession(request, response, state);
         if (!session) return;
         const mission = await readJson<Mission>(request);
-        if (mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (!canAccessProject(session, mission.organization_id, mission.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         const graph = state.teams.get(state.teamKey(mission.team_id, mission.team_version));
-        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (graph && !canAccessProject(session, graph.organization_id, graph.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (!graph) return send(response, 404, { error: "team version not found" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         await state.missionKernel.create(mission, graph);
@@ -667,7 +677,7 @@ export async function handleApiRequest(
         if (!session) return;
         const record = await state.missionKernel.get(parts[1]);
         if (!record) return send(response, 404, { error: "mission not found" });
-        if (record.mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (!canAccessProject(session, record.mission.organization_id, record.mission.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (method === "GET" && parts.length === 2) return send(response, 200, record);
         if (method === "GET" && parts[2] === "timeline") return send(response, 200, record.timeline);
         if (method === "GET" && parts[2] === "run") return record.run ? send(response, 200, record.run) : send(response, 404, { error: "mission has no run" });
@@ -691,7 +701,7 @@ export async function handleApiRequest(
         if (!session) return;
         const run = state.runs.get(parts[1]);
         if (!run) return send(response, 404, { error: "run not found" });
-        if (run.proof.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (!canAccessProject(session, run.proof.organization_id, run.proof.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (parts.length === 2) return send(response, 200, run);
         if (parts[2] === "events") return send(response, 200, run.events);
         if (parts[2] === "evidence") return send(response, 200, run.evidence);

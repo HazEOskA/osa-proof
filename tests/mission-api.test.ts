@@ -52,3 +52,41 @@ test("HTTP Mission Kernel persists proof and timeline across API restarts withou
     assert.equal(status.persistence, "PROCESS_MEMORY");
   } finally { await close(); await rm(directory, { recursive: true, force: true }); }
 });
+
+test("trusted identities cannot access or overwrite another project in the same organization", async () => {
+  const registry = new ExecutorRegistry();
+  registry.register("reader", () => ({ output: {}, evidence: [{ kind: "check", data: { ok: true } }] }));
+  const state = new ApiState(undefined, undefined, undefined, "session");
+  const identity = (project: string) => ({ identity_id: `user-${project}`, provider: "github" as const, subject: `user-${project}`,
+    display_name: project, verified: true, roles: [], organization_id: "org-a", project_ids: [project] });
+  const headers = (project: string) => ({ "content-type": "application/json", authorization: `Bearer ${state.sessions.create(identity(project)).token}` });
+  const a = headers("project-a"), b = headers("project-b");
+  const server = createApiServer(registry, state);
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const post = (path: string, body: unknown, auth: Record<string, string>) => fetch(base + path, { method: "POST", headers: auth, body: JSON.stringify(body) });
+  const graph: TeamGraph = { organization_id: "org-a", project_id: "project-a", team_id: "team-a", version: "1",
+    agents: [{ agent_id: "reader", role: "reader", executor_ref: "reader" }], edges: [] };
+  const mission: Mission = { organization_id: "org-a", project_id: "project-a", mission_id: "mission-a", team_id: graph.team_id,
+    team_version: graph.version, entry_agent_id: "reader", objective: "read", input: {},
+    requirements: [{ requirement_id: "checked", type: "evidence_field_equals", evidence_kind: "check", field: "ok", expected: true }] };
+  try {
+    assert.equal((await post("/teams", graph, a)).status, 201);
+    assert.equal((await post("/teams", graph, b)).status, 403);
+    assert.equal((await post("/teams", { ...graph, project_id: "project-b" }, b)).status, 409);
+    assert.equal((await fetch(`${base}/teams/team-a?version=1`, { headers: b })).status, 403);
+    assert.equal((await post("/missions", mission, b)).status, 403);
+    assert.equal((await post("/missions", mission, a)).status, 201);
+    for (const suffix of ["", "/timeline", "/run", "/receipt", "/plan"]) {
+      assert.equal((await fetch(`${base}/missions/mission-a${suffix}`, { headers: b })).status, 403);
+    }
+    assert.equal((await post("/missions/mission-a/run", {}, b)).status, 403);
+    const response = await post("/missions/mission-a/run", {}, a);
+    assert.equal(response.status, 201);
+    const run = await response.json() as { run_id: string };
+    for (const suffix of ["", "/events", "/evidence", "/proof"]) {
+      assert.equal((await fetch(`${base}/runs/${run.run_id}${suffix}`, { headers: b })).status, 403);
+      assert.equal((await fetch(`${base}/runs/${run.run_id}${suffix}`, { headers: a })).status, 200);
+    }
+  } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
+});

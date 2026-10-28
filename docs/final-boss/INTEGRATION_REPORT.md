@@ -21,3 +21,11 @@ Wykryto błąd: adapter wysyłał ścieżkę `.json`, a NeurOSA NativeBrainWorks
 ## Spójność replay
 
 Poprzedni verifier nie porównywał `run.events` z zapieczętowaną `timeline`; zmiana zdarzenia mogła przejść przy niezmienionych receiptach. Verifier porównuje teraz kolejność, identyfikatory, scope i projekcję payloadu; testy odrzucają zmienione i usunięte zdarzenie. Niezależna weryfikacja wcześniejszego zapisanego rekordu nadal przechodzi. To kontrola spójności, nie podpis ani ochrona przed całkowitym przeliczeniem i zastąpieniem całego rekordu.
+
+## Izolacja projektu i test przeglądarki
+
+Trasy `/teams`, `/missions/:id/*` i `/runs/:id/*` sprawdzają teraz również server-side `project_ids` zweryfikowanej tożsamości. Użytkownik innego projektu w tej samej organizacji otrzymuje 403; próba nadpisania identycznego klucza zespołu z innego scope otrzymuje 409. Test obejmuje create, read, plan, run, timeline, proof i evidence. Tożsamości `local-dev` i tryb open zachowują wyłącznie deweloperską semantykę, bez produkcyjnej gwarancji izolacji. Inne trasy nie były objęte tą poprawką.
+
+`node scripts/test-unified-browser.cjs` z lokalnym Chromium przeszedł dla viewportów 390×844 i 1440×900. Scenariusz przez dashboard uruchamia rzeczywiste SHA-256, sprawdza receipt i otwiera replay UI. Wykorzystuje lokalny tryb open/fixture i ścieżkę Unified, bez NeurOSA i bez modelu; nie jest to dashboardowy Final Boss ani test na rzeczywistym telefonie. Wyniki: `evidence/browser-unified-results.json`. Po zmianie izolacji ponowiono test izolowanego NeurOSA; nowe identyfikatory znajdują się w `evidence/local-live-neurosa-project-scope.json`.
+
+Regresja po zmianie: 269 PASS, 0 FAIL, 3 SKIP (272 testy). Dashboard TypeScript/Vite build PASS.
