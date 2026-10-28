@@ -1,4 +1,5 @@
 import SolarWorld from "../ui/SolarWorld";
+import {useSocialAuthStatus} from "./SocialLogin";
 import { Status, Mono, OsaIcon, statusText } from "../ui/primitives";
 import { useState } from "react";
 import { useOsa, type ViewId } from "../ctx";
@@ -29,12 +30,13 @@ const LAUNCH: { label: string; icon: string; color: string; view: ViewId; built:
 
 export default function Home() {
   const { data, graph, source, go, openPalette, enterLayer } = useOsa();
+  const social = useSocialAuthStatus().status;
   const [layerNote, setLayerNote] = useState("Wybierz warstwę, aby sprawdzić uprawnienia w systemie.");
   const verified = data.runs.filter((r) => r.verdict === "VERIFIED").length;
   const failed = data.runs.filter((r) => r.verdict === "FAILED").length;
   const anyModel = data.team.agents.some((a) => a.model_ref);
   const steps: { n: string; s: string; note: string }[] = [
-    { n: "Połącz tożsamość", s: "NOT CONNECTED", note: "OSA Proof nie udostępnia endpointu logowania" },
+    { n: "Połącz tożsamość", s: social.authenticated ? "DONE" : "NOT CONNECTED", note: social.authenticated ? "Konto OAuth zweryfikowane" : "Google i GitHub: logowanie aktywne po konfiguracji dostawców; operator to rola, nie odrębne konto" },
     { n: "Połącz GitHub", s: "UNKNOWN", note: "Repozytorium jest publiczne; brak informacji o połączeniu" },
     { n: "Połącz model", s: anyModel ? "DONE" : "UNKNOWN", note: anyModel ? "model_ref ustawiono" : "agenci nie mają przypisanego modelu" },
     { n: "Utwórz środowisko pracy", s: "DONE", note: `${data.team.organization_id} / ${data.team.project_id}` },
