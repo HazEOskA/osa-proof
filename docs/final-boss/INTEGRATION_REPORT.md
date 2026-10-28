@@ -6,7 +6,7 @@ Wykonana zmiana: niezależny verifier sprawdza deklarowaną politykę dozwolonyc
 
 `npm test`: 268 PASS, 0 FAIL, 3 SKIP (271 testów). `node --test dist/tests/mission-kernel.test.js`: 12 PASS, 0 FAIL. Wyniki obejmują fixture; nie dowodzą żądanej misji OSA-ULTIMATE-001. Raport testu: `evidence/mission-kernel-test.txt`.
 
-CORE E2E: PARTIAL / misja z dashboardu przeszła na lokalnym NeurOSA; executory i sesja testowe, brak sandboxu i replay UI dla tej misji. NEUROSA E2E: PARTIAL / izolowana lokalna instancja przeszła zapis i restart, brak produkcyjnego auth i trwałości. FULL PRODUCT: UNKNOWN / nie przeprowadzono kompletnego audytu. PRODUCTION READY: BLOCKED. Lokalna misja API ma identyfikatory w `evidence/local-live-neurosa.json`; nie jest pełnym scenariuszem dashboardowym. Brak preview. Wykonanie pozostaje sekwencyjne zgodnie z obecnym TeamGraph.
+CORE E2E: PARTIAL / misja z dashboardu przeszła na lokalnym NeurOSA; executory i sesja testowe, brak sandboxu. NEUROSA E2E: PARTIAL / izolowana lokalna instancja przeszła zapis i restart, brak produkcyjnego auth i trwałości. FULL PRODUCT: UNKNOWN / nie przeprowadzono kompletnego audytu. PRODUCTION READY: BLOCKED. Lokalna misja API ma identyfikatory w `evidence/local-live-neurosa.json`; nie jest pełnym scenariuszem dashboardowym. Brak preview. Wykonanie pozostaje sekwencyjne zgodnie z obecnym TeamGraph.
 
 Aktualna aktywna ścieżka produkcyjnego SQLite nie została odczytana. Dockerfile NeurOSA podaje domyślne `/data/brain.db`; historyczny dokument opisuje wolumen `/persist` i brak zakończonego cutover. To nie jest dowód aktualnego stanu produkcji. Nie wykonano zmian produkcyjnych.
 
@@ -36,6 +36,12 @@ Dwa niezależne przebiegi `scripts/final-boss-browser-neurosa.cjs` uruchomiły i
 
 Studio wyświetla Proof i oferuje **Pobierz zapis misji**. Test pobrał JSON i przekazał go kanonicznemu verifierowi; osobne polecenie CLI ponownie sprawdziło zapisane rekordy. Po kontrolowanym restarcie NeurOSA i odtworzeniu `FileMissionStore` test sprawdził zapis pamięci i receipt. Manipulacja evidence i niedozwolone repozytorium nie otrzymały VERIFIED. Wyniki: `evidence/browser-neurosa-result.json`, `evidence/browser-neurosa-mobile-result.json` i odpowiadające im rekordy.
 
-Ograniczenia: brak Dockera, `bwrap` zakończył się błędem `open /proc/5/ns/ns`; testowi wykonawcy nie mają izolacji systemowej i nie są produkcyjną funkcją wyboru dowolnego repozytorium. To viewport mobilny Chromium, nie fizyczny telefon. Replay UI dla tej konkretnej misji i kompletny pakiet artefaktów nie zostały sprawdzone; brak zewnętrznego zakotwiczenia, poświadczenia źródła oraz produkcyjnej trwałości. Dwa odczyty nie dowodzą jakości audytu repozytorium.
+Ograniczenia: brak Dockera, `bwrap` zakończył się błędem `open /proc/5/ns/ns`; testowi wykonawcy nie mają izolacji systemowej i nie są produkcyjną funkcją wyboru dowolnego repozytorium. To viewport mobilny Chromium, nie fizyczny telefon. W poprzednim przebiegu replay UI dla tej konkretnej misji nie był sprawdzony; kompletny pakiet artefaktów nie został sprawdzony; brak zewnętrznego zakotwiczenia, poświadczenia źródła oraz produkcyjnej trwałości. Dwa odczyty nie dowodzą jakości audytu repozytorium.
 
 Komendy: build dashboardu `node scripts/build-dashboard.cjs`; lokalny test `NODE_PATH=<playwright> NEUROSA_CHECKOUT=<checkout> node scripts/final-boss-browser-neurosa.cjs`, wariant mobilny `OSA_BROWSER_VIEWPORT=mobile`. Regresja `npm test`: 269 PASS, 0 FAIL, 3 SKIP.
+
+## Replay misji ze Studio
+
+Studio przekazuje teraz dokładny TeamGraph, misję i wynik istniejącemu widokowi replay bez ponownego wywołania runtime. Etykieta źródła identyfikuje Studio. Rzeczywisty lokalny test przeglądarki na 1440×900 oraz 390×844: Studio → lokalny NeurOSA → dwa sekwencyjne testowe odczyty → download i verifier → replay tej samej misji, z krokiem RUN_VERIFIED. Wykonano kontrolowany restart magazynu misji i Brain API; odmowy i test manipulacji pozostają aktywne. Dowody: `evidence/browser-neurosa-replay-result.json`, `evidence/browser-neurosa-replay-mobile-result.json` i rekordy misji. `npm test`: 269 PASS, 0 FAIL, 3 SKIP; build dashboardu PASS.
+
+Nadal: syntetyczna sesja, testowi executory bez sandboxu, brak produkcyjnej trwałości i zewnętrznej atestacji. Ten wynik nie potwierdza pełnego zakresu audytu repozytorium.

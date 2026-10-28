@@ -72,6 +72,11 @@ async function main(){
   const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Pobierz zapis misji',exact:true}).click();
   const download=await downloadPromise;const downloaded=JSON.parse(await readFile(await download.path(),'utf8'));verifyCompletedMission(downloaded);
   assert.equal(downloaded.mission.mission_id,run.proof.mission_id);
+  await page.getByRole('button',{name:'Odtwórz przebieg',exact:true}).click();
+  const picker=page.getByRole('radio',{name:new RegExp(run.proof.mission_id)});await picker.waitFor();assert.equal(await picker.getAttribute('aria-checked'),'true');
+  const slider=page.getByRole('slider',{name:'Pozycja odtwarzania'});await slider.fill(String(run.events.length));
+  assert.equal(await slider.inputValue(),String(run.events.length));
+  await page.getByText(`#${run.events.length} RUN_VERIFIED`,{exact:true}).waitFor();
   const record=await (await fetch(`${base}/api/missions/${encodeURIComponent(run.proof.mission_id)}`,{headers:{authorization:`Bearer ${session.token}`}})).json();
   verifyCompletedMission(record);assert.match(record.brain.memory.text,new RegExp(marker));assert.equal(record.brain.memory.scope.mission_id,record.mission.mission_id);
   const wrong=state.sessions.create({...identity,identity_id:'foreign-project',project_ids:['other-project']});
@@ -86,12 +91,12 @@ async function main(){
   const oldReceipt=record.mission_receipt.receipt_sha256;await page.close();await new Promise(r=>server.close(r));server=undefined;await closeBrain();brain=await startBrain();adapter=memory();
   const recovered=await adapter.readEvent(scope,memoryReceipt.document_id);assert.equal(recovered.receipt.receipt_sha256,memoryReceipt.receipt_sha256);
   const restored=await new FileMissionStore(join(dir,'missions')).get(record.mission.mission_id);verifyCompletedMission(restored);assert.equal(restored.mission_receipt.receipt_sha256,oldReceipt);
-  const output=join(root,'docs/final-boss/evidence'),content=JSON.stringify(record,null,2)+'\n',suffix=mobile?'-mobile':'';await writeFile(join(output,`browser-neurosa${suffix}-mission.json`),content);
+  const output=join(root,'docs/final-boss/evidence'),content=JSON.stringify(record,null,2)+'\n',suffix=mobile?'-mobile':'';await writeFile(join(output,`browser-neurosa-replay${suffix}-mission.json`),content);
   const summary={schema:'osa.final-boss.browser-neurosa.v1',mission_id:record.mission.mission_id,run_id:run.run_id,execution_id:run.execution_id,
     mission_receipt_sha256:oldReceipt,proof_receipt_sha256:run.proof.receipt_sha256,memory_receipt_sha256:memoryReceipt.receipt_sha256,
     memory_context_sha256:record.brain.memory.context_sha256,record_sha256:createHash('sha256').update(content).digest('hex'),events:record.timeline.length,evidence:run.evidence.length,
-    checks:['studio_browser_mission_created','synthetic_authenticated_session','anonymous_and_foreign_project_denied','real_neurosa_recall','native_brain_plan','two_real_fixed_file_reads_sequential','unauthorized_repository_not_verified','proof_displayed','mission_record_download_and_verification','tamper_denied','neurosa_and_mission_store_restart'],
-    viewport:mobile?'390x844':'1440x900',limitations:['test_identity_injected','test_executors_not_sandboxed','no_production','viewport_emulation','replay_ui_not_exercised_in_this_test','no_external_attestation']};
-  await writeFile(join(output,`browser-neurosa${suffix}-result.json`),JSON.stringify(summary,null,2)+'\n');console.log(JSON.stringify(summary,null,2));
+    checks:['studio_browser_mission_created','synthetic_authenticated_session','anonymous_and_foreign_project_denied','real_neurosa_recall','native_brain_plan','two_real_fixed_file_reads_sequential','unauthorized_repository_not_verified','proof_displayed','mission_record_download_and_verification','replay_ui_same_mission','tamper_denied','neurosa_and_mission_store_restart'],
+    viewport:mobile?'390x844':'1440x900',limitations:['test_identity_injected','test_executors_not_sandboxed','no_production','viewport_emulation','no_external_attestation']};
+  await writeFile(join(output,`browser-neurosa-replay${suffix}-result.json`),JSON.stringify(summary,null,2)+'\n');console.log(JSON.stringify(summary,null,2));
 }
 main().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();if(server)await new Promise(r=>server.close(r));await closeBrain();if(dir)await rm(dir,{recursive:true,force:true});});

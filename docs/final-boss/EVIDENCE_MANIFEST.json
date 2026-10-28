@@ -85,6 +85,34 @@
       "command": "NODE_PATH=<playwright> NEUROSA_CHECKOUT=<checkout> node scripts/final-boss-browser-neurosa.cjs with OSA_BROWSER_VIEWPORT=mobile",
       "scope": "real local Brain API and dashboard; synthetic session and fixed unsandboxed test executors",
       "result": "PASS within stated scope"
+    },
+    {
+      "path": "docs/final-boss/evidence/browser-neurosa-replay-result.json",
+      "sha256": "f08bd9c37ef22cc8f3f648afaa425b4d1af2921245289da55fe709e9b06e79c0",
+      "command": "NEUROSA_CHECKOUT=<checkout> NODE_PATH=<playwright> node scripts/final-boss-browser-neurosa.cjs",
+      "scope": "browser local NeurOSA and replay; synthetic session, unsandboxed test executors",
+      "result": "PASS within stated scope"
+    },
+    {
+      "path": "docs/final-boss/evidence/browser-neurosa-replay-mission.json",
+      "sha256": "c8ff676d54f13aba6fbd048518ec0d0cec49ce2b6346a110f94bbf00c9d48a30",
+      "command": "NEUROSA_CHECKOUT=<checkout> NODE_PATH=<playwright> node scripts/final-boss-browser-neurosa.cjs",
+      "scope": "browser local NeurOSA and replay; synthetic session, unsandboxed test executors",
+      "result": "PASS within stated scope"
+    },
+    {
+      "path": "docs/final-boss/evidence/browser-neurosa-replay-mobile-result.json",
+      "sha256": "01208192cab772adde334a5c800495ad6e3bbbf581929b63ad886ff5e1983655",
+      "command": "NEUROSA_CHECKOUT=<checkout> NODE_PATH=<playwright> node scripts/final-boss-browser-neurosa.cjs with OSA_BROWSER_VIEWPORT=mobile",
+      "scope": "browser local NeurOSA and replay; synthetic session, unsandboxed test executors",
+      "result": "PASS within stated scope"
+    },
+    {
+      "path": "docs/final-boss/evidence/browser-neurosa-replay-mobile-mission.json",
+      "sha256": "4f6682463adb8307e11c9cd3ee72b39354fe19d6712695bbaf3f9a6275f655b0",
+      "command": "NEUROSA_CHECKOUT=<checkout> NODE_PATH=<playwright> node scripts/final-boss-browser-neurosa.cjs with OSA_BROWSER_VIEWPORT=mobile",
+      "scope": "browser local NeurOSA and replay; synthetic session, unsandboxed test executors",
+      "result": "PASS within stated scope"
     }
   ],
   "core_e2e": "PARTIAL: real browser/local NeurOSA; test session and unsandboxed test executors",
