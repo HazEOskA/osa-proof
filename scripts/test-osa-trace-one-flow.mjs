@@ -24,7 +24,10 @@ try {
     const bundle = await response.json();
     assert.equal(bundle.task_status, "EXECUTED");
     assert.equal(bundle.proof_verdict, "VERIFIED");
-    assert.deepEqual(bundle.steps.map(s => s.http_status), [200, 200]);
+    assert.equal(bundle.verification_scope, "IN_PROCESS_STATE_AND_RUNTIME_EVIDENCE_NOT_HTTP");
+    assert.deepEqual(bundle.steps.map(s => s.http_status), [null, null]);
+    assert.deepEqual(bundle.steps.map(s => s.status), ["OK", "OK"]);
+    assert.deepEqual(bundle.steps.map(s => s.source), ["IN_PROCESS_API_STATE", "IN_PROCESS_API_STATE"]);
     assert.equal(bundle.run.execution_id, bundle.execution_id);
     await page.getByTestId("osa-message").filter({ hasText: bundle.execution_id }).waitFor();
     await page.getByRole("button", { name: "Inspektor", exact: true }).click();
@@ -45,7 +48,7 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "HORIZONTAL_OVERFLOW");
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ view: name, result: "PASS", execution_id: bundle.execution_id,
-      real_osa_runtime: true, endpoint_responses: "CONTROLLED_TEST_DOUBLES", model_requests: 0,
+      real_osa_runtime: true, endpoint_responses: "IN_PROCESS_API_STATE", model_requests: 0,
       browser_receipt_verification: true, tampering_rejected: true }));
     await page.close();
   }
