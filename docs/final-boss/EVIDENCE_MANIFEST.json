@@ -120,6 +120,13 @@
       "command": "node --test dist/tests/mission-kernel.test.js",
       "scope": "local completeness and foreign tenant replay tampering, including resealed hashes",
       "result": "12 passed; 0 failed"
+    },
+    {
+      "path": "docs/final-boss/evidence/mission-store-process-tests.txt",
+      "sha256": "c9530348510154eab84b6a269aac45c625b49164f86e5627b7d8a59e94e2282d",
+      "command": "node --test dist/tests/mission-store-process.test.js (six repetitions)",
+      "scope": "two local OS processes, synthetic side effect, SIGKILL, lock denial and diagnostic; no power-loss or distributed-store proof",
+      "result": "2 tests passed per repetition; six repetitions passed"
     }
   ],
   "core_e2e": "PARTIAL: real browser/local NeurOSA; test session and unsandboxed test executors",

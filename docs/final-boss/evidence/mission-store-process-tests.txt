@@ -1,0 +1,12 @@
+✔ separate processes sharing FileMissionStore perform one side effect under concurrent retry (1313.722908ms)
+✔ restart after a worker process dies following a side effect fails closed (162.651576ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1558.092681
+
+Six repeated executions passed.

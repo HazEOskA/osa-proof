@@ -51,3 +51,13 @@ Nadal: syntetyczna sesja, testowi executory bez sandboxu, brak produkcyjnej trwa
 W kontrolowanej kopii usunięto wszystkie eventy runtime i ich projekcję w timeline, odtworzono numerację oraz ponownie obliczono hash timeline i MissionReceipt. Poprzednie porównanie dwóch pustych list nie gwarantowało kompletności. Verifier sprawdza teraz wymagane eventy lifecycle, liniową kolejność agentów i handoffów, powiązania producentów oraz każdego evidence z eventem, operacją i wykonawcą, a także numerację i scope timeline. Odrzuca niekompletny replay nawet po ponownym obliczeniu kontrolnych hashy. Osobny test odrzuca timeline z obcym tenantem po przeliczeniu MissionReceipt.
 
 Regresja: `npm test` 269 PASS / 0 FAIL / 3 SKIP. `node --test dist/tests/mission-kernel.test.js`: 12 PASS. Wcześniej zapisane rzeczywiste rekordy browser/NeurOSA nadal przechodzą verifier. To kontrola struktury i spójności; wszystkie dane wraz z niezakotwiczonymi hashami można nadal podrobić, więc pochodzenie wymaga zewnętrznego zakotwiczenia.
+
+## FileMissionStore: procesy, przerwanie i diagnostyka
+
+Dwie instancje OS rywalizują o jedną misję w lokalnym FileMissionStore. Test potwierdza jeden zapis syntetycznego efektu oraz poprawny receipt; sześć kolejnych przebiegów przeszło. Osobny test zabija proces po zapisaniu efektu i potwierdza, że restart widzi EXECUTING oraz odmawia automatycznego powtórzenia. Testowana jest również pozostawiona blokada: zapis po ograniczonym oczekiwaniu zostaje odrzucony, a blokada zachowana. To nie dowód trwałości po utracie zasilania, dla systemów rozproszonych ani produkcji.
+
+Podczas testowania wystąpiła kolizja czasowa, w której oba procesy odmówiły; FileMissionStore czeka teraz na krótką blokadę maksymalnie około sekundy, następnie nadal odmawia — nie przejmuje starego locka. CAS nadal sprawdza rewizję po uzyskaniu blokady.
+
+`node scripts/inspect-mission-store.cjs <directory> <mission-id>` diagnostykuje lokalny snapshot tylko do odczytu, rozróżnia blokadę, aktywne wykonanie i zweryfikowany ukończony rekord. Stan jest obserwacją nieatomową: nie potwierdza, że lock jest osierocony, nie uprawnia do jego usunięcia ani bezpiecznego retry. Aktywne misje nadal wymagają uzgodnienia operatora.
+
+Regresja `npm test`: 271 PASS, 0 FAIL, 3 SKIP; dwa testy procesów powtórzono sześć razy. Dowód: `evidence/mission-store-process-tests.txt`.

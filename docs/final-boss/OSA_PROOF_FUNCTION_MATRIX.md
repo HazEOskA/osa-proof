@@ -4,7 +4,7 @@ Baza: `721cf8cfe7c2fd216fa2a993e5871b0faa26bcdf`. To **nie jest kompletny audyt 
 
 | FUNCTION_ID | MODULE | IMPLEMENTATION_PATH | API | STATUS | TEST | EVIDENCE | DEPENDENCIES | PRIORITY | NEXT_ACTION |
 |---|---|---|---|---|---|---|---|---|---|
-| MK-01 | Mission lifecycle i idempotencja | packages/runtime/src/mission-kernel.ts | /missions/:id/run | PARTIAL | mission-kernel.test | evidence/mission-kernel-test.txt | store, runtime | P0 | test wielu procesów i recovery aktywnych zadań; lokalna misja odczytana po restarcie |
+| MK-01 | Mission lifecycle i idempotencja | packages/runtime/src/mission-kernel.ts | /missions/:id/run | PARTIAL | mission-kernel.test | evidence/mission-kernel-test.txt | store, runtime | P0 | dokończyć uzgadnianie aktywnych zadań i produkcyjny store; sześć lokalnych prób międzyprocesowych i fail-closed po SIGKILL |
 | MK-02 | Anulowanie | packages/runtime/src/mission-kernel.ts | /missions/:id | PARTIAL | mission-kernel.test | aktywne anulowanie odrzucone | executor abort | P0 | rzeczywisty abort i cleanup |
 | TG-01 | TeamGraph | packages/team-graph/src | /teams | PARTIAL | mission-kernel.test | liniowy handoff; brak dowodu równoległości | kernel | P1 | test pełnej ścieżki UI |
 | WK-01 | Supervisor/workers | packages/runtime/src; packages/fleet | /missions/:id/run | PARTIAL | npm test | fixture i lokalne kontrakty; izolowana flota nieudowodniona | sandbox | P1 | realne izolowane zadania i cleanup |
