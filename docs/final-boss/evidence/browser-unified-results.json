@@ -1,0 +1,24 @@
+[
+  {
+    "name": "android-390",
+    "result": "PASS",
+    "execution_id": "exec_b054ed08-2a23-4803-9487-a78de612cd66",
+    "crypto_sha256": "64fcc6edb1f1f7c3a78eb115cd1bb1a20fad16c49ef0e8008432e378d298a91d",
+    "real_runtime": true,
+    "verified_receipt": true,
+    "replay_ui": true,
+    "provider_model_tool_call": "NOT_TESTED",
+    "paid_calls": 0
+  },
+  {
+    "name": "desktop",
+    "result": "PASS",
+    "execution_id": "exec_52ee46e4-7fe2-4ad8-9920-53dcf7d7e76c",
+    "crypto_sha256": "64fcc6edb1f1f7c3a78eb115cd1bb1a20fad16c49ef0e8008432e378d298a91d",
+    "real_runtime": true,
+    "verified_receipt": true,
+    "replay_ui": true,
+    "provider_model_tool_call": "NOT_TESTED",
+    "paid_calls": 0
+  }
+]

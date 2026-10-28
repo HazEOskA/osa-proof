@@ -42,6 +42,28 @@ test("private Preview memory is limited to the protected PR branch alias", () =>
   assert.throws(() => PreviewOperator.fromEnvironment({ ...env, VERCEL_GIT_REPO_OWNER: "other" }));
 });
 
+test("integration fix Preview exposes private memory only on its exact Vercel deployment hostname", () => {
+  const integration = {
+    ...env,
+    VERCEL_GIT_COMMIT_REF: "fix/osa-proof-neurosa-protected-preview-20261028",
+    VERCEL_URL: "osa-proof-fixed1234-osabarca-1680s-projects.vercel.app"
+  };
+  assert.ok(PreviewOperator.fromEnvironment(integration));
+  assert.equal(isNeurosaProtectedPreview(integration.VERCEL_URL, integration), true);
+  assert.equal(isNeurosaProtectedPreview(integration.VERCEL_URL, integration, integration.VERCEL_URL), true);
+  for (const host of ["agentworlds.dev", "osa-proof-three.vercel.app",
+    "osa-proof-git-fix-osa-proof-neurosa-protected-preview-20261028.vercel.app",
+    "osa-proof-git-codex-neurosa-chat-memory-osabarca-1680s-projects.vercel.app"]) {
+    assert.equal(isNeurosaProtectedPreview(host, integration), false);
+  }
+  assert.equal(isNeurosaProtectedPreview(integration.VERCEL_URL, integration, "agentworlds.dev"), false);
+  assert.equal(isNeurosaProtectedPreview(integration.VERCEL_URL, {...integration, VERCEL_URL: undefined}), false);
+  assert.equal(isNeurosaProtectedPreview(integration.VERCEL_URL, {...integration, VERCEL_URL: "evil.example"}), false);
+  assert.equal(isNeurosaProtectedPreview(integration.VERCEL_URL, {...integration, VERCEL_GIT_COMMIT_REF: "main"}), false);
+  assert.equal(isNeurosaProtectedPreview(integration.VERCEL_URL, {...integration, VERCEL_ENV: "production"}), false);
+  assert.throws(() => PreviewOperator.fromEnvironment({...integration, VERCEL_GIT_COMMIT_REF: "main"}));
+});
+
 test("preview operator uses NeurOSA without OAuth, forbids cross-origin writes", async () => {
   const operator = PreviewOperator.fromEnvironment(env)!;
   const memory = new NeurosaMemoryAdapter({ baseUrl: "https://memory.example", token: "test-token-".repeat(4),

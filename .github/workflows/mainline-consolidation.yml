@@ -1,0 +1,47 @@
+name: OSA Proof — Mainline Consolidation Gates
+
+on:
+  push:
+    branches:
+      - integration/osa-proof-mainline-consolidation-20261028
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: osa-mainline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-and-ui:
+    name: Core contracts, OAuth, Mission Kernel, Replay, dashboard
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OSA_EXECUTION_MODE: fixture
+      OSA_AUTH_MODE: open
+    steps:
+      - name: Checkout exact reviewed SHA
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify API docs, TypeScript, all unit and local integration tests
+        run: npm test
+      - name: Verify dashboard build
+        run: node scripts/build-dashboard.cjs
+      - name: Record build identity
+        run: |
+          git rev-parse HEAD
+          node --version
+          echo "READY means build only; real OAuth/NeurOSA production E2E is a separate gate."

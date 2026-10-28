@@ -5,6 +5,7 @@ import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { PreviewOperator } from "./preview-operator";
 import { handleGithubAuth, readGithubSession } from "./github-auth";
+import { handleSocialAuth, readSocialSession, publicProviderStatus } from "./social-auth";
 import { demoTeam, demoMission, demoTemplate, demoReport, validateDemoRequest, installDemoExecutors } from "../../../packages/demo-team/src";
 import { RemoteWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 import { Web3Service } from "../../../packages/web3/src";
@@ -142,7 +143,7 @@ function authenticatedSession(request: IncomingMessage, state: ApiState): Sessio
   if (state.previewOperator) return structuredClone(state.previewOperator.session);
   const token = bearerToken(request);
   const session = token ? state.sessions.get(token) : undefined;
-  return session ?? readGithubSession(request) ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
+  return session ?? readGithubSession(request) ?? readSocialSession(request) ?? (state.authMode === "open" ? structuredClone(OPEN_MODE_SESSION) : undefined);
 }
 
 function requireSession(
@@ -159,6 +160,14 @@ function requireSession(
     return undefined;
   }
   return session;
+}
+
+// Local-dev/open identities are explicitly development-only and have no trusted
+// project grants. Real identities must carry a server-issued project membership.
+function canAccessProject(session: SessionRecord, organization: string, project: string): boolean {
+  const identity = session.identity;
+  return identity.organization_id === organization && typeof project === "string" && project.length > 0 &&
+    (identity.provider === "local-dev" || (identity.verified === true && Array.isArray(identity.project_ids) && identity.project_ids.includes(project)));
 }
 
 export async function handleApiRequest(
@@ -200,9 +209,18 @@ export async function handleApiRequest(
       if ((state.previewOperator || (state.authMode === "open" && process.env.VERCEL !== "1")) &&
           (url.pathname.startsWith("/auth/github/") || url.pathname === "/auth/providers"))
         return send(response,404,{code:"LOGIN_DISABLED"});
+      // Public GitHub and owner GitHub share one registered OAuth callback; signed state selects the flow.
+      if (!state.previewOperator && await handleSocialAuth(request,response)) return;
       if (!state.previewOperator && await handleGithubAuth(request,response)) return;
       if (state.authMode === "open" && parts[0] === "auth")
         return send(response, 404, { code: "LOGIN_DISABLED" });
+      // Public OAuth authenticates a person but does not provision a tenant.
+      // Until durable per-user workspaces and route-level tenant enforcement exist,
+      // unprovisioned visitors must not execute, mutate or read shared global state.
+      const social = readSocialSession(request);
+      if (social && !social.identity.roles.includes("operator") &&
+        !["/session","/auth/providers","/build/status","/memory/status"].includes(url.pathname))
+        return send(response,403,{code:"USER_WORKSPACE_NOT_PROVISIONED"});
       if (method === "GET" && url.pathname === "/memory/status")
         return send(response, 200, await state.memory.status(authenticatedSession(request, state)));
       // Configuring private memory closes all data routes, including mission plans,
@@ -286,7 +304,11 @@ export async function handleApiRequest(
         try { body = JSON.parse(Buffer.concat(buffers).toString("utf8")); }
         catch { return send(response,400,{task_status:"BLOCKED",code:"BAD_JSON"}); }
         try {
-          const result = await runTraceProbe(body, session.identity.organization_id);
+          const result = await runTraceProbe(body, session.identity.organization_id, {
+            layers: listLayerProfiles(),
+            build_status: {mode: executionDescription.mode,auth_mode:state.authMode,
+              executor_count:registry.refs().length,mission_persistence:state.missionKernel.store.persistence},
+          });
           state.runs.set(result.run.run_id, structuredClone(result.run));
           return send(response,200,result);
         } catch (error) {
@@ -362,13 +384,15 @@ export async function handleApiRequest(
 
       if (method === "GET" && url.pathname === "/auth/providers") {
         return send(response, 200, [
-          { provider: "local-dev", enabled: true, mode: "DEV_ONLY" },
-          { provider: "google", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
+          { provider: "local-dev", enabled: process.env.VERCEL !== "1", mode: "DEV_ONLY" },
+          { provider: "google", enabled: publicProviderStatus().google, mode: publicProviderStatus().google ? "OAUTH_ENABLED" : "OIDC_NOT_CONFIGURED" },
+          { provider: "github", enabled: publicProviderStatus().github, mode: publicProviderStatus().github ? "OAUTH_ENABLED" : "OAUTH_NOT_CONFIGURED" },
           { provider: "microsoft", enabled: false, mode: "OIDC_NOT_CONFIGURED" },
         ]);
       }
 
       if (method === "POST" && url.pathname === "/auth/dev-login") {
+        if (process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production" && state.authMode === "session") return send(response,404,{code:"DEV_LOGIN_DISABLED"});
         const body = await readJson<{ display_name?: string; email?: string }>(request);
         const identity = createLocalDevIdentity({
           display_name: body.display_name ?? "",
@@ -632,7 +656,9 @@ export async function handleApiRequest(
         if (!session) return;
         const graph = await readJson<TeamGraph>(request);
         validateTeamGraph(graph);
-        if (graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (!canAccessProject(session, graph.organization_id, graph.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        const existing = state.teams.get(state.teamKey(graph.team_id, graph.version));
+        if (existing && (existing.organization_id !== graph.organization_id || existing.project_id !== graph.project_id)) return send(response, 409, { error: "TEAM_SCOPE_CONFLICT" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         state.teams.set(state.teamKey(graph.team_id, graph.version), structuredClone(graph));
         return send(response, 201, graph);
@@ -644,7 +670,7 @@ export async function handleApiRequest(
         const version = url.searchParams.get("version");
         if (!version) return send(response, 400, { error: "version query parameter is required" });
         const graph = state.teams.get(state.teamKey(parts[1], version));
-        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (graph && !canAccessProject(session, graph.organization_id, graph.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         return graph ? send(response, 200, graph) : send(response, 404, { error: "team not found" });
       }
 
@@ -652,9 +678,9 @@ export async function handleApiRequest(
         const session = requireSession(request, response, state);
         if (!session) return;
         const mission = await readJson<Mission>(request);
-        if (mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (!canAccessProject(session, mission.organization_id, mission.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         const graph = state.teams.get(state.teamKey(mission.team_id, mission.team_version));
-        if (graph && graph.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (graph && !canAccessProject(session, graph.organization_id, graph.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (!graph) return send(response, 404, { error: "team version not found" });
         if (graph.agents.some(a => a.executor_ref.startsWith("demo."))) return send(response,403,{error:"DEMO_MANAGED_TEMPLATE_REQUIRED"});
         await state.missionKernel.create(mission, graph);
@@ -667,7 +693,7 @@ export async function handleApiRequest(
         if (!session) return;
         const record = await state.missionKernel.get(parts[1]);
         if (!record) return send(response, 404, { error: "mission not found" });
-        if (record.mission.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (!canAccessProject(session, record.mission.organization_id, record.mission.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (method === "GET" && parts.length === 2) return send(response, 200, record);
         if (method === "GET" && parts[2] === "timeline") return send(response, 200, record.timeline);
         if (method === "GET" && parts[2] === "run") return record.run ? send(response, 200, record.run) : send(response, 404, { error: "mission has no run" });
@@ -691,7 +717,7 @@ export async function handleApiRequest(
         if (!session) return;
         const run = state.runs.get(parts[1]);
         if (!run) return send(response, 404, { error: "run not found" });
-        if (run.proof.organization_id !== session.identity.organization_id) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        if (!canAccessProject(session, run.proof.organization_id, run.proof.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (parts.length === 2) return send(response, 200, run);
         if (parts[2] === "events") return send(response, 200, run.events);
         if (parts[2] === "evidence") return send(response, 200, run.evidence);

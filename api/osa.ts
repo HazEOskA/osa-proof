@@ -10,6 +10,8 @@ import { githubOAuthConfigured } from "../apps/api/src/github-auth";
 // Keep private NeurOSA off custom/production domains, even when those domains
 // happen to alias the same Vercel deployment as this PR Preview.
 const PRIVATE_PREVIEW_HOST = "osa-proof-git-codex-neurosa-chat-memory-osabarca-1680s-projects.vercel.app";
+// Isolated, branch-scoped preview for the Final Boss integration. Never a public alias.
+const PATCH_PREVIEW_BRANCH = "fix/osa-proof-neurosa-protected-preview-20261028";
 const PRIVATE_PRODUCTION_HOST = "osa-proof-three.vercel.app";
 export function isNeurosaAuthenticatedProduction(
   host: string | undefined, env: Record<string, string | undefined>,
@@ -36,9 +38,18 @@ export function isNeurosaProtectedPreview(
 ): boolean {
   if (env.VERCEL !== "1" || env.VERCEL_ENV !== "preview" ||
       env.OSA_PREVIEW_SINGLE_OPERATOR !== "enabled") return false;
-  if (typeof host !== "string" || host.toLowerCase() !== PRIVATE_PREVIEW_HOST) return false;
+  // Accept either the original fixed private alias, or ONLY Vercel's generated
+  // deployment hostname for our isolated integration branch. Never a custom,
+  // branch, or production alias for this new operator.
+  const protectedHost = env.VERCEL_GIT_COMMIT_REF === "codex/neurosa-chat-memory"
+    ? PRIVATE_PREVIEW_HOST
+    : env.VERCEL_GIT_COMMIT_REF === PATCH_PREVIEW_BRANCH &&
+      typeof env.VERCEL_URL === "string" &&
+      /^osa-proof-[a-z0-9-]+\.vercel\.app$/i.test(env.VERCEL_URL)
+      ? env.VERCEL_URL.toLowerCase() : undefined;
+  if (!protectedHost || typeof host !== "string" || host.toLowerCase() !== protectedHost) return false;
   if (forwardedHost !== undefined &&
-      (typeof forwardedHost !== "string" || forwardedHost.toLowerCase() !== PRIVATE_PREVIEW_HOST)) return false;
+      (typeof forwardedHost !== "string" || forwardedHost.toLowerCase() !== protectedHost)) return false;
   return true;
 }
 

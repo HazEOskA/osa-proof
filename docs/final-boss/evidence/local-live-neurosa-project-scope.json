@@ -1,0 +1,36 @@
+{
+  "schema": "osa.final-boss.local-integration.v1",
+  "mission_id": "OSA-ULTIMATE-001-f37ac08b-17ee-4f3b-8612-950c5cebcf0c",
+  "run_id": "run_4eeebaaadcb94cff5605376d",
+  "execution_id": "exec_e0ce69d8-f56d-4313-a41f-5d80d8c0eb55",
+  "mission_receipt_sha256": "8f913be8b85730e4b43955fa4f4a9360aed0191e24e4d496be0e6d88303c8a5e",
+  "proof_receipt_sha256": "1e08ddce381669508803b0403312712390bc08449a9a010ffbbf04a5045ac0f5",
+  "memory_receipt_sha256": "dccf7e3cf09a29b5041d1bdb65c0f97444a219d0ea3e4a408c4d5cefad7f687c",
+  "memory_event_sha256": "71c013598acd0b12b4a84d2d35e54b0c54c7dc2a58168af6009e468f70eab7ff",
+  "memory_document_id": "f79b6cc7-9a7f-45e1-a657-14d014aa9cfa",
+  "memory_context_sha256": "8628761186a7005322304beff6532f97485c2f019a2caa12d63bd809ecf04f6c",
+  "record_sha256": "f48916c0e6c0c8525c97eb257c9d970a77d5e931c1450131015bf749c598b599",
+  "events": 22,
+  "evidence": 2,
+  "worker_execution_count": 2,
+  "checks": [
+    "real_neurosa_http",
+    "synthetic_remember_readback_restart_recall_provenance",
+    "scope_denial",
+    "anonymous_denial",
+    "foreign_organization_and_project_denial_with_memory_enabled",
+    "two_read_only_test_executors_sequential",
+    "mission_api_and_file_store_restart",
+    "independent_verifier",
+    "tamper_and_missing_evidence_denial",
+    "repeat_no_reexecution"
+  ],
+  "limitations": [
+    "test_identity_injected",
+    "test_executors_not_sandboxed",
+    "no_browser",
+    "no_production",
+    "no_source_authenticity_attestation",
+    "no_concurrent_workers"
+  ]
+}

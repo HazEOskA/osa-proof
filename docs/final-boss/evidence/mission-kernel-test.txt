@@ -1,0 +1,20 @@
+✔ mission lifecycle comes from real runtime and completion seals the bound receipts (18.497092ms)
+✔ failure and missing evidence cannot complete a mission (7.762324ms)
+✔ runtime failure overrides earlier satisfying evidence (4.73257ms)
+✔ validation and policy reject work before any executor runs (0.575271ms)
+✔ receipt tampering, foreign tenant/mission and consistently resealed false verdict are rejected (2.430906ms)
+✔ independent mission verifier rejects a pinned executor excluded by policy (0.850338ms)
+✔ cancellation is terminal and active cancellation fails closed (4.453488ms)
+✔ optimistic concurrency prevents duplicate create and concurrent execution (3.964174ms)
+✔ filesystem snapshot survives restart and cannot silently change or traverse paths (67.837785ms)
+✔ separate file stores fence concurrent writers and stale revisions (9.970034ms)
+✔ restart refuses to re-execute an unresolved active mission (0.506299ms)
+✔ Mastra bridge verifies a real completed MissionRecord and rejects tampering (6.715545ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 220.121017

@@ -8,6 +8,13 @@ import { reflectOnExecution } from "../../brain/src";
 // requirements and binding. A caller cannot choose the expected tenant or verdict.
 export function verifyMissionExecution(graph: TeamGraph, mission: Mission, run: RunResult): void {
   validateMissionAgainstGraph(graph, mission);
+  // Recheck the pinned executor policy independently of the creation path.
+  // This does not attest that an executor actually ran or that its identity is authentic.
+  const order = getLinearExecutionOrder(graph, mission.entry_agent_id);
+  if (mission.policy && (!Array.isArray(mission.policy.allowed_executor_refs) || order.some(id =>
+    !mission.policy!.allowed_executor_refs.includes(graph.agents.find(agent => agent.agent_id === id)!.executor_ref)))) {
+    throw new Error("VerificationReceipt executor policy rejected");
+  }
   if (run.verdict === "VERIFIED") verifyRequiredReceipts(mission,run);
   const integrity = verifyProofReceipt({ receipt: run.proof, evidence: run.evidence, observations: run.observations, final_output: run.final_output });
   const binding = bindingFor(graph, mission, run.run_id, run.execution_id);
@@ -24,6 +31,17 @@ export function verifyMissionExecution(graph: TeamGraph, mission: Mission, run: 
 export function verifyCompletedMission(record: MissionRecord): void {
   if (record.state !== "COMPLETED" || !record.run || !record.verification_receipt || !record.mission_receipt) throw new Error("completed mission receipts required");
   verifyMissionExecution(record.team, record.mission, record.run);
+  // Runtime events are exported separately from the receipt-sealed mission timeline.
+  // Reconcile the two so a modified replay cannot pass by retaining an intact receipt.
+  const projected = record.timeline.filter(event => event.payload.run_id !== undefined || event.payload.execution_id !== undefined);
+  if (projected.length !== record.run.events.length || record.run.events.some((event, index) => {
+    const entry = projected[index];
+    return event.sequence !== index + 1 || event.event_id !== `${record.run!.run_id}:${record.run!.execution_id}:event:${index + 1}` ||
+      event.run_id !== record.run!.run_id || event.execution_id !== record.run!.execution_id ||
+      event.mission_id !== record.mission.mission_id || event.organization_id !== record.mission.organization_id ||
+      event.project_id !== record.mission.project_id || event.team_id !== record.team.team_id || event.team_version !== record.team.version ||
+      !entry || entry.event_type !== event.type || digest(entry.payload) !== digest({ ...event.payload, run_id: event.run_id, execution_id: event.execution_id, agent_id: event.agent_id });
+  })) throw new Error("MissionReceipt runtime replay rejected");
   const order = getLinearExecutionOrder(record.team, record.mission.entry_agent_id);
   const expectedTasks = { mission_id: record.mission.mission_id, nodes: order.map((agent_id, index) => ({
     task_id: `${record.mission.mission_id}:task:${index + 1}`, mission_id: record.mission.mission_id, agent_id,
@@ -44,6 +62,53 @@ export function verifyCompletedMission(record: MissionRecord): void {
       body.mission_sha256 !== digest(record.mission) || body.task_graph_sha256 !== digest(record.task_graph) ||
       body.verification_receipt_sha256 !== record.run.proof.receipt_sha256 || body.timeline_sha256 !== digest(record.timeline) ||
       digest(record.task_graph) !== digest(expectedTasks)) throw new Error("MissionReceipt rejected");
+  verifyReplayCompleteness(record, order);
+}
+
+// Structural consistency only: an unanchored bundle can still be forged in its
+// entirety. Do not confuse this with authenticated provenance of execution.
+function verifyReplayCompleteness(record: MissionRecord, order: string[]): void {
+  const run = record.run!;
+  const fail = (): never => { throw new Error("MissionReceipt replay incomplete or inconsistent"); };
+  for (let i = 0; i < record.timeline.length; i++) {
+    const event = record.timeline[i];
+    if (event.event_id !== `${record.mission.mission_id}:mission:${i + 1}` || event.mission_id !== record.mission.mission_id ||
+        event.tenant_id !== record.mission.organization_id || event.subject !== record.mission.mission_id ||
+        event.correlation_id !== record.mission.mission_id || event.causation_id !== (i ? record.timeline[i - 1].event_id : undefined) ||
+        event.source !== (event.event_type.startsWith("BRAIN_") ? "osa.brain" : "osa.mission-kernel") ||
+        typeof event.timestamp !== "string" || !Number.isFinite(Date.parse(event.timestamp))) fail();
+  }
+  const lifecycle = record.timeline.filter(event => event.event_type.startsWith("MISSION_")).map(event => event.event_type);
+  if (digest(lifecycle) !== digest(["MISSION_CREATED", "MISSION_PLANNED", "MISSION_EXECUTING", "MISSION_VERIFYING", "MISSION_COMPLETED"])) fail();
+  let cursor = 0, evidenceIndex = 0;
+  const take = (type: string, agentId?: string) => {
+    const event = run.events[cursor++];
+    if (!event || event.type !== type || event.agent_id !== agentId) fail();
+    return event;
+  };
+  const created = take("RUN_CREATED");
+  if (created.payload.objective !== record.mission.objective) fail();
+  take("RUN_STARTED");
+  order.forEach((agentId, index) => {
+    const agent = record.team.agents.find(item => item.agent_id === agentId)!;
+    const operation = `${run.execution_id}:op:${index + 1}:${agentId}`;
+    const started = take("AGENT_STARTED", agentId);
+    if (started.payload.executor_ref !== agent.executor_ref || started.payload.role !== agent.role || started.payload.operation_id !== operation) fail();
+    while (run.events[cursor]?.type === "EVIDENCE_RECORDED") {
+      const event = take("EVIDENCE_RECORDED", agentId), evidence = run.evidence[evidenceIndex++];
+      if (!evidence || evidence.sequence !== evidenceIndex || evidence.evidence_id !== `${run.run_id}:${run.execution_id}:evidence:${evidenceIndex}` ||
+          evidence.agent_id !== agentId || evidence.producer.executor_ref !== agent.executor_ref || evidence.producer.operation_id !== operation ||
+          event.payload.evidence_id !== evidence.evidence_id || event.payload.evidence_sha256 !== evidence.evidence_sha256 || event.payload.kind !== evidence.kind) fail();
+    }
+    take("AGENT_COMPLETED", agentId);
+    if (order[index + 1]) {
+      const handoff = take("HANDOFF_CREATED", agentId);
+      if (handoff.payload.from_agent_id !== agentId || handoff.payload.to_agent_id !== order[index + 1]) fail();
+    }
+  });
+  if (evidenceIndex !== run.evidence.length) fail();
+  if (take("VERIFICATION_STARTED").payload.requirement_count !== record.mission.requirements.length) fail();
+  if (take("VERIFICATION_PASSED").payload.proof_id !== run.proof.proof_id || take("RUN_VERIFIED").payload.proof_id !== run.proof.proof_id || cursor !== run.events.length) fail();
 }
 
 // Same-process provenance/integrity gate, not a cryptographic external attestation.

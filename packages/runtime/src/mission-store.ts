@@ -50,11 +50,17 @@ export class FileMissionStore implements MissionStore {
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
     const path = this.path(record.mission.mission_id);
     let lock;
-    try { lock = await open(`${path}.lock`, "wx", 0o600); }
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new MissionConflictError("mission is locked");
-      throw error;
+    // A competing process can briefly hold the lock while committing a snapshot.
+    // Wait a bounded time, then still fail closed: a leftover lock is never stolen.
+    for (let attempt = 0; attempt < 100; attempt++) {
+      try { lock = await open(`${path}.lock`, "wx", 0o600); break; }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+        if (attempt === 99) throw new MissionConflictError("mission is locked");
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
     }
+    if (!lock) throw new MissionConflictError("mission is locked");
     const temporary = `${path}.${randomUUID()}.tmp`;
     try {
       checkRevision(await this.get(record.mission.mission_id), record, expectedRevision);
