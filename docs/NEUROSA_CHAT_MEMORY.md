@@ -18,3 +18,11 @@ Po przejściu kontroli tożsamości i scope `GET /memory/status` wykonuje prawdz
 CI i READY Preview to tylko dowód kompilacji. Rzeczywisty `/memory/status`, zapis i recall na kanonicznej VM nie są oznaczane jako VERIFIED przed wywołaniem przez operatora. Trwałość po restarcie osobno niezweryfikowana.
 
 Bez merge do main i bez zmian Production.
+
+## Aktualizacja: chronione Preview na gałęzi Final Boss (28.10.2026)
+
+Historyczna instrukcja powyżej dotyczy `codex/neurosa-chat-memory` i jej stałego aliasu. **Nowe osobne Preview** używa gałęzi `fix/osa-proof-neurosa-protected-preview-20261028` i wyłącznie **dokładnej domeny konkretnego deploymentu Vercel** (`VERCEL_URL`, walidowanej po stronie serwera), zamiast udostępnionego aliasu gałęzi. Wymaga `VERCEL_ENV=preview`, `OSA_PREVIEW_SINGLE_OPERATOR=enabled` i zgodnych serwerowych powiązań NeurOSA. Inne domeny i produkcja nie otrzymują tej prywatnej sesji.
+
+Operator zobaczył `AVAILABLE` i komunikat potwierdzonego zapisu wiadomości oraz działający czat/generowanie artefaktu. **Nie** oznacza to potwierdzonej trwałości po restarcie usługi Railway, produkcyjnego RBAC ani pełnego live E2E. Nie udostępniać chronionego adresu ani bypassu; dostęp jest równoważny roli operatora prywatnej pamięci.
+
+Stan szczegółowy: [OSA_PROOF_PREVIEW_STATUS_2026-10-28.md](./OSA_PROOF_PREVIEW_STATUS_2026-10-28.md). Audyt offline: [HERMES_AUDIT_QUICK_START.md](./HERMES_AUDIT_QUICK_START.md).
