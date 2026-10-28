@@ -29,8 +29,12 @@ export default function AccountControl() {
     finally{setBusy(false);}
   };
   const owner=identity?.roles?.includes("owner")||identity?.roles?.includes("operator");
+  const protectedPreview=identity?.provider==="vercel-preview";
   return <div className="relative z-30 flex shrink-0 items-center gap-2">
-    {identity?<>
+    {protectedPreview ? <span className="mono max-w-[165px] truncate rounded border border-line2 px-2 py-2 text-[10px] text-cyan"
+      title="Operator chronionego Preview jest uwierzytelniany przez Vercel, nie przez OAuth; nie ma tutaj sesji OAuth do wylogowania.">
+      Operator Preview
+    </span> : identity?<>
       <span className="mono hidden max-w-[135px] truncate text-[10px] text-cyan sm:block" title={owner?"Właściciel / operator":"Zalogowane konto"}>
         {identity.display_name??identity.provider}{owner?" · OWNER":""}
       </span>
