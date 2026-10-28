@@ -294,7 +294,11 @@ export async function handleApiRequest(
         try { body = JSON.parse(Buffer.concat(buffers).toString("utf8")); }
         catch { return send(response,400,{task_status:"BLOCKED",code:"BAD_JSON"}); }
         try {
-          const result = await runTraceProbe(body, session.identity.organization_id);
+          const result = await runTraceProbe(body, session.identity.organization_id, {
+            layers: listLayerProfiles(),
+            build_status: {mode: executionDescription.mode,auth_mode:state.authMode,
+              executor_count:registry.refs().length,mission_persistence:state.missionKernel.store.persistence},
+          });
           state.runs.set(result.run.run_id, structuredClone(result.run));
           return send(response,200,result);
         } catch (error) {
