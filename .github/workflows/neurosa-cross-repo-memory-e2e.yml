@@ -1,0 +1,71 @@
+name: OSA Proof × NeurOSA — REAL local memory E2E
+
+on:
+  push:
+    branches:
+      - integration/osa-proof-mainline-consolidation-20261028
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-repo-memory:
+    name: OSA MemoryService → local NeurOSA → sourced recall → model contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: osa-proof
+      - name: Checkout fixed NeurOSA test commit (NOT production)
+        uses: actions/checkout@v4
+        with:
+          repository: HazEOskA/neurosa-human-brain
+          ref: 12f86d82a60d0aa398686d7b3c8c68e5e63220f1
+          persist-credentials: false
+          path: neurosa-local
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install dependencies
+        run: |
+          npm install --global pnpm@11.7.0
+          cd neurosa-local && pnpm install --frozen-lockfile
+          cd ../osa-proof && npm ci --ignore-scripts && npm run build
+      - name: Start isolated, ephemeral Brain API and run real HTTP bridge
+        shell: bash
+        env:
+          NEUROSA_E2E_BASE_URL: http://127.0.0.1:8644
+          NEUROSA_E2E_TOKEN: OSA_NEUROSA_LOCAL_E2E_TOKEN_20261028_0123456789
+        run: |
+          set -euo pipefail
+          export NEUROSA_API_TOKEN="$NEUROSA_E2E_TOKEN"
+          export NEUROSA_API_PORT=8644
+          export NEUROSA_API_HOST=127.0.0.1
+          export NEUROSA_DATABASE_PATH="$RUNNER_TEMP/osa-neurosa-e2e.db"
+          cd neurosa-local
+          pnpm brain:api > "$RUNNER_TEMP/osa-brain-api.log" 2>&1 &
+          brain_pid=$!
+          trap 'kill "$brain_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 45); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $NEUROSA_E2E_TOKEN" "$NEUROSA_E2E_BASE_URL/api/v1/brain/status" || true)
+            if [ "$code" = "200" ]; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" != "1" ]; then
+            echo "LOCAL_NEUROSA_NOT_READY"
+            tail -30 "$RUNNER_TEMP/osa-brain-api.log"
+            exit 1
+          fi
+          cd ../osa-proof
+          node scripts/test-neurosa-cross-repo-memory-e2e.cjs
+      - name: Confirm no repo changes
+        run: |
+          git -C osa-proof diff --exit-code
+          git -C neurosa-local diff --exit-code
