@@ -19,7 +19,7 @@ export class PreviewOperator {
   static fromEnvironment(env: Record<string, string | undefined>): PreviewOperator | undefined {
     if (env.OSA_PREVIEW_SINGLE_OPERATOR === undefined) return undefined;
     if (env.OSA_PREVIEW_SINGLE_OPERATOR !== "enabled" || env.VERCEL !== "1" ||
-        env.VERCEL_ENV !== "preview" || !["codex/neurosa-chat-memory", "fix/osa-proof-neurosa-protected-preview-20261028"].includes(env.VERCEL_GIT_COMMIT_REF ?? "") ||
+        env.VERCEL_ENV !== "preview" || !["codex/neurosa-chat-memory", "fix/osa-proof-neurosa-protected-preview-20261028", "test/osa-proof-neurosa-live-e2e-20261028"].includes(env.VERCEL_GIT_COMMIT_REF ?? "") ||
         (env.VERCEL_GIT_REPO_OWNER !== undefined && env.VERCEL_GIT_REPO_OWNER !== "HazEOskA") ||
         (env.VERCEL_GIT_REPO_SLUG !== undefined && env.VERCEL_GIT_REPO_SLUG !== "osa-proof"))
       throw new Error("Single operator is limited to the protected approved Vercel Preview branch.");
