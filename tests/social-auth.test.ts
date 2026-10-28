@@ -44,12 +44,14 @@ function cookie(res:Response,key:string){
   const match=(res.headers.get("set-cookie")??"").match(new RegExp(key+"=[^;]+"));
   assert.ok(match,"expected "+key+" cookie");return match[0];
 }
-async function withServer(provider:"google"|"github",sub:string,action:(base:string)=>Promise<void>,authorizationCode="test_code") {
+async function withServer(provider:"google"|"github",sub:string,action:(base:string)=>Promise<void>,authorizationCode="test_code",rejectCode=false) {
   let googleNonce="";
+  let exchanges=0;
   const srv=createServer(async(req,res)=>{
     const handled=await handleSocialAuth(req,res,env,async(input,init)=>{
       const url=String(input);
       if(url==="https://oauth2.googleapis.com/token"){
+        exchanges++;
         const body=new URLSearchParams(String(init?.body));
         assert.equal(body.get("client_secret"),env.OSA_PUBLIC_GOOGLE_CLIENT_SECRET);
         assert.equal(body.get("code"),authorizationCode);
@@ -57,6 +59,7 @@ async function withServer(provider:"google"|"github",sub:string,action:(base:str
         return Response.json({access_token:"google-test",id_token:signedIdToken(googleNonce,sub)});
       }
       if(url==="https://github.com/login/oauth/access_token"){
+        exchanges++;
         const body=new URLSearchParams(String(init?.body));
         assert.equal(body.get("client_secret"),env.OSA_PUBLIC_GITHUB_CLIENT_SECRET);
         assert.equal(body.get("code"),authorizationCode);
@@ -90,6 +93,11 @@ async function withServer(provider:"google"|"github",sub:string,action:(base:str
     const callbackPath=provider==="github"?"/auth/github/callback":"/auth/social/google/callback";
     const callback=await localFetch(base+callbackPath+"?code="+encodeURIComponent(authorizationCode)+"&state="+encodeURIComponent(state),
       {headers:{host:HOST,cookie:originalCookie},redirect:"manual"});
+    if(rejectCode){
+      assert.equal(callback.status,400);
+      assert.equal(exchanges,0,"malformed authorization code must not reach token exchange");
+      return;
+    }
     assert.equal(callback.status,302);
     assert.equal(callback.headers.get("location"),"/");
     const sessionCookie=cookie(callback,"__Host-osa_social_session");
@@ -118,6 +126,10 @@ test("Google OIDC validates RS256 JWT and establishes ordinary visitor",async()=
 });
 test("Google OAuth accepts valid slash-containing opaque codes and exchanges the exact value",async()=>{
   await withServer("google","google-user-55",async()=>{},"4/P7q7W91a-oMsCeLvIaQm6bTrgtp7");
+});
+test("Google OAuth rejects control characters and overlong codes before token exchange",async()=>{
+  await withServer("google","google-user-bad",async()=>{},"4/P7q\\nmalformed".replace("\\\\n","\\n"),true);
+  await withServer("google","google-user-bad",async()=>{},"4/"+("a".repeat(502)),true);
 });
 test("owner mapping requires server-verified GitHub numeric id",()=>{
   const signed=Buffer.from(JSON.stringify({kind:"osa.social.v1",provider:"github",sub:"123456",name:"owner",
