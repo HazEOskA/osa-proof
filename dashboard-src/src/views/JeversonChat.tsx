@@ -16,7 +16,7 @@ type ModelId = "auto" | "nvidia" | "openrouter";
 type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
 type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
 type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
-type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{url:string;http_status:number|null;status:string}> };
+type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{resource:string;method:string;source:string;http_status:null;status:string}> };
 type StatusInfo = { mode?:string; auth_mode?:string; persistence?:string };
 type ModelStatus = { configured:boolean; provider:string; model:string };
 type ModelAnswer = { text:string; model:string; provider_response_id:string|null; request_id:string; latency_ms:number; status:"PROVIDER_RESPONSE"; memory_status?:"UNAVAILABLE"; memory?: {receipt:MemoryPointer; remembered?:MemoryPointer} };
@@ -63,7 +63,7 @@ async function api<T>(path:string,body?:unknown,signal?:AbortSignal):Promise<T> 
   if(!res.ok){const err=data as {error?:string;code?:string;memory_write?:MemoryPointer};throw new ChatApiError(err?.error||err?.code||("HTTP "+res.status),err?.memory_write);}
   return data as T;
 }
-const TRACE_PROMPT = "OSA-TRACE-001 — wykonaj dokładnie dwa rzeczywiste żądania HTTP GET:\nhttps://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app/api/layers\nhttps://osa-proof-gx6alklct-osabarca-1680s-projects.vercel.app/api/build/status\nPokaż kod HTTP, faktyczne kroki i evidence. Niczego nie zapisuj ani nie wdrażaj.";
+const TRACE_PROMPT = "OSA-TRACE-001. Sprawdź aktualną instancję OSA Proof wyłącznie lokalnie:\nOdczytaj /layers i /build/status z bieżącego procesu API.\nPokaż ślad wykonania, SHA-256 odczytanych danych, evidence i werdykt.\nTo diagnostyka IN_PROCESS; nie wykonuje HTTP i nie weryfikuje zewnętrznych workerów.";
 export default function JeversonChat() {
   const {go,inspectExecution} = useOsa();
   const [sessions,setSessions] = useState<Session[]>(()=>[empty()]);
@@ -193,7 +193,7 @@ export default function JeversonChat() {
       const checks=await verifyRun(result.run);
       if(result.run.execution_id!==result.execution_id||!checks.length||!checks.every(c=>c.ok))throw Error("TRACE_INTEGRITY_UNVERIFIED");
       inspectExecution(result.team,result.mission,result.run);setLastRun({sessionId,run:result.run,verified:true});
-      const detail=result.steps.map(s=>"GET "+s.url+" → "+(s.http_status||"BRAK")+" · "+s.status).join("\n");
+      const detail=result.steps.map(s=>"LOCAL_READ "+s.resource+" · "+s.source+" · "+s.status).join("\n");
       addMessage(sessionId,"assistant","OSA TRACE · "+result.task_status+" · "+result.proof_verdict+"\n"+detail,result.task_status==="EXECUTED"?"VERIFIED":"BLOCKED",{executionId:result.execution_id,runId:result.run.run_id});
     }catch(e){if(request===seq.current&&!abort.signal.aborted)setError("TRACE BLOCKED · "+(e instanceof Error?e.message:String(e)));}
     finally{if(request===seq.current){controller.current=null;setBusy(false);}}
