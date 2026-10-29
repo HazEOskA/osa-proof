@@ -7,6 +7,10 @@ async function get(path){const controller=new AbortController();const timeout=se
 try {
  const status=await get("/api/auth/social/status");
  const body=await status.json().catch(()=>({}));
+ const buildBefore=await get("/api/build/status");
+ results.build_status_http_early=buildBefore.status;
+ const buildBody=await buildBefore.json().catch(()=>({}));
+ results.auth_mode_early=buildBody?.auth_mode??null;
  results.social_status_http=status.status;
  results.google_provider_enabled=body?.providers?.google===true;
  results.github_provider_enabled=body?.providers?.github===true;
