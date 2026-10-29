@@ -1,0 +1,1 @@
+External read-only production OAuth smoke after merged fix commit 18f7d003d24979b61eea55599d1e10783744e90d. Verify real /api/build/status session, provider availability, 302 to accounts.google.com with PKCE and callback. No login account used, no secrets recorded.
