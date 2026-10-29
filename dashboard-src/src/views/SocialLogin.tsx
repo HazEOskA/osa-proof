@@ -22,8 +22,21 @@ export function useSocialAuthStatus() {
   },[]);
   return {status,loading};
 }
+export function useOwnerGithubAuthStatus() {
+  const [configured,setConfigured] = useState(false);
+  useEffect(()=>{
+    const controller = new AbortController();
+    fetch("/api/auth/github/status",{signal:controller.signal,credentials:"same-origin",cache:"no-store"})
+      .then(async response=>response.ok ? await response.json() as {configured?:boolean} : null)
+      .then(data=>{if(!controller.signal.aborted)setConfigured(data?.configured===true);})
+      .catch(()=>{if(!controller.signal.aborted)setConfigured(false);});
+    return ()=>controller.abort();
+  },[]);
+  return configured;
+}
 export function SocialLoginScreen({status,onClose}:{status?:SocialAuthStatus;onClose?:()=>void}) {
   const current = useSocialAuthStatus();
+  const ownerGitHubConfigured = useOwnerGithubAuthStatus();
   const data = status ?? current.status;
   const login=(provider:"google"|"github")=>{
     if(!data.providers[provider])return;
@@ -31,6 +44,11 @@ export function SocialLoginScreen({status,onClose}:{status?:SocialAuthStatus;onC
     location.assign("/api/auth/social/"+provider+"/start?return_to="+encodeURIComponent(dest));
   };
   const available=data.providers.google||data.providers.github;
+  const ownerLogin=()=>{
+    if(!ownerGitHubConfigured)return;
+    const dest=location.pathname+location.search;
+    location.assign("/api/auth/github/start?return_to="+encodeURIComponent(dest));
+  };
   return <div className="fixed inset-0 z-[220] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-[#050a13] px-4 py-8 text-white" role="dialog" aria-modal="true" aria-label="Zaloguj do OSA Proof">
     <div className="pointer-events-none absolute inset-0" style={{background:"radial-gradient(ellipse at 35% 14%,rgba(22,154,235,.14),transparent 60%),radial-gradient(ellipse at 75% 95%,rgba(68,36,122,.13),transparent 55%)"}}/>
     <div className="relative w-full max-w-[420px] rounded-2xl border border-white/15 bg-[#09101d]/95 px-5 py-7 shadow-2xl sm:px-8">
@@ -48,8 +66,12 @@ export function SocialLoginScreen({status,onClose}:{status?:SocialAuthStatus;onC
           <GithubLogo/> Kontynuuj z GitHub
         </button>
       </div>
-      {!available && <p className="mt-4 text-xs leading-5 text-amber-300" role="status">
-        Logowanie społecznościowe nie jest jeszcze aktywowane na tym wdrożeniu. Przyciski pozostają zablokowane, dopóki oba serwerowe OAuth nie zostaną poprawnie skonfigurowane.
+      {!available && ownerGitHubConfigured && <button type="button" onClick={ownerLogin}
+        className="focus-ring mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-cyan-300/50 bg-cyan-500/10 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/20">
+        <GithubLogo/> Zaloguj jako właściciel przez GitHub
+      </button>}
+      {!available && !ownerGitHubConfigured && <p className="mt-4 text-xs leading-5 text-amber-300" role="status">
+        Logowanie na tym wdrożeniu nie jest skonfigurowane. Nie ma aktywnego dostępu społecznościowego ani ścieżki właściciela.
       </p>}
       <div className="mt-7 border-t border-white/10 pt-4 text-xs leading-5 text-slate-400">
         Konto właściciela jest rozpoznawane automatycznie po zweryfikowanym identyfikatorze. Pozostali użytkownicy nie otrzymują dostępu do panelu operatora ani prywatnej NeurOSA.
