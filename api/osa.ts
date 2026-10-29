@@ -6,6 +6,7 @@ import { vercelApiPath } from "../apps/api/src/vercel";
 import { BrainControlPlane } from "../packages/brain/src";
 import { PreviewOperator } from "../apps/api/src/preview-operator";
 import { githubOAuthConfigured } from "../apps/api/src/github-auth";
+import { publicProviderStatus } from "../apps/api/src/social-auth";
 
 // Keep private NeurOSA off custom/production domains, even when those domains
 // happen to alias the same Vercel deployment as this PR Preview.
@@ -21,10 +22,20 @@ export function isNeurosaAuthenticatedProduction(
   if(typeof host !== "string" || host.toLowerCase() !== PRIVATE_PRODUCTION_HOST) return false;
   if(forwardedHost !== undefined &&
       (typeof forwardedHost !== "string" || forwardedHost.toLowerCase() !== PRIVATE_PRODUCTION_HOST)) return false;
-  // Only a signed, allowlisted GitHub session can receive private memory.
-  // The storage proof must be accepted separately after real restart/readback.
+  // Only sessions signed by a configured provider and mapped to a server-side
+  // owner allowlist may access the dedicated NeurOSA tenant. A successful Google
+  // login *alone* is not an owner grant. MemoryService enforces that per request.
+  // Production restart/readback evidence is a separate mandatory release gate.
+  const subjects = (env.OSA_GOOGLE_OWNER_SUBJECTS ?? "").split(",").map(value => value.trim()).filter(Boolean);
+  const googleOwnerConfigured =
+    publicProviderStatus(env).google &&
+    env.OSA_PUBLIC_AUTH_ORIGIN === "https://" + PRIVATE_PRODUCTION_HOST &&
+    subjects.length > 0 &&
+    subjects.every(subject => /^[A-Za-z0-9_-]{3,255}$/.test(subject));
+  const githubOwnerConfigured = githubOAuthConfigured(env);
   if(env.VERCEL !== "1" || env.OSA_AUTH_MODE !== "session" ||
-    env.OSA_NEUROSA_STORAGE_VERIFIED !== "true" || !githubOAuthConfigured(env) ||
+    env.OSA_NEUROSA_STORAGE_VERIFIED !== "true" ||
+    !(googleOwnerConfigured || githubOwnerConfigured) ||
     !env.OSA_NEUROSA_ORGANIZATION_ID || !env.OSA_NEUROSA_PROJECT_ID ||
     (env.OSA_GITHUB_ORGANIZATION_ID ?? env.OSA_NEUROSA_ORGANIZATION_ID) !== env.OSA_NEUROSA_ORGANIZATION_ID ||
     (env.OSA_GITHUB_PROJECT_ID ?? env.OSA_NEUROSA_PROJECT_ID) !== env.OSA_NEUROSA_PROJECT_ID)

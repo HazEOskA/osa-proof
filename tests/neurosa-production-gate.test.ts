@@ -43,3 +43,43 @@ test("NeurOSA production: missing auth, unsafe open mode or storage proof fails 
     assert.throws(()=>isNeurosaAuthenticatedProduction(origin,{...base,...changed}),/NEUROSA_PRODUCTION_GATE_BLOCKED/);
   }
 });
+
+function googleOwnerConfig(): Record<string,string> {
+  const env=config();
+  delete env.OSA_GITHUB_CLIENT_ID;
+  delete env.OSA_GITHUB_CLIENT_SECRET;
+  delete env.OSA_GITHUB_SESSION_SECRET;
+  delete env.OSA_GITHUB_ALLOWED_USER_IDS;
+  delete env.OSA_GITHUB_CALLBACK_ORIGIN;
+  return {
+    ...env,
+    OSA_PUBLIC_AUTH_ENABLED:"enabled",
+    OSA_PUBLIC_AUTH_ORIGIN:"https://"+origin,
+    OSA_PUBLIC_SESSION_SECRET:"google-owner-session-signing-secret-12345678",
+    OSA_PUBLIC_GOOGLE_CLIENT_ID:"test-google-app",
+    OSA_PUBLIC_GOOGLE_CLIENT_SECRET:"test-google-client-secret",
+    OSA_GOOGLE_OWNER_SUBJECTS:"owner-google-sub-123",
+  };
+}
+test("NeurOSA production: Google-only owner with verified sub and tenant is eligible",()=>{
+  const env=googleOwnerConfig();
+  assert.equal(isNeurosaAuthenticatedProduction(origin,env),true);
+  assert.equal(isNeurosaAuthenticatedProduction(origin,env,origin),true);
+  assert.equal(isNeurosaAuthenticatedProduction("agentworlds.dev",env),false);
+  assert.equal(isNeurosaAuthenticatedProduction(origin,env,"agentworlds.dev"),false);
+});
+test("NeurOSA production: Google login alone never enables private memory",()=>{
+  const base=googleOwnerConfig();
+  for(const changed of [
+    {OSA_GOOGLE_OWNER_SUBJECTS:""},
+    {OSA_GOOGLE_OWNER_SUBJECTS:"not valid subject!"},
+    {OSA_PUBLIC_AUTH_ENABLED:""},
+    {OSA_PUBLIC_GOOGLE_CLIENT_SECRET:""},
+    {OSA_PUBLIC_AUTH_ORIGIN:"https://agentworlds.dev"},
+    {OSA_PUBLIC_SESSION_SECRET:"weak"},
+    {OSA_AUTH_MODE:"open"},
+    {OSA_NEUROSA_STORAGE_VERIFIED:""},
+    {OSA_GITHUB_ORGANIZATION_ID:"foreign"},
+    {OSA_GITHUB_PROJECT_ID:"foreign"},
+  ]) assert.throws(()=>isNeurosaAuthenticatedProduction(origin,{...base,...changed}),/NEUROSA_PRODUCTION_GATE_BLOCKED/);
+});
