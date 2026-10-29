@@ -1,0 +1,22 @@
+name: OSA production Google OAuth read-only smoke
+on:
+  push:
+    branches:
+      - test/prod-google-oauth-smoke-20261029
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  oauth-production:
+    name: Check public production OAuth endpoints and Google redirect
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Production OAuth HTTP smoke (no account, no secrets)
+        run: node scripts/smoke-production-google-oauth.mjs
