@@ -146,3 +146,26 @@ test("owner mapping requires server-verified GitHub numeric id",()=>{
     }} as IncomingMessage;
   assert.equal(readSocialSession(visitorReq,env),undefined);
 });
+
+test("Google owner is granted private memory tenant only by verified-subject allowlist",()=>{
+  const now=Date.now();
+  const subject="owner-google-sub-123";
+  const ownerEnv={...env,OSA_GOOGLE_OWNER_SUBJECTS:subject};
+  const sessionClaims={kind:"osa.social.v1",provider:"google",sub:subject,name:"Owner Google",
+    nonce:"abcdefghijklmnopqrstuvwxyz123456",iat:now,exp:now+100000};
+  const data=Buffer.from(JSON.stringify(sessionClaims)).toString("base64url");
+  const signature=createHmac("sha256",ownerEnv.OSA_PUBLIC_SESSION_SECRET).update(data).digest("base64url");
+  const cookieHeader="__Host-osa_social_session="+data+"."+signature;
+  const request={headers:{cookie:cookieHeader}} as IncomingMessage;
+  const owner=readSocialSession(request,ownerEnv);
+  assert.deepEqual(owner?.identity.roles,["owner","operator"]);
+  assert.equal(owner?.identity.provider,"google");
+  assert.equal(owner?.identity.organization_id,"org-owner");
+  assert.deepEqual(owner?.identity.project_ids,["project-owner"]);
+  const guest=readSocialSession(request,{...ownerEnv,OSA_GOOGLE_OWNER_SUBJECTS:""});
+  assert.deepEqual(guest?.identity.roles,["visitor"]);
+  assert.equal(guest?.identity.organization_id,undefined);
+  assert.equal(guest?.identity.project_ids,undefined);
+  const forged=readSocialSession({headers:{cookie:cookieHeader+"tampered"}} as IncomingMessage,ownerEnv);
+  assert.equal(forged,undefined);
+});
