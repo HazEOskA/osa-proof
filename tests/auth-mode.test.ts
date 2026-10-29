@@ -61,7 +61,8 @@ test("open mode: no login needed, identity is the explicit OPEN MODE identity, s
   });
 });
 
-test("the Vercel preview sets OSA_AUTH_MODE=open; nothing else does", () => {
+test("Vercel config does not force OPEN across production and preview", () => {
   const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as { env: Record<string, string> };
-  assert.equal(vercel.env.OSA_AUTH_MODE, "open");
+  // OPEN is managed only in Preview project env; production is explicitly SESSION.
+  assert.equal(vercel.env.OSA_AUTH_MODE, undefined);
 });
