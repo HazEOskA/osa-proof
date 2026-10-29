@@ -153,8 +153,24 @@ export async function handleSocialAuth(req: IncomingMessage, res: ServerResponse
   const path = new URL(req.url ?? "/", "http://local").pathname;
   if (path === "/auth/social/status") {
     if (req.method !== "GET") { answer(res,405,{code:"METHOD_NOT_ALLOWED"});return true; }
+    const providers = publicProviderStatus(env);
+    // Server-side booleans only. Never log credential values, IDs, session tokens,
+    // cookies or user identities. Helps diagnose disabled production OAuth.
+    if (env.VERCEL_ENV === "production" && !providers.google) {
+      let originValid = false;
+      try { origin(env); originValid = true; } catch { /* report only boolean */ }
+      const google = client(env,"google");
+      console.info("OSA_GOOGLE_OAUTH_CONFIGURATION",JSON.stringify({
+        public_auth_enabled:env.OSA_PUBLIC_AUTH_ENABLED === "enabled",
+        session_mode:env.OSA_AUTH_MODE === "session",
+        session_signing_key_ready:secureKey(env).length >= 32,
+        origin_valid:originValid,
+        google_client_id_present:Boolean(google.id),
+        google_client_secret_present:Boolean(google.secret),
+      }));
+    }
     const session = readSocialSession(req,env);
-    answer(res,200,{providers:publicProviderStatus(env),authenticated:Boolean(session),identity:session?.identity??null});
+    answer(res,200,{providers,authenticated:Boolean(session),identity:session?.identity??null});
     return true;
   }
   if (path === "/auth/social/logout") {
