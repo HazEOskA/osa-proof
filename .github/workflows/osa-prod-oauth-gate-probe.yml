@@ -1,0 +1,52 @@
+name: OSA production OAuth gate — read only
+on:
+  push:
+    branches: [audit/prod-google-oauth-gate-20261029]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-google-redirect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Probe live Google OAuth without exposing credentials
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const origin = 'https://osa-proof-three.vercel.app';
+          const get = (p) => fetch(origin + p, {redirect:'manual',headers:{accept:'application/json'},signal:AbortSignal.timeout(12000)});
+          try {
+            const r = await get('/api/auth/social/status');
+            console.log('STATUS_HTTP', r.status);
+            if (!r.ok) throw Error('SOCIAL_STATUS_UNAVAILABLE');
+            const data = await r.json();
+            const googleEnabled = data?.providers?.google === true;
+            const githubEnabled = data?.providers?.github === true;
+            console.log('GOOGLE_PROVIDER_ENABLED', googleEnabled);
+            console.log('GITHUB_PROVIDER_ENABLED', githubEnabled);
+            if (!googleEnabled) throw Error('GOOGLE_PROVIDER_DISABLED_OR_CONFIGURATION_INCOMPLETE');
+            const start = await get('/api/auth/social/google/start?return_to=%2F');
+            console.log('GOOGLE_START_HTTP', start.status);
+            if (start.status !== 302) throw Error('GOOGLE_OAUTH_REDIRECT_NOT_302');
+            const redirect = new URL(start.headers.get('location') || '',origin);
+            const clientId = redirect.searchParams.get('client_id') || '';
+            const callback = redirect.searchParams.get('redirect_uri') || '';
+            const hasValidClientId = /^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(clientId);
+            const validCallback = callback === origin + '/api/auth/social/google/callback';
+            const validProvider = redirect.hostname === 'accounts.google.com' && redirect.protocol === 'https:';
+            console.log('CLIENT_ID_SYNTAX_VALID', hasValidClientId);
+            console.log('REDIRECT_URI_VALID', validCallback);
+            console.log('GOOGLE_AUTH_HOST_VALID', validProvider);
+            if (!hasValidClientId || !validCallback || !validProvider) throw Error('GOOGLE_OAUTH_REDIRECT_MISMATCH');
+            console.log('OSA_GOOGLE_OAUTH_START_GATE PASS — full interactive login NOT tested');
+          } catch (error) {
+            console.error('OSA_GOOGLE_OAUTH_START_GATE FAIL',error instanceof Error?error.message:'UNKNOWN');
+            process.exitCode=1;
+          }
+          JS
