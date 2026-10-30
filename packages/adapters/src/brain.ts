@@ -64,9 +64,11 @@ export class NeurosaMemoryAdapter implements WritableBrainMemory {
     const url = new URL(options.baseUrl);
     if (url.username || url.password || url.search || url.hash || url.pathname !== "/" ||
         (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)))) throw new Error("invalid NeurOSA origin; remote connections require HTTPS");
-    if (options.token.length < 24 || !options.brainId.trim() || !options.organizationId.trim() || !options.projectId.trim()) throw new Error("NeurOSA token, brain and tenant/project binding required");
+    if (options.token.trim().length < 24 || !options.brainId.trim() || !options.organizationId.trim() || !options.projectId.trim()) throw new Error("NeurOSA token, brain and tenant/project binding required");
     if (options.timeoutMs !== undefined && (!Number.isInteger(options.timeoutMs) || options.timeoutMs < 1 || options.timeoutMs > 60000)) throw new Error("invalid NeurOSA timeout");
-    this.options = { ...options };
+    // Environment-variable editors can add trailing line breaks. HTTP header
+    // values must not contain them; preserve the credential itself unchanged.
+    this.options = { ...options, token: options.token.trim(), brainId: options.brainId.trim() };
     this.binding = Object.freeze({ organization_id: options.organizationId, project_id: options.projectId });
     this.base = url.origin;
     this.fetcher = options.fetch ?? globalThis.fetch;
@@ -177,11 +179,15 @@ export class NeurosaMemoryAdapter implements WritableBrainMemory {
       let authorizationHeaderValid = true;
       try { new Headers({ authorization: `Bearer ${this.options.token}`, "x-neurosa-brain-id": this.options.brainId }); }
       catch { authorizationHeaderValid = false; }
+      let tokenHeaderValid = true, brainHeaderValid = true;
+      try { new Headers({ authorization: `Bearer ${this.options.token}` }); } catch { tokenHeaderValid = false; }
+      try { new Headers({ "x-neurosa-brain-id": this.options.brainId }); } catch { brainHeaderValid = false; }
       const safeCodes = ["ERR_INVALID_CHAR", "ERR_INVALID_ARG_VALUE", "ERR_INVALID_ARG_TYPE", "UND_ERR_INVALID_ARG", "UND_ERR_SOCKET", "UND_ERR_CONNECT_TIMEOUT", "ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"];
       console.warn(JSON.stringify({ event: "neurosa_transport_diagnostic",
         error_type: error instanceof TypeError ? "TYPE_ERROR" : "OTHER",
         cause_code: typeof code === "string" && safeCodes.includes(code) ? code : "OTHER_OR_ABSENT",
-        authorization_headers_valid: authorizationHeaderValid }));
+        authorization_headers_valid: authorizationHeaderValid, token_header_valid: tokenHeaderValid,
+        brain_header_valid: brainHeaderValid }));
       if (code === "ENOTFOUND" || code === "EAI_AGAIN") throw new BrainPlanningError("NEUROSA_DNS_FAILED");
       if (code === "ECONNREFUSED" || code === "ECONNRESET") throw new BrainPlanningError("NEUROSA_CONNECTION_REJECTED");
       if (code === "ETIMEDOUT" || code === "UND_ERR_CONNECT_TIMEOUT") throw new BrainPlanningError("NEUROSA_TIMEOUT");
