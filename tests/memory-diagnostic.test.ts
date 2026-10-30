@@ -17,7 +17,7 @@ const operatorEnv = { OSA_PREVIEW_SINGLE_OPERATOR: "enabled", VERCEL: "1", VERCE
   VERCEL_GIT_REPO_SLUG: "osa-proof", OSA_NEUROSA_ORGANIZATION_ID: binding.organization_id,
   OSA_NEUROSA_PROJECT_ID: binding.project_id };
 
-function fixture() {
+function fixture(leakDiagnostic = false) {
   const documents = new Map<string, MemoryEvent>();
   let writes = 0, recalled = 0;
   const adapter: WritableBrainMemory = {
@@ -45,7 +45,8 @@ function fixture() {
     },
     async recall(scope, query, maxChars) {
       recalled++;
-      const event = [...documents.values()].find(item => item.data.statement === query);
+      // Real NeurOSA excludes diagnostic events from factual recall.
+      const event = [...documents.values()].find(item => (leakDiagnostic || item.kind !== "DIAGNOSTIC_TEST") && item.data.statement === query);
       const body = { scope, brain_id: "OsaBrain", ledger_head: createHash("sha256").update("fixture").digest("hex"),
         text: event ? String(event.data.statement).slice(0,maxChars) : "",
         references: event ? [{ documentId: "doc_" + event.event_sha256.slice(0,32), revision: 1 }] : [],
@@ -56,7 +57,7 @@ function fixture() {
   return { adapter, get writes() {return writes;}, get recalled(){return recalled;} };
 }
 
-test("operator diagnostic: one synthetic record, idempotent retry, verified read and cross-session recall", async () => {
+test("operator diagnostic: verified read and diagnostic exclusion from cross-session recall", async () => {
   const f=fixture(), service=new MemoryService(f.adapter), session=PreviewOperator.fromEnvironment(operatorEnv)!.session;
   const result=await service.diagnostic(session);
   assert.equal(result.status, "VERIFIED");
@@ -65,7 +66,13 @@ test("operator diagnostic: one synthetic record, idempotent retry, verified read
   assert.equal(result.external_attestation_verified, false);
   assert.equal(f.writes, 1);
   assert.equal(f.recalled, 1);
-  assert.equal(result.checks.length, 6);
+  assert.equal(result.checks.length, 5);
+  assert.ok(result.checks.includes("DIAGNOSTIC_EXCLUDED_FROM_RECALL"));
+});
+
+test("operator diagnostic rejects diagnostic data leaking into factual recall", async () => {
+  const f=fixture(true), service=new MemoryService(f.adapter), session=PreviewOperator.fromEnvironment(operatorEnv)!.session;
+  await assert.rejects(service.diagnostic(session), /Recall zawiera dane wpisu diagnostycznego/);
 });
 
 test("diagnostic event: changed nonce, statement or kind is refused", () => {

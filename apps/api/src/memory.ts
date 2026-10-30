@@ -115,18 +115,18 @@ export class MemoryService {
         recovered.event.event_sha256 !== event.event_sha256 ||
         recovered.event.data.statement !== statement)
       throw new MemoryAccessError(502, "MEMORY_DIAGNOSTIC_REJECTED", "Odczyt kontrolny jest niespójny.");
-    // Different session key, no chat history. Cross-session recall must find the saved statement.
+    // Diagnostic records must remain directly readable but must not pollute factual recall.
     const recallScope = { ...scope, mission_id: `diagnostic_recall_${nonce}` };
     const context = await this.adapter.recall(recallScope, statement, 12000);
     verifyMemoryContext(context);
     const foundRef = context.references.some(ref => Boolean(ref && typeof ref === "object" &&
       "documentId" in ref && ref.documentId === receipt.document_id));
     if (digest(context.scope) !== digest(recallScope) || context.brain_id !== receipt.brain_id ||
-        !context.text.includes(nonce) || !foundRef)
-      throw new MemoryAccessError(502, "MEMORY_DIAGNOSTIC_REJECTED", "Recall nie potwierdził źródłowego dokumentu.");
+        context.text.includes(nonce) || foundRef)
+      throw new MemoryAccessError(502, "MEMORY_DIAGNOSTIC_REJECTED", "Recall zawiera dane wpisu diagnostycznego lub jest niespójny.");
     return {
       status: "VERIFIED" as const, assurance: "LIVE_MEMORY_IO_INTEGRITY" as const,
-      checks: ["SCOPED_PROBE", "SEALED_WRITE", "IDEMPOTENT_RETRY", "DOCUMENT_READBACK", "CROSS_SESSION_RECALL", "SOURCE_REFERENCE"],
+      checks: ["SCOPED_PROBE", "SEALED_WRITE", "IDEMPOTENT_RETRY", "DOCUMENT_READBACK", "DIAGNOSTIC_EXCLUDED_FROM_RECALL"],
       brain_id: receipt.brain_id, document_id: receipt.document_id,
       event_sha256: event.event_sha256, receipt_sha256: receipt.receipt_sha256,
       context_sha256: context.context_sha256, ledger_head: context.ledger_head,
