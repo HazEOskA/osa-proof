@@ -61,3 +61,37 @@ test("existing worker host returns real health; unconfigured worker and write ta
   }
   assert.throws(()=>unifiedInput({message:"test",execution_id:"wrong"}));
 });
+
+test("bounded repo inspection crosses worker HTTP and produces a verifiable execution", async () => {
+  const token="local_test_"+randomUUID(), scope={organization_id:"org_dev_local",project_id:"osa-proof"};
+  let requests=0;
+  const worker=createWorkerServer({token,scope,readonlyRepo:"HazEOskA/osa-proof",readOnlyToolsOnly:true,provider:new DockerWorkspaceProvider(),
+    fetchImpl:async (input, init) => {
+      requests++;
+      assert.equal(input,"https://api.github.com/repos/HazEOskA/osa-proof");
+      assert.equal((init?.headers as Record<string,string>).authorization,undefined);
+      return Response.json({full_name:"HazEOskA/osa-proof",private:false,default_branch:"main",archived:false});
+    }});
+  await new Promise<void>(resolve=>worker.listen(0,"127.0.0.1",resolve));
+  const origin="http://127.0.0.1:"+(worker.address() as AddressInfo).port;
+  try {
+    const post=(body:unknown, auth=token)=>fetch(origin+"/v1/tools/repo-inspect",{method:"POST",headers:{authorization:"Bearer "+auth,"content-type":"application/json"},body:JSON.stringify(body)});
+    const id="exec_"+randomUUID();
+    assert.equal((await post({...scope,execution_id:id},"wrong")).status,401);
+    assert.equal((await post({...scope,project_id:"other",execution_id:id})).status,403);
+    assert.equal((await post({...scope,execution_id:id,command:"sh"})).status,400);
+    const shell=await fetch(origin+"/v1/workspaces",{method:"POST",headers:{authorization:"Bearer "+token,"content-type":"application/json"},body:"{}"});
+    assert.equal(shell.status,403);
+    assert.equal((await shell.json() as {error:string}).error,"WORKER_READ_ONLY_MODE");
+    assert.equal(requests,0);
+    const x=createDevExecution({OSA_EXECUTION_MODE:"fixture"});
+    installUnifiedTools(x.registry,{OSA_WORKER_BASE_URL:origin,OSA_WORKER_TOKEN:token});
+    const result=await executeUnified({message:"Sprawdź skonfigurowane repozytorium READ-ONLY",execution_id:id},scope.organization_id,x.registry,scope.project_id);
+    assert.equal(result.status,"EXECUTED");
+    assert.equal(result.tool,"osa.worker.repo.inspect.v1");
+    assert.equal((result.run.final_output as {repository:string}).repository,"HazEOskA/osa-proof");
+    assert.equal(result.integrity.ok,true);
+    assert.equal(requests,1);
+    assert.ok(!JSON.stringify(result).includes(token));
+  } finally {await new Promise<void>(resolve=>worker.close(()=>resolve()));}
+});
