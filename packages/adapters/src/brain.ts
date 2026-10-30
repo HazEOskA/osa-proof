@@ -173,6 +173,15 @@ export class NeurosaMemoryAdapter implements WritableBrainMemory {
       // internal IP, DNS hostname, upstream message, TLS certificate, or token.
       const cause: unknown = error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
       const code = cause && typeof cause === "object" && "code" in cause ? (cause as {code:unknown}).code : undefined;
+      // Log only fixed labels: fetch errors can otherwise contain credentials or URLs.
+      let authorizationHeaderValid = true;
+      try { new Headers({ authorization: `Bearer ${this.options.token}`, "x-neurosa-brain-id": this.options.brainId }); }
+      catch { authorizationHeaderValid = false; }
+      const safeCodes = ["ERR_INVALID_CHAR", "ERR_INVALID_ARG_VALUE", "ERR_INVALID_ARG_TYPE", "UND_ERR_INVALID_ARG", "UND_ERR_SOCKET", "UND_ERR_CONNECT_TIMEOUT", "ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"];
+      console.warn(JSON.stringify({ event: "neurosa_transport_diagnostic",
+        error_type: error instanceof TypeError ? "TYPE_ERROR" : "OTHER",
+        cause_code: typeof code === "string" && safeCodes.includes(code) ? code : "OTHER_OR_ABSENT",
+        authorization_headers_valid: authorizationHeaderValid }));
       if (code === "ENOTFOUND" || code === "EAI_AGAIN") throw new BrainPlanningError("NEUROSA_DNS_FAILED");
       if (code === "ECONNREFUSED" || code === "ECONNRESET") throw new BrainPlanningError("NEUROSA_CONNECTION_REJECTED");
       if (code === "ETIMEDOUT" || code === "UND_ERR_CONNECT_TIMEOUT") throw new BrainPlanningError("NEUROSA_TIMEOUT");
