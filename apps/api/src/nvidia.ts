@@ -7,7 +7,7 @@ import { MemoryAccessError, MemoryService } from "./memory";
 import { osaGuideContext } from "./osa-guide";
 import { readBoundedResponse } from "../../../packages/deployment/src";
 
-export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
+export const NVIDIA_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b";
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
 export class NvidiaError extends Error {
   constructor(readonly status: number, readonly code: string, message: string) { super(message); }
