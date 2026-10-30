@@ -1,6 +1,8 @@
 import { Buffer } from "node:buffer";
 import { timingSafeEqual } from "node:crypto";
 import { posix as pathPosix } from "node:path";
+import { createHash } from "node:crypto";
+import { readBoundedResponse } from "../../../packages/deployment/src";
 import {
   createServer,
   type IncomingMessage,
@@ -28,6 +30,8 @@ export interface WorkerServerOptions {
   now?: () => number;
   scope?: { organization_id: string; project_id: string };
   maxWorkspaces?: number;
+  readonlyRepo?: string;
+  fetchImpl?: typeof fetch;
 }
 
 export class WorkerState {
@@ -255,6 +259,39 @@ export async function handleWorkerRequest(
   }
 
   try {
+    if (method === "POST" && url.pathname === "/v1/tools/repo-inspect") {
+      const body = await readJson<Record<string, unknown>>(request);
+      if (!options.scope || !body || body.organization_id !== options.scope.organization_id || body.project_id !== options.scope.project_id)
+        return send(response, 403, { error: "WORKER_SCOPE_DENIED" });
+      if (Object.keys(body).some(key => !["organization_id", "project_id", "execution_id"].includes(key)) ||
+          typeof body.execution_id !== "string" || !/^exec_[a-f0-9-]{36}$/.test(body.execution_id))
+        return send(response, 400, { error: "INVALID_TOOL_REQUEST" });
+      const repo = options.readonlyRepo?.trim();
+      if (!repo || !/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(repo) || repo.includes(".."))
+        return send(response, 503, { error: "READ_ONLY_REPO_NOT_CONFIGURED" });
+      let upstream: Response;
+      try {
+        upstream = await (options.fetchImpl ?? fetch)(`https://api.github.com/repos/${repo}`, {
+          headers: { accept: "application/vnd.github+json", "user-agent": "osa-worker-readonly" },
+          redirect: "error", signal: AbortSignal.timeout(10000),
+        });
+      } catch { return send(response, 502, { error: "REPO_READ_FAILED" }); }
+      if (!upstream.ok) return send(response, 502, { error: "REPO_READ_FAILED" });
+      let text: string;
+      try { text = await readBoundedResponse(upstream, 128 * 1024); }
+      catch { return send(response, 502, { error: "REPO_RESPONSE_TOO_LARGE" }); }
+      let data: Record<string, unknown>;
+      try { data = JSON.parse(text) as Record<string, unknown>; }
+      catch { return send(response, 502, { error: "REPO_RESPONSE_INVALID" }); }
+      if (!data || typeof data !== "object" || data.private !== false ||
+          typeof data.full_name !== "string" || data.full_name.toLowerCase() !== repo.toLowerCase() ||
+          typeof data.default_branch !== "string") return send(response, 502, { error: "REPO_RESPONSE_INVALID" });
+      return send(response, 200, { tool: "repo.inspect", execution_id: body.execution_id,
+        repository: data.full_name, default_branch: data.default_branch,
+        description: typeof data.description === "string" ? data.description.slice(0, 1000) : null,
+        language: typeof data.language === "string" ? data.language.slice(0, 100) : null,
+        archived: data.archived === true, source_sha256: createHash("sha256").update(text).digest("hex") });
+    }
     if (method === "POST" && url.pathname === "/v1/workspaces") {
       const body = await readJson<unknown>(request);
       assertCreateRequest(body);

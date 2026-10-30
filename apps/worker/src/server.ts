@@ -29,7 +29,7 @@ export async function startWorkerHost(env: Env = process.env) {
   const organization_id = env.OSA_WORKER_ORGANIZATION_ID;
   const project_id = env.OSA_WORKER_PROJECT_ID;
   if (!organization_id || !project_id || token.length < 32) throw new Error("Scoped worker credentials (32+ chars), organization and project are required");
-  const server = createWorkerServer({ token, provider, scope: { organization_id, project_id }, maxWorkspaces: positiveInteger(env.OSA_WORKER_CAPACITY, 4, "OSA_WORKER_CAPACITY") });
+  const server = createWorkerServer({ token, provider, scope: { organization_id, project_id }, readonlyRepo: env.OSA_WORKER_READONLY_REPO, maxWorkspaces: positiveInteger(env.OSA_WORKER_CAPACITY, 4, "OSA_WORKER_CAPACITY") });
   server.listen(port, host, () => {
     console.log(
       JSON.stringify({
