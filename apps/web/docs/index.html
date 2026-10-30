@@ -240,10 +240,10 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
         <section id="start" aria-labelledby="h-start">
           <div class="eyebrow">Start</div>
           <div class="grid">
-            <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
+            <a class="card" href="#quickstart"><span class="label k">START</span><h4>Szybki start dla testera</h4><p>Uruchom lokalne API i testy. Osobno sprawdź dowody oraz ograniczenia preview i produkcji.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
-            <a class="card" href="#neurosa-runtime"><span class="label k">Integration · gated</span><h4>NeurOSA memory</h4><p>Storage backup confirmed; authenticated live recall and restart acceptance are still BLOCKED. Evidence first.</p></a>
+            <a class="card" href="#neurosa-runtime"><span class="label k">STAGING · CZĘŚCIOWO</span><h4>Pamięć NeurOSA</h4><p>Odczyt po restarcie potwierdzono w stagingu. Produkcyjny przepływ E2E pozostaje niezweryfikowany.</p></a>
              <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>87</span> method/path combinations in the main branch reference, including Delivery Lab, NVIDIA, Web3 and runtime. Generated from the same route manifest used for auth tests; Production release versions may differ.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
@@ -251,19 +251,22 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
 
 
     <section id="quickstart" aria-labelledby="h-qs">
-      <h2 id="h-qs">Quickstart</h2>
-      <p>You need Node.js 20 or newer. The deterministic fixture mode needs no API key.</p>
+      <h2 id="h-qs">Szybki start dla testera</h2>
+      <p>Potrzebujesz Node.js 20+ i npm. Tryb <code>fixture</code> nie wymaga klucza i używa kontrolowanych wyników testowych; nie potwierdza działania modelu ani zdalnego workera.</p>
+      <p><strong>Stan 30.10.2026:</strong> test pamięci po restarcie i odczyt metadanych przez workera przeprowadzono w osobnym stagingu. Kod workera jest w <a href="https://github.com/HazEOskA/osa-proof/pull/36">PR #36</a>, a pełny przepływ przez interfejs preview, NVIDIA, Replay i produkcję pozostaje niezweryfikowany. Nie wpisuj do stagingu prywatnej pamięci ani sekretów.</p>
+      <p><a href="https://github.com/HazEOskA/osa-proof/blob/docs/tester-quickstart-20261030/docs/TESTER_QUICK_START.md">Instrukcja testera i zakres dowodów w repozytorium</a></p>
       <ol class="steps">
-        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Clone and install</div><div class="d">Dependencies are locked in <code>package-lock.json</code>.</div>
+        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Pobierz repozytorium</div><div class="d">Zależności są przypięte w <code>package-lock.json</code>. Zapisz wersję kodu przed testem.</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>git clone https://github.com/HazEOskA/osa-proof.git
 cd osa-proof
+git rev-parse HEAD
 npm ci</pre></div></div></li>
-        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Run the tests</div><div class="d">Checks that HTTP documentation matches the source manifest, builds TypeScript and runs the current node test suite. The pass/skip totals come from each actual test run, not this page.</div>
+        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Uruchom testy</div><div class="d">Komenda sprawdza dokumentację API, buduje TypeScript i uruchamia testy. Zapisz rzeczywiste liczby PASS, FAIL i SKIP.</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>npm test</pre></div></div></li>
-        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Start the API in fixture mode</div><div class="d"><code>OSA_EXECUTION_MODE</code> is required. There is no default: a missing or unknown value refuses to start. Login is on by default (<a href="#auth">auth modes</a>).</div>
+        <li class="step"><span class="sd" aria-hidden="true"></span><div><div class="t">Uruchom lokalne API</div><div class="d">Przykład używa trybu sesji; lokalny serwer API nasłuchuje na porcie 3000. Nie uruchamia osobnego dashboardu i sam nie tworzy ProofReceipt.</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>npm run build
 OSA_EXECUTION_MODE=fixture PORT=3000 node dist/apps/api/src/server.js</pre></div></div></li>
-        <li class="step" ><span class="sd" aria-hidden="true"></span><div><div class="t">Switch to a real model</div><div class="d">Provider mode calls Anthropic or OpenAI behind the <code>ModelProvider</code> interface. Missing provider, model or key refuses to start.</div>
+        <li class="step" ><span class="sd" aria-hidden="true"></span><div><div class="t">Opcjonalnie: skonfiguruj model</div><div class="d">Ten przykład wymaga własnej konfiguracji i może generować koszty. Nie jest wymagany do testu fixture. Brak dostawcy, modelu lub klucza blokuje uruchomienie.</div>
           <div class="code"><div class="bar"><span class="file">shell</span><button class="copy" type="button">Copy</button></div><pre>OSA_EXECUTION_MODE=provider \
 OSA_PROVIDER=anthropic \
 OSA_MODEL=&lt;model id&gt; \
@@ -273,29 +276,29 @@ node dist/apps/api/src/server.js</pre></div></div></li>
     </section>
 
     <section id="first-mission" aria-labelledby="h-fm">
-      <h2 id="h-fm">Your first mission</h2>
-      <p>Register a two-agent Team Graph, submit a mission with one acceptance requirement, run it, and read the receipt. The server decides which implementation serves <code>dev.planner.v1</code> and <code>dev.builder.v1</code>.</p>
-      <h3 class="h">0. Log in (DEV)</h3>
+      <h2 id="h-fm">Pierwsza misja testowa</h2>
+      <p>Zarejestruj dwuagentowy Team Graph, uruchom misję i odczytaj ProofReceipt. W trybie fixture executorzy zwracają wyniki testowe — nie jest to wykonanie zdalnego workera.</p>
+      <h3 class="h">0. Utwórz lokalną sesję DEV</h3>
       <div class="code"><div class="bar"><span class="file">POST /auth/dev-login</span><button class="copy" type="button">Copy</button></div><pre>TOKEN=$(curl -s localhost:3000/auth/dev-login -H 'content-type: application/json' \
   -d '{"display_name":"Dev","email":"dev@example.com"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).session.token')</pre></div>
-      <h3 class="h">1. Register the team</h3>
+      <h3 class="h">1. Zarejestruj zespół</h3>
       <div class="code"><div class="bar"><span class="file">POST /teams</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/teams -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{
-  "organization_id": "org_dev", "project_id": "project_dev", "team_id": "team_dev", "version": "1",
+  "organization_id": "org_dev_local", "project_id": "project_dev", "team_id": "team_dev", "version": "1",
   "agents": [
     { "agent_id": "planner", "role": "planner", "executor_ref": "dev.planner.v1" },
     { "agent_id": "builder", "role": "builder", "executor_ref": "dev.builder.v1" }
   ],
   "edges": [{ "edge_id": "planner_to_builder", "from_agent_id": "planner", "to_agent_id": "builder", "kind": "handoff" }]
 }'</pre></div>
-      <h3 class="h">2. Submit the mission</h3>
+      <h3 class="h">2. Zapisz misję</h3>
       <div class="code"><div class="bar"><span class="file">POST /missions</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/missions -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{
-  "organization_id": "org_dev", "project_id": "project_dev", "mission_id": "mission_hello",
+  "organization_id": "org_dev_local", "project_id": "project_dev", "mission_id": "mission_hello",
   "team_id": "team_dev", "team_version": "1", "entry_agent_id": "planner",
   "objective": "Write landing page copy", "input": { "request": "Write landing page copy" },
   "requirements": [{ "requirement_id": "artifact_status", "type": "evidence_field_equals",
     "evidence_kind": "artifact", "agent_id": "builder", "field": "status", "expected": "built" }]
 }'</pre></div>
-      <h3 class="h">3. Run it and read the proof</h3>
+      <h3 class="h">3. Uruchom misję i odczytaj dowód</h3>
       <div class="code"><div class="bar"><span class="file">POST /missions/:id/run · GET /runs/:id/proof</span><button class="copy" type="button">Copy</button></div><pre>RUN=$(curl -s -X POST localhost:3000/missions/mission_hello/run -H "authorization: Bearer $TOKEN" | node -pe 'JSON.parse(require("fs").readFileSync(0)).run_id')
 curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></div>
     </section>
@@ -419,7 +422,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
           <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Run a dataset against team versions and compare receipts. <a href="#control">Details</a></td></tr>
           <tr><td><code>knowledge</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Retrieval where every hit cites a content-addressed source. <a href="#knowledge">Details</a></td></tr>
           <tr><td><code>context-hub</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Shared context for agents. Depends on memory (neurosa) and knowledge.</td></tr>
-          <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--warn);margin:0 6px 0 0"></span>CODE · GATED</td><td>NeurOSA adapter and scoped recall are merged; <a href="#neurosa-runtime">authenticated live persistence and post-restart recall are not yet verified</a>.</td></tr>
+          <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--warn);margin:0 6px 0 0"></span>CODE · GATED</td><td>Adapter NeurOSA jest w kodzie; odczyt po restarcie potwierdzono w stagingu, a <a href="#neurosa-runtime">pełny przepływ produkcyjny pozostaje niezweryfikowany</a>.</td></tr>
         </tbody>
       </table></div>
     </section>
@@ -688,24 +691,16 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
 
     <section id="neurosa-runtime" aria-labelledby="h-neurosa-runtime">
-      <div class="eyebrow">Agentic OS · Memory · 2026-10-27</div>
-      <h2 id="h-neurosa-runtime">NeurOSA × OSA Proof <span class="label" style="--c:var(--warn)">LIVE BLOCKED</span></h2>
-      <p>NeurOSA to pamięć serwerowa systemu OSA, nie historia przeglądarki ani kolejny control plane. Zaimplementowany przepływ w <code>ChatDelivery</code> jest chroniony: uwierzytelniony operator → opcjonalny zapis wiadomości → recall → NVIDIA → Runtime → Evidence i ProofReceipt → potwierdzony zapis wykonania w NeurOSA.</p>
+      <div class="eyebrow">Agentic OS · pamięć · stan 30.10.2026</div>
+      <h2 id="h-neurosa-runtime">NeurOSA × OSA Proof <span class="label" style="--c:var(--warn)">STAGING · CZĘŚCIOWO</span></h2>
+      <p>NeurOSA jest opcjonalną pamięcią serwerową. Rozdzielamy dowody ze stagingu od działania produkcji i faktycznego testu w interfejsie.</p>
       <div class="grid">
-        <div class="card"><span class="label k">CODE · PASS</span><h4>Scalone z main</h4><p>PR #21 i #24 scalone. GitHub Actions PR #24: 265 PASS, 0 FAIL, 3 SKIP; build TypeScript i dashboard PASS. Testy kontraktowe nie są testami LIVE.</p><div class="src">GitHub · main · 54ab16e</div></div>
-        <div class="card"><span class="label k">STORAGE · PARTIAL</span><h4>Backup na trwałym wolumenie</h4><p>Railway: wolumen 512 MB w <code>/persist</code>. Snapshot SQLite przeniesiony i zweryfikowany SHA-256; nie potwierdzono jeszcze używania tej bazy przez Brain API ani trwałości po restarcie.</p><div class="src">Railway · neurosa-memory-v1</div></div>
-        <div class="card"><span class="label k">AUTH · BLOCKED</span><h4>Prywatny operator GitHub</h4><p>Produkcja wymaga skonfigurowanego GitHub OAuth, allowlisty i serwerowego zakresu organizacja/projekt. Bez sesji żadnego dostępu do pamięci.</p><div class="src">OSA_AUTH_MODE=session · fail-closed</div></div>
-        <div class="card"><span class="label k">LIVE · NOT VERIFIED</span><h4>Golden Flow</h4><p>Nie ma jeszcze dowodu pełnego <code>login → remember → recall → model → proof → restart → recall</code>. Status READY deploymentu i 401 bez Bearer nie potwierdzają pamięci.</p><div class="src">CLAIM ≠ PROOF</div></div>
+        <div class="card"><span class="label k">STAGING · PASS</span><h4>Zapis i odczyt</h4><p>Zweryfikowano zapis i odczyt z innej rozmowy oraz ponowny odczyt dokumentów po restarcie testowej instancji NeurOSA.</p></div>
+        <div class="card"><span class="label k">WORKER · CZĘŚCIOWO</span><h4>Rzeczywiste zadanie</h4><p>Worker staging odczytał metadane publicznego repozytorium, a lokalne API zapisało wynik do testowej NeurOSA. Odczyt metadanych nie jest analizą kodu. Zmiany są w PR #36, poza main.</p></div>
+        <div class="card"><span class="label k">NVIDIA / REPLAY · UNKNOWN</span><h4>Pełny przepływ</h4><p>Odpowiedź NVIDIA z pamięcią, trwały Replay oraz wspólny test przez interfejs preview nie zostały potwierdzone w tym cyklu testów.</p></div>
+        <div class="card"><span class="label k">PRODUKCJA · BLOCKED</span><h4>Odbiór produkcyjny</h4><p>Produkcyjna pamięć między rozmowami i cały przepływ E2E wymagają oddzielnego testu. Status READY nie jest dowodem PASS.</p></div>
       </div>
-      <h3 class="h">Warunki uruchomienia pamięci na Production</h3>
-      <ol>
-        <li>Sprawdzenie aktualnej kopii SQLite i uprawnień zapisu dla procesu <code>node</code>, a następnie kontrolowany cutover na plik w <code>/persist</code>.</li>
-        <li>Prawdziwy zapis i odczyt, kontrolowany restart Brain API, powtórny odczyt i integralność ledgeru.</li>
-        <li>Zweryfikowane logowanie GitHub OAuth, <code>organization_id</code>, <code>project_id</code> oraz odmowa dla anonimowych.</li>
-        <li>Dopiero po PASS: odblokowanie flagi produkcyjnej, jednorazowy golden-flow E2E i uruchomienie misji Hermesa.</li>
-      </ol>
-      <p>Granice bezpieczeństwa: <code>memory_status=VERIFIED</code> oznacza potwierdzony zapis wykonania; <code>UNAVAILABLE</code> oznacza niepotwierdzony zapis. Dane NeurOSA nie są poleceniami dla agenta. Nie uruchamiaj testów modeli, jeżeli bezpłatne wywołanie nie zostało potwierdzone.</p>
-      <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md" rel="noopener">Pełny runbook migracji i acceptance</a> · <a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/CHAT_ARTIFACT_FLOW.md" rel="noopener">Kontrakt ChatDelivery</a></p>
+      <p><a href="https://github.com/HazEOskA/osa-proof/blob/docs/tester-quickstart-20261030/docs/TESTER_QUICK_START.md">Instrukcja testera</a> · <a href="https://github.com/HazEOskA/osa-proof/pull/36">PR workera i preview</a></p>
     </section>
 
 
