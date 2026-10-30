@@ -14,6 +14,7 @@ const PRIVATE_PREVIEW_HOST = "osa-proof-git-codex-neurosa-chat-memory-osabarca-1
 // Isolated, branch-scoped preview for the Final Boss integration. Never a public alias.
 const PATCH_PREVIEW_BRANCH = "fix/osa-proof-neurosa-protected-preview-20261028";
 const WORKER_MEMORY_PREVIEW_BRANCH = "feat/worker-readonly-repo-20261030";
+const WORKER_MEMORY_PREVIEW_ALIAS = "osa-proof-git-feat-worker-readon-594542-osabarca-1680s-projects.vercel.app";
 const PRIVATE_PRODUCTION_HOST = "osa-proof-three.vercel.app";
 export function isNeurosaAuthenticatedProduction(
   host: string | undefined, env: Record<string, string | undefined>,
@@ -50,18 +51,22 @@ export function isNeurosaProtectedPreview(
 ): boolean {
   if (env.VERCEL !== "1" || env.VERCEL_ENV !== "preview" ||
       env.OSA_PREVIEW_SINGLE_OPERATOR !== "enabled") return false;
-  // Accept either the original fixed private alias, or ONLY Vercel's generated
-  // deployment hostname for our isolated integration branch. Never a custom,
-  // branch, or production alias for this new operator.
+  // Accept the original private alias, generated deployment hostnames for the
+  // approved branches, and the exact protected worker integration branch alias.
+  // Custom and production aliases never receive the preview operator.
   const protectedHost = env.VERCEL_GIT_COMMIT_REF === "codex/neurosa-chat-memory"
     ? PRIVATE_PREVIEW_HOST
     : [PATCH_PREVIEW_BRANCH, WORKER_MEMORY_PREVIEW_BRANCH].includes(env.VERCEL_GIT_COMMIT_REF ?? "") &&
       typeof env.VERCEL_URL === "string" &&
       /^osa-proof-[a-z0-9-]+\.vercel\.app$/i.test(env.VERCEL_URL)
       ? env.VERCEL_URL.toLowerCase() : undefined;
-  if (!protectedHost || typeof host !== "string" || host.toLowerCase() !== protectedHost) return false;
+  if (!protectedHost || typeof host !== "string") return false;
+  const requestedHost = host.toLowerCase();
+  const permittedHost = requestedHost === protectedHost ||
+    (env.VERCEL_GIT_COMMIT_REF === WORKER_MEMORY_PREVIEW_BRANCH && requestedHost === WORKER_MEMORY_PREVIEW_ALIAS);
+  if (!permittedHost) return false;
   if (forwardedHost !== undefined &&
-      (typeof forwardedHost !== "string" || forwardedHost.toLowerCase() !== protectedHost)) return false;
+      (typeof forwardedHost !== "string" || forwardedHost.toLowerCase() !== requestedHost)) return false;
   return true;
 }
 

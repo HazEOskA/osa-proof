@@ -67,7 +67,13 @@ test("integration fix Preview exposes private memory only on its exact Vercel de
 test("worker memory Preview is limited to its deployment hostname and preview environment", () => {
   const worker = {...env, VERCEL_GIT_COMMIT_REF: "feat/worker-readonly-repo-20261030",
     VERCEL_URL: "osa-proof-test123-osabarca-1680s-projects.vercel.app"};
+  const alias = "osa-proof-git-feat-worker-readon-594542-osabarca-1680s-projects.vercel.app";
   assert.ok(PreviewOperator.fromEnvironment(worker));
+  assert.equal(isNeurosaProtectedPreview(alias, worker, alias), true);
+  assert.equal(isNeurosaProtectedPreview(alias, worker, "agentworlds.dev"), false);
+  assert.equal(isNeurosaProtectedPreview(alias, {...worker, VERCEL_GIT_COMMIT_REF: "main"}), false);
+  assert.equal(isNeurosaProtectedPreview(alias, {...worker, VERCEL_ENV: "production"}), false);
+  assert.equal(isNeurosaProtectedPreview(alias, {...worker, OSA_PREVIEW_SINGLE_OPERATOR: undefined}), false);
   assert.equal(isNeurosaProtectedPreview(worker.VERCEL_URL, worker), true);
   assert.equal(isNeurosaProtectedPreview("osa-proof-three.vercel.app", worker), false);
   assert.equal(isNeurosaProtectedPreview(worker.VERCEL_URL, {...worker, VERCEL_ENV: "production"}), false);
