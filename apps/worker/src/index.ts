@@ -32,6 +32,7 @@ export interface WorkerServerOptions {
   maxWorkspaces?: number;
   readonlyRepo?: string;
   fetchImpl?: typeof fetch;
+  readOnlyToolsOnly?: boolean;
 }
 
 export class WorkerState {
@@ -257,6 +258,9 @@ export async function handleWorkerRequest(
   if (!authorized(request, options.token)) {
     return send(response, 401, { error: "unauthorized" });
   }
+
+  if (options.readOnlyToolsOnly && !(method === "POST" && url.pathname === "/v1/tools/repo-inspect"))
+    return send(response, 403, { error: "WORKER_READ_ONLY_MODE" });
 
   try {
     if (method === "POST" && url.pathname === "/v1/tools/repo-inspect") {

@@ -65,7 +65,7 @@ test("existing worker host returns real health; unconfigured worker and write ta
 test("bounded repo inspection crosses worker HTTP and produces a verifiable execution", async () => {
   const token="local_test_"+randomUUID(), scope={organization_id:"org_dev_local",project_id:"osa-proof"};
   let requests=0;
-  const worker=createWorkerServer({token,scope,readonlyRepo:"HazEOskA/osa-proof",provider:new DockerWorkspaceProvider(),
+  const worker=createWorkerServer({token,scope,readonlyRepo:"HazEOskA/osa-proof",readOnlyToolsOnly:true,provider:new DockerWorkspaceProvider(),
     fetchImpl:async (input, init) => {
       requests++;
       assert.equal(input,"https://api.github.com/repos/HazEOskA/osa-proof");
@@ -80,6 +80,9 @@ test("bounded repo inspection crosses worker HTTP and produces a verifiable exec
     assert.equal((await post({...scope,execution_id:id},"wrong")).status,401);
     assert.equal((await post({...scope,project_id:"other",execution_id:id})).status,403);
     assert.equal((await post({...scope,execution_id:id,command:"sh"})).status,400);
+    const shell=await fetch(origin+"/v1/workspaces",{method:"POST",headers:{authorization:"Bearer "+token,"content-type":"application/json"},body:"{}"});
+    assert.equal(shell.status,403);
+    assert.equal((await shell.json() as {error:string}).error,"WORKER_READ_ONLY_MODE");
     assert.equal(requests,0);
     const x=createDevExecution({OSA_EXECUTION_MODE:"fixture"});
     installUnifiedTools(x.registry,{OSA_WORKER_BASE_URL:origin,OSA_WORKER_TOKEN:token});
