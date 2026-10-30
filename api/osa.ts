@@ -14,14 +14,15 @@ const PRIVATE_PREVIEW_HOST = "osa-proof-git-codex-neurosa-chat-memory-osabarca-1
 // Isolated, branch-scoped preview for the Final Boss integration. Never a public alias.
 const PATCH_PREVIEW_BRANCH = "fix/osa-proof-neurosa-protected-preview-20261028";
 const PRIVATE_PRODUCTION_HOST = "osa-proof-three.vercel.app";
+const CANONICAL_PRODUCTION_HOST = "agentworlds.dev";
 export function isNeurosaAuthenticatedProduction(
   host: string | undefined, env: Record<string, string | undefined>,
   forwardedHost?: string | string[]
 ): boolean {
   if(env.OSA_NEUROSA_PRODUCTION_ENABLED !== "enabled" || env.VERCEL_ENV !== "production") return false;
-  if(typeof host !== "string" || host.toLowerCase() !== PRIVATE_PRODUCTION_HOST) return false;
+  if(typeof host !== "string" || ![PRIVATE_PRODUCTION_HOST, CANONICAL_PRODUCTION_HOST].includes(host.toLowerCase())) return false;
   if(forwardedHost !== undefined &&
-      (typeof forwardedHost !== "string" || forwardedHost.toLowerCase() !== PRIVATE_PRODUCTION_HOST)) return false;
+      (typeof forwardedHost !== "string" || forwardedHost.toLowerCase() !== host.toLowerCase())) return false;
   // Only sessions signed by a configured provider and mapped to a server-side
   // owner allowlist may access the dedicated NeurOSA tenant. A successful Google
   // login *alone* is not an owner grant. MemoryService enforces that per request.

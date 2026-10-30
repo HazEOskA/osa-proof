@@ -18,7 +18,10 @@ test("NeurOSA production: only explicitly approved, authenticated, durable host 
   const env=config();
   assert.equal(isNeurosaAuthenticatedProduction(origin,env),true);
   assert.equal(isNeurosaAuthenticatedProduction(origin,env,origin),true);
-  assert.equal(isNeurosaAuthenticatedProduction("agentworlds.dev",env),false);
+  assert.equal(isNeurosaAuthenticatedProduction("agentworlds.dev",env),true);
+  assert.equal(isNeurosaAuthenticatedProduction("agentworlds.dev",env,"agentworlds.dev"),true);
+  assert.equal(isNeurosaAuthenticatedProduction("agentworlds.dev",env,origin),false);
+  assert.equal(isNeurosaAuthenticatedProduction("other.example",env),false);
   assert.equal(isNeurosaAuthenticatedProduction(origin,env,"agentworlds.dev"),false);
   assert.equal(isNeurosaAuthenticatedProduction(origin,{...env,VERCEL_ENV:"preview"}),false);
   assert.equal(isNeurosaAuthenticatedProduction(origin,{...env,OSA_NEUROSA_PRODUCTION_ENABLED:""}),false);
@@ -65,7 +68,10 @@ test("NeurOSA production: Google-only owner with verified sub and tenant is elig
   const env=googleOwnerConfig();
   assert.equal(isNeurosaAuthenticatedProduction(origin,env),true);
   assert.equal(isNeurosaAuthenticatedProduction(origin,env,origin),true);
-  assert.equal(isNeurosaAuthenticatedProduction("agentworlds.dev",env),false);
+  assert.equal(isNeurosaAuthenticatedProduction("agentworlds.dev",env),true);
+  assert.equal(isNeurosaAuthenticatedProduction("agentworlds.dev",env,"agentworlds.dev"),true);
+  assert.equal(isNeurosaAuthenticatedProduction("agentworlds.dev",env,origin),false);
+  assert.equal(isNeurosaAuthenticatedProduction("other.example",env),false);
   assert.equal(isNeurosaAuthenticatedProduction(origin,env,"agentworlds.dev"),false);
 });
 test("NeurOSA production: Google login alone never enables private memory",()=>{
