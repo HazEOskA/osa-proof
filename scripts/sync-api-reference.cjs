@@ -7,7 +7,11 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const control = fs.readFileSync(path.join(root,"packages/control/src/index.ts"),"utf8");
 const htmlPath = path.join(root,"apps/web/docs/index.html");
-const input = fs.readFileSync(htmlPath,"utf8");
+const original = fs.readFileSync(htmlPath,"utf8");
+// Git on Windows can check out HTML with CRLF even when the repository stores LF.
+// Compare canonical LF representations: line-ending conversion is not API drift.
+const input = original.replace(/\r\n/g,"\n");
+const lineEnding = original.includes("\r\n") ? "\r\n" : "\n";
 const desc = {
   "GET /chat/delivery/status": "Server-bound artifact generation availability and model; no provider call.",
   "POST /chat/delivery": "Stream agent lifecycle events, generate model artifact and deliver sealed bundle; session, free-tier and quota gates.",
@@ -115,6 +119,6 @@ if (process.argv.includes("--check")) {
   if(result!==input){console.error("HTTP docs drift: run npm run docs:sync");process.exitCode=1;}
   else console.log("HTTP API docs synchronized:",routes.length,"route pairs");
 } else if (process.argv.includes("--write")) {
-  if(result!==input)fs.writeFileSync(htmlPath,result);
+  if(result!==input)fs.writeFileSync(htmlPath,result.replace(/\n/g,lineEnding));
   console.log("HTTP API docs generated:",routes.length,"route pairs");
 } else {console.error("Use --check or --write");process.exitCode=2;}

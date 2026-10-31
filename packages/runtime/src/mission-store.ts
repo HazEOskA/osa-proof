@@ -27,6 +27,17 @@ export class MemoryMissionStore implements MissionStore {
     this.records.set(record.mission.mission_id, structuredClone(record));
   }
 }
+/** Flush a parent directory after atomic rename on platforms that support it.
+ * Node's Windows directory FileHandle.sync() raises EPERM. Windows still gets
+ * the file-level fsync before rename, but cannot claim POSIX directory fsync.
+ * Do not suppress errors on other platforms.
+ */
+export async function syncMissionDirectory(directory: string, platform: string = process.platform): Promise<void> {
+  if (platform === "win32") return;
+  const handle = await open(directory, "r");
+  try { await handle.sync(); } finally { await handle.close(); }
+}
+
 // Local filesystem persistence. No distributed filesystem assumptions or automatic
 // stale-lock takeover: after a crash a leftover lock fails closed for operator recovery.
 export class FileMissionStore implements MissionStore {
@@ -70,8 +81,7 @@ export class FileMissionStore implements MissionStore {
         await file.sync();
       } finally { await file.close(); }
       await rename(temporary, path);
-      const directory = await open(this.directory, "r");
-      try { await directory.sync(); } finally { await directory.close(); }
+      await syncMissionDirectory(this.directory);
     } finally {
       try { await unlink(temporary).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; }); }
       finally { try { await lock.close(); } finally { await unlink(`${path}.lock`); } }
