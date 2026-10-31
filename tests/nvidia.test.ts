@@ -15,10 +15,11 @@ test("NVIDIA: server authorization, Polish prompt and response metadata", async 
     const body = JSON.parse(init?.body as string);
     assert.equal(body.model, "configured-model"); assert.equal(body.stream, false);
     assert.match(body.messages[0].content, /po polsku/); assert.equal(body.messages[1].content, "Cześć");
-    return new Response(JSON.stringify({ id: "provider-id", choices: [{ message: { content: "Witaj" }, finish_reason: "stop" }] }));
+    return new Response(JSON.stringify({ id: "provider-id", model: "nvidia/served-model", choices: [{ message: { content: "Witaj" }, finish_reason: "stop" }] }));
   }) as typeof fetch;
   const result = await nvidiaComplete(" Cześć ", env, fake);
   assert.equal(result.text, "Witaj"); assert.equal(result.provider_response_id, "provider-id");
+  assert.equal(result.provider_model, "nvidia/served-model");
   assert.equal(result.status, "PROVIDER_RESPONSE"); assert.ok(result.request_id);
   assert.ok(!JSON.stringify(result).includes("test-secret"));
 });

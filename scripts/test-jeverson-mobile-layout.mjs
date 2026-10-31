@@ -99,6 +99,7 @@ try {
     await page.getByText("Witaj, jestem asystentem OSA.").waitFor({state:"visible"});
     assert.equal(providerRequests,1,"AI transport contract called exactly once");
     assert.match(await page.getByTestId("osa-message").last().innerText(),/ODPOWIEDŹ MODELU AI/);
+    assert.match(await page.getByTestId("osa-message").last().innerText(),/NVIDIA · NVIDIA\/TEST-MODEL/i);
     // Hermes must not disappear when a conversation has messages or when starting
     // a fresh chat; its agent selection must survive browser refresh.
     await page.getByTestId("osa-hermes-switch").click();

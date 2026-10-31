@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useOsa, type ViewId } from "../ctx";
 import { HOME_ITEM, NAV } from "../nav";
 
-type Message={role:"user"|"assistant";text:string};
-type Answer={status:string;text?:string};
+type Message={role:"user"|"assistant";text:string;model?:string;memoryUnavailable?:boolean;sourceCount?:number};
+type Answer={status:string;text?:string;model?:string;provider_model?:string;memory_status?:"UNAVAILABLE";memory_context?:{references?:unknown[]}};
 type ModelStatus={configured:boolean;provider?:string;model?:string};
 const nav=[HOME_ITEM,...NAV.flatMap(g=>g.items)];
 const FALLBACK="Oprowadź mnie po tym module OSA Proof. Wyjaśnij, co tutaj działa, co jest ograniczone i od czego zacząć.";
@@ -42,6 +42,7 @@ export default function OsaHelpDock(){
   const [connected,setConnected]=useState<boolean|null>(null);
   const scrollRef=useRef<HTMLDivElement>(null);
   const abort=useRef<AbortController|null>(null);
+  const conversationId=useRef<string>("");
   const input=useRef<HTMLTextAreaElement>(null);
   const guide=useMemo(()=>topicFor(view),[view]);
   const label=labelFor(view);
@@ -57,14 +58,17 @@ export default function OsaHelpDock(){
     setDraft("");setError("");setBusy(true);
     const ctl=new AbortController();abort.current=ctl;
     try{
-      const timeout=setTimeout(()=>ctl.abort(),29000);
+      if(!conversationId.current)conversationId.current=crypto.randomUUID();
+      const timeout=setTimeout(()=>ctl.abort(),55000);
       let response:Response;
-      try{response=await fetch("/api/nvidia/fleet-chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prompt:text,agent:"guide",view,history}),signal:ctl.signal});}
+      try{response=await fetch("/api/nvidia/fleet-chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prompt:text,agent:"guide",view,history,conversation_id:conversationId.current}),signal:ctl.signal});}
       finally{clearTimeout(timeout);}
       const data=await response.json().catch(()=>({error:"Odpowiedź serwera ma nieprawidłowy format."})) as Answer&{error?:string};
       if(!response.ok)throw Error(data.error||"Nie udało się połączyć z modelem.");
       if(data.status!=="PROVIDER_RESPONSE"||!data.text?.trim())throw Error("Model nie zwrócił odpowiedzi.");
-      setMessages(prev=>[...prev,{role:"assistant",text:data.text!.trim()}]);
+      setMessages(prev=>[...prev,{role:"assistant",text:data.text!.trim(),model:data.provider_model||data.model,
+        memoryUnavailable:data.memory_status==="UNAVAILABLE",
+        ...(data.memory_context?{sourceCount:Array.isArray(data.memory_context.references)?data.memory_context.references.length:0}:{})}]);
     }catch(e){if(!ctl.signal.aborted)setError(e instanceof Error?e.message:"Błąd połączenia z modelem.");else setError("Żądanie zostało przerwane lub przekroczyło czas oczekiwania.");}
     finally{if(abort.current===ctl)abort.current=null;setBusy(false);}
   }
@@ -89,7 +93,7 @@ export default function OsaHelpDock(){
             {navigation&&<button type="button" className="focus-ring mt-3 rounded-md border border-cyan/40 px-3 py-2 text-[11px] font-semibold text-cyan hover:bg-white/5" onClick={()=>{go(navigation.view);}}>Przejdź dalej: {navigation.label} →</button>}
           </div>
           {messages.length===0&&<div className="space-y-2"><div className="label">Zacznij od pytania</div>{guide.questions.map(q=><button key={q} type="button" onClick={()=>void ask(q)} disabled={busy} className="focus-ring block w-full rounded-lg border border-line p-3 text-left text-xs leading-5 text-fg hover:border-cyan/40 disabled:opacity-50">{q} <span className="text-cyan">↗</span></button>)}</div>}
-          {messages.map((m,i)=><div key={i} className={"flex "+(m.role==="user"?"justify-end":"justify-start")}><div className={"max-w-[95%] whitespace-pre-wrap break-words rounded-xl px-3 py-2.5 text-[12px] leading-5 "+(m.role==="user"?"bg-[#1b3b58] text-white":"border border-line bg-panel text-fg")}><div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-dim">{m.role==="user"?"Ty":"OSA · przewodnik"}</div>{m.text}</div></div>)}
+          {messages.map((m,i)=><div key={i} className={"flex "+(m.role==="user"?"justify-end":"justify-start")}><div className={"max-w-[95%] whitespace-pre-wrap break-words rounded-xl px-3 py-2.5 text-[12px] leading-5 "+(m.role==="user"?"bg-[#1b3b58] text-white":"border border-line bg-panel text-fg")}><div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-dim">{m.role==="user"?"Ty":m.model?"OSA · NVIDIA · "+m.model:"OSA · przewodnik"}</div>{m.text}{m.memoryUnavailable&&<p role="status" className="mt-2 text-xs text-warn">NeurOSA niedostępna w tej odpowiedzi.</p>}{m.sourceCount!==undefined&&<p className="mt-2 text-[10px] text-dim">Kontekst NeurOSA · źródła: {m.sourceCount}</p>}</div></div>)}
           {busy&&<p role="status" className="text-xs text-dim">OSA odpowiada…</p>}
           {error&&<p data-testid="osa-help-error" role="alert" className="rounded-md border border-bad/40 bg-bad/10 p-2 text-xs text-bad">{error}</p>}
         </div>
