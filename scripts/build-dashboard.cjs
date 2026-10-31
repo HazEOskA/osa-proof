@@ -67,14 +67,25 @@ function extractTarGz(source, destination) {
   }
 }
 
+function spawnOptions(command, cwd, platform = process.platform) {
+  // Node.js 24 on Windows refuses direct CreateProcess for npm.cmd (EINVAL).
+  // Only Windows command scripts need the command shell; Linux remains direct.
+  return {
+    cwd, stdio: "inherit", env: process.env,
+    shell: platform === "win32" && /\.(?:cmd|bat)$/i.test(command),
+  };
+}
+
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, stdio: "inherit", env: process.env, shell: false });
+  const result = spawnSync(command, args, spawnOptions(command, cwd));
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(command + " " + args.join(" ") + " failed with exit code " + result.status);
   }
 }
 
+// Importable for unit tests without installing dependencies or rewriting build output.
+if (require.main === module) {
 fs.rmSync(work, { recursive: true, force: true });
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(work, { recursive: true });
@@ -116,3 +127,6 @@ if (!fs.existsSync(path.join(docs, "index.html"))) throw new Error("apps/web/doc
 fs.cpSync(docs, path.join(output, "docs"), { recursive: true });
 
 console.log("OSA dashboard built:", output);
+}
+
+module.exports = { spawnOptions, run };
