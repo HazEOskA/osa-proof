@@ -67,21 +67,43 @@ function extractTarGz(source, destination) {
   }
 }
 
-function spawnOptions(command, cwd, platform = process.platform) {
-  // Node.js 24 on Windows refuses direct CreateProcess for npm.cmd (EINVAL).
-  // Only Windows command scripts need the command shell; Linux remains direct.
-  return {
-    cwd, stdio: "inherit", env: process.env,
-    shell: platform === "win32" && /\.(?:cmd|bat)$/i.test(command),
-  };
+/**
+ * Resolve the real npm JS entrypoint rather than spawning npm.cmd.
+ * Standard Node distributions keep npm below node_modules/npm/bin;
+ * Linux system installations can use a global share/nodejs directory.
+ * An npm_execpath pointing to pnpm/yarn is deliberately ignored.
+ */
+function resolveNpmCli(nodePath = process.execPath, env = process.env) {
+  const nodeDir = path.dirname(nodePath);
+  const candidates = [
+    env.npm_execpath,
+    path.join(nodeDir, "node_modules", "npm", "bin", "npm-cli.js"),
+    path.resolve(nodeDir, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js"),
+    path.resolve(nodeDir, "..", "share", "nodejs", "npm", "bin", "npm-cli.js"),
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" &&
+        path.isAbsolute(candidate) &&
+        path.basename(candidate).toLowerCase() === "npm-cli.js" &&
+        fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return candidate;
+    }
+  }
+  throw new Error("NPM_CLI_NOT_FOUND: unable to find npm/bin/npm-cli.js beside Node.js");
 }
 
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, spawnOptions(command, cwd));
+  const result = spawnSync(command, args, {
+    cwd, stdio: "inherit", env: process.env, shell: false,
+  });
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(command + " " + args.join(" ") + " failed with exit code " + result.status);
   }
+}
+
+function runNpm(args, cwd) {
+  return run(process.execPath, [resolveNpmCli(), ...args], cwd);
 }
 
 // Importable for unit tests without installing dependencies or rewriting build output.
@@ -110,9 +132,8 @@ if (process.env.OSA_DASHBOARD_EXTRACT_ONLY === "1") {
   process.exit(0);
 }
 
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-run(npm, ["install", "--no-audit", "--no-fund"], work);
-run(npm, ["run", "build"], work);
+runNpm(["install", "--no-audit", "--no-fund"], work);
+runNpm(["run", "build"], work);
 
 const built = path.join(work, "dist");
 if (!fs.existsSync(path.join(built, "index.html"))) {
@@ -129,4 +150,4 @@ fs.cpSync(docs, path.join(output, "docs"), { recursive: true });
 console.log("OSA dashboard built:", output);
 }
 
-module.exports = { spawnOptions, run };
+module.exports = { resolveNpmCli, run, runNpm };
