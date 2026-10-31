@@ -125,7 +125,9 @@ export class MissionKernel {
     for (const task of record.task_graph.nodes) registry.get(record.team.agents.find((agent) => agent.agent_id === task.agent_id)!.executor_ref);
     await this.transition(record, "EXECUTING"); // CAS wins before spawning any executor.
     const events = new MemoryEventStore();
-    const runtime = new OsaRuntime(registry, { eventStore: {
+    // All MissionKernel missions, including generated apps, retain attribution.
+    // NEVER bypass based on mission.kind, objective or generated artifacts.
+    const runtime = new OsaRuntime(registry, { trustedNoExternalFacts:false, eventStore: {
       list: (runId) => events.list(runId),
       append: async (event) => {
         await events.append(event);

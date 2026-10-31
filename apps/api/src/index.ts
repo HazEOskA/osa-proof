@@ -179,7 +179,9 @@ export async function handleApiRequest(
 ): Promise<void> {
   if (!state.platform.web3) state.platform.installWeb3(registry,state.web3);
   state.platform.syncExecutors(registry);
-  const runtime = new OsaRuntime(registry);
+  // Host-controlled, default-on attribution: API requests cannot disable
+  // factual checks by setting mission flags or by claiming a pure build.
+  const runtime = new OsaRuntime(registry, { trustedNoExternalFacts: false });
 
   // A deployment pins the graph: the mission runs against the deployed version, whatever it names,
   // and only after every enabled policy allows it.

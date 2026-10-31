@@ -4,8 +4,9 @@ import { createServer, type Server } from "node:http";
 import { once } from "node:events";
 import test from "node:test";
 import type { Mission, TeamGraph } from "../packages/contracts/src";
-import { digest, verifyProofReceipt, verifyMissionExecution } from "../packages/proof-core/src";
-import { ExecutorRegistry, OsaRuntime } from "../packages/runtime/src";
+import { digest, verifyProofReceipt, verifyMissionExecution, verifyCompletedMission } from "../packages/proof-core/src";
+import { ExecutorRegistry, OsaRuntime, MissionKernel } from "../packages/runtime/src";
+import { demoTeam, demoMission, installDemoExecutors } from "../packages/demo-team/src";
 
 /**
  * Regresja 22°C: agent nie może otrzymać VERIFIED tylko dlatego, że
@@ -221,7 +222,7 @@ test("FAIL: API zwraca 22°C, agent twierdzi 25°C — deterministyczny mismatch
   assert.ok(run.events.some(event=>event.type==="RUN_FAILED"));
 });
 
-test("PASS: czysty build wymaga jawnego wyłączenia źródeł przez hosta, nie przez misję",async()=>{
+test("PASS: zwykły build z liczbami technicznymi zachowuje VERIFIED bez opt-out",async()=>{
   const graph:TeamGraph={
     organization_id:"org_tasks",project_id:"project_tasks",team_id:"team_tasks",version:"1",
     agents:[{agent_id:"builder",role:"builder",executor_ref:"builder.v1"}],edges:[],
@@ -235,11 +236,9 @@ test("PASS: czysty build wymaga jawnego wyłączenia źródeł przez hosta, nie 
   const registry = new ExecutorRegistry();
   registry.register("builder.v1",()=>({output:{report:"Zbudowano aplikację do zadań z 3 widokami. Wersja 2.0."},evidence:[{kind:"artifact",data:{status:"built"}}]}));
   const withoutTrustedOptOut = await new OsaRuntime(registry).run(graph, mission);
-  assert.equal(withoutTrustedOptOut.verdict, "FAILED", "default-on nie jest pomijany na podstawie celu build");
-  assert.equal(
-    withoutTrustedOptOut.proof.requirement_verdicts.find(item=>item.requirement_id==="__claim_attribution__")?.reason,
-    "CLAIM_UNSUPPORTED"
-  );
+  assert.equal(withoutTrustedOptOut.verdict, "VERIFIED", "liczba widoków i wersja nie są aktualnymi faktami zewnętrznymi");
+  assert.equal(withoutTrustedOptOut.proof.attribution_mode, "DEFAULT_ON");
+  assert.deepEqual(withoutTrustedOptOut.proof.claim_attribution, []);
   const run = await new OsaRuntime(registry, {trustedNoExternalFacts:true}).run(graph,mission);
   assert.equal(run.verdict,"VERIFIED");
   assert.equal(run.proof.attribution_mode,"CONTROL_PLANE_NO_EXTERNAL_FACTS");
@@ -335,4 +334,79 @@ test("P0 fałszywe tool evidence od wykonawcy nie zastępuje zapisu gateway", as
   assert.equal(run.verdict,"FAILED");
   assert.equal(run.proof.attribution_mode,"DEFAULT_ON");
   assert.equal(run.proof.requirement_verdicts.find(item=>item.requirement_id==="__claim_attribution__")?.reason,"CLAIM_UNSUPPORTED");
+});
+
+
+async function runBuiltHtml(html: string) {
+  const registry = new ExecutorRegistry();
+  installDemoExecutors(registry,{
+    executionMode:"fixture",
+    artifactGenerator:async()=>({content:html,evidence:[]}),
+  });
+  const graph=demoTeam({organization_id:"org_attribution_build",project_id:"project_attribution_build"});
+  const mission=demoMission({
+    objective:"Zbuduj aplikację do zadań w HTML z widokiem stanu i przyciskami",
+    kind:"webapp",mode:"connected",target:"artifact",
+  },graph);
+  const kernel=new MissionKernel();
+  await kernel.create(mission,graph);
+  const run=await kernel.execute(mission.mission_id,registry);
+  return {run,record:await kernel.get(mission.mission_id),graph,mission};
+}
+
+test("P0: build HTML z zaszytą AKTUALNĄ temperaturą 22°C bez API kończy się FAIL",async()=>{
+  const html='<!doctype html><html lang="pl"><head><title>Zadania</title></head><body>'+
+    '<h1>Moje zadania</h1><p id="pogoda">Aktualna temperatura w Warszawie wynosi 22°C.</p></body></html>';
+  const {run,record}=await runBuiltHtml(html);
+  assert.equal(run.tool_calls?.length,0);
+  assert.equal(run.proof.attribution_mode,"DEFAULT_ON");
+  assert.equal(run.verdict,"FAILED");
+  assert.equal(record?.state,"FAILED");
+  assert.equal(run.proof.requirement_verdicts.find(x=>x.requirement_id==="__claim_attribution__")?.reason,"CLAIM_UNSUPPORTED");
+  assert.ok(run.proof.claim_attribution?.some(x=>x.kind==="temperature"&&x.value===22&&x.reason_code==="CLAIM_UNSUPPORTED"));
+  assert.ok(run.events.some(x=>x.type==="CLAIM_ATTRIBUTION_CHECKED"&&x.payload.reason_code==="CLAIM_UNSUPPORTED"));
+});
+
+test("P0: live temperatura zaszyta w JS bez symbolu °C także jest FAIL",async()=>{
+  const html='<!doctype html><html lang="pl"><head><title>Zadania</title></head><body><h1>Zadania</h1>'+
+    '<script>const currentWeather = { temperature_celsius: 22 }; document.title="Zadania";</script></body></html>';
+  const {run}=await runBuiltHtml(html);
+  assert.equal(run.verdict,"FAILED");
+  assert.ok(run.proof.claim_attribution?.some(x=>x.kind==="temperature"&&x.value===22&&x.reason_code==="CLAIM_UNSUPPORTED"));
+});
+
+test("PASS: zwykły webapp HTML/JS z 22px, 3 widokami i wersją 2.0",async()=>{
+  const html='<!doctype html><html lang="pl"><head><title>Zadania</title>'+
+    '<style>main{padding:22px;width:100%}</style></head><body><main><h1>3 widoki zadań · v2.0</h1>'+
+    '<p>Przykładowa temperatura: 22°C.</p><script>const version=2.0; const count=3;</script></main></body></html>';
+  const {run,record}=await runBuiltHtml(html);
+  assert.equal(run.verdict,"VERIFIED");
+  assert.equal(record?.state,"COMPLETED");
+  assert.deepEqual(run.proof.claim_attribution,[]);
+  assert.ok(record);
+  verifyCompletedMission(record);
+});
+
+
+test("P0: plik index.html w kolekcji files z aktualną pogodą bez źródła = FAILED", async()=>{
+  const graph:TeamGraph={
+    organization_id:"org_generated",project_id:"project_generated",team_id:"team_generated",version:"1",
+    agents:[{agent_id:"builder",role:"builder",executor_ref:"builder.v1"}],edges:[],
+  };
+  const mission:Mission={
+    organization_id:graph.organization_id,project_id:graph.project_id,team_id:graph.team_id,
+    team_version:graph.version,mission_id:"generated_files_current_weather",
+    objective:"Zbuduj aplikację do zadań",
+    entry_agent_id:"builder",input:{},
+    requirements:[{requirement_id:"built",type:"evidence_field_equals",evidence_kind:"artifact",field:"status",expected:"built"}],
+  };
+  const registry=new ExecutorRegistry();
+  registry.register("builder.v1",()=>({
+    output:{files:[{path:"src/index.html",content:"<!doctype html><html><body><p>Aktualna temperatura w Warszawie: 22°C.</p></body></html>"}]},
+    evidence:[{kind:"artifact",data:{status:"built"}}],
+  }));
+  const run=await new OsaRuntime(registry).run(graph,mission);
+  assert.equal(run.verdict,"FAILED");
+  assert.equal(run.proof.requirement_verdicts.find(x=>x.requirement_id==="__claim_attribution__")?.reason,"CLAIM_UNSUPPORTED");
+  assert.ok(run.proof.claim_attribution?.some(x=>x.kind==="temperature"&&x.value===22));
 });

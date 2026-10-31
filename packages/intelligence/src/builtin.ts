@@ -255,7 +255,9 @@ async function probeRun(): Promise<RunResult> {
     edges: [{ edge_id: "p_b", from_agent_id: "planner", to_agent_id: "builder", kind: "handoff" as const }],
   };
   const example = sampleExample("probe", "Draft release notes");
-  return new OsaRuntime(registry).run(graph, {
+  // This is a fixed, in-process evaluator fixture with no external factual output.
+  // Never use this narrow bypass for user-supplied build/chat missions.
+  return new OsaRuntime(registry,{trustedNoExternalFacts:true}).run(graph, {
     organization_id: "org_probe", project_id: "project_probe", mission_id: "probe@v1:probe", team_id: "team_probe", team_version: "1",
     objective: example.objective, entry_agent_id: "planner", input: example.input, requirements: example.requirements,
   });
@@ -319,7 +321,8 @@ function probeExperimentWorld() {
   registry.register("probe.planner", ({ mission }) => ({ output: { plan: mission.objective }, evidence: [{ kind: "plan", data: { status: "ready" } }] }));
   registry.register("probe.builder", () => ({ output: { title: "Release notes" }, evidence: [{ kind: "artifact", data: { status: "built" } }] }));
   registry.register("probe.builder.draft", () => ({ output: { title: "Draft" }, evidence: [{ kind: "artifact", data: { status: "draft" } }] }));
-  const runtime = new OsaRuntime(registry);
+  // Internal experiment probes only: fixture output is pinned by this module.
+  const runtime = new OsaRuntime(registry,{trustedNoExternalFacts:true});
   const graph = (version: string, builder: string): TeamGraph => ({
     organization_id: "org_probe", project_id: "project_probe", team_id: "team_probe", version,
     agents: [{ agent_id: "planner", role: "planner", executor_ref: "probe.planner" }, { agent_id: "builder", role: "builder", executor_ref: builder }],

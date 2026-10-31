@@ -29,24 +29,24 @@ Nie wolno mapować HTTP body, BYOK payload ani tekstu agenta na
 uprawnień hosta nie jest to niezależna kryptograficzna atestacja
 klasyfikacji misji.
 
-Dla domyślnego trybu wartości liczbowe poza znaną gramatyką temperatury
-bez żadnego rzeczywistego źródła są odrzucane
-`CLAIM_UNSUPPORTED`; obecność niezwiązanej odpowiedzi narzędzia
-nie wystarczy do ich potwierdzenia. Jeśli bramka nie wykrywa
-żadnego faktu źródłowego, nie tworzy sztucznego twierdzenia do
-odrzucenia. Nierozpoznane zdania bez liczb i wzorców operacji
-mogą pozostawać poza pokryciem — analiza języka jest nadal
-heurystyką v1, a nie gwarancją pełnej detekcji.
+Dla domyślnego trybu **rozpoznane** twierdzenia o aktualnej pogodzie,
+kursach i integracjach wymagają źródła; same liczby, numery wersji,
+identyfikatory i parametry CSS nie uruchamiają odrzucenia. Brak
+rozpoznanego faktu nie tworzy sztucznego twierdzenia do odrzucenia.
+To nie oznacza pełnej walidacji faktów ani gwarantowanej detekcji
+wszystkich twierdzeń z dowolnego kodu lub języka.
 
-Dla misji z faktami zewnętrznymi verifier v1 deterministycznie analizuje
-`report`, `answer`, `message`, `text`, `content`, `artifact.content`
-i `temperature_celsius`. Liczby z oznaczeniem °C porównuje z polami
-`temperature`, `temp`, `temperature_celsius`, `temp_celsius`, `celsius`
-w odpowiedzi narzędzia. Niezgodność: `CLAIM_VALUE_MISMATCH`. Brak
-odpowiedzi: `CLAIM_UNSUPPORTED`. Pozostałe liczby i nierozpoznane zdania
-w raporcie o faktach zewnętrznych nie otrzymują `VERIFIED`:
-`CLAIM_COVERAGE_INCOMPLETE`. Jest to **ograniczona heurystyka v1**,
-nie dowód kompletnego rozumienia języka naturalnego.
+Verifier v1 czyta `report`, `answer`, `message`, `content`,
+`artifact.content` oraz `temperature_celsius`. Pole `text` jest
+analizowane tylko wtedy, gdy nie jest surowym wejściem narzędzia
+technicznego. Z HTML wydzielany jest widoczny tekst i treść skryptów
+bez uruchamiania kodu. Temperatury są porównywane z polami
+`temperature`, `temp`, `temperature_celsius`, `temp_celsius`,
+`celsius`; znane ceny/kursy z odpowiednimi polami `price`/`rate`.
+Niezgodność: `CLAIM_VALUE_MISMATCH`; brak powiązanego źródła:
+`CLAIM_UNSUPPORTED`; rozpoznane twierdzenie bez wspieranej mapy:
+`CLAIM_COVERAGE_INCOMPLETE`. Nie jest to dowód pełnego rozumienia
+języka naturalnego ani bezpieczeństwa wygenerowanego kodu.
 
 Sformułowania o wykonaniu integracji API wymagają dowodu wdrożenia
 implementacji oraz udanego testu integracyjnego, pochodzącego z zaufanego
@@ -56,9 +56,8 @@ otrzymują `CLAIM_UNSUPPORTED`, nawet jeśli wykonano pojedynczy HTTP 200.**
 To zamierzone zachowanie fail-closed.
 
 Zwykłe zadania niezależne od źródeł zewnętrznych zachowują istniejącą
-ścieżkę dowodową po **jawnym opt-out z zaufanego hosta**. Bez opt-out
-domyślna bramka może odrzucać również liczby techniczne, które
-nie zostały sklasyfikowane jako elementy wyłącznie kreatywnego builda.
+ścieżkę dowodową z aktywnym Attribution Gate; same liczby techniczne
+nie są nazywane niepotwierdzonymi faktami zewnętrznymi.
 
 ## Granica bezpieczeństwa i egress
 `callTool()` kontroluje tylko wywołania przez bramkę. **Nie blokuje** prób
@@ -93,6 +92,40 @@ kod przyczyny → końcowy werdykt. Dla misji zakończonej sukcesem
 - Pojedynczy HTTP 200 plus deklaracja zakończonej integracji → `FAILED / CLAIM_UNSUPPORTED`.
 
 To nie stanowi testu izolacji sieciowej hosta.
+
+## P0 — korekta false-positive w normalnych buildach
+Od wersji naprawczej kontrola zewnętrznych twierdzeń pozostaje DEFAULT_ON
+w aplikacjach API, Unified i MissionKernel. **Nie** stosujemy opt-out do
+każdego builda: wygenerowana aplikacja może zawierać nieprawdziwe dane
+o świecie zewnętrznym. Wewnętrzne, deterministyczne próby Intelligence
+mogą korzystać z host-only opt-out; nie jest on zależny od użytkownika.
+
+Parser nie odrzuca arbitralnych liczb bez kontekstu: CSS (np. 22px),
+wersji (v2.0), liczby widoków oraz wartości opisanych wyraźnie jako
+przykładowe. Nie traktuje też surowego wejścia do narzędzia crypto.sha256
+jako twierdzenia wykonawcy. W dalszym ciągu rozpoznaje deklaracje
+integracji API, aktualne temperatury w języku naturalnym i w kodzie
+HTML/JS, znane pola strukturalne currentWeather/temperature oraz
+podstawowe notowania walut/kryptowalut. Porównanie odpowiedzi z
+runtime-owned Tool Gateway pozostaje wymagane przy takich twierdzeniach.
+HTML/JS jest analizowany jako tekst, nie wykonywany na serwerze.
+
+Skanowane są też jawne kolekcje wygenerowanych plików `files`/`artifacts` z rozszerzeniami HTML/JS/TS i polami `content`/`source`/`code`. Nie oznacza to analizy wszystkich możliwych formatów, archiwów ani dynamicznie generowanej treści.
+
+Wspierana gramatyka jest **ograniczona**; nie stanowi uniwersalnego
+parsera faktów ani bezpiecznego sandboxa. W szczególności semantycznie
+równoważny kod dynamiczny albo wielojęzyczne sformułowanie poza tymi
+wzorcami może wymagać odrębnej analizy. Brak wykrytego twierdzenia
+oznacza jedynie "brak rozpoznanych twierdzeń", a nie kompletną walidację
+faktyczną całego artefaktu. Status egress pozostaje NOT_ENFORCED.
+
+Test regresyjny obejmuje:
+- build przez MissionKernel/Delivery Lab z aktualną temperaturą 22°C
+  w treści HTML i bez API → FAILED/CLAIM_UNSUPPORTED;
+- to samo przy currentWeather.temperature_celsius=22 w JS → FAILED;
+- zwykły HTML/JS z 22px, v2.0, 3 widokami i jawnie przykładową temperaturą
+  → VERIFIED;
+- dotychczasowe przypadki 22°C/25°C, bitcoina i forged tool evidence.
 
 ## Rozszerzone scenariusze regresji
 - „Kurs bitcoina wynosi 70000 USD” bez wywołań i bez słów z dawnej listy aktywacyjnej: `FAILED / CLAIM_UNSUPPORTED`.

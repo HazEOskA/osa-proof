@@ -1,24 +1,65 @@
 import type { ClaimAttribution, ClaimAttributionMode, Mission, ToolCallRecord } from "../../contracts/src";
 import { digest, digestWithout } from "./canonical";
 
-/**
- * Attribution Gate v1 handles external API operations and numeric facts.
- * It is a deterministic subset, NOT complete natural-language understanding.
- * Unsupported factual claims in external-source missions fail closed.
- */
+// Deterministic, intentionally limited grammar. Never execute generated code.
 const apiOperation = /(?:zintegrował\w*|połączył\w*|zaimplementował\w*|integrat\w*|integrated|implemented)[^.!?\n]*\bapi\b|\bapi\b[^.!?\n]*(?:zintegrował\w*|połączył\w*|integrat\w*|integrated)/i;
-const numeric = /(-?\d+(?:[.,]\d+)?)/g;
+const tempValue = /-?\d+(?:[.,]\d+)?\s*°\s*C\b/gi;
+const weatherFact = /(?:aktualn\w*|obecn\w*|teraz|dzisiaj|current|live|today)[^.!?\n]{0,100}(?:temperatur\w*|pogod\w*|weather)|(?:temperatur\w*|pogod\w*|weather)[^.!?\n]{0,100}(?:aktualn\w*|obecn\w*|current|live|teraz|today)/i;
+const marketFact = /(?:kurs|cena|price|exchange rate|value of)[^.!?\n]{0,80}(?:bitcoin|bitcoina|btc|usd|eur|\$|€)|(?:bitcoin|bitcoina|btc)[^.!?\n]{0,80}(?:kurs|cena|price|wynosi|is|usd|eur|\$|€)/i;
+const moneyValue = /-?\d+(?:[.,]\d+)?\s*(?:USD|EUR|PLN)\b|[$€]\s*-?\d+(?:[.,]\d+)?/gi;
+const numberOnly = /-?\d+(?:[.,]\d+)?/;
+const sample = /^(?:przykład|przykładow|dane\s+(?:fikcyjne|testowe|demo)|symulacj|mock|sample|example|fictional|placeholder|demo\b|test\s+data)/i;
 
-function reportText(output: unknown): string {
-  if (typeof output === "string") return output;
-  if (!output || typeof output !== "object") return "";
-  const record = output as Record<string, unknown>;
-  const artifact = record.artifact && typeof record.artifact === "object"
-    ? record.artifact as Record<string, unknown> : {};
-  return [record.report, record.answer, record.message, record.text, record.content, artifact.content]
-    .filter((v): v is string => typeof v === "string").join("\n");
+function reportSurfaces(output: unknown): string[] {
+  if (typeof output === "string") return [output];
+  if (!output || typeof output !== "object" || Array.isArray(output)) return [];
+  const o = output as Record<string,unknown>;
+  const artifact = o.artifact && typeof o.artifact === "object" && !Array.isArray(o.artifact)
+    ? o.artifact as Record<string,unknown> : {};
+  // A native cryptographic tool's "text" is raw user input, not a claim.
+  const isRawTool = typeof o.tool === "string";
+  const fields = [o.report, o.answer, o.message, o.content, artifact.content, ...(isRawTool ? [] : [o.text])];
+  const fileContents: string[] = [];
+  const scanFileCollection = (value: unknown, depth: number): void => {
+    if (depth > 5) return;
+    if (Array.isArray(value)) { for (const entry of value) scanFileCollection(entry, depth+1); return; }
+    if (!value || typeof value !== "object") return;
+    const file = value as Record<string,unknown>;
+    const path = typeof file.path === "string" ? file.path : typeof file.name === "string" ? file.name : "";
+    const mime = typeof file.media_type === "string" ? file.media_type : "";
+    if (/\.(?:html?|[cm]?[jt]sx?)$/i.test(path) || /(?:html|javascript|typescript)/i.test(mime)) {
+      for (const key of ["content","source","code"]) {
+        if (typeof file[key] === "string") fileContents.push(file[key] as string);
+      }
+    }
+    scanFileCollection(file.files,depth+1);
+    scanFileCollection(file.artifacts,depth+1);
+  };
+  scanFileCollection(o.files,0);
+  scanFileCollection(o.artifacts,0);
+  scanFileCollection(artifact.files,0);
+  return [...fields, ...fileContents].filter((v): v is string => typeof v === "string" && v.trim().length > 0);
 }
-
+function textFromHtml(raw: string): string {
+  const noStyles = raw.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ");
+  const visible = noStyles.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, "\n")
+    .replace(/&(?:nbsp|amp|lt|gt|quot);/gi, " ");
+  const scripts = [...noStyles.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
+  return [visible, ...scripts].join("\n");
+}
+function segments(output: unknown): string[] {
+  return reportSurfaces(output).flatMap(text =>
+    (/<\s*(?:!doctype|html|body|script|main)\b/i.test(text) ? textFromHtml(text) : text)
+      .split(/[\n;!?]+|(?<!\d)\.(?!\d)(?=\s|$)/g).map(s => s.trim()).filter(Boolean));
+}
+function value(text: string): number | undefined {
+  const match = numberOnly.exec(text);
+  if (!match) return undefined;
+  const n = Number(match[0].replace(",", "."));
+  return Number.isFinite(n) ? n : undefined;
+}
 export function verifyRuntimeToolCall(record: ToolCallRecord): boolean {
   if (!record || !record.tool_ref || !record.tool_call_id || !record.operation_id || !record.agent_id) return false;
   try {
@@ -27,99 +68,69 @@ export function verifyRuntimeToolCall(record: ToolCallRecord): boolean {
       record.record_sha256 === digestWithout(record, "record_sha256");
   } catch { return false; }
 }
-
-function sourcedTemperatures(response: unknown): number[] {
+function sourcedValues(response: unknown, fields: RegExp): number[] {
   const values: number[] = [];
-  const visit = (value: unknown, key: string, depth: number): void => {
-    if (depth > 12) return;
-    if (/^(?:temperature|temp|temperature_celsius|temp_celsius|celsius)$/i.test(key)) {
-      if (typeof value === "number" && Number.isFinite(value)) values.push(value);
-    }
-    if (Array.isArray(value)) value.forEach(v => visit(v, key, depth + 1));
-    else if (value && typeof value === "object") for (const [name, v] of Object.entries(value)) visit(v, name, depth + 1);
+  const visit = (v:unknown,key:string,depth:number):void => {
+    if (depth>12) return;
+    if (fields.test(key) && typeof v==="number" && Number.isFinite(v)) values.push(v);
+    if (Array.isArray(v)) v.forEach(x => visit(x,key,depth+1));
+    else if (v && typeof v==="object") for (const [name,x] of Object.entries(v)) visit(x,name,depth+1);
   };
-  visit(response, "", 0);
+  visit(response,"",0);
   return values;
 }
-
 export function attributeExternalClaims(
   mission: Mission, output: unknown, calls: ToolCallRecord[], mode: ClaimAttributionMode = "DEFAULT_ON"
-): { active: boolean; claims: ClaimAttribution[]; failure_code?: "CLAIM_UNSUPPORTED" | "CLAIM_VALUE_MISMATCH" | "CLAIM_COVERAGE_INCOMPLETE" } {
-  const report = reportText(output);
-  const operation = apiOperation.exec(report);
-  // Default-on. Mission text, input and executor evidence cannot disable the gate.
-  const active = mode !== "CONTROL_PLANE_NO_EXTERNAL_FACTS";
-  if (!active) return {active: false, claims: []};
-
-  const claims: ClaimAttribution[] = [];
-  const accepted = calls.filter(verifyRuntimeToolCall);
-  const add = (claim: string, kind: ClaimAttribution["kind"], reason: ClaimAttribution["reason_code"], value?: number, call?: ToolCallRecord) => {
-    claims.push({
-      claim, claim_sha256: digest(claim), kind, ...(value === undefined ? {} : {value}),
-      status: reason ? "UNSUPPORTED" : "SUPPORTED",
-      ...(reason ? {reason_code: reason} : {}),
-      ...(call ? {tool_call_id: call.tool_call_id, response_sha256: call.response_sha256} : {}),
-    });
+): {active:boolean;claims:ClaimAttribution[];failure_code?:"CLAIM_UNSUPPORTED"|"CLAIM_VALUE_MISMATCH"|"CLAIM_COVERAGE_INCOMPLETE"} {
+  // The argument is set by runtime, never from mission input or executor evidence.
+  void mission;
+  if (mode==="CONTROL_PLANE_NO_EXTERNAL_FACTS") return {active:false,claims:[]};
+  const claims:ClaimAttribution[] = [];
+  const trusted = calls.filter(verifyRuntimeToolCall);
+  const tempFields=/^(?:temperature|temp|temperature_celsius|temp_celsius|celsius)$/i;
+  const priceFields=/^(?:price|price_usd|price_eur|rate|rate_usd|bitcoin_usd|btc_usd|value_usd)$/i;
+  const add=(claim:string,kind:ClaimAttribution["kind"],code:ClaimAttribution["reason_code"],n?:number,call?:ToolCallRecord):void=>{
+    claims.push({claim,claim_sha256:digest(claim),kind,...(n===undefined?{}:{value:n}),
+      status:code?"UNSUPPORTED":"SUPPORTED",...(code?{reason_code:code}:{}),
+      ...(call?{tool_call_id:call.tool_call_id,response_sha256:call.response_sha256}:{})});
   };
-  if (operation) {
-    // A successful API request alone does not prove an implemented integration.
-    // Until runtime can attest both implementation and its tests, fail closed.
-    add(operation[0], "api_operation", "CLAIM_UNSUPPORTED");
+  const check=(kind:"temperature"|"external_number",claim:string,n:number):void=>{
+    const matches=trusted.flatMap(call=>sourcedValues(call.response,kind==="temperature"?tempFields:priceFields).map(found=>({call,found})));
+    const source=matches.find(x=>Object.is(x.found,n));
+    const reason=source?undefined:matches.length?"CLAIM_VALUE_MISMATCH":"CLAIM_UNSUPPORTED";
+    add(claim,kind,reason,n,source?.call);
+  };
+  for (const segment of segments(output)) {
+    const operation=apiOperation.exec(segment);
+    if (operation) add(operation[0],"api_operation","CLAIM_UNSUPPORTED");
+    if (sample.test(segment)) continue; // Labelled example is not an asserted live fact.
+    const temps=[...segment.matchAll(tempValue)];
+    for (const match of temps) {const n=value(match[0]);if(n!==undefined)check("temperature",match[0],n);}
+    // Literal facts inside HTML/JS, without a Celsius glyph.
+    const sourceCodeTemp=/(?:currentWeather|liveWeather|aktualnaTemperatura|currentTemperature|liveTemperature)[^;\n]{0,140}?(?:temperature_celsius|temperature|temp|celsius)\s*[:=]\s*(-?\d+(?:[.,]\d+)?)/gi;
+    for (const m of segment.matchAll(sourceCodeTemp)) {
+      const n=Number(m[1].replace(",","."));
+      if (!temps.some(t=>value(t[0])===n)) check("temperature",m[0],n);
+    }
+    if (!temps.length && weatherFact.test(segment)) {
+      const match=/(?:temperatur\w*|pogod\w*|weather)[^;\n]{0,100}?(-?\d+(?:[.,]\d+)?)(?:\s*(?:C|stopni|degrees))?\b/i.exec(segment);
+      const n=match?Number(match[1].replace(",",".")):undefined;
+      if (n!==undefined&&Number.isFinite(n)) check("temperature",match![0],n);
+    }
+    if (marketFact.test(segment)) {
+      const money=[...segment.matchAll(moneyValue)];
+      const m=money[0]??/(?:wynosi|is|equals|:)\s*(-?\d+(?:[.,]\d+)?)/i.exec(segment);
+      if(m){const n=value(m[0]);if(n!==undefined)check("external_number",String(n),n);}
+      else add(segment,"unclassified","CLAIM_COVERAGE_INCOMPLETE");
+    }
   }
-
-  const measurements = [...report.matchAll(/-?\d+(?:[.,]\d+)?\s*°\s*C\b/gi)]
-    .map(match => ({text: match[0], value: Number(match[0].match(numeric)?.[0].replace(",", "."))}));
-  const out: Record<string,unknown> = output && typeof output === "object" ? output as Record<string,unknown> : {};
-  if (typeof out.temperature_celsius === "number" && Number.isFinite(out.temperature_celsius) &&
-      !measurements.some(x => x.value === out.temperature_celsius)) {
-    measurements.push({text: "temperature_celsius=" + out.temperature_celsius, value: out.temperature_celsius});
+  const o=output&&typeof output==="object"&&!Array.isArray(output)?output as Record<string,unknown>:{};
+  if(typeof o.temperature_celsius==="number"&&Number.isFinite(o.temperature_celsius)&&
+    !claims.some(c=>c.kind==="temperature"&&c.value===o.temperature_celsius)) {
+    check("temperature","temperature_celsius="+o.temperature_celsius,o.temperature_celsius);
   }
-  for (const measurement of measurements) {
-    const responses = accepted.flatMap(call => sourcedTemperatures(call.response).map(value => ({call,value})));
-    const source = responses.find(item => Object.is(item.value, measurement.value));
-    const reason = source ? undefined : responses.length > 0 ? "CLAIM_VALUE_MISMATCH" : "CLAIM_UNSUPPORTED";
-    add(measurement.text, "temperature", reason, measurement.value, source?.call);
-  }
-
-  // Every other number in an externally sourced report also needs an independently
-  // matched numeric response; do not require sources for unrelated creative tasks.
-  const reportWithoutTemperatures = report.replace(/-?\d+(?:[.,]\d+)?\s*°\s*C\b/gi, "");
-  for (const match of reportWithoutTemperatures.matchAll(numeric)) {
-    const value = Number(match[0].replace(",", "."));
-    if (!Number.isFinite(value)) continue;
-    const matched = accepted.find(call => sourcedTemperatures(call.response).some(v => Object.is(v, value)));
-    // Arbitrary numeric facts do not inherit a temperature value or unrelated
-    // tool response. Without a trusted source: exact CLAIM_UNSUPPORTED.
-    // With a tool response but no recognized field/unit mapping: incomplete.
-    const reason = accepted.length === 0 ? "CLAIM_UNSUPPORTED" : "CLAIM_COVERAGE_INCOMPLETE";
-    add(match[0], "external_number", reason, value, matched);
-  }
-
-  // Each sentence in an external-data report must have at least one covered
-  // numeric value or an explicitly checked operation. Unsupported prose
-  // cannot silently inherit the source of an unrelated number.
-  // The default-on gate is active for every run, but should not invent
-  // factual claims from unrelated prose without detectable source assertions.
-  // Unknown prose alongside an explicit numeric/API claim still fails closed.
-  const hasDetectableExternalClaim = Boolean(operation) || /\d/.test(report) ||
-    /temperatur|pogod|weather|\b(?:api|kurs|exchange\s+rate|bitcoin|btc)\b/i.test(mission.objective + " " + report);
-  for (const sentence of (hasDetectableExternalClaim ? report.split(/[.!?\n]+/) : []).map(s=>s.trim()).filter(Boolean)) {
-    if (apiOperation.test(sentence)) continue;
-    // Do not consider an unrelated assertion sourced merely because the same
-    // sentence also contains a proven temperature value. Supported grammar v1
-    // is intentionally small; unrecognized factual prose is NOT VERIFIED.
-    const template = sentence.replace(/-?\d+(?:[.,]\d+)?\s*°\s*C\b/gi, "{TEMP}");
-    const plainTemperature = /^(?:aktualna\s+)?temperatura\s+(?:wynosi|jest|to)\s+\{TEMP\}$/i.test(template) ||
-      /^\{TEMP\}$/.test(template);
-    if (!plainTemperature) add(sentence, "unclassified", "CLAIM_COVERAGE_INCOMPLETE");
-  }
-
-  // Empty or nonfactual output contains no source claims to assert. The gate
-  // remains enabled, and newly introduced numeric claims are still checked.
-
-  const failures = claims.filter(claim => claim.status === "UNSUPPORTED");
-  const failure_code = failures.some(claim => claim.reason_code === "CLAIM_VALUE_MISMATCH") ? "CLAIM_VALUE_MISMATCH"
-    : failures.some(claim => claim.reason_code === "CLAIM_UNSUPPORTED") ? "CLAIM_UNSUPPORTED"
-    : failures.length ? "CLAIM_COVERAGE_INCOMPLETE" : undefined;
-  return {active, claims, ...(failure_code ? {failure_code} : {})};
+  const failure_code=claims.some(c=>c.reason_code==="CLAIM_VALUE_MISMATCH")?"CLAIM_VALUE_MISMATCH":
+    claims.some(c=>c.reason_code==="CLAIM_UNSUPPORTED")?"CLAIM_UNSUPPORTED":
+    claims.some(c=>c.reason_code==="CLAIM_COVERAGE_INCOMPLETE")?"CLAIM_COVERAGE_INCOMPLETE":undefined;
+  return {active:true,claims,...(failure_code?{failure_code}:{})};
 }

@@ -119,7 +119,9 @@ export async function executeUnified(value: unknown, organizationId: string, reg
   const mission: Mission = {organization_id:organizationId,project_id:team.project_id,team_id:team.team_id,team_version:team.version,
     mission_id:"unified_"+randomUUID(),objective:input.message,entry_agent_id:"osa-tool-worker",input:{...input},
     requirements:[{requirement_id:"tool_completed",type:"evidence_field_equals",evidence_kind:"unified_tool_result",field:"status",expected:"OK",agent_id:"osa-tool-worker"}]};
-  const run = await new OsaRuntime(effectiveRegistry,{createExecutionId:()=>input.execution_id}).run(team,mission);
+  // Native-tool results remain subject to attribution; user-supplied model
+  // dispatch cannot grant an opt-out of external factual claims.
+  const run = await new OsaRuntime(effectiveRegistry,{createExecutionId:()=>input.execution_id,trustedNoExternalFacts:false}).run(team,mission);
   const output = run.final_output as {status?:string;reason?:string} | null;
   const status = run.verdict === "VERIFIED" ? "EXECUTED" : output?.status === "BLOCKED" ? "BLOCKED" : "FAILED";
   const integrity = verifyUnifiedBundle({team,mission,run});
