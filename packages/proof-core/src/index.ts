@@ -1,5 +1,6 @@
 import {
   AcceptanceRequirement,
+  ClaimAttributionMode,
   EvidenceRecord,
   ExecutionBinding,
   Mission,
@@ -162,6 +163,8 @@ export interface VerifyParams {
   mission: Mission;
   evidence: EvidenceRecord[];
   tool_calls?: ToolCallRecord[];
+  /** Set only by the runtime host; not mission data. */
+  attribution_mode?: ClaimAttributionMode;
   runtime_failure?: string;
   final_output: unknown;
   created_at: string;
@@ -243,8 +246,9 @@ export class DeterministicProofVerifier {
     );
 
     const calls = params.tool_calls ?? [];
-    const attribution = attributeExternalClaims(params.mission, params.final_output, calls);
-    if (attribution.active) {
+    const mode = params.attribution_mode ?? "DEFAULT_ON";
+    const attribution = attributeExternalClaims(params.mission, params.final_output, calls, mode);
+    if (attribution.active && attribution.claims.length > 0) {
       requirementVerdicts.push({
         requirement_id: "__claim_attribution__",
         verdict: attribution.failure_code ? "FAILED" : "VERIFIED",
@@ -283,6 +287,7 @@ export class DeterministicProofVerifier {
       binding,
       verdict: aggregateVerdict(requirementVerdicts),
       requirement_verdicts: requirementVerdicts,
+      attribution_mode: mode,
       ...(attribution.active ? {claim_attribution: attribution.claims} : {}),
       ...((attribution.active || calls.length > 0) ? {
         tool_call_refs: calls.map(c => ({tool_call_id:c.tool_call_id, record_sha256:c.record_sha256})),

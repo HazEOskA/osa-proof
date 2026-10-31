@@ -199,6 +199,9 @@ export interface ToolCallRecord {
   response: unknown;
   record_sha256: string;
 }
+/** Runtime-owned attribution mode, never sourced from mission input or an executor. */
+export type ClaimAttributionMode = "DEFAULT_ON" | "CONTROL_PLANE_NO_EXTERNAL_FACTS";
+
 export interface ClaimAttribution {
   claim: string;
   claim_sha256: string;
@@ -226,7 +229,8 @@ export interface ProofReceipt {
   binding: ExecutionBinding;
   verdict: RunVerdict;
   requirement_verdicts: RequirementVerdict[];
-  /** Present only for externally sourced missions (v1 narrow-scope gate). */
+  /** Default-on claim checking. Opt-out is only from a trusted host constructor. */
+  attribution_mode?: ClaimAttributionMode;
   claim_attribution?: ClaimAttribution[];
   tool_call_refs?: Array<{tool_call_id: string; record_sha256: string}>;
   tool_call_root?: string;

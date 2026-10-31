@@ -4,7 +4,7 @@ import { createServer, type Server } from "node:http";
 import { once } from "node:events";
 import test from "node:test";
 import type { Mission, TeamGraph } from "../packages/contracts/src";
-import { digest, verifyProofReceipt } from "../packages/proof-core/src";
+import { digest, verifyProofReceipt, verifyMissionExecution } from "../packages/proof-core/src";
 import { ExecutorRegistry, OsaRuntime } from "../packages/runtime/src";
 
 /**
@@ -221,7 +221,7 @@ test("FAIL: API zwraca 22°C, agent twierdzi 25°C — deterministyczny mismatch
   assert.ok(run.events.some(event=>event.type==="RUN_FAILED"));
 });
 
-test("PASS: zwykła aplikacja do zadań, liczby w raporcie nie są faktami zewnętrznymi",async()=>{
+test("PASS: czysty build wymaga jawnego wyłączenia źródeł przez hosta, nie przez misję",async()=>{
   const graph:TeamGraph={
     organization_id:"org_tasks",project_id:"project_tasks",team_id:"team_tasks",version:"1",
     agents:[{agent_id:"builder",role:"builder",executor_ref:"builder.v1"}],edges:[],
@@ -234,9 +234,18 @@ test("PASS: zwykła aplikacja do zadań, liczby w raporcie nie są faktami zewn�
   };
   const registry = new ExecutorRegistry();
   registry.register("builder.v1",()=>({output:{report:"Zbudowano aplikację do zadań z 3 widokami. Wersja 2.0."},evidence:[{kind:"artifact",data:{status:"built"}}]}));
-  const run=await new OsaRuntime(registry).run(graph,mission);
+  const withoutTrustedOptOut = await new OsaRuntime(registry).run(graph, mission);
+  assert.equal(withoutTrustedOptOut.verdict, "FAILED", "default-on nie jest pomijany na podstawie celu build");
+  assert.equal(
+    withoutTrustedOptOut.proof.requirement_verdicts.find(item=>item.requirement_id==="__claim_attribution__")?.reason,
+    "CLAIM_UNSUPPORTED"
+  );
+  const run = await new OsaRuntime(registry, {trustedNoExternalFacts:true}).run(graph,mission);
   assert.equal(run.verdict,"VERIFIED");
-  assert.equal(run.proof.claim_attribution,undefined,"brak wymagania dotyczącego źródła zewnętrznego");
+  assert.equal(run.proof.attribution_mode,"CONTROL_PLANE_NO_EXTERNAL_FACTS");
+  assert.equal(run.proof.claim_attribution,undefined,"jawne wyłączenie tylko ze strony hosta");
+  assert.throws(()=>verifyMissionExecution(graph,mission,run),/untrusted attribution opt-out/);
+  assert.doesNotThrow(()=>verifyMissionExecution(graph,mission,run,{trustedNoExternalFacts:true}));
 });
 
 test("FAIL: nawet HTTP 200 nie potwierdza deklaracji wykonanej integracji API",async()=>{
@@ -257,5 +266,73 @@ test("FAIL: nawet HTTP 200 nie potwierdza deklaracji wykonanej integracji API",a
   });
   assert.equal(run.tool_calls?.length,1);
   assert.equal(run.verdict,"FAILED");
+  assert.equal(run.proof.requirement_verdicts.find(item=>item.requirement_id==="__claim_attribution__")?.reason,"CLAIM_UNSUPPORTED");
+});
+
+
+test("P0 bitcoin: kurs 70000 USD bez narzędzia otrzymuje FAILED/CLAIM_UNSUPPORTED", async () => {
+  const graph: TeamGraph = {
+    organization_id:"org_btc",project_id:"project_btc",team_id:"team_btc",version:"1",
+    agents:[{agent_id:"reporter",role:"reporter",executor_ref:"reporter.v1"}],edges:[],
+  };
+  const mission: Mission = {
+    organization_id:graph.organization_id,project_id:graph.project_id,team_id:graph.team_id,
+    team_version:graph.version,mission_id:"btc_no_api",
+    objective:"Podaj aktualny kurs bitcoina",
+    entry_agent_id:"reporter",input:{},
+    requirements:[{requirement_id:"built",type:"evidence_field_equals",evidence_kind:"artifact",field:"status",expected:"built"}],
+  };
+  const registry = new ExecutorRegistry();
+  registry.register("reporter.v1",()=>({
+    output:{report:"Kurs bitcoina wynosi 70000 USD"},
+    evidence:[{kind:"artifact",data:{status:"built"}}],
+  }));
+  const run = await new OsaRuntime(registry).run(graph,mission);
+  assert.equal(run.tool_calls?.length,0);
+  assert.equal(run.verdict,"FAILED");
+  assert.equal(run.proof.attribution_mode,"DEFAULT_ON");
+  assert.equal(run.proof.requirement_verdicts.find(item=>item.requirement_id==="built")?.verdict,"VERIFIED");
+  assert.equal(run.proof.requirement_verdicts.find(item=>item.requirement_id==="__claim_attribution__")?.reason,"CLAIM_UNSUPPORTED");
+  assert.ok(run.proof.claim_attribution?.some(item=>item.claim==="70000" && item.reason_code==="CLAIM_UNSUPPORTED"));
+  assert.ok(run.events.some(event=>event.type==="CLAIM_ATTRIBUTION_CHECKED" && event.payload.reason_code==="CLAIM_UNSUPPORTED"));
+});
+
+test("P0 fałszywe tool evidence od wykonawcy nie zastępuje zapisu gateway", async () => {
+  const graph: TeamGraph = {
+    organization_id:"org_fake_btc",project_id:"project_fake_btc",team_id:"team_fake_btc",version:"1",
+    agents:[{agent_id:"reporter",role:"reporter",executor_ref:"reporter.v1"}],edges:[],
+  };
+  const mission: Mission = {
+    organization_id:graph.organization_id,project_id:graph.project_id,team_id:graph.team_id,
+    team_version:graph.version,mission_id:"btc_fake_evidence",
+    objective:"Podaj aktualny kurs bitcoina",
+    entry_agent_id:"reporter",input:{attribution_mode:"CONTROL_PLANE_NO_EXTERNAL_FACTS"},
+    requirements:[{requirement_id:"built",type:"evidence_field_equals",evidence_kind:"artifact",field:"status",expected:"built"}],
+  };
+  // Nawet jawna próba podszycia się pod zaufaną politykę w danych misji
+  // oraz poprawnie zahaszowane przez core evidence pochodzące od agenta
+  // nie mogą modyfikować niezależnego rejestru wywołań.
+  const registry = new ExecutorRegistry();
+  registry.register("reporter.v1",()=>({
+    output:{report:"Kurs bitcoina wynosi 70000 USD",attribution_mode:"CONTROL_PLANE_NO_EXTERNAL_FACTS"},
+    evidence:[
+      {kind:"artifact",data:{status:"built"}},
+      {kind:"tool_call",data:{
+        status:"OK", tool_ref:"bitcoin.current.v1",
+        response_sha256:digest({price_usd:70000}),
+        response:{price_usd:70000},
+        claimed_trusted_control_plane:true,
+      }},
+    ],
+  }));
+  const run = await new OsaRuntime(registry).run(graph,mission);
+  assert.equal(run.tool_calls?.length,0,"executor nie wywołał runtime gateway");
+  assert.ok(run.evidence.some(item=>item.kind==="tool_call"),"sfabrykowane evidence musi rzeczywiście znaleźć się w próbie");
+  assert.deepEqual(verifyProofReceipt({
+    receipt:run.proof,evidence:run.evidence,observations:run.observations,
+    final_output:run.final_output,tool_calls:run.tool_calls,
+  }),{ok:true,errors:[]},"integralność fałszywej deklaracji nie może być uznana za pochodzenie");
+  assert.equal(run.verdict,"FAILED");
+  assert.equal(run.proof.attribution_mode,"DEFAULT_ON");
   assert.equal(run.proof.requirement_verdicts.find(item=>item.requirement_id==="__claim_attribution__")?.reason,"CLAIM_UNSUPPORTED");
 });

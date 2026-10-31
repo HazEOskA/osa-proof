@@ -7,6 +7,37 @@ narzędzi hosta. Wpis `ToolCallRecord` obejmuje `execution_id`, `operation_id`,
 kanonicznej odpowiedzi. Wynik i `tool_call_root` są związane z Proof Receipt.
 Agent nie może wystawić `ToolCallRecord` przez pole `evidence`.
 
+## Polityka aktywacji: DEFAULT_ON (poprawka P0)
+Od teraz każdy `OsaRuntime` uruchamia sprawdzenie twierdzeń domyślnie.
+Brak słów „temperatura”, „pogoda” lub „API” w celu misji **nie** wyłącza
+bramki. Np. raport „Kurs bitcoina wynosi 70000 USD” bez żadnego
+runtime-owned `ToolCallRecord` otrzymuje
+`FAILED / CLAIM_UNSUPPORTED`.
+
+Wewnętrzny host może jawnie utworzyć runtime z
+`new OsaRuntime(registry, {trustedNoExternalFacts: true})` tylko dla
+uprzednio sklasyfikowanego, czystego builda bez faktów zewnętrznych.
+To parametr **zaufanego konstruktora runtime**, a nie `Mission`,
+`Mission.input`, `Mission.policy` ani pole raportu. Te pola nie
+zmieniają polityki. Przy ponownej weryfikacji opt-out wymaga osobnej
+decyzji zaufanego hosta, nie samego wpisu w Proof Receipt.
+`MissionKernel` pozostaje default-on.
+
+Ta ochrona opiera się na rzeczywistej granicy zaufania aplikacji.
+Nie wolno mapować HTTP body, BYOK payload ani tekstu agenta na
+`trustedNoExternalFacts`. Bez odrębnej uwierzytelnionej kontroli
+uprawnień hosta nie jest to niezależna kryptograficzna atestacja
+klasyfikacji misji.
+
+Dla domyślnego trybu wartości liczbowe poza znaną gramatyką temperatury
+bez żadnego rzeczywistego źródła są odrzucane
+`CLAIM_UNSUPPORTED`; obecność niezwiązanej odpowiedzi narzędzia
+nie wystarczy do ich potwierdzenia. Jeśli bramka nie wykrywa
+żadnego faktu źródłowego, nie tworzy sztucznego twierdzenia do
+odrzucenia. Nierozpoznane zdania bez liczb i wzorców operacji
+mogą pozostawać poza pokryciem — analiza języka jest nadal
+heurystyką v1, a nie gwarancją pełnej detekcji.
+
 Dla misji z faktami zewnętrznymi verifier v1 deterministycznie analizuje
 `report`, `answer`, `message`, `text`, `content`, `artifact.content`
 i `temperature_celsius`. Liczby z oznaczeniem °C porównuje z polami
@@ -25,7 +56,9 @@ otrzymują `CLAIM_UNSUPPORTED`, nawet jeśli wykonano pojedynczy HTTP 200.**
 To zamierzone zachowanie fail-closed.
 
 Zwykłe zadania niezależne od źródeł zewnętrznych zachowują istniejącą
-ścieżkę dowodową i nie wymagają cytowania liczb związanych z projektem.
+ścieżkę dowodową po **jawnym opt-out z zaufanego hosta**. Bez opt-out
+domyślna bramka może odrzucać również liczby techniczne, które
+nie zostały sklasyfikowane jako elementy wyłącznie kreatywnego builda.
 
 ## Granica bezpieczeństwa i egress
 `callTool()` kontroluje tylko wywołania przez bramkę. **Nie blokuje** prób
@@ -60,3 +93,10 @@ kod przyczyny → końcowy werdykt. Dla misji zakończonej sukcesem
 - Pojedynczy HTTP 200 plus deklaracja zakończonej integracji → `FAILED / CLAIM_UNSUPPORTED`.
 
 To nie stanowi testu izolacji sieciowej hosta.
+
+## Rozszerzone scenariusze regresji
+- „Kurs bitcoina wynosi 70000 USD” bez wywołań i bez słów z dawnej listy aktywacyjnej: `FAILED / CLAIM_UNSUPPORTED`.
+- Fałszywe `kind: tool_call` w evidence wykonawcy, a `tool_calls=[]`: `FAILED / CLAIM_UNSUPPORTED`; hash takiego evidence nie zmienia jego autorstwa.
+- Próba przesłania opt-out przez `Mission.input` i `final_output`: ignorowana.
+- Czysty build z liczbami: domyślnie nieotrzymujący VERIFIED dla niezwiązanych liczb, lecz `VERIFIED` po jawnym opt-out zaufanego hosta.
+- Próba niezależnej weryfikacji opt-out bez potwierdzenia przez hosta: odrzucona.

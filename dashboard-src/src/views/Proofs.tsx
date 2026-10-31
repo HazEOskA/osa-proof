@@ -30,6 +30,7 @@ export default function Proofs() {
     ? run.proof.claim_attribution as Array<{claim:string;status:string;reason_code?:string;response_sha256?:string}>
     : [];
   const gateActive = Array.isArray(run.proof.claim_attribution);
+  const trustedBuild = run.proof.attribution_mode === "CONTROL_PLANE_NO_EXTERNAL_FACTS";
   const rails = [
     { k: "CLAIM", v: `${run.proof.requirement_verdicts.length} acceptance requirement(s)`, s: "" },
     { k: "MATERIAŁY", v: `${run.evidence.length} rekordów · ${run.observations.length} obserwacji weryfikatora`, s: "" },
@@ -43,7 +44,7 @@ export default function Proofs() {
       <header className="border-b border-line pb-5">
         <div className="label mb-2">CLAIM ≠ PROOF</div>
         <h2 className="font-display text-[clamp(18px,2.8vw,32px)] font-normal leading-[1.3]" style={{ color: run.verdict === "VERIFIED" ? "var(--ok)" : run.verdict === "FAILED" ? "var(--bad)" : "var(--warn)" }}>
-          {run.verdict === "VERIFIED" ? (gateActive ? "ZGODNOŚĆ Z ZAPISANYM ŹRÓDŁEM" : "WYKONANIE ZWERYFIKOWANE") : run.verdict === "FAILED" ? "WERYFIKACJA NIEUDANA" : "WYKONANIE NIEKOMPLETNE"}
+          {run.verdict === "VERIFIED" ? (trustedBuild ? "BUILD ZWERYFIKOWANY · FAKTY WYŁĄCZONE" : attribution.length > 0 ? "ZGODNOŚĆ Z ZAPISANYM ŹRÓDŁEM" : "WYKONANIE ZWERYFIKOWANE · BRAK ROZPOZNANYCH FAKTÓW") : run.verdict === "FAILED" ? "WERYFIKACJA NIEUDANA" : "WYKONANIE NIEKOMPLETNE"}
         </h2>
         <p className="mt-1 text-[14px] text-dim">{run.proof.mission_id} · zespół {run.proof.team_id} v{run.proof.team_version}</p>
         {run.proof.runtime_failure && <p className="mono mt-2 text-[12px] text-bad">błąd wykonania: {run.proof.runtime_failure}</p>}
@@ -60,9 +61,13 @@ export default function Proofs() {
           <Section title="Requirement verdicts">
             {run.proof.requirement_verdicts.map((r) => <div key={r.requirement_id} className="py-1.5"><div className="flex items-center justify-between"><span className="mono text-[12px]">{r.requirement_id}</span><Status v={r.verdict} /></div><div className="text-[12px] text-dim">{r.reason}</div></div>)}
           </Section>
+          {trustedBuild && <Section title="Zaufany opt-out dla czystego builda">
+            <p className="text-[12px] text-warn">Attribution Gate: wyłączona kontrola faktów zewnętrznych przez host runtime. Nie traktuj wyniku jako potwierdzenia danych spoza procesu budowania.</p>
+          </Section>}
           {gateActive && <Section title="Atrybucja twierdzeń — zakres v1">
             <p className="mb-2 text-[12px] text-warn">egress: {String(run.proof.egress_status ?? "NOT_ENFORCED")} · podpis: {String(run.proof.signature_status ?? "UNAVAILABLE")}</p>
             <p className="mb-2 text-[12px] text-dim">Potwierdza zgodność obsługiwanych wartości ze śladem narzędzi. Nie potwierdza braku połączeń poza bramką ani pełnej prawdziwości faktów.</p>
+            {attribution.length===0 && <p className="text-[12px] text-dim">Nie wykryto twierdzeń źródłowych w ograniczonym zakresie heurystyki v1.</p>}
             {attribution.map((a,i)=><div key={i} className="border-b border-line py-1.5 text-[12px]">
               <div className="break-words">{a.claim}</div>
               <div className={a.status==="SUPPORTED"?"text-cyan":"text-bad"}>{a.status==="SUPPORTED"?"ŹRÓDŁO ZGODNE":a.reason_code??"CLAIM_UNSUPPORTED"}</div>

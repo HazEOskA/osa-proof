@@ -6,7 +6,10 @@ import { reflectOnExecution } from "../../brain/src";
 
 // Integrity is necessary but not sufficient: re-evaluate the actual Mission's
 // requirements and binding. A caller cannot choose the expected tenant or verdict.
-export function verifyMissionExecution(graph: TeamGraph, mission: Mission, run: RunResult): void {
+export function verifyMissionExecution(
+  graph: TeamGraph, mission: Mission, run: RunResult,
+  trustedHost: { trustedNoExternalFacts?: boolean } = {}
+): void {
   validateMissionAgainstGraph(graph, mission);
   // Recheck the pinned executor policy independently of the creation path.
   // This does not attest that an executor actually ran or that its identity is authentic.
@@ -18,9 +21,17 @@ export function verifyMissionExecution(graph: TeamGraph, mission: Mission, run: 
   if (run.verdict === "VERIFIED") verifyRequiredReceipts(mission,run);
   const integrity = verifyProofReceipt({ receipt: run.proof, evidence: run.evidence, observations: run.observations, final_output: run.final_output, tool_calls: run.tool_calls });
   const binding = bindingFor(graph, mission, run.run_id, run.execution_id);
+  // An opt-out in a receipt is NOT authority. A separate trusted host
+  // decision must be passed to re-verification; agent/mission fields are ignored.
+  const expectedMode = trustedHost.trustedNoExternalFacts === true
+    ? "CONTROL_PLANE_NO_EXTERNAL_FACTS" as const : "DEFAULT_ON" as const;
+  if (run.proof.attribution_mode === "CONTROL_PLANE_NO_EXTERNAL_FACTS" &&
+      expectedMode !== "CONTROL_PLANE_NO_EXTERNAL_FACTS") {
+    throw new Error("VerificationReceipt untrusted attribution opt-out rejected");
+  }
   const expected = new DeterministicProofVerifier().verify({
     graph, mission, run_id: run.run_id, execution_id: run.execution_id,
-    evidence: run.evidence, tool_calls: run.tool_calls, final_output: run.final_output, runtime_failure: run.proof.runtime_failure, created_at: run.proof.created_at,
+    evidence: run.evidence, tool_calls: run.tool_calls, attribution_mode: expectedMode, final_output: run.final_output, runtime_failure: run.proof.runtime_failure, created_at: run.proof.created_at,
   });
   if (!integrity.ok || digest(binding) !== digest(run.proof.binding) ||
       expected.proof.receipt_sha256 !== run.proof.receipt_sha256 || run.verdict !== run.proof.verdict) {

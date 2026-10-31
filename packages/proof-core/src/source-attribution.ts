@@ -1,4 +1,4 @@
-import type { ClaimAttribution, Mission, ToolCallRecord } from "../../contracts/src";
+import type { ClaimAttribution, ClaimAttributionMode, Mission, ToolCallRecord } from "../../contracts/src";
 import { digest, digestWithout } from "./canonical";
 
 /**
@@ -8,7 +8,6 @@ import { digest, digestWithout } from "./canonical";
  */
 const apiOperation = /(?:zintegrował\w*|połączył\w*|zaimplementował\w*|integrat\w*|integrated|implemented)[^.!?\n]*\bapi\b|\bapi\b[^.!?\n]*(?:zintegrował\w*|połączył\w*|integrat\w*|integrated)/i;
 const numeric = /(-?\d+(?:[.,]\d+)?)/g;
-const externalTopic = /temperatur|pogod|weather|zewnętrzn\w*\s+(?:api|źródł)|external\s+(?:api|data)/i;
 
 function reportText(output: unknown): string {
   if (typeof output === "string") return output;
@@ -44,11 +43,12 @@ function sourcedTemperatures(response: unknown): number[] {
 }
 
 export function attributeExternalClaims(
-  mission: Mission, output: unknown, calls: ToolCallRecord[]
+  mission: Mission, output: unknown, calls: ToolCallRecord[], mode: ClaimAttributionMode = "DEFAULT_ON"
 ): { active: boolean; claims: ClaimAttribution[]; failure_code?: "CLAIM_UNSUPPORTED" | "CLAIM_VALUE_MISMATCH" | "CLAIM_COVERAGE_INCOMPLETE" } {
   const report = reportText(output);
   const operation = apiOperation.exec(report);
-  const active = externalTopic.test(mission.objective) || Boolean(operation);
+  // Default-on. Mission text, input and executor evidence cannot disable the gate.
+  const active = mode !== "CONTROL_PLANE_NO_EXTERNAL_FACTS";
   if (!active) return {active: false, claims: []};
 
   const claims: ClaimAttribution[] = [];
@@ -88,14 +88,22 @@ export function attributeExternalClaims(
     const value = Number(match[0].replace(",", "."));
     if (!Number.isFinite(value)) continue;
     const matched = accepted.find(call => sourcedTemperatures(call.response).some(v => Object.is(v, value)));
-    // Other numeric units are not proven by a temperature field. In v1, fail closed.
-    add(match[0], "external_number", "CLAIM_COVERAGE_INCOMPLETE", value, matched);
+    // Arbitrary numeric facts do not inherit a temperature value or unrelated
+    // tool response. Without a trusted source: exact CLAIM_UNSUPPORTED.
+    // With a tool response but no recognized field/unit mapping: incomplete.
+    const reason = accepted.length === 0 ? "CLAIM_UNSUPPORTED" : "CLAIM_COVERAGE_INCOMPLETE";
+    add(match[0], "external_number", reason, value, matched);
   }
 
   // Each sentence in an external-data report must have at least one covered
   // numeric value or an explicitly checked operation. Unsupported prose
   // cannot silently inherit the source of an unrelated number.
-  for (const sentence of report.split(/[.!?\n]+/).map(s=>s.trim()).filter(Boolean)) {
+  // The default-on gate is active for every run, but should not invent
+  // factual claims from unrelated prose without detectable source assertions.
+  // Unknown prose alongside an explicit numeric/API claim still fails closed.
+  const hasDetectableExternalClaim = Boolean(operation) || /\d/.test(report) ||
+    /temperatur|pogod|weather|\b(?:api|kurs|exchange\s+rate|bitcoin|btc)\b/i.test(mission.objective + " " + report);
+  for (const sentence of (hasDetectableExternalClaim ? report.split(/[.!?\n]+/) : []).map(s=>s.trim()).filter(Boolean)) {
     if (apiOperation.test(sentence)) continue;
     // Do not consider an unrelated assertion sourced merely because the same
     // sentence also contains a proven temperature value. Supported grammar v1
@@ -106,10 +114,8 @@ export function attributeExternalClaims(
     if (!plainTemperature) add(sentence, "unclassified", "CLAIM_COVERAGE_INCOMPLETE");
   }
 
-  if (claims.length === 0) {
-    // No recognized external fact is not proof that the report contains no facts.
-    add(report || "external-source objective", "unclassified", "CLAIM_COVERAGE_INCOMPLETE");
-  }
+  // Empty or nonfactual output contains no source claims to assert. The gate
+  // remains enabled, and newly introduced numeric claims are still checked.
 
   const failures = claims.filter(claim => claim.status === "UNSUPPORTED");
   const failure_code = failures.some(claim => claim.reason_code === "CLAIM_VALUE_MISMATCH") ? "CLAIM_VALUE_MISMATCH"
