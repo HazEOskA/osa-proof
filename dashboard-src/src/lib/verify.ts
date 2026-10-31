@@ -33,6 +33,17 @@ export async function verifyRun(run: Run): Promise<Check[]> {
   for (const e of run.evidence) push(`ev:${e.evidence_id}`, `evidence #${e.sequence} · ${e.kind}`, p.evidence_refs.find((r) => r.evidence_id === e.evidence_id)?.evidence_sha256 ?? "missing", await dig(without(e, "evidence_sha256")));
   push("root", "evidence_root = digest(evidence_refs)", p.evidence_root, await dig(p.evidence_refs));
   for (const o of run.observations) push(`ob:${o.observation_id}`, `observation #${o.sequence} · ${o.check}`, p.observation_refs.find((r) => r.observation_id === o.observation_id)?.observation_sha256 ?? "missing", await dig(without(o, "observation_sha256")));
+  if (Array.isArray(p.tool_call_refs)) {
+    const calls = run.tool_calls ?? [];
+    const refs = calls.map(call => ({tool_call_id:call.tool_call_id,record_sha256:call.record_sha256}));
+    push("toolroot", "tool_call_root = digest(tool_call_refs)", String(p.tool_call_root), await dig(refs));
+    push("toolrefs", "tool_call_refs complete", await dig(p.tool_call_refs), await dig(refs));
+    for (const call of calls) {
+      push("toolresponse:" + call.tool_call_id, "response_sha256", call.response_sha256, await dig(call.response));
+      push("toolrecord:" + call.tool_call_id, "tool call record", call.record_sha256, await dig(without(call,"record_sha256")));
+      push("toolbinding:" + call.tool_call_id, "tool bound to execution", "true", String(call.execution_id===run.execution_id && call.run_id===run.run_id));
+    }
+  }
   push("final", "final_output_sha256 = digest(final_output)", String(p.final_output_sha256), await dig(run.final_output));
   const bound = run.evidence.every((e) => canon(e.binding) === canon(p.binding));
   push("binding", "every evidence record bound to receipt binding", "true", String(bound));

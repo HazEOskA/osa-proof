@@ -17,7 +17,8 @@ export interface ProofReceipt {
   verifier: { name: string; version: string };
   [k: string]: unknown;
 }
-export interface Run { run_id: string; execution_id: string; verdict: Verdict; final_output: unknown; events: RuntimeEvent[]; evidence: EvidenceRecord[]; observations: Observation[]; proof: ProofReceipt }
+export interface ToolCallRecord { tool_call_id:string; run_id:string; execution_id:string; operation_id:string; agent_id:string; tool_ref:string; request_sha256:string; response_sha256:string; response:unknown; record_sha256:string }
+export interface Run { run_id: string; execution_id: string; verdict: Verdict; final_output: unknown; events: RuntimeEvent[]; evidence: EvidenceRecord[]; observations: Observation[]; tool_calls?: ToolCallRecord[]; proof: ProofReceipt }
 export interface LayerProfile { layer_id: string; label: string; product_layer: string; access_mode: string; route: string; proof_required: boolean; requirements: string[] }
 export interface Snapshot {
   captured_at: string;

@@ -11,10 +11,11 @@ import {
   RuntimeEvent,
   RuntimeEventType,
   TeamGraph,
+  ToolCallRecord,
 } from "../../contracts/src";
 import { EventStore, MemoryEventStore } from "../../events/src";
 import { EvidenceCollector } from "../../evidence/src";
-import { bindingFor, DeterministicProofVerifier } from "../../proof-core/src";
+import { bindingFor, DeterministicProofVerifier, digest } from "../../proof-core/src";
 import { getLinearExecutionOrder, validateMissionAgainstGraph, validateTeamGraph } from "../../team-graph/src";
 
 function stableHash(value: string): string {
@@ -23,10 +24,22 @@ function stableHash(value: string): string {
 
 export class ExecutorRegistry {
   private readonly executors = new Map<string, AgentExecutor>();
+  private readonly tools = new Map<string, (args: unknown) => Promise<unknown> | unknown>();
 
   register(ref: string, executor: AgentExecutor): void {
     if (!ref) throw new Error("executor ref is required");
     this.executors.set(ref, executor);
+  }
+
+  registerTool(ref: string, handler: (args: unknown) => Promise<unknown> | unknown): void {
+    if (!ref) throw new Error("tool ref is required");
+    this.tools.set(ref, handler);
+  }
+
+  getTool(ref: string): (args: unknown) => Promise<unknown> | unknown {
+    const tool = this.tools.get(ref);
+    if (!tool) throw new Error("TOOL_NOT_REGISTERED");
+    return tool;
   }
 
   // Registered executor refs, sorted. Refs only: never the executors or their configuration.
@@ -115,6 +128,7 @@ export class OsaRuntime {
     let currentInput: unknown = structuredClone(mission.input);
     let activeAgent: AgentNode | undefined;
     let runtimeFailure: string | undefined;
+    const toolCalls: ToolCallRecord[] = [];
 
     try {
       for (let index = 0; index < order.length; index += 1) {
@@ -138,6 +152,36 @@ export class OsaRuntime {
           agent: structuredClone(agent),
           mission_plan: structuredClone(this.missionPlan),
           input: structuredClone(currentInput),
+          callTool: async (toolRef: string, args: unknown): Promise<unknown> => {
+            const toolCallId = executionId + ":tool:" + (toolCalls.length + 1);
+            if (!agent.tool_capabilities?.includes(toolRef)) {
+              await emit("TOOL_CALL_FAILED", {tool_call_id:toolCallId, tool_ref:toolRef, reason_code:"TOOL_NOT_ALLOWED"}, agent);
+              throw new Error("TOOL_NOT_ALLOWED");
+            }
+            const handler = this.registry.getTool(toolRef);
+            const argsCopy = structuredClone(args);
+            const requestHash = digest(argsCopy);
+            await emit("TOOL_CALL_STARTED", {tool_call_id:toolCallId, tool_ref:toolRef, request_sha256:requestHash}, agent);
+            try {
+              const response = structuredClone(await handler(argsCopy));
+              const responseHash = digest(response);
+              const unsigned = {
+                tool_call_id:toolCallId, run_id:runId, execution_id:executionId, operation_id:operationId,
+                agent_id:agent.agent_id, tool_ref:toolRef, request_sha256:requestHash,
+                response_sha256:responseHash, response,
+              };
+              const record:ToolCallRecord = {...unsigned, record_sha256:digest(unsigned)};
+              toolCalls.push(record);
+              await emit("TOOL_CALL_COMPLETED", {
+                tool_call_id:toolCallId, tool_ref:toolRef,
+                response_sha256:responseHash, record_sha256:record.record_sha256,
+              }, agent);
+              return structuredClone(response);
+            } catch {
+              await emit("TOOL_CALL_FAILED", {tool_call_id:toolCallId, tool_ref:toolRef, reason_code:"TOOL_EXECUTION_FAILED"}, agent);
+              throw new Error("TOOL_EXECUTION_FAILED");
+            }
+          },
         });
 
         for (const evidence of result.evidence) {
@@ -182,11 +226,19 @@ export class OsaRuntime {
       graph,
       mission,
       evidence,
+      tool_calls: toolCalls,
       runtime_failure: runtimeFailure,
       final_output: currentInput,
       created_at: this.clock().toISOString(),
     });
 
+    for (const claim of proof.claim_attribution ?? []) {
+      await emit("CLAIM_ATTRIBUTION_CHECKED", {
+        claim_sha256:claim.claim_sha256, claim:claim.claim, kind:claim.kind,
+        status:claim.status, reason_code:claim.reason_code,
+        tool_call_id:claim.tool_call_id, response_sha256:claim.response_sha256,
+      });
+    }
     if (proof.verdict === "VERIFIED") {
       await emit("VERIFICATION_PASSED", { proof_id: proof.proof_id });
       await emit("RUN_VERIFIED", { proof_id: proof.proof_id });
@@ -204,6 +256,7 @@ export class OsaRuntime {
       events,
       evidence,
       observations,
+      tool_calls: toolCalls,
       proof,
     };
   }

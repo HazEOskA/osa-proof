@@ -8,14 +8,17 @@ import {
   RequirementVerdict,
   RunVerdict,
   TeamGraph,
+  ToolCallRecord,
   VerifierObservation,
   VerifierProducer,
 } from "../../contracts/src";
 import { canonicalJson, digest, digestWithout } from "./canonical";
+import { attributeExternalClaims, verifyRuntimeToolCall } from "./source-attribution";
 
 export * from "./canonical";
 export * from "./mission-verifier";
 export * from "./artifact-content";
+export * from "./source-attribution";
 
 export const RUNTIME_EXECUTION_REQUIREMENT_ID = "__runtime_execution__";
 
@@ -158,6 +161,7 @@ export interface VerifyParams {
   graph: TeamGraph;
   mission: Mission;
   evidence: EvidenceRecord[];
+  tool_calls?: ToolCallRecord[];
   runtime_failure?: string;
   final_output: unknown;
   created_at: string;
@@ -238,6 +242,16 @@ export class DeterministicProofVerifier {
       verifyRequirement(requirement, params.evidence, rejected)
     );
 
+    const calls = params.tool_calls ?? [];
+    const attribution = attributeExternalClaims(params.mission, params.final_output, calls);
+    if (attribution.active) {
+      requirementVerdicts.push({
+        requirement_id: "__claim_attribution__",
+        verdict: attribution.failure_code ? "FAILED" : "VERIFIED",
+        evidence_ids: [],
+        reason: attribution.failure_code ?? "SOURCE_ATTRIBUTION_VERIFIED",
+      });
+    }
     const finalOutputSha256 = safeDigest(params.final_output);
     let runtimeFailure = params.runtime_failure;
     if (finalOutputSha256 === null && runtimeFailure === undefined) {
@@ -269,6 +283,13 @@ export class DeterministicProofVerifier {
       binding,
       verdict: aggregateVerdict(requirementVerdicts),
       requirement_verdicts: requirementVerdicts,
+      ...(attribution.active ? {claim_attribution: attribution.claims} : {}),
+      ...((attribution.active || calls.length > 0) ? {
+        tool_call_refs: calls.map(c => ({tool_call_id:c.tool_call_id, record_sha256:c.record_sha256})),
+        tool_call_root: digest(calls.map(c => ({tool_call_id:c.tool_call_id, record_sha256:c.record_sha256}))),
+        egress_status: "NOT_ENFORCED" as const,
+        signature_status: "UNAVAILABLE" as const,
+      } : {}),
       ...(runtimeFailure !== undefined ? { runtime_failure: runtimeFailure } : {}),
       evidence_ids: evidenceRefs.map((ref) => ref.evidence_id),
       evidence_refs: evidenceRefs,
@@ -300,6 +321,7 @@ export function verifyProofReceipt(params: {
   evidence: EvidenceRecord[];
   observations: VerifierObservation[];
   final_output: unknown;
+  tool_calls?: ToolCallRecord[];
 }): ReceiptIntegrityResult {
   const { receipt } = params;
   const errors: string[] = [];
@@ -339,6 +361,19 @@ export function verifyProofReceipt(params: {
     errors.push("observations do not match receipt observation_refs");
   }
 
+  if (receipt.tool_call_refs !== undefined || receipt.tool_call_root !== undefined) {
+    const calls = params.tool_calls ?? [];
+    const refs = calls.map(c => ({tool_call_id:c.tool_call_id, record_sha256:c.record_sha256}));
+    if (!calls.every(c => verifyRuntimeToolCall(c) &&
+      c.run_id === receipt.run_id && c.execution_id === receipt.execution_id &&
+      c.operation_id.startsWith(receipt.execution_id + ":op:"))) {
+      errors.push("tool call response or execution binding rejected");
+    }
+    if (safeDigest(refs) !== safeDigest(receipt.tool_call_refs) ||
+        safeDigest(refs) !== receipt.tool_call_root) {
+      errors.push("tool call evidence does not match receipt");
+    }
+  }
   if (safeDigest(params.final_output) !== receipt.final_output_sha256) {
     errors.push("final output does not match final_output_sha256");
   }

@@ -69,6 +69,10 @@ export type RuntimeEventType =
   | "EVIDENCE_RECORDED"
   | "VERIFICATION_STARTED"
   | "VERIFICATION_PASSED"
+  | "TOOL_CALL_STARTED"
+  | "TOOL_CALL_COMPLETED"
+  | "TOOL_CALL_FAILED"
+  | "CLAIM_ATTRIBUTION_CHECKED"
   | "VERIFICATION_FAILED"
   | "RUN_VERIFIED"
   | "RUN_FAILED"
@@ -182,6 +186,30 @@ export interface ObservationRef {
   observation_sha256: string;
 }
 
+/** Produced inside runtime, never copied from executor-supplied evidence. */
+export interface ToolCallRecord {
+  tool_call_id: string;
+  run_id: string;
+  execution_id: string;
+  operation_id: string;
+  agent_id: string;
+  tool_ref: string;
+  request_sha256: string;
+  response_sha256: string;
+  response: unknown;
+  record_sha256: string;
+}
+export interface ClaimAttribution {
+  claim: string;
+  claim_sha256: string;
+  kind: "api_operation" | "temperature" | "external_number" | "unclassified";
+  value?: number;
+  status: "SUPPORTED" | "UNSUPPORTED";
+  reason_code?: "CLAIM_UNSUPPORTED" | "CLAIM_VALUE_MISMATCH" | "CLAIM_COVERAGE_INCOMPLETE";
+  tool_call_id?: string;
+  response_sha256?: string;
+}
+
 export interface ProofReceipt {
   schema: "osa.proof_receipt.v2";
   // "proof_" + receipt_sha256; derived only after the final verdict is known.
@@ -198,6 +226,13 @@ export interface ProofReceipt {
   binding: ExecutionBinding;
   verdict: RunVerdict;
   requirement_verdicts: RequirementVerdict[];
+  /** Present only for externally sourced missions (v1 narrow-scope gate). */
+  claim_attribution?: ClaimAttribution[];
+  tool_call_refs?: Array<{tool_call_id: string; record_sha256: string}>;
+  tool_call_root?: string;
+  /** Node-only runtime cannot promise OS/container-level egress isolation. */
+  egress_status?: "NOT_ENFORCED";
+  signature_status?: "UNAVAILABLE";
   runtime_failure?: string;
   evidence_ids: string[];
   evidence_refs: EvidenceRef[];
@@ -212,6 +247,8 @@ export interface ProofReceipt {
 }
 
 export interface AgentExecutionContext {
+  /** Runtime-controlled tool callback. This callback is not a network sandbox. */
+  callTool?: (toolRef: string, args: unknown) => Promise<unknown>;
   // Validated, pinned control-plane plan. Executors receive an isolated copy.
   mission_plan?: import("./brain").MissionPlan;
   run_id: string;
@@ -239,6 +276,7 @@ export interface RunResult {
   events: RuntimeEvent[];
   evidence: EvidenceRecord[];
   observations: VerifierObservation[];
+  tool_calls?: ToolCallRecord[];
   proof: ProofReceipt;
 }
 

@@ -26,6 +26,10 @@ export default function Proofs() {
   useEffect(() => setTamper(false), [run.run_id]);
 
   const bad = checks?.filter((c) => !c.ok).length ?? 0;
+  const attribution = Array.isArray(run.proof.claim_attribution)
+    ? run.proof.claim_attribution as Array<{claim:string;status:string;reason_code?:string;response_sha256?:string}>
+    : [];
+  const gateActive = Array.isArray(run.proof.claim_attribution);
   const rails = [
     { k: "CLAIM", v: `${run.proof.requirement_verdicts.length} acceptance requirement(s)`, s: "" },
     { k: "MATERIAŁY", v: `${run.evidence.length} rekordów · ${run.observations.length} obserwacji weryfikatora`, s: "" },
@@ -39,7 +43,7 @@ export default function Proofs() {
       <header className="border-b border-line pb-5">
         <div className="label mb-2">CLAIM ≠ PROOF</div>
         <h2 className="font-display text-[clamp(18px,2.8vw,32px)] font-normal leading-[1.3]" style={{ color: run.verdict === "VERIFIED" ? "var(--ok)" : run.verdict === "FAILED" ? "var(--bad)" : "var(--warn)" }}>
-          {run.verdict === "VERIFIED" ? "WYKONANIE ZWERYFIKOWANE" : run.verdict === "FAILED" ? "WERYFIKACJA NIEUDANA" : "WYKONANIE NIEKOMPLETNE"}
+          {run.verdict === "VERIFIED" ? (gateActive ? "ZGODNOŚĆ Z ZAPISANYM ŹRÓDŁEM" : "WYKONANIE ZWERYFIKOWANE") : run.verdict === "FAILED" ? "WERYFIKACJA NIEUDANA" : "WYKONANIE NIEKOMPLETNE"}
         </h2>
         <p className="mt-1 text-[14px] text-dim">{run.proof.mission_id} · zespół {run.proof.team_id} v{run.proof.team_version}</p>
         {run.proof.runtime_failure && <p className="mono mt-2 text-[12px] text-bad">błąd wykonania: {run.proof.runtime_failure}</p>}
@@ -56,6 +60,15 @@ export default function Proofs() {
           <Section title="Requirement verdicts">
             {run.proof.requirement_verdicts.map((r) => <div key={r.requirement_id} className="py-1.5"><div className="flex items-center justify-between"><span className="mono text-[12px]">{r.requirement_id}</span><Status v={r.verdict} /></div><div className="text-[12px] text-dim">{r.reason}</div></div>)}
           </Section>
+          {gateActive && <Section title="Atrybucja twierdzeń — zakres v1">
+            <p className="mb-2 text-[12px] text-warn">egress: {String(run.proof.egress_status ?? "NOT_ENFORCED")} · podpis: {String(run.proof.signature_status ?? "UNAVAILABLE")}</p>
+            <p className="mb-2 text-[12px] text-dim">Potwierdza zgodność obsługiwanych wartości ze śladem narzędzi. Nie potwierdza braku połączeń poza bramką ani pełnej prawdziwości faktów.</p>
+            {attribution.map((a,i)=><div key={i} className="border-b border-line py-1.5 text-[12px]">
+              <div className="break-words">{a.claim}</div>
+              <div className={a.status==="SUPPORTED"?"text-cyan":"text-bad"}>{a.status==="SUPPORTED"?"ŹRÓDŁO ZGODNE":a.reason_code??"CLAIM_UNSUPPORTED"}</div>
+              {a.response_sha256 && <div className="mono break-all text-[10px] text-dim">{a.response_sha256}</div>}
+            </div>)}
+          </Section>}
           <Section title="Receipt">
             <Kv k="proof_id">{run.proof.proof_id}</Kv><Kv k="receipt_sha256">{run.proof.receipt_sha256}</Kv><Kv k="evidence_root">{run.proof.evidence_root}</Kv>
             <Kv k="final_output_sha256">{run.proof.final_output_sha256 ?? <Unknown />}</Kv><Kv k="created_at">{run.proof.created_at}</Kv><Kv k="verifier">{run.proof.verifier.name} v{run.proof.verifier.version}</Kv><Kv k="execution_id">{run.execution_id}</Kv>
@@ -67,7 +80,7 @@ export default function Proofs() {
 
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <div><div className="label">NIEZALEŻNA WERYFIKACJA · W PRZEGLĄDARCE</div>
+            <div><div className="label">KONTROLA INTEGRALNOŚCI · W PRZEGLĄDARCE</div>
               <div className="mt-1">{err ? <span className="mono text-[12px] text-warn">{err}</span> : !checks ? <div className="skeleton h-4 w-32 rounded" /> : bad === 0 ? <Status v="PASS" label={`${checks.length}/${checks.length} MATCH`} /> : <Status v="MISMATCH" label={`${bad} MISMATCH`} />}</div></div>
             <button onClick={() => setTamper((t) => !t)} aria-pressed={tamper} className={`focus-ring tap mono rounded-md border px-3 text-[11px] ${tamper ? "border-warn/60 text-warn" : "border-line text-dim hover:text-fg"}`}>{tamper ? "Cofnij zmianę testową" : "Symuluj naruszenie"}</button>
           </div>
