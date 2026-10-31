@@ -133,3 +133,7 @@ Test regresyjny obejmuje:
 - Próba przesłania opt-out przez `Mission.input` i `final_output`: ignorowana.
 - Czysty build z liczbami: domyślnie nieotrzymujący VERIFIED dla niezwiązanych liczb, lecz `VERIFIED` po jawnym opt-out zaufanego hosta.
 - Próba niezależnej weryfikacji opt-out bez potwierdzenia przez hosta: odrzucona.
+
+## Walidacja kodu 31.10.2026
+
+Operator potwierdził na Windows / Node.js 24.17.0 uruchomienie `npm test`: **308 testów, 305 PASS, 0 FAIL, 3 SKIP** dla `fc4756f`. Po usunięciu `spawnSync npm.cmd EINVAL` i `DEP0190` zakończył się także build `dashboard-dist` z `--throw-deprecation`. Testy obejmują wykrywanie zewnętrznych twierdzeń, fałszywie przypisane wywołania i nieodrzucanie liczbowych literałów HTML/JS/CSS. **Nie jest to** atestacja sieciowa, niezależna weryfikacja pochodzenia ani odbiór live NVIDIA/NeurOSA. [Bilans i granice dowodowe](./OSA_PROOF_STATUS_2026-10-31.md).

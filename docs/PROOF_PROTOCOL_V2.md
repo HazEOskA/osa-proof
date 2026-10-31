@@ -66,8 +66,9 @@ The sealed body commits to: binding, verdict, requirement verdicts, runtime fail
 `evidence_refs` (id + digest per record), `evidence_root = digest(evidence_refs)`,
 `observation_refs`, `final_output_sha256`, `created_at` and verifier identity.
 
-`verifyProofReceipt({ receipt, evidence, observations, final_output })` recomputes every
-digest and reports any mismatch.
+**Rozszerzenie z 31.10.2026 — Attribution Gate v1:** bieżące receipt może dodatkowo zawierać `attribution_mode`, `claim_attribution`, `tool_call_refs`, `tool_call_root`, `egress_status: NOT_ENFORCED` i `signature_status: UNAVAILABLE`. `ToolCallRecord` powstaje po stronie runtime przy `context.callTool()`; `tool_call_root` wiąże skróty rekordów z konkretnym wykonaniem. Sprawdzanie twierdzeń jest `DEFAULT_ON`, ale stanowi ograniczoną heurystykę. [Pełny kontrakt](./ATTRIBUTION_GATE_V1.md).
+
+`verifyProofReceipt({ receipt, evidence, observations, final_output, tool_calls })` sprawdza hashe, a przy obecności referencji narzędzi również spójność rekordów `ToolCallRecord` i korzenia wywołań. Nie poświadcza niezależnego, zewnętrznego pochodzenia danych.
 
 ## Not covered by V2
 
@@ -75,4 +76,6 @@ digest and reports any mismatch.
   it does not judge artifact quality.
 - Runtime events are correlated by `execution_id` and carry `evidence_sha256`, but are not
   hash-chained.
-- Claim objects from V1 are still not modelled.
+- Od 31.10.2026 obsługiwane twierdzenia zewnętrzne są modelowane jako `ClaimAttribution`, ale nie ma pełnej klasyfikacji wszystkich form wypowiedzi ani dynamicznego kodu.
+- Brak wymuszenia egress/sandboxa (`NOT_ENFORCED`) oraz kryptograficznych podpisów (`UNAVAILABLE`); hash integralności to nie atestacja źródła.
+- Deklaracja zakończonej integracji API wymagałaby osobnej atestacji wdrożenia i testu; pojedyncze HTTP 200 jej nie dostarcza.
