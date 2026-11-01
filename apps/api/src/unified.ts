@@ -4,7 +4,7 @@ import { ExecutorRegistry, OsaRuntime } from "../../../packages/runtime/src";
 import { verifyProofReceipt, bindingFor, canonicalJson, digest } from "../../../packages/proof-core/src";
 
 type Env = Record<string, string | undefined>;
-const tools = ["osa.crypto.sha256.v1","osa.runtime.inspect.v1","osa.worker.health.v1","osa.conversation.record.v1"];
+const tools = ["osa.crypto.sha256.v1","osa.runtime.inspect.v1","osa.worker.health.v1","osa.worker.repo.inspect.v1","osa.conversation.record.v1"];
 export type UnifiedRequest = { message: string; execution_id: string; tool?:string; args?:Record<string,unknown>; selection?:Record<string,unknown> };
 export function unifiedInput(value: unknown): UnifiedRequest {
   const v = value as Partial<UnifiedRequest> | null;
@@ -21,6 +21,7 @@ export function unifiedInput(value: unknown): UnifiedRequest {
 
 export function selectUnifiedTool(message: string): string {
   if (/^(?:oblicz|policz|wylicz)\s+sha-?256\s+(?:tekstu\s*)?:/i.test(message)) return "osa.crypto.sha256.v1";
+  if (/^sprawdź skonfigurowane repozytorium read-only\.?$/i.test(message.trim())) return "osa.worker.repo.inspect.v1";
   if (/(?:status|zdrowie|health)\s+(?:workera|worker|hosta)/i.test(message)) return "osa.worker.health.v1";
   if (/(?:sprawdź|sprawdz|pokaż|pokaz|zbadaj|status|diagnostyka).*(?:runtime|osa proof|narzędzi|narzedzi|api)/is.test(message)) return "osa.runtime.inspect.v1";
   return "osa.unified.blocked.v1";
@@ -84,6 +85,29 @@ export function installUnifiedTools(registry: ExecutorRegistry, env: Env = proce
     if (body?.service !== "osa-worker-host" || body.status !== "ready") throw Error("WORKER_SCHEMA_INVALID");
     const output = {tool:"worker.health",execution_id,...result};
     return {output,evidence:[{kind:"unified_tool_result",data:{status:"OK",tool:output.tool,execution_id},content:JSON.stringify(output)}]};
+  });
+  registry.register("osa.worker.repo.inspect.v1", async ({ execution_id, mission }) => {
+    if (!env.OSA_WORKER_BASE_URL || !env.OSA_WORKER_TOKEN) return blocked("WORKER_NOT_CONFIGURED", execution_id);
+    const base = new URL(env.OSA_WORKER_BASE_URL);
+    if (base.username || base.password || base.search || base.hash || base.pathname !== "/" ||
+        (base.protocol !== "https:" && !(base.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(base.hostname))))
+      throw Error("WORKER_ORIGIN_INVALID");
+    const response = await fetcher(base.origin + "/v1/tools/repo-inspect", {
+      method: "POST", redirect: "error", signal: AbortSignal.timeout(15000),
+      headers: { authorization: "Bearer " + env.OSA_WORKER_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ organization_id: mission.organization_id, project_id: mission.project_id, execution_id }),
+    });
+    if (response.status === 503) return blocked("READ_ONLY_REPO_NOT_CONFIGURED", execution_id);
+    if (!response.ok) throw Error("WORKER_TOOL_HTTP_" + response.status);
+    const text = await (await import("../../../packages/deployment/src")).readBoundedResponse(response, 16384);
+    const result = JSON.parse(text) as Record<string, unknown>;
+    if (result.tool !== "repo.inspect" || result.execution_id !== execution_id ||
+        typeof result.repository !== "string" || typeof result.default_branch !== "string" ||
+        typeof result.source_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(result.source_sha256))
+      throw Error("WORKER_TOOL_RESPONSE_INVALID");
+    const output = { tool: result.tool, execution_id, repository: result.repository, default_branch: result.default_branch,
+      source_sha256: result.source_sha256, worker_response_sha256: createHash("sha256").update(text).digest("hex") };
+    return { output, evidence: [{ kind: "unified_tool_result", data: { status: "OK", tool: result.tool, execution_id }, content: JSON.stringify(output) }] };
   });
   registry.register("osa.conversation.record.v1",async({mission,execution_id})=>{
     const data=mission.input as UnifiedRequest;
