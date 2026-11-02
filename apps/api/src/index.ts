@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { ChatDelivery } from "./chat-delivery";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
+import { handleTrustRequest } from "./trust";
 import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { PreviewOperator } from "./preview-operator";
@@ -206,6 +207,10 @@ export async function handleApiRequest(
       if (state.previewOperator && !state.previewOperator.sameOriginMutation(request))
         return send(response, 403, { code: "PREVIEW_ORIGIN_REJECTED", error: "Operacja wymaga tego samego chronionego originu Preview." });
       
+      // Trust metadata and signature verification do not read tenant state.
+      // Never pass client-asserted keys as independently authenticated identities.
+      if (!state.previewOperator && await handleTrustRequest(request, response, url)) return;
+
       // The private historical Preview remains protected by its pinned server identity.
       // Production GitHub sessions are accepted only after HMAC verification and ID allowlisting.
       if ((state.previewOperator || (state.authMode === "open" && process.env.VERCEL !== "1")) &&
