@@ -57,16 +57,25 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
   return {...body,bundle_sha256:digest(body)};
 }
 export async function runDurableWorkerOnce(store:FileDurableJobStore,options:DurableWorkerOptions={}) {
+  await store.workerHeartbeat();
   let completed=0;
   for(const file of await store.queued()) {
     const job=await store.claim(file);
     if(!job)continue;
-    try {
-      const result=await executeDurableJob(job,store.root,options);
-      await store.finish(job,"COMPLETED",result);
-    }catch {
-      await store.finish(job,"FAILED",undefined,"DURABLE_JOB_FAILED");
+    let pulse:Promise<void>|undefined;
+    const heartbeat=setInterval(()=>{
+      if(pulse)return;
+      pulse=store.touch(job).catch(()=>{}).finally(()=>{pulse=undefined;});
+    },5000);
+    heartbeat.unref();
+    let result:unknown,failed=false;
+    try {result=await executeDurableJob(job,store.root,options);}
+    catch {failed=true;}
+    finally {
+      clearInterval(heartbeat);
+      if(pulse)await pulse;
     }
+    await store.finish(job,failed?"FAILED":"COMPLETED",result,failed?"DURABLE_JOB_FAILED":undefined);
     completed++;
   }
   return completed;
