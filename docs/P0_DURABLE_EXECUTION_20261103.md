@@ -12,7 +12,7 @@ Naprawić sytuację, w której użytkownik na Androidzie/DeX lub desktopie wysy�
 - GET /durable/jobs/:execution_id: wynik, stan i identyfikatory tylko w granicach autoryzowanego scope.
 - GET /durable/status: fail-closed, jeśli brak trwałego katalogu, osobnego aktywnego Workera albo Vercel Lambda.
 - FileDurableJobStore: rekordy 0600, katalog 0700, synchronizacja zapisu, atomowe pliki statusu, blokada workera, odrzucanie ponownego POST tego samego ID z inną treścią.
-- Oddzielny proces \`npm run start:durable-worker\`: obsługa QUEUED → RUNNING → COMPLETED/FAILED, zapis MissionKernel do FileMissionStore, budowanie artefaktów przez istniejący Proof Core.
+- Oddzielny proces `npm run start:durable-worker`: obsługa QUEUED → RUNNING → COMPLETED/FAILED, zapis MissionKernel do FileMissionStore, budowanie artefaktów przez istniejący Proof Core.
 - Worker's liveness heartbeat oraz RUNNING heartbeat; po utracie procesu rezultat może być UNKNOWN. **Brak automatycznego replay płatnej/nieidempotentnej misji**.
 - Frontend przechowuje identyfikator wysłanej misji w historii klienta; zamknięcie karty nie powoduje cancel po stronie Workera. Po powrocie klient odpytuje GET i przywraca tekst odpowiedzi lub artefakt z Proof.
 - W przypadku braku backendu Durable pokazuje w aplikacji ostrzeżenie; nie deklaruje gwarancji ciągłości zwykłej ścieżki.
@@ -35,11 +35,11 @@ Naprawić sytuację, w której użytkownik na Androidzie/DeX lub desktopie wysy�
 
 ## Uruchomienie wyłącznie w już zatwierdzonym, własnym środowisku persistent server
 Bez tworzenia nowej infrastruktury i bez dotykania Production. Użyj katalogu trwałego, współdzielonego między API i procesem Workera:
-\`\`\`bash
+```bash
 export OSA_DURABLE_DIR=/already-mounted-persistent-volume/osa-durable
 npm run build
 npm run start:durable-worker
-\`\`\`
+```
 Osobno wystartuj istniejący API server z tym samym OSA_DURABLE_DIR oraz poprawną autoryzacją/model provider. Worker nie korzysta z sesji przeglądarki ani streaming SSE. Ten przykład nie provisionuje wolumenu ani nie zatwierdza produkcyjnego użycia.
 
 ## Gate do przyszłego Production
