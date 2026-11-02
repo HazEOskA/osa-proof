@@ -4,7 +4,7 @@ import type { EvidenceInput } from "../../../packages/contracts/src";
 import { demoMission, demoReport, demoTeam, installDemoExecutors, type DemoRequest } from "../../../packages/demo-team/src";
 import { ExecutorRegistry, FileMissionStore, MissionKernel } from "../../../packages/runtime/src";
 import { digest, verifyCompletedMission } from "../../../packages/proof-core/src";
-import { nvidiaComplete } from "../../api/src/nvidia";
+import { nvidiaComplete, fleetLimit } from "../../api/src/nvidia";
 import { FileDurableJobStore, type DurableJob } from "../../../packages/durable-execution/src";
 
 export type DurableArtifactGenerator=(request:DemoRequest)=>Promise<{content:string;evidence:EvidenceInput[]}>;
@@ -17,7 +17,7 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
   const input=job.input;
   const model=options.model??nvidiaComplete;
   if(input.kind==="model") {
-    const answer=await model(input.prompt,options.env??process.env,fetch,{agent:input.agent,history:input.history});
+    const answer=await model(input.prompt,{...(options.env??process.env),OSA_ZERO_COST_ONLY:"true"},fetch,{agent:input.agent,history:input.history});
     return {...answer,execution_id:input.execution_id,conversation_id:input.conversation_id};
   }
   const kernel=new MissionKernel(new FileMissionStore(join(root,"missions")));
@@ -69,7 +69,7 @@ export async function runDurableWorkerOnce(store:FileDurableJobStore,options:Dur
     },5000);
     heartbeat.unref();
     let result:unknown,failed=false;
-    try {result=await executeDurableJob(job,store.root,options);}
+    try {if(!options.model&&!options.generate)fleetLimit();result=await executeDurableJob(job,store.root,options);}
     catch {failed=true;}
     finally {
       clearInterval(heartbeat);
