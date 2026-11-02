@@ -13,12 +13,13 @@ import type { MemoryPointer } from "./Memory";
 // Native OSA surface. No iframe, no client secrets, no pretend model execution.
 type AgentId = "jeverson" | "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
 type ModelId = "auto" | "nvidia" | "openrouter";
-type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; providerModel?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
+type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; jobKind?:"model"|"artifact"; providerModel?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
 type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
 type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
 type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{resource:string;method:string;source:string;http_status:null;status:string}> };
 type StatusInfo = { mode?:string; auth_mode?:string; persistence?:string };
 type ModelStatus = { configured:boolean; provider:string; model:string };
+type DurableStatus = {execution_id:string;conversation_id:string;kind:"model"|"artifact";status:"QUEUED"|"RUNNING"|"COMPLETED"|"FAILED"|"UNKNOWN";result?:unknown;error_code?:string};
 type ModelAnswer = { text:string; model:string; provider_model?:string; provider_response_id:string|null; request_id:string; latency_ms:number; status:"PROVIDER_RESPONSE"; memory_status?:"UNAVAILABLE"; memory?: {receipt:MemoryPointer; remembered?:MemoryPointer} };
 const KEY = "osa.native-chat.v1";
 const ACTIVE = "osa.native-chat.active.v1";
@@ -82,6 +83,8 @@ export default function JeversonChat() {
   const [agentOpen,setAgentOpen] = useState(false);
   const [inspector,setInspector] = useState(false);
   const [busy,setBusy] = useState(false);
+  const [durable,setDurable] = useState(false);
+  const [durableChecked,setDurableChecked] = useState(false);
   const [error,setError] = useState("");
   const [storageProblem,setStorageProblem] = useState(false);
   const [status,setStatus] = useState<StatusInfo|null>(null);
@@ -100,6 +103,58 @@ export default function JeversonChat() {
   },[cacheReady]);
   useEffect(()=>{if(!cacheReady)return;try{localStorage.setItem(KEY,JSON.stringify(sessions.slice(0,50)));localStorage.setItem(ACTIVE,current.id);}catch{setStorageProblem(true);}},[sessions,current.id,cacheReady]);
   useEffect(()=>{bottom.current?.scrollIntoView({block:"end"});},[current.id,current.messages.length,busy]);
+  useEffect(()=>{
+    let alive=true;
+    void api<{enabled:boolean}>("/durable/status").then(x=>{if(alive){setDurable(x.enabled);setDurableChecked(true);}})
+      .catch(()=>{if(alive){setDurable(false);setDurableChecked(true);}});
+    return()=>{alive=false;};
+  },[]);
+  useEffect(()=>{
+    if(!durable||!cacheReady)return;
+    let alive=true,working=false;
+    const recover=async()=>{
+      if(working)return;working=true;
+      try{
+        for(const session of sessions){
+          for(const msg of session.messages){
+            if(!msg.jobKind||!msg.executionId||session.messages.some(m=>m.role==="assistant"&&m.executionId===msg.executionId))continue;
+            let result:DurableStatus;
+            try{result=await api<DurableStatus>("/durable/jobs/"+msg.executionId);}
+            catch{continue;} // unacknowledged request: never silently assume it ran
+            if(!alive||result.conversation_id!==session.id||result.execution_id!==msg.executionId)continue;
+            if(result.status==="UNKNOWN")continue; // do not re-run an uncertain provider call
+            if(result.status!=="COMPLETED"&&result.status!=="FAILED")continue;
+            let answer="",status:Msg["status"]="BLOCKED",extra:Partial<Msg>={executionId:msg.executionId};
+            if(result.status==="FAILED")answer="Misja zakończyła się błędem · "+(result.error_code||"DURABLE_JOB_FAILED")+". Bez automatycznego ponawiania.";
+            else if(msg.jobKind==="model"){
+              const model=result.result as ModelAnswer|undefined;
+              if(model?.status==="PROVIDER_RESPONSE"&&typeof model.text==="string"&&model.text.trim()){
+                answer=model.text;status="MODEL";extra={...extra,providerModel:model.provider_model||model.model};
+              }else answer="Wynik modelu nie przeszedł walidacji.";
+            }else{
+              const bundle=result.result as (DeliveryBundle&Bundle)|undefined;
+              if(bundle&&bundle.execution_id===msg.executionId&&bundle.run){
+                try{
+                  const checks=await verifyRun(bundle.run);
+                  if(!checks.length||!checks.every(c=>c.ok))throw Error("DURABLE_PROOF_INVALID");
+                  answer=bundle.artifact?"Artefakt gotowy. Odzyskano go po ponownym otwarciu aplikacji.":"Misja zakończona bez zatwierdzonego artefaktu.";
+                  status=bundle.status==="EXECUTED"?"VERIFIED":"BLOCKED";
+                  extra={...extra,delivery:bundle,runId:bundle.run.run_id};
+                }catch{answer="Odebrano wynik, ale jego integralność nie została potwierdzona."; }
+              }else answer="Wynik artefaktu nie przeszedł kontroli identyfikatora.";
+            }
+            if(!alive)continue;
+            setSessions(prev=>prev.map(s=>s.id!==session.id?s:
+              s.messages.some(m=>m.role==="assistant"&&m.executionId===msg.executionId)?s:
+              {...s,updated:stamp(),messages:[...s.messages,{id:id(),role:"assistant",at:stamp(),text:answer,status,...extra}].slice(-100)}));
+          }
+        }
+      }finally{working=false;}
+    };
+    void recover();
+    const timer=setInterval(()=>{void recover();},1500);
+    return()=>{alive=false;clearInterval(timer);};
+  },[cacheReady,durable,sessions]);
   useEffect(()=>{void api<StatusInfo>("/build/status").then(setStatus).catch(()=>setStatus(null));
     void api<ModelStatus>("/nvidia/status").then(setModelStatus).catch(()=>setModelStatus(null));
     return ()=>{seq.current++;controller.current?.abort();};
@@ -123,7 +178,22 @@ export default function JeversonChat() {
   }
   async function submit(e?:FormEvent) {
     e?.preventDefault();const text=draft.trim();if(!text||busy)return;
-    const sessionId=current.id;setDraft("");setError("");addMessage(sessionId,"user",text,"USER");
+    const sessionId=current.id;setDraft("");setError("");
+    const durableNow=durable&&!remember&&(artifactMode||!command(text));
+    const durableId=durableNow?"exec_"+id():undefined;
+    addMessage(sessionId,"user",text,"USER",durableId?{executionId:durableId,jobKind:artifactMode?"artifact":"model"}:{});
+    if(durableId){
+      setBusy(true);
+      try{
+        await api<DurableStatus>("/durable/jobs",{
+          execution_id:durableId,conversation_id:sessionId,prompt:text,kind:artifactMode?"artifact":"model",
+          ...(artifactMode?{artifact_kind:artifactKind}:{agent:current.agent,history:current.messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}))})
+        });
+      }catch(e){
+        setError("Przyjęcie misji niepotwierdzone · "+durableId+" · "+(e instanceof Error?e.message:String(e))+". Nie uruchamiaj nowej misji przed sprawdzeniem statusu.");
+      }finally{setBusy(false);}
+      return;
+    }
     if(artifactMode){
       if(text.length>4000){setError("Cel artefaktu może mieć maksymalnie 4000 znaków.");return;}
       
@@ -234,10 +304,12 @@ export default function JeversonChat() {
         </div></div>:
         <div aria-label="Wiadomości" className="min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6"><div className="mx-auto flex min-h-full max-w-[820px] flex-col">
           {!current.messages.length&&<div className="flex flex-1 flex-col items-center justify-center py-8 text-center"><div aria-hidden className="osa-hermes-hero mb-7 flex h-[100px] w-[100px] items-center justify-center rounded-full border border-cyan/35 bg-cyan/10 text-5xl text-cyan">✦</div><h2 className="text-2xl font-semibold">Czym zajmiemy się dzisiaj?</h2><p className="mt-3 max-w-xl text-sm text-dim">{agent.name} · {agent.purpose}. Jedna rozmowa i dowody z prawdziwego Runtime.</p><div className="mt-6 flex flex-wrap justify-center gap-2">{["Pokaż status runtime","Oblicz SHA-256 tekstu: OSA Proof","Status workera"].map(t=><button key={t} onClick={()=>setDraft(t)} className="rounded-full border border-line bg-panel px-3 py-2 text-xs">{t}</button>)}</div></div>}
-          {current.messages.map(m=><article data-testid="osa-message" key={m.id} className={(m.role==="user"?"justify-end":"justify-start")+" mb-5 flex"}><div className={(m.role==="user"?"bg-[#19314b] text-white":"border border-white/10 bg-[#111b2a]")+" max-w-[min(92%,730px)] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13px] leading-6"}><div className="mb-1 text-[10px] uppercase tracking-wide text-dim">{m.role==="user"?"Ty":m.status==="MODEL"?("ODPOWIEDŹ MODELU AI"+(m.providerModel?" · NVIDIA · "+m.providerModel:"")):"Silnik OSA · "+statusText(m.status)}</div>{m.text}{m.memoryUnavailable&&<p role="status" className="mt-2 border-t border-warn/30 pt-2 text-xs text-warn">NeurOSA niedostępna. Odpowiedź modelu bez pamięci i bez dowodu NeurOSA.</p>}{m.remembered&&<p className="mt-2 text-xs text-cyan">Zapis Twojej wiadomości w NeurOSA został potwierdzony.</p>}{m.statementReceipt&&<MemoryStatementEvidence pointer={m.statementReceipt} statement={m.text}/>} {m.memory&&<MemoryEvidence pointer={m.memory} answer={m.text}/>} {m.delivery&&<ChatDeliveryResult bundle={m.delivery}/>} {m.executionId&&<div className="mt-2 break-all border-t border-white/10 pt-2 font-mono text-[9px] text-dim">{m.executionId}</div>}</div></article>)}
+          {current.messages.map(m=><article data-testid="osa-message" key={m.id} className={(m.role==="user"?"justify-end":"justify-start")+" mb-5 flex"}><div className={(m.role==="user"?"bg-[#19314b] text-white":"border border-white/10 bg-[#111b2a]")+" max-w-[min(92%,730px)] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13px] leading-6"}><div className="mb-1 text-[10px] uppercase tracking-wide text-dim">{m.role==="user"?"Ty":m.status==="MODEL"?("ODPOWIEDŹ MODELU AI"+(m.providerModel?" · NVIDIA · "+m.providerModel:"")):"Silnik OSA · "+statusText(m.status)}</div>{m.text}{m.jobKind&&!current.messages.some(x=>x.role==="assistant"&&x.executionId===m.executionId)&&<p role="status" className="mt-2 text-xs text-cyan">Misja {m.executionId} · status odczytywany z serwera. Możesz zamknąć kartę w trybie Durable.</p>}{m.memoryUnavailable&&<p role="status" className="mt-2 border-t border-warn/30 pt-2 text-xs text-warn">NeurOSA niedostępna. Odpowiedź modelu bez pamięci i bez dowodu NeurOSA.</p>}{m.remembered&&<p className="mt-2 text-xs text-cyan">Zapis Twojej wiadomości w NeurOSA został potwierdzony.</p>}{m.statementReceipt&&<MemoryStatementEvidence pointer={m.statementReceipt} statement={m.text}/>} {m.memory&&<MemoryEvidence pointer={m.memory} answer={m.text}/>} {m.delivery&&<ChatDeliveryResult bundle={m.delivery}/>} {m.executionId&&<div className="mt-2 break-all border-t border-white/10 pt-2 font-mono text-[9px] text-dim">{m.executionId}</div>}</div></article>)}
           {busy&&<div role="status" className="text-xs text-dim">Silnik OSA · trwa wykonywanie żądania...</div>}<div ref={bottom}/></div></div>}
       {deliveryBusy&&<ChatDeliveryProgress value={deliveryProgress}/>}
       {error&&<div role="alert" data-testid="osa-chat-notice" className="mx-3 mb-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-[11px] text-warn">{error}<button className="ml-2 underline" onClick={()=>setError("")}>Zamknij</button></div>}
+      {durableChecked&&!durable&&<p role="status" className="px-3 text-[11px] text-warn">Trwały runtime NIEAKTYWNY: zamknięcie ekranu może przerwać odbiór odpowiedzi. Wymagany jest trwały backend i niezależny worker.</p>}
+      {durable&&<p role="status" data-testid="osa-durable-ready" className="px-3 text-[11px] text-cyan">Durable Execution · przyjęte misje rozmowy i artefaktów są odzyskiwane po powrocie (bez zapisu NeurOSA).</p>}
       {storageProblem&&<p role="alert" className="px-3 text-[11px] text-warn">Zapis historii na urządzeniu jest zablokowany.</p>}
       <div className="shrink-0 border-t border-white/10 bg-[#0b111c] px-3 py-3 sm:px-6"><form onSubmit={e=>void submit(e)} className="mx-auto max-w-[820px] rounded-2xl border border-line2 bg-[#101b2a] p-3 focus-within:border-cyan/50">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs"><button type="button" aria-pressed={!artifactMode} disabled={busy} onClick={()=>setArtifactMode(false)} className="rounded border border-line px-3 py-2">Rozmowa</button><button type="button" aria-pressed={artifactMode} disabled={busy} onClick={()=>setArtifactMode(true)} className="rounded border border-cyan/40 px-3 py-2 text-cyan">Utwórz artefakt</button>{artifactMode&&<label>Format <select aria-label="Format artefaktu" disabled={busy} value={artifactKind} onChange={e=>setArtifactKind(e.target.value)} className="rounded border border-line bg-panel p-1"><option value="webapp">Aplikacja HTML</option><option value="document">Dokument Markdown</option></select></label>}</div>
