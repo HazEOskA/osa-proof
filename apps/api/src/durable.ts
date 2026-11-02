@@ -31,10 +31,13 @@ export async function handleDurableRequest(
   req:IncomingMessage,res:ServerResponse,session:SessionRecord,projectId:string,env:Env=process.env
 ):Promise<void> {
   const u=new URL(req.url??"/","http://localhost");
-  if(u.pathname==="/durable/status"&&req.method==="GET")
-    return send(res,200,{enabled:durableSupported(env),persistence:durableSupported(env)?"PERSISTENT_FILESYSTEM_WITH_EXTERNAL_WORKER":"UNAVAILABLE",
-      worker:"EXTERNAL_PROCESS_REQUIRED",browser_independent:durableSupported(env),
+  if(u.pathname==="/durable/status"&&req.method==="GET") {
+    const configured=durableSupported(env);
+    const healthy=configured&&await store(env).workerHealthy();
+    return send(res,200,{enabled:healthy,persistence:configured?"PERSISTENT_FILESYSTEM_WITH_EXTERNAL_WORKER":"UNAVAILABLE",
+      worker:healthy?"HEALTHY":"UNAVAILABLE",browser_independent:healthy,
       production_supported:env.VERCEL!=="1"});
+  }
   if(!durableSupported(env))return send(res,503,{code:"DURABLE_BACKEND_NOT_CONFIGURED",
     error:"Trwałe wykonanie wymaga współdzielonego trwałego magazynu i osobnego workera. Zadanie nie zostało przyjęte."});
   if(req.method==="POST"&&u.pathname==="/durable/jobs"&&!sameOrigin(req,env))
@@ -42,6 +45,8 @@ export async function handleDurableRequest(
   let scope:DurableScope;
   try{scope=scopeFor(session,projectId);}catch{return send(res,403,{code:"DURABLE_SCOPE_DENIED"});}
   const backend=store(env);
+  if(req.method==="POST"&&u.pathname==="/durable/jobs"&&!(await backend.workerHealthy()))
+    return send(res,503,{code:"DURABLE_WORKER_UNAVAILABLE",error:"Worker nie potwierdził gotowości. Zadanie nie zostało przyjęte."});
   if(req.method==="POST"&&u.pathname==="/durable/jobs"){
     let size=0;const chunks:Buffer[]=[];
     for await(const chunk of req){size+=Buffer.byteLength(chunk);if(size>24000)return send(res,413,{code:"DURABLE_INPUT_TOO_LARGE"});chunks.push(Buffer.from(chunk));}
