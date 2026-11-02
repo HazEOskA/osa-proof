@@ -50,6 +50,7 @@ function restore():Session[] {
   } catch { return [empty()]; }
 }
 const command = (text:string) =>
+  /^sprawdź skonfigurowane repozytorium read-only\.?$/i.test(text.trim()) ||
   /^(?:oblicz|policz|wylicz)\s+sha-?256\s+(?:tekstu\s*)?:/i.test(text) ||
   /(?:status|zdrowie|health)\s+(?:workera|worker|hosta)/i.test(text) ||
   /(?:sprawdź|sprawdz|pokaż|pokaz|zbadaj|status|diagnostyka).*(?:runtime|osa proof|narzędzi|narzedzi|api)/is.test(text);
