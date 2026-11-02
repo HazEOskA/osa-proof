@@ -65,7 +65,7 @@ export async function runDurableWorkerOnce(store:FileDurableJobStore,options:Dur
     let pulse:Promise<void>|undefined;
     const heartbeat=setInterval(()=>{
       if(pulse)return;
-      pulse=store.touch(job).catch(()=>{}).finally(()=>{pulse=undefined;});
+      pulse=Promise.all([store.workerHeartbeat(),store.touch(job)]).then(()=>{}).catch(()=>{}).finally(()=>{pulse=undefined;});
     },5000);
     heartbeat.unref();
     let result:unknown,failed=false;
