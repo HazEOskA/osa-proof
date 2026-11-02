@@ -79,14 +79,15 @@ function prepareNvidiaRequest(prompt: unknown, env: NodeJS.ProcessEnv, context?:
 export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = process.env, fetcher: typeof fetch = fetch, context?: NvidiaContext) {
   const { key, model, requestBody } = prepareNvidiaRequest(prompt, env, context);
   const started = Date.now();
+  const timeoutMs = context?.artifact ? 180_000 : 45_000;
   let response: Response;
   try {
-    response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: AbortSignal.timeout(45000), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(requestBody) });
+    response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: AbortSignal.timeout(timeoutMs), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(requestBody) });
   } catch (error) {
     // Distinguish provider latency from transport failures without leaking
     // provider URLs, transport messages, request payloads, or credentials.
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
-      throw new NvidiaError(504, "NVIDIA_TIMEOUT", "NVIDIA nie odpowiedziała w ciągu 45 sekund.");
+      throw new NvidiaError(504, "NVIDIA_TIMEOUT", `NVIDIA nie odpowiedziała w ciągu ${timeoutMs / 1000} sekund.`);
     throw new NvidiaError(504, "NVIDIA_UNAVAILABLE", "Nie udało się połączyć z NVIDIA.");
   }
   if (!response.ok) {
