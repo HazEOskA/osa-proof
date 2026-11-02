@@ -108,6 +108,25 @@ export class FileDurableJobStore {
   async get(scope:DurableScope,executionId:string) {
     return this.read(this.filename(scope,executionId));
   }
+  async workerHeartbeat():Promise<void> {
+    await mkdir(this.root,{recursive:true,mode:0o700});
+    const path=join(this.root,"worker-heartbeat");
+    const f=await open(path,"w",0o600);
+    try{await f.writeFile(String(Date.now()));await f.sync();}finally{await f.close();}
+  }
+  async workerHealthy():Promise<boolean> {
+    try{
+      const value=Number(await readFile(join(this.root,"worker-heartbeat"),"utf8"));
+      return Number.isFinite(value)&&value<=Date.now()+1000&&Date.now()-value<10000;
+    }catch{return false;}
+  }
+  async touch(job:DurableJob):Promise<void> {
+    const file=this.filename(job.scope,job.input.execution_id);
+    const current=await this.read(file);
+    if(!current||current.status!=="RUNNING"||current.input_sha256!==job.input_sha256)
+      throw new DurableConflict("DURABLE_HEARTBEAT_FENCE");
+    await this.write(file,{...current,updated_at:new Date().toISOString()});
+  }
   async queued():Promise<string[]> {
     await mkdir(this.root,{recursive:true,mode:0o700});
     const files=await readdir(this.root);
@@ -136,7 +155,7 @@ export class FileDurableJobStore {
   }
   private async unlock(file:string){try{const {rmdir}=await import("node:fs/promises");await rmdir(file+".lock");}catch{}}
   async publicStatus(job:DurableJob) {
-    const interrupted=job.status==="RUNNING"&&Boolean(job.started_at)&&Date.now()-Date.parse(job.started_at!)>240000;
+    const interrupted=job.status==="RUNNING"&&Date.now()-Date.parse(job.updated_at)>240000;
     return {schema:job.schema,execution_id:job.input.execution_id,conversation_id:job.input.conversation_id,
       kind:job.input.kind,status:interrupted?"UNKNOWN":job.status,created_at:job.created_at,updated_at:job.updated_at,
       ...(interrupted?{error_code:"DURABLE_WORKER_UNCONFIRMED"}:{}),
