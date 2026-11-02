@@ -110,7 +110,7 @@ export default function JeversonChat() {
     return()=>{alive=false;};
   },[]);
   useEffect(()=>{
-    if(!durable||!cacheReady)return;
+    if(!cacheReady)return; // Pending jobs remain readable even when the worker is temporarily offline.
     let alive=true,working=false;
     const recover=async()=>{
       if(working)return;working=true;
