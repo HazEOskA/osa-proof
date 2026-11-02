@@ -146,7 +146,7 @@ export default function JeversonChat() {
             if(!alive)continue;
             setSessions(prev=>prev.map(s=>s.id!==session.id?s:
               s.messages.some(m=>m.role==="assistant"&&m.executionId===msg.executionId)?s:
-              {...s,updated:stamp(),messages:[...s.messages,{id:id(),role:"assistant",at:stamp(),text:answer,status,...extra}].slice(-100)}));
+              {...s,updated:stamp(),messages:[...s.messages,({id:id(),role:"assistant",at:stamp(),text:answer,status,...extra} as Msg)].slice(-100)}));
           }
         }
       }finally{working=false;}
