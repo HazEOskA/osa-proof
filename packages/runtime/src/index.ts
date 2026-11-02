@@ -268,3 +268,4 @@ export class OsaRuntime {
     };
   }
 }
+export * from "./trust";

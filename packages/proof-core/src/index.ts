@@ -385,3 +385,4 @@ export function verifyProofReceipt(params: {
 
   return { ok: errors.length === 0, errors };
 }
+export * from "./merkle";
