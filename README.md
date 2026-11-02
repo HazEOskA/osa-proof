@@ -6,13 +6,15 @@ Framework do budowania, uruchamiania i weryfikowania systemów agentowych AI. Ł
 
 **CLAIM ≠ PROOF** · `AGENTS` · `RUNTIME` · `TRACING` · `VERIFICATION` · `REPLAY`
 
-> **Stan bieżący — 28.10.2026:** [chronione Preview OSA Proof × NeurOSA](./docs/OSA_PROOF_PREVIEW_STATUS_2026-10-28.md) ma potwierdzony deploy Vercel `READY` na commicie `56dd60612f844faa9380c3243fe7eb9074a618d7` (gałąź `fix/osa-proof-neurosa-protected-preview-20261028`, bez merge do `main`). Operator zaobserwował `AVAILABLE`, potwierdzenie zapisu pamięci, odpowiedź NVIDIA, generowanie artefaktu oraz Replay/trace (47 pozycji zgłoszonych, **jeszcze bez niezależnie zweryfikowanego eksportu tej misji**). **Produkcyjny odbiór: BLOCKED.** [Quick Start dla audytora Hermes](./docs/HERMES_AUDIT_QUICK_START.md). Nie udostępniaj chronionego Preview osobom trzecim.\n\n> **Historyczny stan z 27.10.2026 (nieaktualny jako bilans Preview):** **Integracja NeurOSA × OSA Proof (2026-10-27):** ChatDelivery ma kod serwerowego `recall → NVIDIA → Runtime/Proof → VERIFIED_RUNTIME memory receipt` oraz bramkę prywatnego dostępu GitHub; CI 265 PASS / 0 FAIL / 3 SKIP. Railway volume `neurosa-memory-v1` jest zamontowany pod `/persist`; backup `brain-restore.db` ma potwierdzony SHA-256 i integralność SQLite, ale **Brain API nadal nie zostało przełączone na trwałą bazę ani potwierdzone po restarcie**. Brakuje też produkcyjnego OAuth. [Plan odbioru](./docs/NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md). **CLAIM ≠ PROOF; bez deklaracji LIVE PASS.**
+> **Stan kodu i lokalnej walidacji — 31.10.2026:** gałąź `fix/proof-source-attribution-v1-20261031`, commit `fc4756fa35bdb71b8f6c5c22ca92c54e04b6eaf5` (przed scaleniem z `main`). Operator uruchomił na Windows / Node.js 24.17.0: **308 testów, 305 PASS, 0 FAIL, 3 SKIP** oraz `node --throw-deprecation scripts/build-dashboard.cjs` → **FULL VALIDATION PASS**, bez `DEP0190` i `EINVAL`. Wynik dotyczy lokalnego checkoutu i builda; nie jest poświadczeniem produkcyjnego E2E ani CI dla końcowego SHA. [Bilans techniczny 31.10](./docs/OSA_PROOF_STATUS_2026-10-31.md) · [Attribution Gate v1](./docs/ATTRIBUTION_GATE_V1.md).
+
+> **Historia, nie aktualny odbiór — 28.10.2026:** [chronione Preview OSA Proof × NeurOSA](./docs/OSA_PROOF_PREVIEW_STATUS_2026-10-28.md) raportowało Vercel `READY` na osobnym commicie `56dd60612f844faa9380c3243fe7eb9074a618d7` oraz obserwacje operatora dotyczące pamięci, NVIDIA, artefaktów i Replay. Nie przeprowadzono niezależnego audytu eksportu zgłoszonej 47-pozycyjnej misji. Nie używać chronionego Preview jako publicznego demo. Historyczny raport z 27.10 zawierał **265 PASS / 0 FAIL / 3 SKIP** oraz niezamknięte bramki trwałości Brain API po restarcie; nie jest obecnym wynikiem testów. [Runbook akceptacyjny](./docs/NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md).
 
 > **Status v0.1.0: kandydat — BLOCKED.** Lokalne testy działają w trybie `fixture` bez kluczy i płatnych wywołań. Do formalnego wydania brakuje potwierdzonego NVIDIA `tool_calls` → Runtime → Proof, rzeczywistego współdzielonego limitu Redis, trwałości chmurowej i bezpiecznej granicy danych w otwartym demo. Produkcyjne wdrożenie panelu istnieje, ale `READY` ≠ pełne E2E ani GitHub Release. **[Bramki wydania](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/BRAMKI.md) · [Audyt](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md) · [PR #16](https://github.com/HazEOskA/osa-proof/pull/16)**
 
 ## ⚡ Zobacz, że działa — lokalnie
 
-Wymagania: Node.js **20+**, npm. Wykonaj w katalogu repo:
+Wymagania: Node.js **20+**, npm. Wykonaj w katalogu repo (przykład powłoki Bash/Linux; Windows wymaga osobnego ustawienia środowiska dla skryptu `rm -rf`):
 
 ```bash
 npm ci
@@ -108,13 +110,19 @@ flowchart LR
 
 OSA Proof to **cały ekosystem**, nie tylko APR. Model, wykonawca i verifier mają odrębne zadania. Sam `ProofReceipt` świadczy o zakresie i integralności zarejestrowanych dowodów, **nie** o semantycznej prawdziwości dowolnego stwierdzenia AI.
 
+### Attribution Gate v1 (DEFAULT_ON)
+
+W runtime rejestrowane są wywołania narzędzi przez `context.callTool()` jako **runtime-owned `ToolCallRecord`** (hash żądania, odpowiedzi i rekordu). Weryfikator rozpoznaje ograniczony zbiór twierdzeń o faktach zewnętrznych w raportach i artefaktach HTML/JS/TS. Brak powiązanego źródła, niezgodna wartość albo niewspierana mapa rozpoznanego twierdzenia mogą skutkować `CLAIM_UNSUPPORTED`, `CLAIM_VALUE_MISMATCH` lub `CLAIM_COVERAGE_INCOMPLETE`. Parametry CSS, wersje i liczby techniczne **nie są** automatycznie faktami zewnętrznymi. Fałszywe evidence dostarczone przez agenta nie zastępuje zapisu hosta.
+
+Zaufany host może jawnie ustawić `trustedNoExternalFacts: true` dla sklasyfikowanego builda; nie jest to uprawnienie agenta ani pole żądania HTTP. Zapis `tool_call_refs` i `tool_call_root` wiąże wywołania z receipt. `egress_status: NOT_ENFORCED` oraz `signature_status: UNAVAILABLE` wyrażają realne ograniczenia. Brak sandboxa sieciowego i niezależnego podpisu: lokalne `VERIFIED` **nie jest** gwarancją prawdziwości wszystkich danych ani bezpieczeństwa uruchomionego kodu. [Kontrakt i testy](./docs/ATTRIBUTION_GATE_V1.md).
+
 ## Moduły i ich rzeczywisty status
 
 | Moduł | Rola w systemie | Granica dowodu |
 | --- | --- | --- |
 | **Team Graph / Mission Kernel** | Agenci, wersje, przekazania i cykl misji | Zaimplementowane i testowane lokalnie |
-| **OSA Runtime / Tracing** | Wykonanie i zapis zdarzeń | Natywne testy lokalne PASS |
-| **Evidence / ProofReceipt / Replay** | Materiał dowodowy, weryfikacja, odtwarzanie zdarzeń | Zweryfikowany natywny przepływ; cloud persistence niepotwierdzona |
+| **OSA Runtime / Tracing** | Wykonanie i zapis zdarzeń, runtime-owned `ToolCallRecord`, Attribution Gate DEFAULT_ON | Natywne testy Windows PASS; bez pełnego sandboxa egress |
+| **Evidence / ProofReceipt / Replay** | Materiał dowodowy, weryfikacja, odtwarzanie zdarzeń | Lokalna weryfikacja integralności i przypisanie do wykonania; podpisy, egress i cloud persistence niepotwierdzone |
 | **Czat floty agentów / NVIDIA** | Modele, profile, rozmowa i ograniczone narzędzia | Live modelowe `tool_calls` E2E nadal BLOCKED |
 | **Zapytaj OSĘ** | Kontekstowy samouczek po całym frameworku | UI/kontrakt testowany; realne odpowiedzi guide wymagają osobnego testu |
 | **Builder / Worker Host** | Projektowanie zadań, narzędzi i izolowany wykonawca | Uruchomienie pełnego sandboxa w chmurze GATED |
@@ -150,11 +158,12 @@ osa-proof/
 
 **Otwarty panel nie jest prywatnym środowiskiem produkcyjnym.** `OSA_AUTH_MODE=open` umożliwia anonimowy dostęp do części API i współdzielonej przestrzeni demonstracyjnej. Nie wprowadzaj tam danych klientów, prywatnych eksportów ChatGPT ani sekretów. NVIDIA jest osobno chroniona sesją operatora i polityką kosztową, ale nie oznacza to pełnego RBAC całego API.
 
-`PROCESS_MEMORY` oraz lokalna historia przeglądarki **nie** zapewniają trwałości w chmurze ani izolacji wielu użytkowników. Integracje wymagające prawdziwego modelu, Redis, workera i NeurOSA podlegają odrębnym bramkom.
+`PROCESS_MEMORY` oraz lokalna historia przeglądarki **nie** zapewniają trwałości w chmurze ani izolacji wielu użytkowników. `FileMissionStore` utrwala lokalne rekordy i chroni rewizje blokadą, lecz nie zastępuje rozproszonej bazy; na Windows zachowuje `file.sync()` i atomowy rename bez nieobsługiwanego `directory.sync()` (pełna gwarancja POSIX trwałości katalogu nie jest tam deklarowana). Integracje wymagające prawdziwego modelu, Redis, workera i NeurOSA podlegają odrębnym bramkom.
 
 ## Dowody, CI i dokumentacja
 
-- [Proof Protocol V2](./docs/PROOF_PROTOCOL_V2.md) · [Team Graph](./docs/TEAM_GRAPH_CONTRACT_V1.md) · [Mission Kernel](./docs/MISSION_KERNEL_V1.md) · [NVIDIA Bridge](./docs/NVIDIA_BRIDGE.md).
+- [Stan systemu 31.10.2026](./docs/OSA_PROOF_STATUS_2026-10-31.md) · [Attribution Gate v1](./docs/ATTRIBUTION_GATE_V1.md) · [Proof Protocol V2](./docs/PROOF_PROTOCOL_V2.md) · [Team Graph](./docs/TEAM_GRAPH_CONTRACT_V1.md) · [Mission Kernel](./docs/MISSION_KERNEL_V1.md) · [NVIDIA Bridge](./docs/NVIDIA_BRIDGE.md).
+- [Dashboard build](./docs/DASHBOARD_INTEGRATION.md): Node.js uruchamia `npm-cli.js` przez `shell: false`, co usuwa Windows `spawnSync npm.cmd EINVAL` i `DEP0190`. Lokalna walidacja 31.10: build Vite PASS; ostrzeżenie konfiguracji npm `store-dir` nie zablokowało budowania.
 - [Zarejestrowane testy wydania](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/WERYFIKACJA.md) — rozróżniają natywny Runtime od symulowanego transportu modeli.
 - [GitHub Actions](https://github.com/HazEOskA/osa-proof/actions) · [PR #16 — kandydat v0.1.0](https://github.com/HazEOskA/osa-proof/pull/16).
 

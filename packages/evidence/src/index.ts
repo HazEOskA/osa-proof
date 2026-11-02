@@ -1,4 +1,4 @@
-import { EvidenceInput, EvidenceRecord, ExecutionBinding, ExecutorProducer } from "../../contracts/src";
+import { EvidenceInput, EvidenceRecord, ExecutionBinding, ExecutorProducer, TrustEvidenceRef } from "../../contracts/src";
 import { digestWithout, sha256Hex } from "../../proof-core/src/canonical";
 
 // Records evidence per execution. Core, not the executor, binds the record to its
@@ -53,4 +53,11 @@ export class EvidenceCollector {
   list(executionId: string): EvidenceRecord[] {
     return (this.byExecution.get(executionId) ?? []).map((record) => structuredClone(record));
   }
+}
+
+export function trustEvidenceRefs(records: EvidenceRecord[]): TrustEvidenceRef[] {
+  return records.map((record) => ({
+    evidence_id: String(record.evidence_id),
+    evidence_sha256: String(record.evidence_sha256),
+  }));
 }

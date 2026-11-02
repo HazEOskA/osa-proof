@@ -55,7 +55,7 @@ after restart GET /missions/:id/run reads durable results directly.
 
 FileMissionStore uses hashed filenames (mission IDs cannot traverse directories),
 private file permissions, integrity digests, compare-and-swap revisions,
-exclusive per-Mission lock files, fsync and atomic rename. Separate processes on
+exclusive per-Mission lock files, file-level fsync and atomic rename. Na POSIX wykonywane jest również fsync katalogu; na Windows `directory.sync()` jest pomijane jako nieobsługiwane, ale `file.sync()` i atomowy rename pozostają. Nie deklaruje się na Windows równoważnej gwarancji trwałości wpisu katalogowego. Separate processes on
 the same local filesystem cannot both claim one revision. There is no distributed
 database guarantee. An abandoned lock or EXECUTING/VERIFYING snapshot is left
 for operator reconciliation after a crash; automatic re-execution would risk
@@ -68,7 +68,7 @@ artifact receipt does not prove a build, test, deployment or live Azure service.
 
 ## Validation and rollout
 
-Run `npm test`. mission-kernel tests cover lifecycle, terminal failure,
+Run `npm test`. **Stan 31.10.2026, Windows / Node 24.17.0, SHA `fc4756f`: 308 testów / 305 PASS / 0 FAIL / 3 SKIP**; wynik operatora, nie CI. [Bilans](./OSA_PROOF_STATUS_2026-10-31.md). mission-kernel tests cover lifecycle, terminal failure,
 runtime exceptions, policy/task budgets, receipt tampering/resealing, foreign
 Mission/tenant reuse, cancellation, duplicate execution, filesystem restart,
 integrity, safe filenames and concurrent/stale writers. mission-api test covers

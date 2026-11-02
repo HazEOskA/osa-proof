@@ -37,7 +37,7 @@ try {
     assert.ok((await inspector.innerText()).includes(bundle.execution_id));
     await page.screenshot({ path: `${out}/${name}-task.png`, fullPage: false });
     await inspector.getByRole("button", { name: "Dowody ↗", exact: true }).click();
-    await page.getByRole("heading", { name: "WYKONANIE ZWERYFIKOWANE", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "WYKONANIE ZWERYFIKOWANE · BRAK ROZPOZNANYCH FAKTÓW", exact: true }).waitFor();
     await page.getByText(/\d+\/\d+ MATCH/, { exact: true }).waitFor();
     await page.getByText(bundle.execution_id, { exact: true }).waitFor();
     await page.screenshot({ path: `${out}/${name}-proof.png`, fullPage: false });

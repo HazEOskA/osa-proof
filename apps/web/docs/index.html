@@ -222,7 +222,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
         <img class="banner" src="/docs/osa-frameworks-banner.webp" width="1600" height="543" alt="OSA Frameworks" fetchpriority="high" decoding="async">
         <div class="eyebrow">Proof-first · Documentation</div>
         <h1>OSA Framework <em>Docs.</em></h1>
-        <p>OSA runs a team of agents from a Team Graph and ends every run with a sealed proof receipt. Model output is a claim. The verifier decides.</p>
+        <p>OSA Proof uruchamia misje agentów i zamyka wykonanie w Proof Receipt. Model formułuje twierdzenia, a verifier ocenia zapisane dowody; Attribution Gate v1 domyślnie weryfikuje obsługiwane fakty zewnętrzne.</p>
         <div class="bigsearch" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <span class="nx">Search documentation</span><kbd>⌘ K</kbd>
@@ -242,9 +242,9 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
           <div class="grid">
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
-            <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, evidence, the verifier and the receipt.</p></a>
+            <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, misje, wykonawcy, runtime-owned ToolCallRecord, Attribution Gate i Proof Receipt.</p></a>
             <a class="card" href="#neurosa-runtime"><span class="label k">Integration · gated</span><h4>NeurOSA memory</h4><p>Storage backup confirmed; authenticated live recall and restart acceptance are still BLOCKED. Evidence first.</p></a>
-             <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>87</span> method/path combinations in the main branch reference, including Delivery Lab, NVIDIA, Web3 and runtime. Generated from the same route manifest used for auth tests; Production release versions may differ.</p></a>
+             <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>87</span> par metod i ścieżek w rejestrze tej wersji kodu (m.in. Delivery Lab, NVIDIA, Web3 i runtime). Tabela jest generowana z manifestu uprawnień; nie potwierdza uruchomienia każdej integracji na produkcji.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -302,20 +302,20 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
 
     <section id="concepts" aria-labelledby="h-c">
       <h2 id="h-c">Core concepts</h2>
-      <p>Every surface compiles to the same Team Graph. Everything after that exists to turn a run into evidence and evidence into a verdict.</p>
+      <p>Wszystkie wejścia korzystają z tego samego Team Graph. Runtime zapisuje zdarzenia i własne wywołania narzędzi; Attribution Gate v1 łączy rozpoznane twierdzenia z odpowiedziami, a verifier wylicza wynik. Brak rozpoznanego twierdzenia nie oznacza walidacji wszystkich faktów.</p>
       <div class="grid">
         <div class="card"><span class="label k">Canonical state</span><h4>Team Graph</h4><p>Agents, their executor refs and the edges between them. Validated before every run. Today: linear handoff.</p><div class="src">packages/team-graph</div></div>
         <div class="card"><span class="label k">Intent</span><h4>Mission</h4><p>An objective, an input and explicit acceptance requirements. A mission without requirements is rejected.</p><div class="src">packages/contracts</div></div>
         <div class="card"><span class="label k">Execution</span><h4>Runtime and executors</h4><p>Walks the graph and calls each executor through the ExecutorRegistry. Providers sit behind ModelProvider.</p><div class="src">packages/runtime · packages/adapters</div></div>
-        <div class="card"><span class="label k">Evidence</span><h4>Evidence records</h4><p>Bound to one execution. Core computes <code>evidence_sha256</code> and content digests; executor hashes are claims.</p><div class="src">packages/evidence</div></div>
-        <div class="card"><span class="label k">Decision</span><h4>Deterministic verifier</h4><p>Checks binding and digests, records verifier observations, then evaluates requirements over evidence that passed.</p><div class="src">packages/proof-core</div></div>
-        <div class="card"><span class="label k">Output</span><h4>Proof receipt</h4><p>Sealed after the final verdict: <code>proof_id</code> commits to the verdict, evidence root and final output.</p><div class="src">packages/proof-core</div></div>
+        <div class="card"><span class="label k">Evidence</span><h4>Evidence records</h4><p>Bound to one execution. Core computes <code>evidence_sha256</code> and content digests; executor hashes are claims. Wywołania przez context.callTool() mają osobny rekord runtime, którego agent nie może zastąpić własnym evidence.</p><div class="src">packages/evidence</div></div>
+        <div class="card"><span class="label k">Decision</span><h4>Deterministic verifier</h4><p>Sprawdza binding, hashe i wymagania misji. Attribution Gate jest domyślnie aktywny; rozpoznane twierdzenia bez źródła albo z błędną wartością mogą zakończyć wykonanie FAILED.</p><div class="src">packages/proof-core</div></div>
+        <div class="card"><span class="label k">Output</span><h4>Proof receipt</h4><p>Zapieczętowany po werdykcie: <code>proof_id</code> wiąże wynik, dowody i output. Dla narzędzi obejmuje także tool_call_refs/tool_call_root; egress NOT_ENFORCED i signature UNAVAILABLE.</p><div class="src">packages/proof-core</div></div>
       </div>
     </section>
 
     <section id="pipeline" aria-labelledby="h-p">
       <h2 id="h-p">How a run is proven</h2>
-      <p>Six stages, in order. A runtime failure is an input to the verifier, so it can never produce VERIFIED.</p>
+      <p>Sześć etapów: Team Graph, misja, runtime, evidence, verifier i receipt. Błędy runtime i rozpoznane niepoparte twierdzenia uniemożliwiają VERIFIED. Nie jest to sieciowy sandbox ani kryptograficzny podpis źródła.</p>
       <div class="pipe" role="list">
         <div class="stage" role="listitem"><span class="label n">01</span><b>Team Graph</b><span>validated</span></div>
         <div class="stage" role="listitem"><span class="label n">02</span><b>Mission</b><span>requirements set</span></div>
@@ -328,7 +328,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
 
     <section id="receipt" aria-labelledby="h-r">
       <h2 id="h-r">Proof receipt</h2>
-      <p>Historical sample from runtime commit <code>a321fd2</code>, dated <code>2026-09-28</code>, trimmed for length. It is <strong>not</strong> a freshly replayed proof against current HEAD. <code>verifyProofReceipt</code> recomputes committed hashes (integrity within the trusted inputs), not an independent attestation of origin. Without signatures, trusted timestamps or an append-only external log, an actor able to rewrite the store could replace data and recompute matching hashes.</p>
+      <p>Historical sample from runtime commit <code>a321fd2</code>, dated <code>2026-09-28</code>, trimmed for length. It is <strong>not</strong> a freshly replayed proof against current HEAD. Przykład historyczny nie zawiera nowych pól Attribution Gate v1 (claim_attribution, tool_call_root); wynik VERIFIED dotyczy tylko zakresu zapisanych dowodów. <code>verifyProofReceipt</code> recomputes committed hashes (integrity within the trusted inputs), not an independent attestation of origin. Without signatures, trusted timestamps or an append-only external log, an actor able to rewrite the store could replace data and recompute matching hashes.</p>
       <div class="code"><div class="bar"><span class="file">GET /runs/:id/proof</span><button class="copy" type="button">Copy</button></div><pre>{
   &quot;proof_id&quot;: &quot;proof_75811c7c721e14f4a0dddfee97259da39064852055b151b7dc0f88aead0ed04f&quot;,
   &quot;schema&quot;: &quot;osa.proof_receipt.v2&quot;,

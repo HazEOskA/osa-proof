@@ -60,11 +60,19 @@ export default function Replay() {
         <div className="min-w-0">
           <Section title="STAN WYKONANIA"><Kv k="ostatnie zdarzenie">{st.last ? `#${st.last.sequence} ${st.last.type}` : "— (before RUN_CREATED)"}</Kv><Kv k="zapisane dowody">{st.evidence}</Kv><Kv k="wynik weryfikacji"><Status v={st.verdict === "PENDING" ? "UNKNOWN" : st.verdict} label={st.verdict} /></Kv><Kv k="zmiany pamięci"><Unknown /></Kv></Section>
           <Section title="AGENCI">{Object.entries(st.agents).map(([a, s]) => <Kv key={a} k={a}><span className={aTone(s)}>{s}</span></Kv>)}</Section>
+          {Array.isArray(run.proof.claim_attribution) && <Section title="GRAF PRZYCZYNOWY — TWIERDZENIE → DOWÓD → WERDYKT">
+            <p className="mono mb-2 text-[11px] text-warn">egress: {String(run.proof.egress_status ?? "NOT_ENFORCED")} · podpis: {String(run.proof.signature_status ?? "UNAVAILABLE")}</p>
+            {run.events.filter(e=>e.type==="CLAIM_ATTRIBUTION_CHECKED" && e.sequence<=step).map(e=><div key={e.event_id} className="border-b border-line py-2 text-[12px]">
+              <div>TWIERDZENIE: {String(e.payload.claim ?? "—")}</div>
+              <div className="mono break-all text-[11px] text-dim">DOWÓD: {e.payload.response_sha256 ? String(e.payload.response_sha256) : "BRAK"}</div>
+              <div className={e.payload.status==="SUPPORTED"?"text-cyan":"text-bad"}>WERDYKT: {String(e.payload.reason_code ?? e.payload.status ?? "NIEZNANE")}</div>
+            </div>)}
+          </Section>}
         </div>
         <div className="min-w-0">
           <Section title="DOTYCHCZASOWE ZDARZENIA">
             <ol className="max-h-[320px] overflow-y-auto">{run.events.map((e) => (
-              <li key={e.event_id} className={`mono flex min-w-0 flex-wrap gap-3 break-all py-1 text-[12px] ${e.sequence <= step ? "" : "opacity-25"}`}><span className="w-6 text-dim">#{e.sequence}</span><span style={{ color: txt(e.type) }}>{e.type}</span>{e.agent_id && <span className="text-dim">{e.agent_id}</span>}</li>))}</ol>
+              <li key={e.event_id} className={`mono flex min-w-0 flex-wrap gap-3 break-all py-1 text-[12px] ${e.sequence <= step ? "" : "opacity-25"}`}><span className="w-6 text-dim">#{e.sequence}</span><span style={{ color: txt(e.type) }}>{e.type}</span>{e.agent_id && <span className="text-dim">{e.agent_id}</span>}{e.type==="CLAIM_ATTRIBUTION_CHECKED"&&<span className={e.payload.status==="SUPPORTED"?"text-cyan":"text-bad"}>{String(e.payload.reason_code ?? e.payload.status ?? "")}</span>}</li>))}</ol>
           </Section>
         </div>
       </div>

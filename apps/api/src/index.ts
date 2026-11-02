@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { ChatDelivery } from "./chat-delivery";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
+import { handleTrustRequest } from "./trust";
 import { handleNvidiaRequest } from "./nvidia";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { PreviewOperator } from "./preview-operator";
@@ -179,7 +180,9 @@ export async function handleApiRequest(
 ): Promise<void> {
   if (!state.platform.web3) state.platform.installWeb3(registry,state.web3);
   state.platform.syncExecutors(registry);
-  const runtime = new OsaRuntime(registry);
+  // Host-controlled, default-on attribution: API requests cannot disable
+  // factual checks by setting mission flags or by claiming a pure build.
+  const runtime = new OsaRuntime(registry, { trustedNoExternalFacts: false });
 
   // A deployment pins the graph: the mission runs against the deployed version, whatever it names,
   // and only after every enabled policy allows it.
@@ -204,6 +207,10 @@ export async function handleApiRequest(
       if (state.previewOperator && !state.previewOperator.sameOriginMutation(request))
         return send(response, 403, { code: "PREVIEW_ORIGIN_REJECTED", error: "Operacja wymaga tego samego chronionego originu Preview." });
       
+      // Trust metadata and signature verification do not read tenant state.
+      // Never pass client-asserted keys as independently authenticated identities.
+      if (!state.previewOperator && await handleTrustRequest(request, response, url)) return;
+
       // The private historical Preview remains protected by its pinned server identity.
       // Production GitHub sessions are accepted only after HMAC verification and ID allowlisting.
       if ((state.previewOperator || (state.authMode === "open" && process.env.VERCEL !== "1")) &&

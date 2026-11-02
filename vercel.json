@@ -2,6 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node scripts/build-dashboard.cjs",
   "outputDirectory": "dashboard-dist",
+  "functions": {
+    "api/osa.ts": {
+      "maxDuration": 240
+    }
+  },
   "git": {
     "deploymentEnabled": {
       "feature/platform-v03-v05-review": false,
