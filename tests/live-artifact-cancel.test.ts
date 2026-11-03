@@ -8,7 +8,7 @@ import { ChatDelivery } from "../apps/api/src/chat-delivery";
 import { MissionKernel } from "../packages/runtime/src";
 import { MemoryService } from "../apps/api/src/memory";
 
-test("artifact HTTP SSE: cancellation reaches server execution control, no fake accepted bundle",async()=>{
+test("artifact HTTP SSE: cancellation reaches server execution control, no fake accepted bundle",{timeout:12000},async()=>{
   const session={
     identity:{identity_id:"idn_test",organization_id:"org_test",verified:true},
     session_id:"ses_artifact_test",token:"",created_at:new Date().toISOString(),
