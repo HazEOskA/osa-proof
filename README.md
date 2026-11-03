@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./apps/web/docs/osa-frameworks-banner.webp" alt="OSA Framework — oficjalny banner projektu" width="100%" />
+
 <img src="./dashboard-src/public/favicon.svg" alt="OSA Proof — znak projektu" width="88" />
 
 # OSA PROOF
