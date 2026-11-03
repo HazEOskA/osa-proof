@@ -60,8 +60,14 @@
     var wrapper = pre.closest && pre.closest(".code");
     var fileLabel = wrapper && wrapper.querySelector(".file");
     var kind = compact(asText(fileLabel)).toLowerCase();
-    var lang = kind === "shell" || kind === "sh" ? "bash" : kind === "json" ? "json" : kind === "javascript" || kind === "js" ? "javascript" : "text";
     var content = asText(pre).replace(/^\n/, "").replace(/\n$/, "");
+    var trimmed = content.trim();
+    // Real portal blocks use HTTP route labels for shell snippets and a GET label for a JSON receipt.
+    // Classify from actual bytes first; do not change, split or execute any code block.
+    var lang = /^(?:shell|sh|bash)(?:\b|\s*·)/.test(kind) ? "bash" :
+      /^(?:javascript|js)(?:\b|\s*·)/.test(kind) ? "javascript" :
+      (kind === "json" || /^[\[{]/.test(trimmed)) ? "json" :
+      /^(?:(?:TOKEN|RUN|OSA_[A-Z_]+|OPENAI_API_KEY|ANTHROPIC_API_KEY)=|curl(?:\s|$)|npm(?:\s|$)|git(?:\s|$)|cd(?:\s|$)|node(?:\s|$))/m.test(trimmed) ? "bash" : "text";
     var fence = fenceFor(content);
     return fence + lang + "\n" + content + "\n" + fence + "\n\n";
   }
@@ -128,6 +134,31 @@
     if (node.classList && node.classList.contains("code")) {
       var pre = node.querySelector("pre");
       if (pre) return codeBlock(pre);
+    }
+    // The live Docs pipeline uses div.stage tiles; generic inline traversal would glue
+    // "01", "Team Graph" and "validated" into the invalid "01**Team Graph**validated".
+    if (node.classList && node.classList.contains("pipe")) {
+      var stages = Array.from(node.children || []).filter(function (c) { return c.classList && c.classList.contains("stage"); });
+      if (stages.length) return stages.map(function (stage) {
+        var number = stage.querySelector(".n");
+        var name = stage.querySelector("b");
+        var details = Array.from(stage.children || []).find(function (c) {
+          return tag(c) === "SPAN" && !(c.classList && c.classList.contains("n"));
+        });
+        return "- **" + textInline(number, source) + " · " + escapeInline(compact(asText(name))) + "** — " + textInline(details, source);
+      }).join("\n") + "\n\n";
+    }
+    // Regulated-layer cards contain distinct title, purpose and access status.
+    // Serialize each field into a Markdown table instead of joining them as one token.
+    if (node.classList && node.classList.contains("layers")) {
+      var layers = Array.from(node.children || []).filter(function (c) { return c.classList && c.classList.contains("layer"); });
+      if (layers.length) return "| Warstwa | Przeznaczenie | Dostęp |\n| --- | --- | --- |\n" +
+        layers.map(function (layer) {
+          var role = layer.querySelector("b");
+          var spans = Array.from(layer.children || []).filter(function (c) { return tag(c) === "SPAN"; });
+          var fields = [escapeInline(compact(asText(role))), textInline(spans[0], source), textInline(spans[1], source)];
+          return "| " + fields.map(function (value) { return value.replace(/\|/g, "\\|"); }).join(" | ") + " |";
+        }).join("\n") + "\n\n";
     }
     var nodes = children(node).filter(function (c) { return !isSkipped(c); });
     var blockTags = /^(?:DIV|SECTION|MAIN|ARTICLE|P|PRE|TABLE|UL|OL|H[1-6]|BLOCKQUOTE|HR|DL|FIGURE)$/;

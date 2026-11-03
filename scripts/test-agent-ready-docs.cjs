@@ -212,3 +212,134 @@ test("COPY-01b: znaczniki statusu PLANNED pozostają dokumentacją, a nie polece
   assert.match(out,/Feature PLANNED/);
   assert.doesNotMatch(out,/\[Feature PLANNED\]/);
 });
+
+// Dependency-free DOM reconstruction from the ACTUAL apps/web/docs/index.html.
+// Parsing only <main> keeps this harness deterministic: production JS/CSS/SVG are never executed.
+function decodeHtml(value) {
+  const entities = {amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",mdash:"—",ndash:"–",hellip:"…",middot:"·",rarr:"→",larr:"←",bull:"•"};
+  return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (full,key) => {
+    if(key.startsWith("#")) {
+      const hex=key[1].toLowerCase()==="x";
+      const cp=Number.parseInt(key.slice(hex?2:1),hex?16:10);
+      return Number.isInteger(cp)&&cp>=0&&cp<=0x10ffff?String.fromCodePoint(cp):full;
+    }
+    return Object.prototype.hasOwnProperty.call(entities,key.toLowerCase())?entities[key.toLowerCase()]:full;
+  });
+}
+function actualDocsDocument(html) {
+  const mainText = html.match(/<main\b[^>]*>[\s\S]*?<\/main>/i)?.[0];
+  assert.ok(mainText, "Realny portal musi zawierać główną treść <main>");
+  const tokens = mainText.match(/<!--[\s\S]*?-->|<\/?[A-Za-z][^>]*>|[^<]+/g) || [];
+  const voidTags = new Set(["BR","HR","IMG","INPUT","META","LINK","WBR","SOURCE","AREA"]);
+  const stack=[];
+  let main=null;
+  for(const token of tokens) {
+    if(token.startsWith("<!--")) continue;
+    if(token.startsWith("</")) {
+      const name=token.match(/^<\/([A-Za-z][\w-]*)/)?.[1]?.toUpperCase();
+      while(stack.length) if(stack.pop().tagName===name) break;
+      continue;
+    }
+    if(token.startsWith("<")) {
+      const name=token.match(/^<([A-Za-z][\w:-]*)/)?.[1];
+      if(!name) continue;
+      const attrs={};
+      const body=token.slice(1+name.length).replace(/\/?>(?:\s*)$/,'');
+      const attr=/([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+      for(const m of body.matchAll(attr)) attrs[m[1]]=decodeHtml(m[2]??m[3]??m[4]??"");
+      const elem=new Element(name,attrs);
+      if(stack.length)stack[stack.length-1].appendChild(elem);
+      else if(!main)main=elem;
+      if(!token.endsWith("/>")&&!voidTags.has(elem.tagName))stack.push(elem);
+      continue;
+    }
+    if(stack.length)stack[stack.length-1].appendChild(new TextNode(decodeHtml(token)));
+  }
+  assert.equal(main?.tagName,"MAIN");
+  assert.equal(stack.length,0,"Niepoprawnie zagnieżdżone tagi w <main> portalu");
+  const body=el("body",{},main),root=el("html",{},body);
+  return {
+    body, root,
+    getElementById(id) { const scan=(n)=>n.id===id?n:(n.children||[]).map(scan).find(Boolean);return scan(root)||null; },
+    querySelectorAll(selector) {return root.querySelectorAll(selector);},
+    querySelector(selector) {return root.querySelector(selector);},
+    createElement(name) {return el(name,{});}
+  };
+}
+function realPortal() {
+  const fs=require("node:fs"),path=require("node:path");
+  const htmlPath=path.join(__dirname,"..","apps","web","docs","index.html");
+  const html=fs.readFileSync(htmlPath,"utf8");
+  assert.ok(html.length>50000,"Oczekiwano rzeczywistego HTML Docs, a nie testowego stubu");
+  return actualDocsDocument(html);
+}
+
+test("COPY-12: rzeczywisty HTML Docs — 23 sekcje, 6 kroków pipeline i pełne statusy kart", () => {
+  const doc=realPortal();
+  assert.equal(api.sectionsInPage(doc).length,23);
+  const pipeline=api.exportMarkdown(doc,source,"pipeline");
+  assert.match(pipeline,/- \*\*01 · Team Graph\*\* — validated/);
+  assert.match(pipeline,/- \*\*06 · Receipt\*\* — sealed/);
+  assert.doesNotMatch(pipeline,/01\*\*Team Graph\*\*validated/);
+  const layers=api.exportMarkdown(doc,source,"layers");
+  assert.match(layers,/\| Warstwa \| Przeznaczenie \| Dostęp \|/);
+  assert.match(layers,/\| School \| Academy \| Public \|/);
+  assert.match(layers,/\| Dev \| Builder \/ Core \| DEV login \|/);
+  assert.match(layers,/\| Bank \| Regulated \| Gated \|/);
+  assert.match(layers,/\| Army \| Regulated \| Gated \|/);
+  assert.doesNotMatch(layers,/BankRegulatedGated/);
+});
+
+test("COPY-13: rzeczywisty HTML Docs — curl/TOKEN/RUN to bash, ProofReceipt to json", () => {
+  const doc=realPortal();
+  const mission=api.exportMarkdown(doc,source,"first-mission");
+  assert.match(mission,/```bash\nTOKEN=\$\(curl/);
+  assert.match(mission,/```bash\ncurl -s localhost:3000\/teams/);
+  assert.match(mission,/```bash\nRUN=\$\(curl/);
+  const receipt=api.exportMarkdown(doc,source,"receipt");
+  assert.match(receipt,/```json\n\s*\{/);
+  assert.match(receipt,/"proof_id": "proof_/);
+  const llm=api.exportMarkdown(doc,source,"llm-gateway");
+  assert.match(llm,/```bash\nOSA_EXECUTION_MODE=provider/);
+  const mesh=api.exportMarkdown(doc,source,"model-mesh");
+  assert.match(mesh,/```bash\nOSA_EXECUTION_MODE=provider/);
+});
+
+test("COPY-14: rzeczywisty HTML Docs — karty startu, 87 rekordów API i zakres sekcji", () => {
+  const doc=realPortal();
+  const start=api.exportMarkdown(doc,source,"start");
+  assert.match(start,/#### \[Quickstart\]\(https:\/\/osa-proof-three\.vercel\.app\/docs#quickstart\)/);
+  assert.match(start,/Status: 5 minutes/);
+  const table=doc.getElementById("api").querySelector("table");
+  assert.ok(table,"Realny portal musi zawierać tabelę HTTP API");
+  assert.equal(table.querySelectorAll("tr").length,88,"87 tras + nagłówek");
+  const apiMd=api.exportMarkdown(doc,source,"api");
+  assert.match(apiMd,/\| GET \| `\/build\/status` \| `public` \|/);
+  assert.doesNotMatch(apiMd,/Team Graph\*\* — validated/);
+  const whole=api.exportMarkdown(doc,source);
+  assert.match(whole,/## How a run is proven/);
+  assert.match(whole,/\| Bank \| Regulated \| Gated \|/);
+  assert.match(whole,/```json\n\s*\{/);
+  assert.match(whole,/\| Method \| Path \| Auth \| Returns \|/);
+});
+
+test("COPY-15: regresja rzeczywistych kafli .stage/.layer z portalu OSA Framework", () => {
+  const stage=(id,title,state)=>el("div",{class:"stage",role:"listitem"},el("span",{class:"label n"},id),el("b",{},title),el("span",{},state));
+  const layer=(title,purpose,gate)=>el("div",{class:"layer"},el("b",{},title),el("span",{},purpose),el("span",{class:"st"},el("span",{class:"dot"}),gate));
+  const pipeline=el("section",{id:"pipeline"},el("h2",{},"How a run is proven"),el("div",{class:"pipe",role:"list"},stage("01","Team Graph","validated"),stage("06","Receipt","sealed")));
+  const layers=el("section",{id:"layers"},el("h2",{},"Layers"),el("div",{class:"layers"},layer("School","Academy","Public"),layer("Bank","Regulated","Gated")));
+  const docRoot=el("html",{},el("body",{},el("main",{},pipeline,layers)));
+  const doc={querySelectorAll:(q)=>docRoot.querySelectorAll(q),querySelector:(q)=>docRoot.querySelector(q)};
+  assert.match(api.exportMarkdown(doc,source,"pipeline"),/- \*\*01 · Team Graph\*\* — validated/);
+  assert.match(api.exportMarkdown(doc,source,"layers"),/\| Bank \| Regulated \| Gated \|/);
+});
+
+test("COPY-16: etykieta POST jest komendą bash, GET receipt jest json", () => {
+  const code=(label,body)=>el("div",{class:"code"},el("div",{class:"bar"},el("span",{class:"file"},label),el("button",{class:"copy"},"Copy")),el("pre",{},body));
+  const mission=el("section",{id:"first-mission"},el("h2",{},"Your first mission"),code("POST /teams",'curl -s localhost:3000/teams -d \'{"team_id":"team_dev"}\''));
+  const receipt=el("section",{id:"receipt"},el("h2",{},"Proof receipt"),code("GET /runs/:id/proof",'{\n  "verdict": "VERIFIED"\n}'));
+  const root=el("html",{},el("body",{},el("main",{},mission,receipt)));
+  const doc={querySelectorAll:q=>root.querySelectorAll(q),querySelector:q=>root.querySelector(q)};
+  assert.match(api.exportMarkdown(doc,source,"first-mission"),/```bash\ncurl -s/);
+  assert.match(api.exportMarkdown(doc,source,"receipt"),/```json\n\{/);
+});
