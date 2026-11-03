@@ -4,6 +4,7 @@ import { handleDurableRequest } from "./durable";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleTrustRequest } from "./trust";
 import { handleNvidiaRequest } from "./nvidia";
+import { LiveExecutionRegistry, handleLiveCancel } from "./live-execution";
 import { MemoryAccessError, MemoryService } from "./memory";
 import { PreviewOperator } from "./preview-operator";
 import { handleGithubAuth, readGithubSession } from "./github-auth";
@@ -69,6 +70,7 @@ const OPEN_MODE_SESSION: SessionRecord = Object.freeze({
 
 export class ApiState {
   delivery = new ChatDelivery();
+  readonly live = new LiveExecutionRegistry();
   buildWorkspace?: BuildWorkspace;
   readonly teams = new Map<string, TeamGraph>();
   readonly missions = new Map<string, Mission>();
@@ -332,17 +334,22 @@ export async function handleApiRequest(
         }
       }
 
+      if(url.pathname==="/chat/live-cancel"){
+        const session=requireSession(request,response,state);
+        if(!session)return;
+        return handleLiveCancel(request,response,session,state.live);
+      }
       if (["/chat/delivery/status","/chat/delivery"].includes(url.pathname)) {
         const session = requireSession(request,response,state);
         if (!session) return;
         if ((url.pathname.endsWith("/status") && method !== "GET") || (!url.pathname.endsWith("/status") && method !== "POST"))
           return send(response,405,{code:"METHOD_NOT_ALLOWED"});
-        return state.delivery.handle(request,response,session,state.missionKernel,state.memory);
+        return state.delivery.handle(request,response,session,state.missionKernel,state.memory,state.live);
       }
       if (parts[0] === "nvidia") {
         const session = requireSession(request, response, state);
         if (!session) return;
-        return handleNvidiaRequest(request, response, url.pathname, state.memory, session);
+        return handleNvidiaRequest(request, response, url.pathname, state.memory, session, state.live);
       }
 
       if (parts[0] === "templates" && parts[1] === "delivery-lab") {
