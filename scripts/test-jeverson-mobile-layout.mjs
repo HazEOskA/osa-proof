@@ -115,6 +115,29 @@ try {
     const dl=await traceFile;assert.match(dl.suggestedFilename(),/trace.jsonl$/);
     assert.match(await page.getByTestId("osa-message").last().innerText(),/ODPOWIEDŹ MODELU AI/);
     assert.match(await page.getByTestId("osa-message").last().innerText(),/NVIDIA · NVIDIA\/TEST-MODEL/i);
+    // UI cancellation regression: abort a pending live-model request, request server cancellation,
+    // preserve a truthful CANCEL_REQUESTED trace instead of a pretend provider acknowledgement.
+    await page.route("**/api/chat/live-cancel",async route=>{
+      const body=route.request().postDataJSON();
+      assert.match(body.execution_id,/^exec_/);
+      await route.fulfill({status:202,json:{execution_id:body.execution_id,status:"CANCEL_REQUESTED",
+        detail:"Żądanie anulowania przyjęto do obsługi; provider nie potwierdził."}});
+    });
+    await page.route("**/api/nvidia/fleet-live",async route=>{
+      const body=route.request().postDataJSON();
+      if(body.prompt!=="Przerwij test OSA")return route.fallback();
+      await new Promise(resolve=>setTimeout(resolve,2500));
+      try{await route.abort("failed");}catch{}
+    });
+    await page.getByTestId("osa-composer").fill("Przerwij test OSA");
+    await page.getByTestId("osa-send").click();
+    const cancelButton=page.getByTestId("osa-live-cancel").last();
+    await cancelButton.waitFor();
+    await cancelButton.click();
+    await page.getByText(/Przerwanie zgłoszone serwerowi/).waitFor({timeout:15000});
+    const persistedCancel=page.getByTestId("osa-unified-live-trace").last();
+    assert.match(await persistedCancel.innerText(),/PRZERWANIE ZGŁOSZONE/);
+    assert.doesNotMatch(await persistedCancel.innerText(),/ProofReceipt/);
     // Hermes must not disappear when a conversation has messages or when starting
     // a fresh chat; its agent selection must survive browser refresh.
     await page.getByTestId("osa-hermes-switch").click();
