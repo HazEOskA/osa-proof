@@ -39,6 +39,8 @@ jobs:
         run: node scripts/test-osa-guide-browser.mjs
       - name: Verify native chat sessions, agent selection, no iframe, mobile and desktop
         run: node scripts/test-jeverson-mobile-layout.mjs
+      - name: Browser E2E IndexedDB history — migrate legacy, restart, quota, large bundles
+        run: node scripts/test-chat-history-browser.mjs
       - name: Compile real OSA Runtime for native tool E2E
         run: npm run build
       - name: Browser E2E native chat → OSA Runtime → verified Proof → Replay
@@ -56,5 +58,6 @@ jobs:
             artifacts/osa-native-chat/
             artifacts/osa-native-chat-e2e/
             artifacts/chat-delivery/
+            artifacts/chat-history/
           if-no-files-found: ignore
           retention-days: 14
