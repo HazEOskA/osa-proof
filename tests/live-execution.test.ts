@@ -70,7 +70,7 @@ test("live HTTP E2E: accepted -> model -> real response metadata -> complete, wi
     assert.equal(seen.length,1);
   }finally{server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));}
 });
-test("live HTTP E2E: server abort request is scoped and outputs CANCEL_UNCONFIRMED, never COMPLETE",async()=>{
+test("live HTTP E2E: server abort request is scoped and outputs CANCEL_UNCONFIRMED, never COMPLETE",{timeout:12000},async()=>{
   const identity=session("server-b"),registry=new LiveExecutionRegistry(),conversation=randomUUID(),id=runId();
   let started=()=>{};
   const waitForStart=new Promise<void>(r=>{started=r;});
