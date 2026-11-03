@@ -1,176 +1,154 @@
-# OSA PROOF
+<div align="center">
 
-**Agent powiedział „gotowe”. OSA Proof sprawdza, czy są na to dowody.**
+<img src="./apps/web/docs/osa-frameworks-banner.webp" alt="OSA Framework — oficjalny banner projektu" width="100%" />
 
-Framework do budowania, uruchamiania i weryfikowania systemów agentowych AI. Łączy `Team Graph`, misje, Runtime, zdarzenia, `Evidence` i `ProofReceipt` — tak, aby dało się sprawdzić **co rzeczywiście zostało wykonane**, a nie tylko co odpowiedział model.
-
-**CLAIM ≠ PROOF** · `AGENTS` · `RUNTIME` · `TRACING` · `VERIFICATION` · `REPLAY`
-
-> **Stan kodu i lokalnej walidacji — 31.10.2026:** gałąź `fix/proof-source-attribution-v1-20261031`, commit `fc4756fa35bdb71b8f6c5c22ca92c54e04b6eaf5` (przed scaleniem z `main`). Operator uruchomił na Windows / Node.js 24.17.0: **308 testów, 305 PASS, 0 FAIL, 3 SKIP** oraz `node --throw-deprecation scripts/build-dashboard.cjs` → **FULL VALIDATION PASS**, bez `DEP0190` i `EINVAL`. Wynik dotyczy lokalnego checkoutu i builda; nie jest poświadczeniem produkcyjnego E2E ani CI dla końcowego SHA. [Bilans techniczny 31.10](./docs/OSA_PROOF_STATUS_2026-10-31.md) · [Attribution Gate v1](./docs/ATTRIBUTION_GATE_V1.md).
-
-> **Historia, nie aktualny odbiór — 28.10.2026:** [chronione Preview OSA Proof × NeurOSA](./docs/OSA_PROOF_PREVIEW_STATUS_2026-10-28.md) raportowało Vercel `READY` na osobnym commicie `56dd60612f844faa9380c3243fe7eb9074a618d7` oraz obserwacje operatora dotyczące pamięci, NVIDIA, artefaktów i Replay. Nie przeprowadzono niezależnego audytu eksportu zgłoszonej 47-pozycyjnej misji. Nie używać chronionego Preview jako publicznego demo. Historyczny raport z 27.10 zawierał **265 PASS / 0 FAIL / 3 SKIP** oraz niezamknięte bramki trwałości Brain API po restarcie; nie jest obecnym wynikiem testów. [Runbook akceptacyjny](./docs/NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md).
-
-> **Status v0.1.0: kandydat — BLOCKED.** Lokalne testy działają w trybie `fixture` bez kluczy i płatnych wywołań. Do formalnego wydania brakuje potwierdzonego NVIDIA `tool_calls` → Runtime → Proof, rzeczywistego współdzielonego limitu Redis, trwałości chmurowej i bezpiecznej granicy danych w otwartym demo. Produkcyjne wdrożenie panelu istnieje, ale `READY` ≠ pełne E2E ani GitHub Release. **[Bramki wydania](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/BRAMKI.md) · [Audyt](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md) · [PR #16](https://github.com/HazEOskA/osa-proof/pull/16)**
-
-## ⚡ Zobacz, że działa — lokalnie
-
-Wymagania: Node.js **20+**, npm. Wykonaj w katalogu repo (przykład powłoki Bash/Linux; Windows wymaga osobnego ustawienia środowiska dla skryptu `rm -rf`):
-
-```bash
-npm ci
-npm test
-npm run build
-node scripts/build-dashboard.cjs
-OSA_EXECUTION_MODE=fixture OSA_AUTH_MODE=open npm start
-```
-
-**Co zobaczysz?** Uruchomi się **API** na `http://localhost:3000`, nie osobny serwer dashboardu. Terminal wypisze JSON z `"service":"osa-proof-api"`, `"mode":"fixture"`, `"auth_mode":"open"` i `"port":3000`. W drugim terminalu możesz sprawdzić odpowiedź:
-
-```bash
-curl http://localhost:3000/build/status
-```
-
-Oczekuj m.in. informacji o `mode: "fixture"`, executorach i rodzaju przechowywania stanu. `npm test` uruchamia testy; samo `npm start` **nie tworzy automatycznie nowego ProofReceipt**. Przykładowy, istniejący dowód pochodzi z osobnego lokalnego testu natywnego Runtime:
-
-```json
-{
-  "schema": "osa.proof_receipt.v2",
-  "execution_id": "exec_6927de50-2ced-436b-97c1-13784263530b",
-  "verdict": "VERIFIED",
-  "verifier": {
-    "name": "osa-proof-deterministic",
-    "version": "2"
-  },
-  "receipt_sha256": "a127c4b672efe8f5272dd380c969524f2ee0d7721a91ff58f83d861f45bddb4f"
-}
-```
-
-*To wybrane pola istniejącego `run.proof`, nie kompletna struktura ani wynik samego `npm start`.* **[Pełny bundle (team → mission → run → evidence → proof)](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/evidence/release-v0.1.0/preview-open-desktop-bundle.json)** · [opis testu](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/WERYFIKACJA.md). Jest to natywny fixture SHA-256, **nie wynik prawdziwego NVIDIA `tool_calls`**.
-
-## Dla kogo?
-
-Dla **zespołów i architektów budujących agentów AI**, którzy muszą wiedzieć, **który agent uruchomił jakie narzędzie, jakie zdarzenia zaszły i czy dowody wyniku przechodzą niezależną weryfikację**.
-
-<p align="center">
-  <img src="./apps/web/docs/osa-frameworks-banner.webp" alt="OSA Frameworks — muskularna osa OSA oraz spójna czarno-złota identyfikacja frameworka" width="100%" />
-</p>
-
-<details>
-<summary><strong>🇬🇧 English — overview, quickstart and sample proof</strong></summary>
+<img src="./dashboard-src/public/favicon.svg" alt="OSA Proof — znak projektu" width="88" />
 
 # OSA PROOF
 
-**An agent said “done”. OSA Proof checks whether there is evidence.**
+### Agenci wykonują. Zdarzenia zostają. Dowody rozstrzygają.
 
-A framework for building, running and verifying AI agent systems: connecting Team Graph, missions, Runtime, events, evidence and verifiable `ProofReceipt` artifacts.
+**CLAIM ≠ PROOF**
 
-> **v0.1.0: release candidate — BLOCKED.** Local fixture-mode tests work without API keys or paid model calls. Release gates still require a real NVIDIA `tool_calls` → Runtime → Proof flow, a shared Redis quota, cloud persistence and a safe boundary between public demo data and protected information. A `READY` deployment is not a released product. [Release gates](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/BRAMKI.md) · [Audit](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/AUDYT_DODATKOWY_2026-10-17.md).
+Framework do projektowania, wykonywania i audytowania systemów agentowych AI. Łączy **Team Graph → Mission Kernel → Runtime → Evidence → ProofReceipt → Replay**, aby oddzielać deklaracje modeli od weryfikowalnych zapisów wykonania.
 
-### See it run — locally
+**`Proof-first` · `TypeScript` · `Node.js` · `Agentic Runtime` · `Evidence` · `Fail-closed`**
 
-Requires Node.js 20+ and npm.
+[Panel OSA Proof](https://osa-proof-three.vercel.app/) · [Dokumentacja](./docs/README.md) · [Aktualny stan](./docs/STATUS_2026-11-03.md) · [Architektura](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md) · [GitHub Actions](https://github.com/HazEOskA/osa-proof/actions)
 
-```bash
-npm ci
-npm test
-npm run build
-node scripts/build-dashboard.cjs
-OSA_EXECUTION_MODE=fixture OSA_AUTH_MODE=open npm start
-```
+</div>
 
-**Expected result:** a local **API server**, not an automatically served dashboard, starts at `http://localhost:3000` and logs `"service":"osa-proof-api"`, `"mode":"fixture"` and `"port":3000`. Inspect it with:
+> [!IMPORTANT]
+> **Stan udokumentowany: 3 listopada 2026 · `main` @ `9aa81ab667a12b6ab38ff4d6bd61a1d7c52a41e6`.** Działa ścieżka generowania artefaktu z NVIDIA, eksportów Evidence/ProofReceipt i weryfikacji integralności dla zaobserwowanego wykonania. **To nie oznacza potwierdzonego produkcyjnego E2E dwóch rzeczywistych workerów, trwałej historii, izolowanego sandboxa ani wydania GA.** Aktualny werdykt w [raporcie statusu](./docs/STATUS_2026-11-03.md).
 
-```bash
-curl http://localhost:3000/build/status
-```
+## Po co powstał OSA Proof?
 
-The fixture-mode receipt excerpt shown above was taken from a **real local native-runtime test**, not from `npm start` and not from a live NVIDIA model. [Full sample ProofReceipt in its evidence bundle](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/evidence/release-v0.1.0/preview-open-desktop-bundle.json).
+Sam komunikat „zadanie wykonane” od agenta nie wystarcza. OSA Proof oddziela cztery warstwy:
 
-### Who is it for?
+| Warstwa | Odpowiedzialność | Co stanowi dowód? |
+| --- | --- | --- |
+| **Plan i uprawnienia** | Cel, Team Graph, wymogi i dopuszczalne executory | Jawne ID misji, wersja grafu i policy |
+| **Egzekucja** | Misja, działania agentów, zdarzenia i handoff | Zdarzenia runtime, powiązane operacje i Evidence |
+| **Proof** | Deterministyczna weryfikacja wymagań i integralności | `osa.proof_receipt.v2`, SHA-256, binding oraz werdykt |
+| **Odbiór** | Eksport, audyt, Replay i decyzja operatora | Pakiet możliwy do sprawdzenia niezależnie od UI |
 
-**AI agent engineering teams and system architects** who need an auditable record of which agent ran which tool, what happened and whether execution evidence passes verification.
+**`VERIFIED` potwierdza zakres zdefiniowanych wymagań i spójność zapisów — nie zastępuje audytu bezpieczeństwa, oceny merytorycznej ani dowodu niezależnego pochodzenia wszystkich informacji.**
 
-</details>
+## Co można sprawdzić już teraz?
 
----
+| Funkcja | Stan na 03.11.2026 | Zakres |
+| --- | --- | --- |
+| **Team Graph + Mission Kernel** | **LOCAL TESTED / PARTIAL** | Wersjonowany graf, liniowe handoff, kontrakt misji i CAS w lokalnym MissionStore |
+| **NVIDIA → artefakt HTML** | **OBSERVED / PROOF INTEGRITY PASS** | Zaobserwowany zapis generowania przez `openai/gpt-oss-20b`, zwrócony HTML, kontrola struktury i hashy |
+| **APR / Evidence / ProofReceipt v2** | **INTEGRITY PASS dla eksportu** | Weryfikacja lokalna wskazanego przez operatora bundle, ProofReceipt, Evidence, trace i pliku HTML |
+| **Replay offline** | **EXPORT AVAILABLE / CONSISTENT** | Odtwarza zapis zdarzeń, nie uruchamia modelu ani narzędzi ponownie |
+| **Live Trace / SSE** | **IMPLEMENTED; LIVE ACCEPTANCE PARTIAL** | Rozmowa/artefakt z identyfikatorem wykonania; część śladów to metadane obserwacji przeglądarki |
+| **NeurOSA** | **OBSERVED / DURABILITY UNKNOWN** | Dla badanego eksportu status pamięci `VERIFIED`; brak niezależnego restart-readback bieżącej usługi |
+| **Durable Execution** | **LOCAL CODE / PRODUCTION BLOCKED** | Plikowy store i osobny worker dla zatwierdzonego hosta; Vercel nie spełnia warunków trwałości |
+| **Dwa rzeczywiste workery + sandbox** | **NOT PROVEN** | W badanym eksporcie wykonawcy `demo.*`, `tool_calls = 0`; osobny E2E wymagany |
+| **Trwała historia Team Graph / misji / czatów** | **GAP** | Brak wspólnego trwałego źródła prawdy; naprawa w planie |
+| **Produkcyjne OAuth / pełne RBAC** | **ACCEPTANCE OPEN** | Zgłoszone `OAUTH_STATE_INVALID`; root cause nieustalony w tym audycie |
 
-## Architektura w jednym widoku
+Szczegóły i precyzyjne źródła: [Status](./docs/STATUS_2026-11-03.md) · [Luki historii](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md) · [Jak czytać dowody](./docs/PROOF_EXPORTS_GUIDE.md).
+
+## Architektura
 
 ```mermaid
-flowchart LR
-  A["Cel / użytkownik"] --> B["Team Graph"]
-  B --> C["Mission Kernel"]
-  C --> D["OSA Runtime"]
-  D --> E["Tracing / zdarzenia"]
-  E --> F["Evidence + ProofReceipt"]
-  F --> G{"Verifier"}
-  G -->|VERIFIED| H["Replay / odbiór"]
-  G -->|FAILED / INCOMPLETE| I["Diagnoza"]
+flowchart TD
+  UI["OSA Proof UI · Android / DeX / Desktop"] --> API["API · Auth · Scope · Policy"]
+  API --> TG["Team Graph"]
+  TG --> MK["Mission Kernel"]
+  MK --> RT["OSA Runtime / Executory"]
+  RT --> EV["Events · Evidence · ToolCallRecord"]
+  EV --> PF["Proof Core / Verifier"]
+  PF --> RP["ProofReceipt v2 · Replay · Eksport"]
+  MK -. "opcjonalny kontekst / remember" .-> NM["NeurOSA · Memory Plane"]
+  API -. "docelowo: projekt, nie deployment" .-> DB[("Własny PostgreSQL · Storage Plane")]
 ```
 
-OSA Proof to **cały ekosystem**, nie tylko APR. Model, wykonawca i verifier mają odrębne zadania. Sam `ProofReceipt` świadczy o zakresie i integralności zarejestrowanych dowodów, **nie** o semantycznej prawdziwości dowolnego stwierdzenia AI.
-
-### Attribution Gate v1 (DEFAULT_ON)
-
-W runtime rejestrowane są wywołania narzędzi przez `context.callTool()` jako **runtime-owned `ToolCallRecord`** (hash żądania, odpowiedzi i rekordu). Weryfikator rozpoznaje ograniczony zbiór twierdzeń o faktach zewnętrznych w raportach i artefaktach HTML/JS/TS. Brak powiązanego źródła, niezgodna wartość albo niewspierana mapa rozpoznanego twierdzenia mogą skutkować `CLAIM_UNSUPPORTED`, `CLAIM_VALUE_MISMATCH` lub `CLAIM_COVERAGE_INCOMPLETE`. Parametry CSS, wersje i liczby techniczne **nie są** automatycznie faktami zewnętrznymi. Fałszywe evidence dostarczone przez agenta nie zastępuje zapisu hosta.
-
-Zaufany host może jawnie ustawić `trustedNoExternalFacts: true` dla sklasyfikowanego builda; nie jest to uprawnienie agenta ani pole żądania HTTP. Zapis `tool_call_refs` i `tool_call_root` wiąże wywołania z receipt. `egress_status: NOT_ENFORCED` oraz `signature_status: UNAVAILABLE` wyrażają realne ograniczenia. Brak sandboxa sieciowego i niezależnego podpisu: lokalne `VERIFIED` **nie jest** gwarancją prawdziwości wszystkich danych ani bezpieczeństwa uruchomionego kodu. [Kontrakt i testy](./docs/ATTRIBUTION_GATE_V1.md).
-
-## Moduły i ich rzeczywisty status
-
-| Moduł | Rola w systemie | Granica dowodu |
-| --- | --- | --- |
-| **Team Graph / Mission Kernel** | Agenci, wersje, przekazania i cykl misji | Zaimplementowane i testowane lokalnie |
-| **OSA Runtime / Tracing** | Wykonanie i zapis zdarzeń, runtime-owned `ToolCallRecord`, Attribution Gate DEFAULT_ON | Natywne testy Windows PASS; bez pełnego sandboxa egress |
-| **Evidence / ProofReceipt / Replay** | Materiał dowodowy, weryfikacja, odtwarzanie zdarzeń | Lokalna weryfikacja integralności i przypisanie do wykonania; podpisy, egress i cloud persistence niepotwierdzone |
-| **Czat floty agentów / NVIDIA** | Modele, profile, rozmowa i ograniczone narzędzia | Live modelowe `tool_calls` E2E nadal BLOCKED |
-| **Zapytaj OSĘ** | Kontekstowy samouczek po całym frameworku | UI/kontrakt testowany; realne odpowiedzi guide wymagają osobnego testu |
-| **Builder / Worker Host** | Projektowanie zadań, narzędzi i izolowany wykonawca | Uruchomienie pełnego sandboxa w chmurze GATED |
-| **NeurOSA / Memory** | Opcjonalny kontekst pamięci i planowanie | Trwały live recall niepotwierdzony |
-| **Web3 / Regulated** | Odczyt, zasady ryzyka, bramki dostępu | Brak domyślnych uprawnień do podpisywania i mutacji |
-
-Wszystkie statusy dotyczą wskazanego zakresu testów, nie gwarancji enterprise. **[Macierz funkcji kandydata v0.1.0](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/MACIERZ.md)**.
-
-### Jedno repozytorium, wspólny Core
+**Źródła prawdy są rozdzielone:** Mission Kernel i Runtime prowadzą wykonanie; Proof Core weryfikuje zapisy; NeurOSA odpowiada za pamięć, a projektowany Storage Plane ma przechowywać trwały stan strukturalny. Nie tworzymy drugiego silnika agentów ani kopii pamięci NeurOSA.
 
 ```text
 osa-proof/
-├── api/                     # entrypoint Vercel
+├── api/                       # adapter Vercel
 ├── apps/
-│   ├── api/src/             # HTTP, auth, NVIDIA, wykonanie
-│   ├── worker/              # worker host
-│   └── web/                 # web i identyfikacja OSA
-├── dashboard-src/           # polski framework UI i flota agentów
+│   ├── api/src/               # HTTP, auth, NVIDIA, Mission API
+│   ├── worker/                # wykonawcy / durable runner
+│   └── web/                   # statyczne strony i assety
+├── dashboard-src/             # UI React / TypeScript
 ├── packages/
-│   ├── team-graph/          # graf zespołu
-│   ├── contracts/           # typy i kontrakty
-│   ├── runtime/             # silnik wykonawczy
-│   ├── events/              # zdarzenia
-│   ├── evidence/            # materiał dowodowy
-│   ├── proof-core/          # verifier i receipt
-│   └── brain/               # planowanie i opcjonalna pamięć
-├── scripts/                 # build i testy E2E
-├── tests/                   # testy automatyczne
-└── docs/                    # architektura i proof protocols
+│   ├── contracts/             # interfejsy i typy
+│   ├── team-graph/            # graf agentów
+│   ├── runtime/               # Mission Kernel i stores
+│   ├── events/                # zdarzenia
+│   ├── evidence/              # Evidence
+│   ├── proof-core/            # canonical JSON / verifier
+│   └── brain/                 # planowanie i memory adapter
+├── scripts/                   # buildy i testy
+├── tests/                     # testy automatyczne
+└── docs/                      # dokumenty i historyczne dowody
 ```
 
-## Security gate i ograniczenia
+## Szybki start — środowisko lokalne
 
-**Otwarty panel nie jest prywatnym środowiskiem produkcyjnym.** `OSA_AUTH_MODE=open` umożliwia anonimowy dostęp do części API i współdzielonej przestrzeni demonstracyjnej. Nie wprowadzaj tam danych klientów, prywatnych eksportów ChatGPT ani sekretów. NVIDIA jest osobno chroniona sesją operatora i polityką kosztową, ale nie oznacza to pełnego RBAC całego API.
+Wymagane: **Node.js 20+**, npm oraz środowisko z powłoką POSIX (Bash/WSL), ponieważ obecny skrypt `build` wykorzystuje `rm -rf`. `OSA_AUTH_MODE=open` jest **wyłącznie do izolowanego testu lokalnego** — nie podawaj go jako publicznego serwera z danymi prywatnymi.
 
-`PROCESS_MEMORY` oraz lokalna historia przeglądarki **nie** zapewniają trwałości w chmurze ani izolacji wielu użytkowników. `FileMissionStore` utrwala lokalne rekordy i chroni rewizje blokadą, lecz nie zastępuje rozproszonej bazy; na Windows zachowuje `file.sync()` i atomowy rename bez nieobsługiwanego `directory.sync()` (pełna gwarancja POSIX trwałości katalogu nie jest tam deklarowana). Integracje wymagające prawdziwego modelu, Redis, workera i NeurOSA podlegają odrębnym bramkom.
+```bash
+npm ci
+npm test
+node scripts/build-dashboard.cjs
+OSA_EXECUTION_MODE=fixture OSA_AUTH_MODE=open npm start
+```
 
-## Dowody, CI i dokumentacja
+API wystartuje domyślnie pod `http://localhost:3000` (nie jest to automatyczne uruchomienie osobnego deweloperskiego serwera dashboardu). Stan można odczytać w drugim terminalu:
 
-- [Stan systemu 31.10.2026](./docs/OSA_PROOF_STATUS_2026-10-31.md) · [Attribution Gate v1](./docs/ATTRIBUTION_GATE_V1.md) · [Proof Protocol V2](./docs/PROOF_PROTOCOL_V2.md) · [Team Graph](./docs/TEAM_GRAPH_CONTRACT_V1.md) · [Mission Kernel](./docs/MISSION_KERNEL_V1.md) · [NVIDIA Bridge](./docs/NVIDIA_BRIDGE.md).
-- [Dashboard build](./docs/DASHBOARD_INTEGRATION.md): Node.js uruchamia `npm-cli.js` przez `shell: false`, co usuwa Windows `spawnSync npm.cmd EINVAL` i `DEP0190`. Lokalna walidacja 31.10: build Vite PASS; ostrzeżenie konfiguracji npm `store-dir` nie zablokowało budowania.
-- [Zarejestrowane testy wydania](https://github.com/HazEOskA/osa-proof/blob/release/osa-proof-v0.1.0/docs/release-v0.1.0/WERYFIKACJA.md) — rozróżniają natywny Runtime od symulowanego transportu modeli.
-- [GitHub Actions](https://github.com/HazEOskA/osa-proof/actions) · [PR #16 — kandydat v0.1.0](https://github.com/HazEOskA/osa-proof/pull/16).
+```bash
+curl http://localhost:3000/build/status
+```
 
-**v0.1.0 będzie wydane dopiero po zamknięciu bramek i osobnym merge/tag/Release.** Aktualizacja samego README na `main` nie jest publikacją oprogramowania.
+`npm test` obejmuje lokalny build i zestaw testów. **Samo uruchomienie serwera nie wytwarza ProofReceipt.** Historyczny wynik testów z 31 października (**305 PASS, 0 FAIL, 3 SKIP**) dotyczy wskazanego w [historycznym raporcie](./docs/OSA_PROOF_STATUS_2026-10-31.md) SHA, nie stanowi nowego wyniku CI dla bieżącego `main`.
 
-<p align="center">
-  <img src="./dashboard-src/public/favicon.svg" alt="OSA Proof — znak systemowy" width="64" />
-</p>
+## Proof i Replay — trzy różne typy materiałów
 
-<p align="center"><strong>OSA / AGENTS RUN. EVENTS STAY. PROOF DECIDES.</strong></p>
+| Eksport | Zawartość | Czego **nie** dowodzi |
+| --- | --- | --- |
+| `osa.chat_delivery.v1` | Bundle z `record`, `run`, artefaktem, Evidence i Proof | Że wykonały go faktycznie niezależne workery, jeżeli użyto executorów `demo.*` |
+| `osa.mission.v1` | Zapis misji z Mission Kernel, jej stan i receipt | Że wszystkie zewnętrzne integracje/side effects zostały niezależnie poświadczone |
+| `osa.live_execution.v1` + `osa.live_metadata.v1` | Zdarzenia i metadane obserwowane w Live UI | Kryptograficznego APR ProofReceipt, jeśli takiego nie dołączono |
+
+**Ważny test z 3 listopada:** w przekazanym prywatnie eksporcie ChatDelivery odnotowano **65 zdarzeń timeline, 47 zdarzeń Runtime, 13 Evidence, 27 verifier observations i 10 rozpoczętych ról**. Zewnętrznie sprawdzone hashe bundle, receipt, Evidence i artefaktu były zgodne; **`tool_calls = 0`**, więc nie jest to test rzeczywistych narzędzi dwóch workerów. Identyfikatory i zawartość prywatnego pakietu nie są publikowane w repo. [Przewodnik weryfikacji](./docs/PROOF_EXPORTS_GUIDE.md).
+
+## Znane ograniczenia i roadmapa
+
+**P0 — trwałość i odnajdywanie pracy:** Team Graph i Build workspace są zapisywane lokalnie albo w pamięci instancji API; Studio nie oferuje katalogu dawnych misji; historia czatów w IndexedDB nie jest sortowana po `updated`. Szczegóły i kryteria odbioru: [Rejestr luk](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md).
+
+**P0 — własny storage, host jeszcze niewybrany:** provider-neutral adapter do **PostgreSQL** jest **propozycją architektoniczną**, nie utworzoną bazą ani planem deployu. Do czasu potwierdzenia hosta i osobnej zgody pozostaje `BLOCKED`. [Architektura Storage v1](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md).
+
+**P0/P1 — bezpieczeństwo i rzeczywiste E2E:** produkcyjny scope/RBAC, kontrola OAuth, trwały worker, kontrolowany egress, autentyczność źródła dowodów oraz end-to-end przez dwóch realnych workerów wymagają oddzielnych testów. `egress_status: NOT_ENFORCED`; `signature_status: UNAVAILABLE`.
+
+> [!CAUTION]
+> Status `VERIFIED` w lokalnym ProofReceipt **nie** jest podpisem kryptograficznym niezależnego źródła ani certyfikatem gotowości do produkcji. Nie umieszczaj sekretów ani danych klientów w środowisku z `OSA_AUTH_MODE=open`.
+
+## Dokumentacja i referencje
+
+| Kategoria | Dokument |
+| --- | --- |
+| Indeks dokumentacji | [docs/README.md](./docs/README.md) |
+| Stan na 03.11.2026 | [STATUS_2026-11-03](./docs/STATUS_2026-11-03.md) |
+| Priorytetowe usterki | [HISTORY_AND_WORKSPACE_GAPS](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md) |
+| Trwały magazyn — projekt | [PERSISTENCE_ARCHITECTURE_V1](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md) |
+| Eksporty i audyt | [PROOF_EXPORTS_GUIDE](./docs/PROOF_EXPORTS_GUIDE.md) |
+| Kontrakty | [Team Graph](./docs/TEAM_GRAPH_CONTRACT_V1.md) · [Mission Kernel](./docs/MISSION_KERNEL_V1.md) · [Proof Protocol v2](./docs/PROOF_PROTOCOL_V2.md) |
+| Bezpieczeństwo i provenance | [Attribution Gate](./docs/ATTRIBUTION_GATE_V1.md) · [Security Verdict](./docs/final-boss/SECURITY_VERDICT.md) |
+| Live i durable | [Live Trace](./docs/P0_UNIFIED_LIVE_TRACE_20261103.md) · [Durable Execution](./docs/P0_DURABLE_EXECUTION_20261103.md) |
+| Raporty historyczne | [31.10](./docs/OSA_PROOF_STATUS_2026-10-31.md) · [Preview 28.10](./docs/OSA_PROOF_PREVIEW_STATUS_2026-10-28.md) |
+
+## Status rozwoju i governance
+
+Projekt jest rozwijany w trybie **proof-first, preview-first, fail-closed**. Zmiany kodu, migracje, commity, merge i produkcyjne wdrożenia wymagają osobnego zatwierdzenia zakresu. Wersja pakietu `0.1.0` jest oznaczeniem kodu, **nie deklaracją wydanej, w pełni zweryfikowanej usługi enterprise**. Wydanie GA jest `BLOCKED` do zamknięcia bramek.
+
+<div align="center">
+
+**OSA / AGENTS RUN. EVENTS STAY. PROOF DECIDES.**
+
+</div>

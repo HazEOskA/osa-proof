@@ -96,6 +96,17 @@ main{min-width:0}
 .crumbs b{color:var(--fg);font-weight:500}
 .copypage{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px solid var(--line-2);border-radius:8px;background:var(--bg-raise);color:var(--muted);font:500 13px var(--sans);cursor:pointer}
 .copypage:hover{color:var(--fg)}
+.copypage:focus-visible,.agent-copy-section:focus-visible{outline:2px solid #5ad7ff;outline-offset:3px}
+.agent-copy-section{float:right;margin:2px 0 12px 12px;position:relative;z-index:1}
+.agent-copy-status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.agent-copy-fallback{background:var(--bg-raise);color:var(--fg);border:1px solid var(--line-2);border-radius:12px;width:min(720px,92vw);max-height:85vh;padding:20px}
+.agent-copy-fallback::backdrop{background:rgba(0,0,0,.75)}
+.agent-copy-fallback h2{font-size:19px;margin:0 0 12px}
+.agent-copy-fallback p{font-size:13px}
+.agent-copy-fallback textarea{width:100%;height:min(48vh,360px);resize:vertical;box-sizing:border-box;background:var(--bg);color:var(--fg);border:1px solid var(--line-2);border-radius:8px;padding:12px;font-family:var(--mono);font-size:12px}
+.agent-copy-fallback button{margin-top:12px;padding:8px 14px;border-radius:7px;color:var(--fg);background:var(--bg-card);border:1px solid var(--line-2);cursor:pointer}
+@media(max-width:390px){.agent-copy-section{margin:0 0 10px 8px;font-size:12px;padding:0 8px}}
+
 .note{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;margin:0 0 8px;padding:14px 18px;background:var(--bad-soft);border:1px solid var(--bad-line);border-radius:12px;font-size:14px;line-height:1.55}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);margin-top:7px;display:inline-block}
 section{padding-top:48px}
@@ -178,6 +189,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
 @media (max-width:900px){.shell{grid-template-columns:1fr}.side{display:none}.top{grid-template-columns:auto 1fr;padding:0 16px}.top .search{display:none}.links .hide-sm{display:none}.content{padding:28px 16px 60px}.grid{grid-template-columns:1fr}.pipe{grid-template-columns:repeat(2,minmax(0,1fr))}.layers{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:40px 16px 48px}.hero-in{padding-top:110px}}
 @media (max-width:480px){.pipe,.layers{grid-template-columns:1fr}.pagebar{flex-wrap:wrap}}
 </style>
+<script src="/docs/agent-ready.js" defer></script>
 </head>
 <body>
 <header class="top">
@@ -789,8 +801,6 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
   document.querySelectorAll(".copy").forEach(function(btn){
     btn.addEventListener("click", function(){ var pre = btn.closest(".code").querySelector("pre"); copyText(pre.innerText, pre, btn); });
   });
-  var cp = document.getElementById("copypage");
-  cp.addEventListener("click", function(){ var m = document.querySelector("main"); copyText(m.innerText, m, cp); });
   document.querySelectorAll("[data-nolink]").forEach(function(a){ a.addEventListener("click", function(e){ e.preventDefault(); }); });
 
   var ids = Array.prototype.map.call(document.querySelectorAll(".toc a"), function(a){ return a.getAttribute("href").slice(1); });
