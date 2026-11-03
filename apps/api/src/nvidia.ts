@@ -124,7 +124,8 @@ export function fleetLimit() {
     throw new NvidiaError(429,"FLEET_RATE_LIMIT","Limit żądań modelu: maksymalnie 3/min oraz 30/godz. dla tej instancji.");
   fleetCalls.push(now);
 }
-export async function handleNvidiaRequest(request: IncomingMessage, response: ServerResponse, path: string, memory = new MemoryService(), session?: SessionRecord, registry?:LiveExecutionRegistry) {
+export async function handleNvidiaRequest(request: IncomingMessage, response: ServerResponse, path: string, memory = new MemoryService(), session?: SessionRecord, registry?:LiveExecutionRegistry,
+  providerFetch:typeof fetch=fetch, providerEnv:NodeJS.ProcessEnv=process.env) {
   const live=path==="/nvidia/fleet-live";
   let liveId:string|undefined,conversationId:string|undefined,signal:AbortSignal|undefined,streamStarted=false;
   const emit=(type:string,value:unknown)=>{if(streamStarted&&!response.destroyed&&!response.writableEnded)response.write("event: "+type+"\ndata: "+JSON.stringify(value)+"\n\n");};
@@ -154,7 +155,7 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     const guideOnly = fleet && body.agent === "guide";
     if (guideOnly && body.remember) throw new NvidiaError(403,"GUIDE_READ_ONLY","Przewodnik nie zapisuje prywatnej pamięci.");
     if(fleet || memory.adapter){if(body.apiKey!==undefined || (memory.adapter && body.model!==undefined))throw new NvidiaError(400,"FLEET_SERVER_KEY_ONLY","Czat z pamięcią korzysta wyłącznie z konfiguracji modelu na serwerze.");}
-    const config = nvidiaRequestConfig(fleet || memory.adapter ? {} : body);
+    const config = nvidiaRequestConfig(fleet || memory.adapter ? {} : body,providerEnv);
     const conversation = fleet ? { agent: body.agent, history: body.history, view: body.view } : {};
     prepareNvidiaRequest(body.prompt, config, conversation);
     if(live){
@@ -201,7 +202,7 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     if(memory.adapter||body.remember)progress("context_completed","RUNNING",{source:"MEMORY",detail:memoryUnavailable?"Odczyt niedostępny — model może odpowiedzieć bez pamięci":"Kontekst sprawdzony"});
     if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Żądano anulowania przed wywołaniem dostawcy.");
     progress("model_started","RUNNING",{source:"NVIDIA",model:nvidiaStatus(config).model,detail:"Oczekiwanie na odpowiedź modelu"});
-    const answer = await nvidiaComplete(body.prompt, config, fetch,
+    const answer = await nvidiaComplete(body.prompt, config, providerFetch,
       { ...conversation, ...(context ? { memory: context } : {}) },signal);
     if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Wynik modelu niezaakceptowany po żądaniu anulowania.");
     progress("model_completed","RUNNING",{source:"NVIDIA",provider_response_id:answer.provider_response_id,
@@ -216,6 +217,7 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
       }
     }
     if(context&&!guideOnly)progress("evidence_completed","RUNNING",{source:"MEMORY",detail:evidence?"Dowód pamięci otrzymany": "Dowód pamięci niepotwierdzony"});
+    if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Wykonanie przerwano po żądaniu anulowania; nie potwierdzono zatrzymania NVIDIA.");
     if(liveId)registry?.finish(session!,liveId,"COMPLETED");
     progress("completed","COMPLETED",{source:"API",detail:"Odpowiedź kompletna, gotowa do zapisania w historii przeglądarki"});
     return send(200, { ...answer, ...(evidence ? { memory: evidence } : {}),
