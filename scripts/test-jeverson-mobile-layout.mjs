@@ -83,13 +83,22 @@ try {
     // Contract simulation only; the real NVIDIA provider is never mocked in application code.
     let providerRequests=0;
     await page.route("**/api/nvidia/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({provider:"NVIDIA",configured:true,model:"nvidia/test-model"})}));
-    await page.route("**/api/nvidia/fleet-chat",route=>{
+    await page.route("**/api/nvidia/fleet-live",route=>{
       const body=route.request().postDataJSON();
       assert.equal(body.agent,"coding","Chosen AI persona travels to backend");
       assert.equal(body.prompt,"Cześć OSA","User text travels to provider route");
       assert.ok(Array.isArray(body.history),"History is sent as structured messages");
       providerRequests++;
-      return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({text:"Witaj, jestem asystentem OSA.",model:"nvidia/test-model",provider_response_id:"synthetic-contract-id",request_id:"synthetic-contract-request",latency_ms:1,status:"PROVIDER_RESPONSE"})});
+      assert.match(body.execution_id,/^exec_/);
+      const events=[
+        ["accepted",{execution_id:body.execution_id,conversation_id:body.conversation_id,mode:"conversation"}],
+        ["trace",{schema:"osa.live_execution.v1",execution_id:body.execution_id,phase:"accepted",state:"RUNNING",at:new Date().toISOString(),source:"API",detail:"Przyjęto"}],
+        ["trace",{schema:"osa.live_execution.v1",execution_id:body.execution_id,phase:"model_started",state:"RUNNING",at:new Date().toISOString(),source:"NVIDIA",detail:"Model uruchomiony"}],
+        ["trace",{schema:"osa.live_execution.v1",execution_id:body.execution_id,phase:"model_completed",state:"RUNNING",at:new Date().toISOString(),source:"NVIDIA",detail:"Odpowiedź"}],
+        ["trace",{schema:"osa.live_execution.v1",execution_id:body.execution_id,phase:"completed",state:"COMPLETED",at:new Date().toISOString(),source:"API",detail:"Zakończono"}],
+        ["complete",{execution_id:body.execution_id,conversation_id:body.conversation_id,text:"Witaj, jestem asystentem OSA.",model:"nvidia/test-model",provider_response_id:"synthetic-contract-id",request_id:"synthetic-contract-request",latency_ms:1,status:"PROVIDER_RESPONSE"}]
+      ];
+      return route.fulfill({status:200,contentType:"text/event-stream; charset=utf-8",body:events.map(([type,data])=>"event: "+type+"\ndata: "+JSON.stringify(data)+"\n\n").join("")});
     });
     await page.reload({waitUntil:"domcontentloaded"});
     await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
@@ -98,8 +107,37 @@ try {
     await page.getByTestId("osa-send").click();
     await page.getByText("Witaj, jestem asystentem OSA.").waitFor({state:"visible"});
     assert.equal(providerRequests,1,"AI transport contract called exactly once");
+    const trace=page.getByTestId("osa-unified-live-trace").last();
+    await trace.waitFor();await trace.getByText(/ZAKOŃCZONO/).first().waitFor();
+    assert.match(await trace.innerText(),/NVIDIA/);
+    const traceFile=page.waitForEvent("download");
+    await trace.getByRole("button",{name:"Pobierz trace"}).click();
+    const dl=await traceFile;assert.match(dl.suggestedFilename(),/trace.jsonl$/);
     assert.match(await page.getByTestId("osa-message").last().innerText(),/ODPOWIEDŹ MODELU AI/);
     assert.match(await page.getByTestId("osa-message").last().innerText(),/NVIDIA · NVIDIA\/TEST-MODEL/i);
+    // UI cancellation regression: abort a pending live-model request, request server cancellation,
+    // preserve a truthful CANCEL_REQUESTED trace instead of a pretend provider acknowledgement.
+    await page.route("**/api/chat/live-cancel",async route=>{
+      const body=route.request().postDataJSON();
+      assert.match(body.execution_id,/^exec_/);
+      await route.fulfill({status:202,json:{execution_id:body.execution_id,status:"CANCEL_REQUESTED",
+        detail:"Żądanie anulowania przyjęto do obsługi; provider nie potwierdził."}});
+    });
+    await page.route("**/api/nvidia/fleet-live",async route=>{
+      const body=route.request().postDataJSON();
+      if(body.prompt!=="Przerwij test OSA")return route.fallback();
+      await new Promise(resolve=>setTimeout(resolve,2500));
+      try{await route.abort("failed");}catch{}
+    });
+    await page.getByTestId("osa-composer").fill("Przerwij test OSA");
+    await page.getByTestId("osa-send").click();
+    const cancelButton=page.getByTestId("osa-live-cancel").last();
+    await cancelButton.waitFor();
+    await cancelButton.click();
+    await page.getByText(/Przerwanie zgłoszone serwerowi/).waitFor({timeout:15000});
+    const persistedCancel=page.getByTestId("osa-unified-live-trace").last();
+    assert.match(await persistedCancel.innerText(),/PRZERWANIE ZGŁOSZONE/);
+    assert.equal(await persistedCancel.getByRole("button",{name:/ProofReceipt/}).count(),0);
     // Hermes must not disappear when a conversation has messages or when starting
     // a fresh chat; its agent selection must survive browser refresh.
     await page.getByTestId("osa-hermes-switch").click();

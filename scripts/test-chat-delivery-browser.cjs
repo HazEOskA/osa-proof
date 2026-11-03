@@ -10,10 +10,13 @@ const child=process.env.OSA_DELIVERY_E2E_URL?undefined:spawn(process.execPath,['
   try{for(const [name,width,height] of [['android',390,844],['desktop',1440,1000]]){
     const page=await browser.newPage({viewport:{width,height}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto(base);await page.locator('section[aria-label="Uruchamianie"]').getByRole('button',{name:'Czat floty agentów',exact:true}).click();
+    await page.getByTestId('osa-history-status').waitFor();
+    await page.waitForFunction(()=>document.querySelector('[data-testid="osa-history-status"]')?.textContent?.includes('ZAPISANO W INDEXEDDB'),null,{timeout:20000});
     await page.getByRole('button',{name:'Utwórz artefakt',exact:true}).click();
     await page.getByTestId('osa-composer').fill('OSA Commerce Decision Agent: interaktywny polski dashboard kampanii A, B i C. A wydatki 1200, przychód 6000, marża 40%, CPA 30 do 48. B wydatki 1800, przychód 3000, marża 35%, CPA 45 do 70. C wydatki 900, przychód NIEZNANY, CPA 20 do 24. Przedstaw DRAFT i pilot 10 przypadków, nie wymyślaj brakujących danych. Dodaj licznik z przyciskiem Dodaj. Bez sieci i bibliotek.');
+    await page.waitForFunction(()=>{const button=document.querySelector('[data-testid="osa-send"]');return button instanceof HTMLButtonElement&&!button.disabled;},null,{timeout:20000});
     await page.getByTestId('osa-send').click();
-    await page.getByRole('region',{name:'Przebieg agentów na żywo'}).waitFor();
+    await page.getByRole('region',{name:'Przebieg wykonania OSA na żywo'}).waitFor();
     const result=page.getByTestId('osa-delivery-result');await result.waitFor({timeout:90000});
     await result.getByText('ARTEFAKT GOTOWY · integralność zweryfikowana',{exact:true}).waitFor();
     const files={};for(const label of ['Pobierz artefakt','Pobierz bundle','Pobierz evidence','Pobierz trace','Pobierz ProofReceipt','Pobierz replay offline']){

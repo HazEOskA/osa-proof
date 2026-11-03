@@ -41,7 +41,7 @@ test("NVIDIA timeout is classified separately from failed connection", async () 
   await assert.rejects(nvidiaComplete("Test", env, async () => {
     throw new DOMException("test provider timed out", "TimeoutError");
   }), (e: unknown) => e instanceof NvidiaError && e.code === "NVIDIA_TIMEOUT" &&
-     e.status === 504 && !e.message.includes("test provider"));
+     e.status === 504 && e.message.includes("180 sekund") && !e.message.includes("test provider"));
 });
 
 test("NVIDIA: provider errors are sanitized and never become success", async () => {

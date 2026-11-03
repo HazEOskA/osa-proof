@@ -16,12 +16,14 @@ async function ready(){for(let i=0;i<80;i++){try{if((await fetch(url+"/api/durab
         await p.goto(url);
         await p.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
         await p.getByTestId("osa-durable-ready").waitFor();
+        await p.waitForFunction(()=>document.querySelector('[data-testid="osa-history-status"]')?.textContent?.includes("ZAPISANO W INDEXEDDB"),null,{timeout:20000});
         return p;
       }
       let page=await chat(),errors=[];
       page.on("pageerror",e=>errors.push(e.message));
       const accepted=page.waitForResponse(r=>r.url().endsWith("/api/durable/jobs")&&r.request().method()==="POST"&&r.status()===202);
       await page.getByTestId("osa-composer").fill("P0 prompt po zgaszeniu ekranu");
+      await page.waitForFunction(()=>{const b=document.querySelector('[data-testid="osa-send"]');return b instanceof HTMLButtonElement&&!b.disabled;},null,{timeout:20000});
       await page.getByTestId("osa-send").click();
       await accepted;await page.close(); // Browser gone while independent worker is still running.
       page=await chat();
@@ -31,6 +33,7 @@ async function ready(){for(let i=0;i<80;i++){try{if((await fetch(url+"/api/durab
       await page.getByRole("button",{name:"Utwórz artefakt",exact:true}).click();
       const artifactAccepted=page.waitForResponse(r=>r.url().endsWith("/api/durable/jobs")&&r.request().method()==="POST"&&r.status()===202);
       await page.getByTestId("osa-composer").fill("Zbuduj bezpieczną stronę po polsku");
+      await page.waitForFunction(()=>{const b=document.querySelector('[data-testid="osa-send"]');return b instanceof HTMLButtonElement&&!b.disabled;},null,{timeout:20000});
       await page.getByTestId("osa-send").click();
       await artifactAccepted;await page.close();
       page=await chat();
