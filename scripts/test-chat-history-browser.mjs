@@ -61,12 +61,20 @@ try{
       };
     },{key:KEY});
     await page.route("**/api/nvidia/status",route=>route.fulfill({json:{provider:"NVIDIA",configured:true,model:"controlled-test"}}));
-    await page.route("**/api/nvidia/fleet-chat",route=>{
+    await page.route("**/api/nvidia/fleet-live",route=>{
       const payload=route.request().postDataJSON();
       assert.match(payload.prompt,/Historia zostaje/);
-      return route.fulfill({json:{text:"ODPOWIEDŹ TRWALE ZAPISANA",status:"PROVIDER_RESPONSE",
-        model:"controlled-test",provider_model:"controlled-test",request_id:"fixture",
-        provider_response_id:"fixture-response",latency_ms:1}});
+      const e=payload.execution_id,conv=payload.conversation_id,at=new Date().toISOString();
+      const events=[
+        ["accepted",{execution_id:e,conversation_id:conv}],
+        ["trace",{schema:"osa.live_execution.v1",execution_id:e,phase:"accepted",state:"RUNNING",at,source:"API",detail:"Przyjęto"}],
+        ["trace",{schema:"osa.live_execution.v1",execution_id:e,phase:"model_started",state:"RUNNING",at,source:"NVIDIA",detail:"Oczekiwanie"}],
+        ["trace",{schema:"osa.live_execution.v1",execution_id:e,phase:"completed",state:"COMPLETED",at,source:"API",detail:"Odpowiedź"}],
+        ["complete",{execution_id:e,conversation_id:conv,text:"ODPOWIEDŹ TRWALE ZAPISANA",status:"PROVIDER_RESPONSE",
+          model:"controlled-test",provider_model:"controlled-test",request_id:"fixture",
+          provider_response_id:"fixture-response",latency_ms:1}]
+      ];
+      return route.fulfill({status:200,contentType:"text/event-stream",body:events.map(([type,data])=>"event: "+type+"\ndata: "+JSON.stringify(data)+"\n\n").join("")});
     });
     await page.reload({waitUntil:"domcontentloaded"});
     await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
