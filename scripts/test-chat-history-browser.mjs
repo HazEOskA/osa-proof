@@ -9,7 +9,7 @@ const out="artifacts/chat-history";fs.mkdirSync(out,{recursive:true});
 const KEY="osa.native-chat.v1",ACTIVE="osa.native-chat.active.v1",DB="osa.native-chat.history.v2";
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
 const status=async page=>{
-  await page.waitForFunction(()=>document.querySelector('[data-testid="osa-history-status"]')?.textContent?.includes("ZAPISANO W INDEXEDDB"),{timeout:20000});
+  await page.waitForFunction(()=>document.querySelector('[data-testid="osa-history-status"]')?.textContent?.includes("ZAPISANO W INDEXEDDB"),null,{timeout:20000});
 };
 const openChat=async page=>{
   await page.goto(base,{waitUntil:"domcontentloaded"});
@@ -50,7 +50,7 @@ try{
     await openChat(page);
     await status(page);
     assert.equal(await page.getByTestId("osa-session").count(),1);
-    await page.getByText(legacy,{exact:true}).waitFor();
+    await page.getByTestId("osa-message").filter({hasText:legacy}).waitFor();
     assert.equal((await fetchRow(page,legacyId)).messages.length,2,"Migrated legacy messages committed");
     // On a real device, a failed legacy localStorage quota must not erase the new IDB history.
     await page.evaluate(({key})=>{
@@ -71,11 +71,11 @@ try{
     await page.reload({waitUntil:"domcontentloaded"});
     await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     await status(page);
-    await page.getByText(legacy,{exact:true}).waitFor();
+    await page.getByTestId("osa-message").filter({hasText:legacy}).waitFor();
     await page.getByText("NVIDIA · KLUCZ GOTOWY").waitFor();
     await page.getByTestId("osa-composer").fill("Historia zostaje po wyjściu z aplikacji");
     await page.getByTestId("osa-send").click();
-    await page.getByText("ODPOWIEDŹ TRWALE ZAPISANA",{exact:true}).waitFor();
+    await page.getByTestId("osa-message").filter({hasText:"ODPOWIEDŹ TRWALE ZAPISANA"}).waitFor();
     await status(page);
     const before=await fetchRow(page,legacyId);
     assert.equal(before.messages.length,4,"User and provider answer persisted in IDB");
@@ -85,7 +85,7 @@ try{
     await resumed.route("**/api/nvidia/status",route=>route.fulfill({json:{provider:"NVIDIA",configured:true,model:"controlled-test"}}));
     await openChat(resumed);
     await status(resumed);
-    await resumed.getByText("ODPOWIEDŹ TRWALE ZAPISANA",{exact:true}).waitFor();
+    await resumed.getByTestId("osa-message").filter({hasText:"ODPOWIEDŹ TRWALE ZAPISANA"}).waitFor();
     assert.equal(await resumed.getByTestId("osa-message").count(),4);
     assert.equal((await fetchRow(resumed,legacyId)).messages.length,4);
     await resumed.close();
