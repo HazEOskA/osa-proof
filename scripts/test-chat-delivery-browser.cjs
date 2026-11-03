@@ -38,6 +38,7 @@ const child=process.env.OSA_DELIVERY_E2E_URL?undefined:spawn(process.execPath,['
     await page.getByRole('button',{name:'Utwórz artefakt',exact:true}).click();
     await page.getByTestId('osa-composer').fill('OSA Commerce Decision Agent. Interaktywny HTML dashboard trzech kampanii. A: wydatki 1200 PLN, przychód 6000 PLN, marża 40%, CPA 30→48. B: wydatki 1800 PLN, przychód 3000 PLN, marża 35%, CPA 45→70. C: wydatki 900 PLN, przychód NIEZNANY, marża 30%, CPA 20→24. Raportuj brak danych C, ryzyko, DRAFT i pilot 10 przypadków. Po polsku.');
     await page.getByTestId('osa-send').click();
+    await page.getByTestId('osa-delivery-result').nth(1).waitFor({timeout:90000});
     const commerce=page.getByTestId('osa-delivery-result').last();
     await commerce.getByText('ARTEFAKT GOTOWY · integralność zweryfikowana',{exact:true}).waitFor({timeout:90000});
     const commerceDownload=page.waitForEvent('download');
