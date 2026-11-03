@@ -88,7 +88,7 @@ test("live HTTP E2E: server abort request is scoped and outputs CANCEL_UNCONFIRM
     const base="http://127.0.0.1:"+a.port;
     const live=fetch(base+"/nvidia/fleet-live",{method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({prompt:"Długi prompt",agent:"jeverson",history:[],conversation_id:conversation,execution_id:id,remember:false})});
-    await waitForStart;
+    await Promise.race([waitForStart,new Promise<void>((_,reject)=>setTimeout(()=>reject(Error('LIVE_PROVIDER_NOT_STARTED')),4000))]);
     const cancel=await fetch(base+"/chat/live-cancel",{method:"POST",headers:{"content-type":"application/json",origin:base},
       body:JSON.stringify({execution_id:id,conversation_id:conversation})});
     assert.equal(cancel.status,202);
