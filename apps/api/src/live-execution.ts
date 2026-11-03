@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SessionRecord } from "../../../packages/contracts/src";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
 const EXEC_ID=/^exec_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const CONV_ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -53,4 +54,36 @@ export class LiveExecutionRegistry {
 }
 export function liveEvent(executionId:string,phase:LivePhase,state:"RUNNING"|"COMPLETED"|"FAILED"|"CANCEL_UNCONFIRMED",details:Record<string,unknown>={}) {
   return {schema:"osa.live_execution.v1",execution_id:executionId,phase,state,at:new Date().toISOString(),...details};
+}
+
+export async function handleLiveCancel(
+  req:IncomingMessage,res:ServerResponse,session:SessionRecord,registry:LiveExecutionRegistry
+) {
+  const send=(status:number,body:unknown)=>{
+    res.writeHead(status,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"});
+    res.end(JSON.stringify(body));
+  };
+  if(req.method!=="POST")return send(405,{code:"METHOD_NOT_ALLOWED"});
+  const origin=req.headers.origin;
+  if(req.headers["sec-fetch-site"]==="cross-site" ||
+    (origin && !["https://"+req.headers.host,"http://"+req.headers.host].includes(origin)) ||
+    (process.env.VERCEL==="1"&&!origin))
+    return send(403,{code:"LIVE_CANCEL_ORIGIN_DENIED"});
+  let chunks:Buffer[]=[],bytes=0;
+  for await(const chunk of req){
+    bytes+=Buffer.byteLength(chunk);
+    if(bytes>2048)return send(413,{code:"LIVE_CANCEL_TOO_LARGE"});
+    chunks.push(Buffer.from(chunk));
+  }
+  let body:{execution_id?:unknown;conversation_id?:unknown};
+  try{body=JSON.parse(Buffer.concat(chunks).toString("utf8"));}
+  catch{return send(400,{code:"LIVE_CANCEL_BAD_JSON"});}
+  if(!body||typeof body.execution_id!=="string"||typeof body.conversation_id!=="string")
+    return send(400,{code:"LIVE_CANCEL_INVALID_INPUT"});
+  try{
+    const answer=registry.cancel(session,body.execution_id,body.conversation_id);
+    return send(answer.status==="CANCEL_REQUESTED"?202:409,answer);
+  }catch(e){
+    return send(e instanceof LiveControlError?e.status:500,{code:e instanceof LiveControlError?e.code:"LIVE_CANCEL_ERROR"});
+  }
 }
