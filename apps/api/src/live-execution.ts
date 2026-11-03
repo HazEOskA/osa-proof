@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import type { SessionRecord } from "../../../packages/contracts/src";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-const EXEC_ID=/^exec_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-const CONV_ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const EXEC_ID=/^exec_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const CONV_ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MAX_ACTIVE=100;
 type State="RUNNING"|"CANCEL_REQUESTED"|"COMPLETED"|"FAILED"|"CANCEL_UNCONFIRMED";
 export type LivePhase="accepted"|"context_started"|"context_completed"|"model_started"|"model_completed"|"evidence_started"|"evidence_completed"|"failed"|"completed"|"cancel_requested"|"cancel_unconfirmed";
