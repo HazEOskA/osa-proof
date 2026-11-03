@@ -287,7 +287,7 @@ export default function JeversonChat() {
           if(type==="trace")updateTrace(sessionId,execution_id,data as LiveTraceEvent);
           if(type==="progress"){
             const tasks=Array.isArray(data.tasks)?data.tasks.filter((t:unknown)=>
-              Boolean(t)&&typeof t==="object"&&"agent_id" in t&&"state" in t)
+              t!==null&&typeof t==="object"&&"agent_id" in t&&"state" in t)
               .map((t:{agent_id:string;state:string})=>({agent_id:t.agent_id,state:t.state})):[];
             updateTasks(sessionId,execution_id,tasks);
             updateTrace(sessionId,execution_id,{
