@@ -35,7 +35,7 @@ test("artifact HTTP SSE: cancellation reaches server execution control, no fake 
     const stream=await fetch(base+"/chat/delivery",{method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({prompt:"Test kontrolowanego anulowania HTML",kind:"webapp",execution_id,conversation_id,remember:false})});
     assert.equal(stream.status,200);
-    await started;
+    await Promise.race([started,new Promise<void>((_,reject)=>setTimeout(()=>reject(Error('LIVE_ARTIFACT_NOT_STARTED')),4000))]);
     const c=await fetch(base+"/chat/live-cancel",{method:"POST",headers:{origin:base,"content-type":"application/json"},
       body:JSON.stringify({execution_id,conversation_id})});
     assert.equal(c.status,202);
