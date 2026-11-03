@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import type { BrainMemoryContext, EvidenceInput } from "../../../packages/contracts/src";
 import type { DemoRequest } from "../../../packages/demo-team/src";
 import { inspectArtifact, normalizeGeneratedArtifact } from "../../../packages/demo-team/src";
-import { digest } from "../../../packages/proof-core/src";
 import { fleetLimit, nvidiaComplete } from "./nvidia";
 
 const sha=(v:string)=>createHash("sha256").update(v).digest("hex");
@@ -10,7 +9,7 @@ const DEFAULT_ARTIFACT_MODEL="openai/gpt-oss-20b";
 export type ModelComplete=typeof nvidiaComplete;
 export async function generateNvidiaArtifact(
   spec:DemoRequest,env:NodeJS.ProcessEnv,memoryContext?:BrainMemoryContext,
-  complete:ModelComplete=nvidiaComplete,reserveCall:()=>void=fleetLimit
+  complete:ModelComplete=nvidiaComplete,reserveCall:()=>void=fleetLimit,executionId?:string
 ):Promise<{content:string;evidence:EvidenceInput[]}>{
   if(spec.kind!=="webapp" && spec.kind!=="document")throw Error("UNSUPPORTED_ARTIFACT");
   const kind=spec.kind;
@@ -43,6 +42,7 @@ export async function generateNvidiaArtifact(
     response_sha256:sha(chosen.text),initial_response_sha256:sha(first.text),
     output_content_sha256:sha(content),normalization_applied:content!==chosen.text.trim(),
     attempt_count:attempts,repair_attempted:attempts===2,latency_ms:chosen.latency_ms,
+    ...(executionId?{execution_id:executionId}:{}),
     ...(memoryContext?{memory_context_sha256:memoryContext.context_sha256,
       memory_brain_id:memoryContext.brain_id,memory_ledger_head:memoryContext.ledger_head}:{})
   }}]};
