@@ -7,6 +7,7 @@ import { ExecutorRegistry, MissionKernel } from "../../../packages/runtime/src";
 import { digest, verifyCompletedMission } from "../../../packages/proof-core/src";
 import { fleetLimit, nvidiaComplete, NvidiaError } from "./nvidia";
 import { generateNvidiaArtifact } from "./artifact-generation";
+import { LiveExecutionRegistry, LiveControlError, liveEvent } from "./live-execution";
 
 export type ArtifactGenerator = (request: DemoRequest) => Promise<{content: string; evidence: EvidenceInput[]}>;
 type Input = { prompt: string; kind: "webapp" | "document"; execution_id: string; conversation_id: string; remember?: boolean };
@@ -28,7 +29,7 @@ export class ChatDelivery {
     return {configured:!!this.generate || !!this.env.NVIDIA_API_KEY?.trim(), enabled:!!this.generate || (!!this.env.NVIDIA_API_KEY?.trim() && this.env.OSA_NVIDIA_FREE_TIER_ACK === "true"),
       provider:"NVIDIA",model:this.env.OSA_DELIVERY_MODEL?.trim() || MODEL,model_generated:true,outputs:["webapp","document"],persistence:"DOWNLOAD_AND_BROWSER_CACHE",execution_fence:"INSTANCE_ONLY"};
   }
-  async handle(req: IncomingMessage, res: ServerResponse, session: SessionRecord, kernel: MissionKernel, memory: MemoryService = new MemoryService()): Promise<void> {
+  async handle(req: IncomingMessage, res: ServerResponse, session: SessionRecord, kernel: MissionKernel, memory: MemoryService = new MemoryService(), registry?:LiveExecutionRegistry): Promise<void> {
     const json=(status:number,value:unknown)=>{res.writeHead(status,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"});res.end(JSON.stringify(value));};
     if(req.method === "GET") return json(200,{...this.status(),memory_configured:Boolean(memory.adapter)});
     let request: Input;
@@ -59,11 +60,19 @@ export class ChatDelivery {
     for(const [k,v] of this.attempts)if(v.at<Date.now()-3600000 && v.status!=="RUNNING")this.attempts.delete(k);
     if(!previous && this.attempts.size>=100)return json(429,{code:"DELIVERY_CAPACITY",error:"Limit zadań tej instancji. Nie uruchomiono modelu."});
     if(!previous){try{fleetLimit();}catch(e){return json(429,{code:"FLEET_RATE_LIMIT",error:"Limit wywołań modelu. Spróbuj później."});}}
+    let cancelSignal:AbortSignal|undefined;
+    if(!previous&&registry){
+      try{cancelSignal=registry.start(session,request.execution_id,request.conversation_id);}
+      catch(e){return json(e instanceof LiveControlError?e.status:500,{
+        code:e instanceof LiveControlError?e.code:"LIVE_CONTROL_ERROR",error:"Nie przyjęto zadania do śledzenia."});}
+    }
     const attempt=previous??{hash,status:"RUNNING" as const,at:Date.now()};
     this.attempts.set(key,attempt);
     res.writeHead(200,{"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache, no-store, no-transform","x-accel-buffering":"no"});
     res.flushHeaders();
     const emit=(type:string,data:unknown)=>{if(!res.destroyed&&!res.writableEnded)res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);};
+    const progress=(phase:Parameters<typeof liveEvent>[1],state:Parameters<typeof liveEvent>[2]="RUNNING",extra:Record<string,unknown>={})=>
+      emit("trace",liveEvent(request.execution_id,phase,state,extra));
     if(previous){emit("complete",previous.result);res.end();return;}
     const heartbeat=setInterval(()=>{if(!res.destroyed&&!res.writableEnded)res.write(": heartbeat\n\n");},5000);heartbeat.unref();
     try {
@@ -76,19 +85,25 @@ export class ChatDelivery {
       });
       const registry=new ExecutorRegistry();
       const options={executionMode:"provider",artifactGenerator:async (spec:DemoRequest)=>{
+        if(cancelSignal?.aborted)throw Error("ARTIFACT_CANCEL_UNCONFIRMED");
         emit("model_started",{execution_id:request.execution_id,provider:"NVIDIA",model:this.status().model});
+        progress("model_started","RUNNING",{source:"NVIDIA",detail:"Zlecono generowanie artefaktu"});
         try {
           // Verified source context is recovered before the model; writes require opt-in.
           if(memory.adapter) {
+            progress("context_started","RUNNING",{source:"MEMORY",detail:"Sprawdzanie NeurOSA"});
             if(request.remember)remembered=await memory.remember(session,request.conversation_id,request.prompt);
             memoryContext=await memory.recall(session,request.conversation_id,request.prompt);
+            progress("context_completed","RUNNING",{source:"MEMORY",detail:"Sprawdzono kontekst"});
           }
           const generated=this.generate
             ? await this.generate(spec)
-            : await generateNvidiaArtifact(spec,{...this.env,OSA_DELIVERY_MODEL:this.status().model},memoryContext,undefined,undefined,request.execution_id);
+            : await generateNvidiaArtifact(spec,{...this.env,OSA_DELIVERY_MODEL:this.status().model},memoryContext,undefined,undefined,request.execution_id,cancelSignal);
+          if(cancelSignal?.aborted)throw Error("ARTIFACT_CANCEL_UNCONFIRMED");
           if(!generated.content.trim() || Buffer.byteLength(generated.content)>128*1024)
             throw new Error("ARTIFACT_SIZE_INVALID");
           emit("model_completed",{execution_id:request.execution_id,bytes:Buffer.byteLength(generated.content)});
+          progress("model_completed","RUNNING",{source:"NVIDIA",bytes:Buffer.byteLength(generated.content),detail:"Odebrano materiał do walidacji"});
           return generated;
          }catch(e){emit("model_error",{execution_id:request.execution_id,
             code:e instanceof NvidiaError || e instanceof MemoryAccessError?e.code:memory.adapter?"MEMORY_OR_MODEL_FAILED":"MODEL_GENERATION_FAILED",
@@ -99,8 +114,10 @@ export class ChatDelivery {
       const mission=demoMission({objective:request.prompt,kind:request.kind,mode:"connected",target:"artifact"},team);
       mission.mission_id="delivery_"+digest(scope).slice(0,12)+"_"+request.execution_id.slice(5);
       emit("accepted",{execution_id:request.execution_id,mission_id:mission.mission_id,roles:team.agents,model:this.status().model,conversation_id:request.conversation_id});
+      progress("accepted","RUNNING",{source:"MISSION_KERNEL",detail:"Rozpoczęto rzeczywistą misję artefaktu"});
       await observing.create(mission,team);
       const run=await observing.execute(mission.mission_id,registry,{execution_id:request.execution_id});
+      if(cancelSignal?.aborted)throw Error("ARTIFACT_CANCEL_UNCONFIRMED");
       const record=(await observing.get(mission.mission_id))!;
       const report=demoReport(record);
       if(report.ready_for_review)verifyCompletedMission(record);
@@ -127,10 +144,18 @@ export class ChatDelivery {
           ...(remembered?{memory_statement_receipt:remembered}:{}),
           ...(memoryWrite?{memory_write:memoryWrite}:{})}:{}),limitations:["Model generated content is untrusted; factual accuracy and fitness require review.","No deployment or remote sandbox execution claimed.","Instance-only execution fence; download the bundle for durable export."]};
       const result={...body,bundle_sha256:digest(body)};
+      if(cancelSignal?.aborted)throw Error("ARTIFACT_CANCEL_UNCONFIRMED");
       this.attempts.set(key,{hash,status:"COMPLETED",result,at:Date.now()});
+      registry?.finish(session,request.execution_id,"COMPLETED");
+      progress("completed","COMPLETED",{source:"MISSION_KERNEL",verdict:run.verdict,detail:"Misja zakończona; dostępny rzeczywisty bundle"});
       emit("complete",result);
     } catch {
+      const cancelled=Boolean(cancelSignal?.aborted);
       this.attempts.set(key,{hash,status:"FAILED",at:Date.now()});
+      registry?.finish(session,request.execution_id,cancelled?"CANCEL_UNCONFIRMED":"FAILED");
+      progress(cancelled?"cancel_unconfirmed":"failed",cancelled?"CANCEL_UNCONFIRMED":"FAILED",{
+        source:"MISSION_KERNEL",code:cancelled?"CANCEL_UNCONFIRMED":"DELIVERY_EXECUTION_UNCONFIRMED",
+        detail:cancelled?"Żądanie anulowania wysłano; zakończenie po stronie NVIDIA niepotwierdzone.":"Wykonanie nie zostało potwierdzone; dotychczasowe zdarzenia zachowano w kliencie."});
       emit("error",{code:"DELIVERY_EXECUTION_UNCONFIRMED",error:"Nie potwierdzono pełnego wykonania. Nie ponowiono automatycznie modelu.",execution_id:request.execution_id});
     } finally {clearInterval(heartbeat);res.end();}
   }
