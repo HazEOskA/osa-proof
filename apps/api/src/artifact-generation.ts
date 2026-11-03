@@ -9,7 +9,7 @@ const DEFAULT_ARTIFACT_MODEL="openai/gpt-oss-20b";
 export type ModelComplete=typeof nvidiaComplete;
 export async function generateNvidiaArtifact(
   spec:DemoRequest,env:NodeJS.ProcessEnv,memoryContext?:BrainMemoryContext,
-  complete:ModelComplete=nvidiaComplete,reserveCall:()=>void=fleetLimit,executionId?:string
+  complete:ModelComplete=nvidiaComplete,reserveCall:()=>void=fleetLimit,executionId?:string,signal?:AbortSignal
 ):Promise<{content:string;evidence:EvidenceInput[]}>{
   if(spec.kind!=="webapp" && spec.kind!=="document")throw Error("UNSUPPORTED_ARTIFACT");
   const kind=spec.kind;
@@ -19,7 +19,9 @@ export async function generateNvidiaArtifact(
   const firstPrompt=kind==="webapp"
     ? "Wygeneruj wyłącznie kompletną, samodzielną aplikację HTML po polsku prezentującą poniższy cel. Jeśli cel dotyczy audytu lub analizy, zbuduj interaktywny dashboard z podanymi liczbami i jawnie oznaczonymi brakami danych; nie oddawaj raportu tekstowego. Doctype, html, head, title, body, CSS, JS, wszystkie tagi zamknięte. CEL:\n"+spec.objective
     : spec.objective;
-  const first=await complete(firstPrompt,runtimeEnv,fetch,ctx);
+  if(signal?.aborted)throw Error("ARTIFACT_CANCEL_UNCONFIRMED");
+  const first=await complete(firstPrompt,runtimeEnv,fetch,ctx,signal);
+  if(signal?.aborted)throw Error("ARTIFACT_CANCEL_UNCONFIRMED");
   let chosen=first,content=normalizeGeneratedArtifact(first.text,kind);
   let attempts=1;
   if(kind==="webapp"){
@@ -27,9 +29,11 @@ export async function generateNvidiaArtifact(
       content:c,bytes:Buffer.byteLength(c),sha256:sha(c)},kind).length===0;
     if(!valid(content)){
       // At most one additional provider call; strictly charge the existing per-instance fleet limit.
+      if(signal?.aborted)throw Error("ARTIFACT_CANCEL_UNCONFIRMED");
       reserveCall();
       const repairPrompt="Ponów generowanie kompletnej aplikacji HTML od początku. Poprzednia odpowiedź miała niepoprawną strukturę HTML. Zwróć WYŁĄCZNIE jeden skończony dokument <!doctype html><html>...<head><title>...</title></head><body>...</body></html>, bez komentarza i bez Markdown. Zawrzyj CSS i JavaScript inline, bez zależności sieciowych. Nie wymyślaj brakujących danych. CEL:\n"+spec.objective;
-      chosen=await complete(repairPrompt,runtimeEnv,fetch,ctx);
+      chosen=await complete(repairPrompt,runtimeEnv,fetch,ctx,signal);
+      if(signal?.aborted)throw Error("ARTIFACT_CANCEL_UNCONFIRMED");
       content=normalizeGeneratedArtifact(chosen.text,kind);
       attempts=2;
     }
