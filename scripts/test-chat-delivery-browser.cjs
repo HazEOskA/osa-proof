@@ -11,7 +11,7 @@ const child=process.env.OSA_DELIVERY_E2E_URL?undefined:spawn(process.execPath,['
     const page=await browser.newPage({viewport:{width,height}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto(base);await page.locator('section[aria-label="Uruchamianie"]').getByRole('button',{name:'Czat floty agentów',exact:true}).click();
     await page.getByRole('button',{name:'Utwórz artefakt',exact:true}).click();
-    await page.getByTestId('osa-composer').fill('Zbuduj po polsku mały licznik z przyciskiem Dodaj i widocznym wynikiem. Bez sieci i bibliotek.');
+    await page.getByTestId('osa-composer').fill('OSA Commerce Decision Agent: interaktywny polski dashboard kampanii A, B i C. A wydatki 1200, przychód 6000, marża 40%, CPA 30 do 48. B wydatki 1800, przychód 3000, marża 35%, CPA 45 do 70. C wydatki 900, przychód NIEZNANY, CPA 20 do 24. Przedstaw DRAFT i pilot 10 przypadków, nie wymyślaj brakujących danych. Dodaj licznik z przyciskiem Dodaj. Bez sieci i bibliotek.');
     await page.getByTestId('osa-send').click();
     await page.getByRole('region',{name:'Przebieg agentów na żywo'}).waitFor();
     const result=page.getByTestId('osa-delivery-result');await result.waitFor({timeout:90000});
@@ -21,7 +21,8 @@ const child=process.env.OSA_DELIVERY_E2E_URL?undefined:spawn(process.execPath,['
     }
     const bundle=JSON.parse(fs.readFileSync(files['Pobierz bundle'],'utf8'));
     const bytes=fs.readFileSync(files['Pobierz artefakt']);assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),bundle.artifact.sha256);
-    assert.equal(bundle.run.verdict,'VERIFIED');assert.equal(JSON.parse(fs.readFileSync(files['Pobierz ProofReceipt'],'utf8')).proof_id,bundle.run.proof.proof_id);
+    assert.equal(bundle.run.verdict,'VERIFIED');
+    assert.match(bundle.artifact.content,/OSA Commerce Decision Agent/);assert.equal(JSON.parse(fs.readFileSync(files['Pobierz ProofReceipt'],'utf8')).proof_id,bundle.run.proof.proof_id);
     assert.deepEqual(JSON.parse(fs.readFileSync(files['Pobierz evidence'],'utf8')),bundle.run.evidence);
     assert.equal(fs.readFileSync(files['Pobierz trace'],'utf8').trim().split('\n').length,bundle.record.timeline.length);
     await result.getByRole('button',{name:'Podgląd artefaktu',exact:true}).click();
@@ -33,20 +34,6 @@ const child=process.env.OSA_DELIVERY_E2E_URL?undefined:spawn(process.execPath,['
     await page.screenshot({path:path.join(out,name+'-replay.png'),fullPage:true});
     const offline=await browser.newPage();await offline.goto('file://'+files['Pobierz replay offline']);await offline.getByText(/Integralność pakietu: PASS/).waitFor();await offline.close();
     await page.reload();await page.locator('section[aria-label="Uruchamianie"]').getByRole('button',{name:'Czat floty agentów',exact:true}).click();await page.getByTestId('osa-delivery-result').getByText('ARTEFAKT GOTOWY · integralność zweryfikowana',{exact:true}).waitFor();
-    // Scenario reported from Production: 3 fictional campaigns, missing ROAS data, draft-only pilot.
-    // The local fixture exercises Android/desktop UI and proof plumbing, not live NVIDIA quality.
-    await page.getByRole('button',{name:'Utwórz artefakt',exact:true}).click();
-    await page.getByTestId('osa-composer').fill('OSA Commerce Decision Agent. Interaktywny HTML dashboard trzech kampanii. A: wydatki 1200 PLN, przychód 6000 PLN, marża 40%, CPA 30→48. B: wydatki 1800 PLN, przychód 3000 PLN, marża 35%, CPA 45→70. C: wydatki 900 PLN, przychód NIEZNANY, marża 30%, CPA 20→24. Raportuj brak danych C, ryzyko, DRAFT i pilot 10 przypadków. Po polsku.');
-    await page.getByTestId('osa-send').click();
-    await page.getByTestId('osa-delivery-result').nth(1).waitFor({timeout:90000});
-    const commerce=page.getByTestId('osa-delivery-result').last();
-    await commerce.getByText('ARTEFAKT GOTOWY · integralność zweryfikowana',{exact:true}).waitFor({timeout:90000});
-    const commerceDownload=page.waitForEvent('download');
-    await commerce.getByRole('button',{name:'Pobierz artefakt',exact:true}).click();
-    const commerceFile=await commerceDownload,commercePath=path.join(out,name+'-commerce-'+commerceFile.suggestedFilename());
-    await commerceFile.saveAs(commercePath);
-    assert.match(fs.readFileSync(commercePath,'utf8'),/OSA Commerce Decision Agent/);
-    await page.screenshot({path:path.join(out,name+'-commerce-proof.png'),fullPage:true});
     assert.deepEqual(errors,[]);console.log(JSON.stringify({name,result:'PASS',execution_id:bundle.execution_id,downloads:6,agent_starts:bundle.run.events.filter(e=>e.type==='AGENT_STARTED').length,provider:process.env.OSA_DELIVERY_E2E_URL?'LIVE_SERVER':'CONTROLLED_TEST_GENERATOR',offline_replay:true,artifact_interaction:true}));await page.close();
   }}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>child?.kill('SIGTERM'));
