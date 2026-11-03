@@ -266,19 +266,33 @@ export default function JeversonChat() {
       trace:newLiveTrace(executionId,sessionId,mode),
       ...(durableId?{jobKind:artifactMode?"artifact":"model"}:{})});
     if(durableId){
+      updateTrace(sessionId,executionId,clientTraceEvent(executionId,"request_sent","RUNNING",
+        "Wysłano żądanie do trwałego magazynu; oczekiwanie na akceptację."));
       setBusy(true);
       try{
-        await api<DurableStatus>("/durable/jobs",{
+        const accepted=await api<DurableStatus>("/durable/jobs",{
           execution_id:durableId,conversation_id:sessionId,prompt:text,kind:artifactMode?"artifact":"model",
           ...(artifactMode?{artifact_kind:artifactKind}:{agent:current.agent,history:current.messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}))})
         });
+        if(accepted.execution_id!==executionId)throw Error("DURABLE_EXECUTION_BINDING_INVALID");
+        updateTrace(sessionId,executionId,{
+          schema:"osa.live_execution.v1",execution_id:executionId,phase:"accepted",state:"RUNNING",at:stamp(),
+          source:"DURABLE_STORE",detail:"Potwierdzono przyjęcie misji. Status jest odczytywany z serwera."
+        });
       }catch(e){
+        updateTrace(sessionId,executionId,clientTraceEvent(executionId,"failed","FAILED",
+          "Przyjęcie zadania niepotwierdzone; nie ponawiaj bez sprawdzenia statusu."));
         setError("Przyjęcie misji niepotwierdzone · "+durableId+" · "+(e instanceof Error?e.message:String(e))+". Nie uruchamiaj nowej misji przed sprawdzeniem statusu.");
       }finally{setBusy(false);}
       return;
     }
+    const rejectPrompt=(reason:string)=>{
+      updateTrace(sessionId,executionId,clientTraceEvent(executionId,"failed","FAILED",
+        "Żądanie nie uruchomiło modelu: "+reason));
+      setError(reason);
+    };
     if(artifactMode){
-      if(text.length>4000){setError("Cel artefaktu może mieć maksymalnie 4000 znaków.");return;}
+      if(text.length>4000){rejectPrompt("Cel artefaktu może mieć maksymalnie 4000 znaków.");return;}
       
       const request=++seq.current,abort=new AbortController(),execution_id=executionId;controller.current=abort;activeExecution.current={executionId,conversationId:sessionId};setBusy(true);
       try {
@@ -311,16 +325,16 @@ export default function JeversonChat() {
       finally{if(request===seq.current){controller.current=null;activeExecution.current=null;setBusy(false);}}
       return;
     }
-    if(command(text)&&remember){setError("Zapis wiadomości dotyczy rozmowy. Wyłącz tę opcję przed wykonaniem narzędzia.");return;}
+    if(command(text)&&remember){rejectPrompt("Zapis wiadomości dotyczy rozmowy. Wyłącz tę opcję przed wykonaniem narzędzia.");return;}
     if(!command(text)&&current.model==="openrouter"){
-      setError("OPENROUTER NIEDOSTĘPNY · Brak klucza OpenRouter na serwerze. Wybierz Automatycznie lub NVIDIA.");
+      rejectPrompt("OPENROUTER NIEDOSTĘPNY · Brak klucza OpenRouter na serwerze. Wybierz Automatycznie lub NVIDIA.");
       return;
     }
     if(!command(text)&&!modelStatus){
-      setError("Nie udało się sprawdzić dostępności modelu. Odśwież stan i spróbuj ponownie.");return;
+      rejectPrompt("Nie udało się sprawdzić dostępności modelu. Odśwież stan i spróbuj ponownie.");return;
     }
     if(!command(text)&&!modelStatus?.configured){
-      setError("MODEL NIEDOSTĘPNY · NVIDIA_API_KEY nie jest jeszcze skonfigurowany w tym środowisku Vercel. Żadne wywołanie nie zostało wykonane.");
+      rejectPrompt("MODEL NIEDOSTĘPNY · NVIDIA_API_KEY nie jest jeszcze skonfigurowany w tym środowisku Vercel. Żadne wywołanie nie zostało wykonane.");
       return;
     }
     const request=++seq.current,abort=new AbortController();controller.current=abort;activeExecution.current={executionId,conversationId:sessionId};setBusy(true);
