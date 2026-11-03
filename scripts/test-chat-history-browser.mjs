@@ -17,7 +17,7 @@ const openChat=async page=>{
   await page.getByTestId("osa-native-chat").waitFor();
 };
 const fixedMessage=(text,role)=>({id:randomUUID(),role,text,at:new Date().toISOString(),status:role==="user"?"USER":"MODEL"});
-const fetchRow=async page,id=>page.evaluate(async({dbName,sessionId})=>{
+const fetchRow=async (page,id)=>page.evaluate(async({dbName,sessionId})=>{
   return await new Promise((resolve,reject)=>{
     const request=indexedDB.open(dbName,1);
     request.onerror=()=>reject(request.error);
