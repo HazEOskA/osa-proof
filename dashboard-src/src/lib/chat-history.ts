@@ -70,8 +70,8 @@ export async function loadChatHistory<T extends Item>(
     const rows=result(tx.objectStore(SESSIONS).getAll() as IDBRequest<T[]>);
     const active=result(tx.objectStore(META).get("active") as IDBRequest<{key:string;value:string}|undefined>);
     const migrated=result(tx.objectStore(META).get("migrated") as IDBRequest<{key:string;value:boolean}|undefined>);
-    const [stored,selected,migration]=await Promise.all([rows,active,migrated,done]).then(v=>v.slice(0,3)) as
-      [T[],{key:string;value:string}|undefined,{key:string;value:boolean}|undefined];
+    const [stored,selected,migration]=await Promise.all([rows,active,migrated]);
+    await done;
     if(migration?.value===true)return{sessions:stored,activeId:selected?.value??null,source:"indexeddb"};
     // Crash-tolerant migration: pre-existing DB data wins; never silently overwrite it
     // with stale legacy localStorage. Keep legacy values until the DB transaction commits.
