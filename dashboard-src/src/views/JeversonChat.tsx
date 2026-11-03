@@ -4,6 +4,7 @@ import { useOsa } from "../ctx";
 import AccountControl from "./AccountControl";
 import ChatDeliveryResult, { ChatDeliveryProgress } from "./ChatDelivery";
 import { streamDelivery, type DeliveryBundle, type DeliveryProgress } from "../lib/chat-delivery";
+import { loadChatHistory, saveChatHistory } from "../lib/chat-history";
 import { verifyRun } from "../lib/verify";
 import { statusText } from "../ui/primitives";
 import type { Mission, Run, TeamGraph } from "../data/types";
@@ -44,7 +45,7 @@ function restore():Session[] {
     for (const item of value.slice(0,50)) {
       if (!item || typeof item.id!=="string" || typeof item.title!=="string" || !Array.isArray(item.messages) ||
           !AGENTS.some(a=>a.id===item.agent) || !["auto","nvidia","openrouter"].includes(item.model)) continue;
-      const messages:Msg[] = item.messages.filter((m:Msg)=>m && typeof m.id==="string" && typeof m.text==="string" && ["user","assistant"].includes(m.role)).slice(-100).map((m:Msg)=>({...m,text:m.text.slice(0,m.role==="assistant"?40000:20000)}));
+      const messages:Msg[] = item.messages.filter((m:Msg)=>m && typeof m.id==="string" && typeof m.text==="string" && ["user","assistant"].includes(m.role)).slice(-100).map((m:Msg)=>({...m}));
       valid.push({id:item.id,title:item.title.slice(0,100),agent:item.agent,model:item.model==="openrouter"?"auto":item.model,updated:item.updated,messages});
     }
     return valid.length?valid:[empty()];
@@ -87,6 +88,10 @@ export default function JeversonChat() {
   const [durableChecked,setDurableChecked] = useState(false);
   const [error,setError] = useState("");
   const [storageProblem,setStorageProblem] = useState(false);
+  const [historyState,setHistoryState] = useState<"LOADING"|"SAVING"|"SAVED"|"FALLBACK"|"ERROR">("LOADING");
+  const historyLoad=useRef<Promise<{sessions:Session[];activeId:string|null;source:string}>|null>(null);
+  const historyWrites=useRef<Promise<void>>(Promise.resolve());
+  const historyWriteVersion=useRef(0);
   const [status,setStatus] = useState<StatusInfo|null>(null);
   const [modelStatus,setModelStatus] = useState<ModelStatus|null>(null);
   const [modelReplied,setModelReplied] = useState(false);
@@ -96,12 +101,49 @@ export default function JeversonChat() {
   const agent = AGENTS.find(a=>a.id===current.agent)||AGENTS[0];
   const activeRun = lastRun && lastRun.sessionId===current.id && lastRun.verified?lastRun.run:null;
   useEffect(()=>{
-    if(cacheReady)return;
-    const saved=restore();setSessions(old=>old.some(s=>s.messages.length)?old:saved);
-    try{setActiveId(localStorage.getItem(ACTIVE)||saved[0].id);}catch{setActiveId(saved[0].id);}
-    setCacheReady(true);
-  },[cacheReady]);
-  useEffect(()=>{if(!cacheReady)return;try{localStorage.setItem(KEY,JSON.stringify(sessions.slice(0,50)));localStorage.setItem(ACTIVE,current.id);}catch{setStorageProblem(true);}},[sessions,current.id,cacheReady]);
+    let mounted=true;
+    if(!historyLoad.current){
+      const legacy=restore();
+      let previousActive:string|null=null;
+      try{previousActive=localStorage.getItem(ACTIVE);}catch{}
+      historyLoad.current=loadChatHistory<Session>(legacy,previousActive)
+        .catch(()=>({sessions:legacy,activeId:previousActive,source:"fallback"}));
+    }
+    void historyLoad.current.then(({sessions:stored,activeId,source})=>{
+      if(!mounted)return;
+      const valid=stored.filter(s=>s&&typeof s.id==="string"&&typeof s.title==="string"&&Array.isArray(s.messages)&&
+        AGENTS.some(a=>a.id===s.agent)&&["auto","nvidia","openrouter"].includes(s.model)).slice(0,50);
+      const saved=valid.length?valid:[empty()];
+      setSessions(saved);
+      setActiveId(activeId&&saved.some(s=>s.id===activeId)?activeId:saved[0].id);
+      setHistoryState(source==="fallback"?"FALLBACK":"SAVED");
+      setStorageProblem(source==="fallback");
+      setCacheReady(true);
+    });
+    return()=>{mounted=false;};
+  },[]);
+  useEffect(()=>{
+    if(!cacheReady)return;
+    const snapshot=sessions.slice(0,50), selected=current.id, version=++historyWriteVersion.current;
+    setHistoryState("SAVING");
+    historyWrites.current=historyWrites.current.catch(()=>{}).then(async()=>{
+      try{
+        await saveChatHistory(snapshot,selected);
+        if(version===historyWriteVersion.current){setHistoryState("SAVED");setStorageProblem(false);}
+      }catch{
+        let fallback=false;
+        try{
+          localStorage.setItem(KEY,JSON.stringify(snapshot));
+          localStorage.setItem(ACTIVE,selected);
+          fallback=true;
+        }catch{}
+        if(version===historyWriteVersion.current){
+          setHistoryState(fallback?"FALLBACK":"ERROR");
+          setStorageProblem(true);
+        }
+      }
+    });
+  },[sessions,current.id,cacheReady]);
   useEffect(()=>{bottom.current?.scrollIntoView({block:"end"});},[current.id,current.messages.length,busy]);
   useEffect(()=>{
     let alive=true;
@@ -177,7 +219,7 @@ export default function JeversonChat() {
     setLastRun({sessionId,run:bundle.run,verified:true});
   }
   async function submit(e?:FormEvent) {
-    e?.preventDefault();const text=draft.trim();if(!text||busy)return;
+    e?.preventDefault();const text=draft.trim();if(!cacheReady||!text||busy)return;
     const sessionId=current.id;setDraft("");setError("");
     const durableNow=durable&&!remember&&(artifactMode||!command(text));
     const durableId=durableNow?"exec_"+id():undefined;
@@ -270,7 +312,7 @@ export default function JeversonChat() {
     }catch(e){if(request===seq.current&&!abort.signal.aborted)setError("TRACE BLOCKED · "+(e instanceof Error?e.message:String(e)));}
     finally{if(request===seq.current){controller.current=null;setBusy(false);}}
   }
-  function key(e:KeyboardEvent<HTMLTextAreaElement>){if(e.key==="Enter"&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void submit();}}
+  function key(e:KeyboardEvent<HTMLTextAreaElement>){if(cacheReady&&e.key==="Enter"&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void submit();}}
   return <section aria-label="Czat floty agentów" data-testid="osa-native-chat" className="relative flex h-full min-h-0 min-w-0 overflow-hidden bg-[#070b13] text-fg">
     {mobileHistory&&<button onClick={()=>setMobileHistory(false)} aria-label="Zamknij historię" className="absolute inset-0 z-30 bg-black/75 md:hidden"/>}
     <aside aria-label="Historia rozmów" className={(mobileHistory?"translate-x-0":"-translate-x-full")+" absolute inset-y-0 left-0 z-40 flex w-[min(85vw,290px)] shrink-0 flex-col border-r border-white/10 bg-[#0b111c] transition-transform md:static md:w-[238px] md:translate-x-0"}>
@@ -279,7 +321,7 @@ export default function JeversonChat() {
       <label className="mx-3 mt-4 block text-[10px] uppercase tracking-wider text-dim">Historia<input aria-label="Szukaj rozmów" placeholder="Szukaj rozmów..." value={search} onChange={e=>setSearch(e.target.value)} className="mt-2 block w-full rounded-lg border border-line bg-panel px-3 py-2 text-xs text-fg"/></label>
       <div className="mt-3 min-h-0 flex-1 overflow-y-auto px-2">
         {sessions.filter(s=>s.title.toLowerCase().includes(search.toLowerCase())).map(s=><button key={s.id} data-testid="osa-session" aria-current={s.id===current.id?"page":undefined} onClick={()=>openSession(s.id)} className={(s.id===current.id?"bg-white/10 text-white":"text-dim hover:bg-white/5")+" mb-1 block w-full rounded-lg px-3 py-3 text-left text-xs"}><span className="block truncate font-medium">{s.title}</span><span className="mt-1 block text-[10px] opacity-70">{AGENTS.find(a=>a.id===s.agent)?.name} · {s.messages.length} wiadomości</span></button>)}
-      </div><button onClick={()=>go("home")} aria-label="Powrót do OSA Proof" className="focus-ring border-t border-white/10 px-3 py-3 text-left text-xs text-cyan hover:bg-white/5">← OSA Proof / Workspace</button><p className="border-t border-white/10 p-3 text-[10px] text-dim">HISTORIA LOKALNA · BEZ SYNCHRONIZACJI</p>
+      </div><button onClick={()=>go("home")} aria-label="Powrót do OSA Proof" className="focus-ring border-t border-white/10 px-3 py-3 text-left text-xs text-cyan hover:bg-white/5">← OSA Proof / Workspace</button><p data-testid="osa-history-status" role="status" className="border-t border-white/10 p-3 text-[10px] text-dim">HISTORIA LOKALNA · {historyState==="SAVED"?"ZAPISANO W INDEXEDDB":historyState==="SAVING"?"ZAPISYWANIE…":historyState==="LOADING"?"WCZYTYWANIE…":historyState==="FALLBACK"?"ZAPIS AWARYJNY · LOCALSTORAGE":"BŁĄD ZAPISU"} · BEZ SYNCHRONIZACJI</p>
     </aside>
     <div className="relative flex min-w-0 flex-1 flex-col">
       <div className="flex min-h-[30px] shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#0b111c] px-3 text-[10px] sm:px-5"><button type="button" aria-label="Powrót do frameworka OSA Proof" onClick={()=>go("home")} className="focus-ring rounded px-2 py-1 font-semibold text-cyan hover:bg-white/5">← OSA Proof / Framework</button><span className="truncate text-dim">BUDOWANIE / CZAT FLOTY AGENTÓW</span><AccountControl /></div>
@@ -310,13 +352,13 @@ export default function JeversonChat() {
       {error&&<div role="alert" data-testid="osa-chat-notice" className="mx-3 mb-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-[11px] text-warn">{error}<button className="ml-2 underline" onClick={()=>setError("")}>Zamknij</button></div>}
       {durableChecked&&!durable&&<p role="status" className="px-3 text-[11px] text-warn">Trwały runtime NIEAKTYWNY: zamknięcie ekranu może przerwać odbiór odpowiedzi. Wymagany jest trwały backend i niezależny worker.</p>}
       {durable&&<p role="status" data-testid="osa-durable-ready" className="px-3 text-[11px] text-cyan">Durable Execution · przyjęte misje rozmowy i artefaktów są odzyskiwane po powrocie (bez zapisu NeurOSA).</p>}
-      {storageProblem&&<p role="alert" className="px-3 text-[11px] text-warn">Zapis historii na urządzeniu jest zablokowany.</p>}
+      {storageProblem&&<p role="alert" className="px-3 text-[11px] text-warn">{historyState==="FALLBACK"?"IndexedDB niedostępne. Historia zapisana awaryjnie w localStorage; duże rozmowy mogą nie zmieścić się.":"ZAPIS HISTORII NIEUDANY — nie zamykaj karty, skopiuj ważne wiadomości."}</p>}
       <div className="shrink-0 border-t border-white/10 bg-[#0b111c] px-3 py-3 sm:px-6"><form onSubmit={e=>void submit(e)} className="mx-auto max-w-[820px] rounded-2xl border border-line2 bg-[#101b2a] p-3 focus-within:border-cyan/50">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs"><button type="button" aria-pressed={!artifactMode} disabled={busy} onClick={()=>setArtifactMode(false)} className="rounded border border-line px-3 py-2">Rozmowa</button><button type="button" aria-pressed={artifactMode} disabled={busy} onClick={()=>setArtifactMode(true)} className="rounded border border-cyan/40 px-3 py-2 text-cyan">Utwórz artefakt</button>{artifactMode&&<label>Format <select aria-label="Format artefaktu" disabled={busy} value={artifactKind} onChange={e=>setArtifactKind(e.target.value)} className="rounded border border-line bg-panel p-1"><option value="webapp">Aplikacja HTML</option><option value="document">Dokument Markdown</option></select></label>}</div>
         {artifactMode&&<p className="mb-2 text-[10px] text-dim">Prompt → model → przebieg agentów → artefakt + bundle + evidence + replay. Bez automatycznego wdrożenia.</p>}
         <div className="mb-2 flex flex-wrap items-center gap-3 text-[11px] text-dim">{memoryState.error || <MemoryStatusLine status={memoryState.status}/>}<button type="button" className="underline" onClick={()=>{void memoryState.refresh();void api<ModelStatus>("/nvidia/status").then(setModelStatus).catch(()=>setModelStatus(null));}}>Odśwież stan</button><label className="flex items-center gap-1"><input type="checkbox" checked={remember} disabled={memoryState.status?.state!=="AVAILABLE"||busy} onChange={e=>setRemember(e.target.checked)}/>Zapamiętaj moją wiadomość</label></div>
         <textarea aria-label="Wiadomość do OSA" data-testid="osa-composer" placeholder={"Wiadomość do "+agent.name+"..."} rows={2} maxLength={20000} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={key} className="block max-h-[160px] min-h-[52px] w-full resize-y bg-transparent text-sm outline-none placeholder:text-dim"/>
-        <div className="flex items-center gap-2 border-t border-white/5 pt-2"><label className="text-[10px] text-dim">Model <select aria-label="Wybierz model" value={current.model} onChange={e=>selectModel(e.target.value as ModelId)} className="rounded border border-line bg-panel p-1 text-[11px] text-fg"><option value="auto">Automatycznie</option><option value="nvidia">NVIDIA</option><option value="openrouter" disabled>OpenRouter · brak klucza</option></select></label><button type="button" onClick={()=>void trace()} disabled={busy} className="rounded border border-line p-2 text-[10px] text-cyan disabled:opacity-50">ŚLEDZENIE OSA</button><span className="ml-auto hidden text-[10px] text-dim sm:inline">BEZ PŁATNYCH WYWOŁAŃ</span>{busy?<button type="button" onClick={()=>{cancel();setError("Odbiór przerwany. Serwer mógł kontynuować; wynik niezweryfikowany.");}} className="ml-auto shrink-0 rounded-lg border border-line px-3 py-2 text-xs text-warn">Przerwij</button>:<button data-testid="osa-send" disabled={!draft.trim()} className="ml-auto shrink-0 rounded-lg bg-cyan px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Wyślij ↑</button>}</div>
+        <div className="flex items-center gap-2 border-t border-white/5 pt-2"><label className="text-[10px] text-dim">Model <select aria-label="Wybierz model" value={current.model} onChange={e=>selectModel(e.target.value as ModelId)} className="rounded border border-line bg-panel p-1 text-[11px] text-fg"><option value="auto">Automatycznie</option><option value="nvidia">NVIDIA</option><option value="openrouter" disabled>OpenRouter · brak klucza</option></select></label><button type="button" onClick={()=>void trace()} disabled={busy} className="rounded border border-line p-2 text-[10px] text-cyan disabled:opacity-50">ŚLEDZENIE OSA</button><span className="ml-auto hidden text-[10px] text-dim sm:inline">BEZ PŁATNYCH WYWOŁAŃ</span>{busy?<button type="button" onClick={()=>{cancel();setError("Odbiór przerwany. Serwer mógł kontynuować; wynik niezweryfikowany.");}} className="ml-auto shrink-0 rounded-lg border border-line px-3 py-2 text-xs text-warn">Przerwij</button>:<button data-testid="osa-send" disabled={!draft.trim()||!cacheReady} className="ml-auto shrink-0 rounded-lg bg-cyan px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Wyślij ↑</button>}</div>
       </form><p className="mx-auto mt-2 max-w-[820px] text-center text-[10px] text-dim">{!modelStatus?"Stan połączenia z modelem nie został potwierdzony.":modelStatus.configured?"Odpowiedzi AI pochodzą z NVIDIA i nie oznaczają wykonania narzędzi ani zweryfikowanego dowodu.":"Model AI nie jest połączony w tym środowisku. Narzędzia i dowody działają osobno."}</p></div>
     </div>
   </section>;
