@@ -71,7 +71,7 @@ test('API requires authentication, protects tenant reads and rejects generic man
 });
 
 test("P0 HTML: campaign dashboard with provider wrapper is extracted, structurally verified and never fabricated",()=>{
-  const raw=`Oto aplikacja OSA Commerce Decision Agent:\n\\`\\`\\`html\n<!doctype html><html lang="pl"><head><title lang="pl">Analiza kampanii</title></head><body><main><h1>Kampanie A/B/C</h1><p>Brak danych dla C</p></main></body></html>\n\\`\\`\\``;
+  const raw="Oto aplikacja OSA Commerce Decision Agent:\\n```html\\n<!doctype html><html lang=\"pl\"><head><title lang=\"pl\">Analiza kampanii</title></head><body><main><h1>Kampanie A/B/C</h1><p>Brak danych dla C</p></main></body></html>\\n```";
   const content=normalizeGeneratedArtifact(raw,"webapp");
   assert.match(content,/^<!doctype html>/i);assert.match(content,/Brak danych dla C/);
   assert.equal(content.endsWith("</html>"),true);
