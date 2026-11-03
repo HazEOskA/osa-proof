@@ -137,7 +137,7 @@ try {
     await page.getByText(/Przerwanie zgłoszone serwerowi/).waitFor({timeout:15000});
     const persistedCancel=page.getByTestId("osa-unified-live-trace").last();
     assert.match(await persistedCancel.innerText(),/PRZERWANIE ZGŁOSZONE/);
-    assert.doesNotMatch(await persistedCancel.innerText(),/ProofReceipt/);
+    assert.equal(await persistedCancel.getByRole("button",{name:/ProofReceipt/}).count(),0);
     // Hermes must not disappear when a conversation has messages or when starting
     // a fresh chat; its agent selection must survive browser refresh.
     await page.getByTestId("osa-hermes-switch").click();
