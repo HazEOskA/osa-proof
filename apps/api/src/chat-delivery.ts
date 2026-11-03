@@ -29,7 +29,7 @@ export class ChatDelivery {
     return {configured:!!this.generate || !!this.env.NVIDIA_API_KEY?.trim(), enabled:!!this.generate || (!!this.env.NVIDIA_API_KEY?.trim() && this.env.OSA_NVIDIA_FREE_TIER_ACK === "true"),
       provider:"NVIDIA",model:this.env.OSA_DELIVERY_MODEL?.trim() || MODEL,model_generated:true,outputs:["webapp","document"],persistence:"DOWNLOAD_AND_BROWSER_CACHE",execution_fence:"INSTANCE_ONLY"};
   }
-  async handle(req: IncomingMessage, res: ServerResponse, session: SessionRecord, kernel: MissionKernel, memory: MemoryService = new MemoryService(), registry?:LiveExecutionRegistry): Promise<void> {
+  async handle(req: IncomingMessage, res: ServerResponse, session: SessionRecord, kernel: MissionKernel, memory: MemoryService = new MemoryService(), liveControl?:LiveExecutionRegistry): Promise<void> {
     const json=(status:number,value:unknown)=>{res.writeHead(status,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"});res.end(JSON.stringify(value));};
     if(req.method === "GET") return json(200,{...this.status(),memory_configured:Boolean(memory.adapter)});
     let request: Input;
@@ -61,8 +61,8 @@ export class ChatDelivery {
     if(!previous && this.attempts.size>=100)return json(429,{code:"DELIVERY_CAPACITY",error:"Limit zadań tej instancji. Nie uruchomiono modelu."});
     if(!previous){try{fleetLimit();}catch(e){return json(429,{code:"FLEET_RATE_LIMIT",error:"Limit wywołań modelu. Spróbuj później."});}}
     let cancelSignal:AbortSignal|undefined;
-    if(!previous&&registry){
-      try{cancelSignal=registry.start(session,request.execution_id,request.conversation_id);}
+    if(!previous&&liveControl){
+      try{cancelSignal=liveControl.start(session,request.execution_id,request.conversation_id);}
       catch(e){return json(e instanceof LiveControlError?e.status:500,{
         code:e instanceof LiveControlError?e.code:"LIVE_CONTROL_ERROR",error:"Nie przyjęto zadania do śledzenia."});}
     }
@@ -146,13 +146,13 @@ export class ChatDelivery {
       const result={...body,bundle_sha256:digest(body)};
       if(cancelSignal?.aborted)throw Error("ARTIFACT_CANCEL_UNCONFIRMED");
       this.attempts.set(key,{hash,status:"COMPLETED",result,at:Date.now()});
-      registry?.finish(session,request.execution_id,"COMPLETED");
+      liveControl?.finish(session,request.execution_id,"COMPLETED");
       progress("completed","COMPLETED",{source:"MISSION_KERNEL",verdict:run.verdict,detail:"Misja zakończona; dostępny rzeczywisty bundle"});
       emit("complete",result);
     } catch {
       const cancelled=Boolean(cancelSignal?.aborted);
       this.attempts.set(key,{hash,status:"FAILED",at:Date.now()});
-      registry?.finish(session,request.execution_id,cancelled?"CANCEL_UNCONFIRMED":"FAILED");
+      liveControl?.finish(session,request.execution_id,cancelled?"CANCEL_UNCONFIRMED":"FAILED");
       progress(cancelled?"cancel_unconfirmed":"failed",cancelled?"CANCEL_UNCONFIRMED":"FAILED",{
         source:"MISSION_KERNEL",code:cancelled?"CANCEL_UNCONFIRMED":"DELIVERY_EXECUTION_UNCONFIRMED",
         detail:cancelled?"Żądanie anulowania wysłano; zakończenie po stronie NVIDIA niepotwierdzone.":"Wykonanie nie zostało potwierdzone; dotychczasowe zdarzenia zachowano w kliencie."});
