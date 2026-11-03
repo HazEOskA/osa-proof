@@ -61,7 +61,7 @@ function prepareNvidiaRequest(prompt: unknown, env: NodeJS.ProcessEnv, context?:
   const previous: {role:string;content:string}[] = Array.isArray(history) ? history : [];
   const model = nvidiaStatus(env).model;
   if (context?.memory) verifyMemoryContext(context.memory);
-  const requestBody = { model, stream: false, max_tokens: context?.artifact ? 4096 : 1024,
+  const requestBody = { model, stream: false, max_tokens: context?.artifact ? 8192 : 3072,
     // NVIDIA Nemotron 3.5 Lightning defaults to reasoning; conversational mode
     // must return a direct answer rather than spending the short request budget on thinking.
     ...(model === "nvidia/nemotron-3.5-lightning-30b-a3b" ? { chat_template_kwargs: { enable_thinking: false } } : {}),
@@ -99,7 +99,9 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
   // Missing finish_reason remains compatible with older OpenAI-compatible servers.
   // Explicit truncation, filtering or a tool request is never a completed chat answer.
   if (choice?.finish_reason != null && choice.finish_reason !== "stop")
-    throw new NvidiaError(502, "NVIDIA_INCOMPLETE_RESPONSE", "NVIDIA nie ukończyła odpowiedzi tekstowej. Odpowiedź nie została zaakceptowana.");
+    throw new NvidiaError(502, "NVIDIA_INCOMPLETE_RESPONSE", choice.finish_reason === "length"
+      ? "NVIDIA przekroczyła limit tokenów odpowiedzi. Wynik niekompletny — skróć zakres zadania. Niczego nie zatwierdzono."
+      : "NVIDIA nie zakończyła odpowiedzi poprawnie. Wynik nie został zaakceptowany.");
   if ((choice?.message?.refusal != null && choice.message.refusal !== "") ||
       (choice?.message?.tool_calls != null && (!Array.isArray(choice.message.tool_calls) || choice.message.tool_calls.length > 0)))
     throw new NvidiaError(502, "NVIDIA_NON_TEXT_RESPONSE", "NVIDIA zwróciła odmowę lub żądanie narzędzia zamiast odpowiedzi tekstowej.");

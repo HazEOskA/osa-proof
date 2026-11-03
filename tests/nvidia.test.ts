@@ -28,7 +28,7 @@ test("NVIDIA Lightning: direct chat disables lengthy reasoning without affecting
     const result = await nvidiaComplete("Siema", {NVIDIA_API_KEY:"test-secret", NVIDIA_MODEL:model}, async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       assert.equal(body.stream, false);
-      assert.equal(body.max_tokens, 1024);
+      assert.equal(body.max_tokens, 3072);
       if (model === "nvidia/nemotron-3.5-lightning-30b-a3b")
         assert.deepEqual(body.chat_template_kwargs, { enable_thinking: false });
       else assert.equal(body.chat_template_kwargs, undefined);
@@ -168,4 +168,22 @@ test("Zapytaj OSĘ: contextual guide is scoped, read-only and never gains tool a
     await assert.rejects(nvidiaComplete("Cześć",{NVIDIA_API_KEY:"unit-test"},rejects,{agent:"guide",view:bad}),
       (e:unknown)=>e instanceof NvidiaError&&e.code==="INVALID_GUIDE_VIEW");
   }
+});
+
+test("P0: output token budgets cover short campaign audits and HTML without accepting truncation",async()=>{
+  const prompt="Przeanalizuj kampanie A i B, policz CPA, ROAS oraz zysk z marży.";
+  let calls=0;
+  for(const artifact of [undefined,"webapp" as const]){
+    const answer=await nvidiaComplete(prompt,{NVIDIA_API_KEY:"unit-key",NVIDIA_MODEL:"nvidia/test"},async(_url,init)=>{
+      calls++;
+      const req=JSON.parse(String(init?.body));
+      assert.equal(req.max_tokens,artifact?8192:3072);
+      assert.equal(req.stream,false);
+      return Response.json({choices:[{message:{content:artifact?"<!doctype html><html><head><title>OSA</title></head><body>OK</body></html>":"CPA A wzrósł o 60%."},finish_reason:"stop"}]});
+    },artifact?{agent:"coding",artifact}:undefined);
+    assert.match(answer.text,artifact?/doctype/:/CPA/);
+  }
+  assert.equal(calls,2);
+  await assert.rejects(nvidiaComplete(prompt,{NVIDIA_API_KEY:"unit-key"},async()=>Response.json({choices:[{message:{content:"niedokończone"},finish_reason:"length"}]})),
+    (e:unknown)=>e instanceof NvidiaError && e.code==="NVIDIA_INCOMPLETE_RESPONSE" && /limit tokenów/.test(e.message));
 });
