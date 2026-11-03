@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { ApiState, createApiServer } from '../apps/api/src';
 import { createDevFixtureRegistry } from '../apps/api/src/server';
 import { MissionKernel, ExecutorRegistry } from '../packages/runtime/src';
 import { verifyCompletedMission } from '../packages/proof-core/src';
-import { demoTeam, demoMission, installDemoExecutors, demoReport, validateDemoRequest, DemoRequest, DemoOutput } from '../packages/demo-team/src';
+import { demoTeam, demoMission, installDemoExecutors, demoReport, validateDemoRequest, normalizeGeneratedArtifact, inspectArtifact, DemoRequest, DemoOutput } from '../packages/demo-team/src';
 const request:DemoRequest={objective:'Create a delivery report',kind:'document',mode:'starter',target:'artifact'};
 async function run(changes:Partial<DemoRequest>={}) {
  const registry=createDevFixtureRegistry(),kernel=new MissionKernel(),team=demoTeam({organization_id:'org_demo',project_id:'project_demo'});
@@ -68,3 +69,16 @@ test('API requires authentication, protects tenant reads and rejects generic man
   assert.equal((await fetch(base+'/missions',{method:'POST',headers,body:JSON.stringify({...result.record.mission,mission_id:'forged'})})).status,403);
  }finally{await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));}
 });
+
+test("P0 HTML: campaign dashboard with provider wrapper is extracted, structurally verified and never fabricated",()=>{
+  const raw="Oto aplikacja OSA Commerce Decision Agent:\\n```html\\n<!doctype html><html lang=\"pl\"><head><title lang=\"pl\">Analiza kampanii</title></head><body><main><h1>Kampanie A/B/C</h1><p>Brak danych dla C</p></main></body></html>\\n```";
+  const content=normalizeGeneratedArtifact(raw,"webapp");
+  assert.match(content,/^<!doctype html>/i);assert.match(content,/Brak danych dla C/);
+  assert.equal(content.endsWith("</html>"),true);
+  const artifact={name:"index.html",media_type:"text/html",content,bytes:Buffer.byteLength(content),sha256:requireHash(content)};
+  assert.deepEqual(inspectArtifact(artifact,"webapp"),[]);
+  const partial=normalizeGeneratedArtifact("<!doctype html><html><title>Urwane</title><body><p>Kampania A", "webapp");
+  const incomplete={...artifact,content:partial,bytes:Buffer.byteLength(partial),sha256:requireHash(partial)};
+  assert.ok(inspectArtifact(incomplete,"webapp").includes("Standalone HTML document required."));
+});
+function requireHash(text:string){return createHash("sha256").update(text).digest("hex");}

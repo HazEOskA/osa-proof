@@ -51,12 +51,34 @@ function starter(request:DemoRequest):string {
   if(request.kind==='document') return `# ${request.objective}\n\n## Objective\n${request.objective}\n\n## Scope\nThis is a deterministic starter document produced by OSA Delivery Lab, not researched or model-generated content.\n\n## Plan\n1. Confirm requirements and sources.\n2. Draft the requested sections.\n3. Review accuracy and citations.\n4. Accept the final deliverable.\n\n## Acceptance checklist\n- [ ] Human confirms that this document addresses the objective.\n- [ ] Facts and citations are reviewed.\n\n## Limitations\nThe framework verifies bytes and structural checks. Semantic quality and factual accuracy are unverified.\n`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'"><title>OSA Delivery Lab</title><style>body{margin:0;background:#f6f7fb;color:#1e2940;font:16px system-ui}main{max-width:740px;margin:8vh auto;padding:24px}h1{font-size:36px}input,button{font:inherit;padding:12px;border:1px solid #9da9be;border-radius:8px}button{background:#4248cd;color:white;cursor:pointer}li{padding:12px;border-bottom:1px solid #ccd2e0}small{color:#46536a}</style></head><body><main><small>OSA · deterministic starter webapp</small><h1>${escapeHtml(request.objective)}</h1><p>A working task list starter. It does not interpret arbitrary application requirements.</p><div id="tasks"><label for="task">Task</label> <input id="task" maxlength="160" required> <button type="button" id="add-task">Add task</button></div><ul id="list"></ul><p id="count" role="status">0 tasks</p><small>No backend, cloud deployment or persistent database is included.</small></main><script>document.getElementById('add-task').addEventListener('click',function(){var input=document.getElementById('task');var text=input.value.trim();if(!text)return;var item=document.createElement('li');item.textContent=text;document.getElementById('list').appendChild(item);input.value='';document.getElementById('count').textContent=document.querySelectorAll('#list li').length+' tasks';});</script></body></html>`;
 }
+
+/** Extract an actual complete model-produced document. Do not synthesize missing tags or code. */
+export function normalizeGeneratedArtifact(raw:string,kind:"webapp"|"document"):string {
+  let source=raw.replace(/^\uFEFF/,"").trim();
+  const fence=source.match(/^\x60{3}(?:html|htm|markdown|md)?[ \t]*\r?\n([\s\S]*?)\r?\n\x60{3}[ \t]*$/i);
+  if(fence)source=fence[1].trim();
+  if(kind==="webapp"){
+    const starts=[...source.matchAll(/<!doctype\s+html\s*>/gi)];
+    const ends=[...source.matchAll(/<\/html\s*>/gi)];
+    // Exactly one document is required. Any remaining incomplete HTML fails inspector.
+    if(starts.length===1 && ends.length===1 && ends[0].index>starts[0].index){
+      source=source.slice(starts[0].index,ends[0].index+ends[0][0].length).trim();
+    }
+  }
+  return source;
+}
+
 export function inspectArtifact(artifact:DemoArtifact, kind:DemoRequest['kind']):string[] {
   const failures:string[]=[];
   if(!artifact.content.trim() || artifact.bytes!==Buffer.byteLength(artifact.content) || artifact.sha256!==sha(artifact.content) || artifact.bytes>128*1024) failures.push('Artifact content or digest invalid.');
   if(kind==='document' && !/^#\s+\S/m.test(artifact.content)) failures.push('Markdown heading required.');
   if(kind==='webapp') {
-    if(!/^\s*<!doctype html>/i.test(artifact.content) || !/<title>[^<]+<\/title>/i.test(artifact.content) || !/<body[\s>]/i.test(artifact.content)) failures.push('Standalone HTML document required.');
+    if(!/^\s*<!doctype\s+html\s*>/i.test(artifact.content) ||
+       !/<html[\s>]/i.test(artifact.content) ||
+       !/<title\b[^>]*>\s*[^<\s][\s\S]*?<\/title\s*>/i.test(artifact.content) ||
+       !/<body[\s>]/i.test(artifact.content) ||
+       !/<\/body\s*>/i.test(artifact.content) ||
+       !/<\/html\s*>\s*$/i.test(artifact.content)) failures.push('Standalone HTML document required.');
     // Syntax parsing only; untrusted generated JavaScript is NEVER run in the control plane.
     for(const match of artifact.content.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
       try {new Script(match[1]);} catch {failures.push('Inline JavaScript syntax invalid.');}

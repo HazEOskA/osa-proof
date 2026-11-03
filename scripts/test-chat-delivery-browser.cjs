@@ -11,7 +11,7 @@ const child=process.env.OSA_DELIVERY_E2E_URL?undefined:spawn(process.execPath,['
     const page=await browser.newPage({viewport:{width,height}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto(base);await page.locator('section[aria-label="Uruchamianie"]').getByRole('button',{name:'Czat floty agentów',exact:true}).click();
     await page.getByRole('button',{name:'Utwórz artefakt',exact:true}).click();
-    await page.getByTestId('osa-composer').fill('Zbuduj po polsku mały licznik z przyciskiem Dodaj i widocznym wynikiem. Bez sieci i bibliotek.');
+    await page.getByTestId('osa-composer').fill('OSA Commerce Decision Agent: interaktywny polski dashboard kampanii A, B i C. A wydatki 1200, przychód 6000, marża 40%, CPA 30 do 48. B wydatki 1800, przychód 3000, marża 35%, CPA 45 do 70. C wydatki 900, przychód NIEZNANY, CPA 20 do 24. Przedstaw DRAFT i pilot 10 przypadków, nie wymyślaj brakujących danych. Dodaj licznik z przyciskiem Dodaj. Bez sieci i bibliotek.');
     await page.getByTestId('osa-send').click();
     await page.getByRole('region',{name:'Przebieg agentów na żywo'}).waitFor();
     const result=page.getByTestId('osa-delivery-result');await result.waitFor({timeout:90000});
@@ -21,7 +21,8 @@ const child=process.env.OSA_DELIVERY_E2E_URL?undefined:spawn(process.execPath,['
     }
     const bundle=JSON.parse(fs.readFileSync(files['Pobierz bundle'],'utf8'));
     const bytes=fs.readFileSync(files['Pobierz artefakt']);assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),bundle.artifact.sha256);
-    assert.equal(bundle.run.verdict,'VERIFIED');assert.equal(JSON.parse(fs.readFileSync(files['Pobierz ProofReceipt'],'utf8')).proof_id,bundle.run.proof.proof_id);
+    assert.equal(bundle.run.verdict,'VERIFIED');
+    assert.match(bundle.artifact.content,/OSA Commerce Decision Agent/);assert.equal(JSON.parse(fs.readFileSync(files['Pobierz ProofReceipt'],'utf8')).proof_id,bundle.run.proof.proof_id);
     assert.deepEqual(JSON.parse(fs.readFileSync(files['Pobierz evidence'],'utf8')),bundle.run.evidence);
     assert.equal(fs.readFileSync(files['Pobierz trace'],'utf8').trim().split('\n').length,bundle.record.timeline.length);
     await result.getByRole('button',{name:'Podgląd artefaktu',exact:true}).click();

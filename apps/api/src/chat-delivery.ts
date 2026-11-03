@@ -6,6 +6,7 @@ import { demoMission, demoReport, demoTeam, installDemoExecutors, type DemoReque
 import { ExecutorRegistry, MissionKernel } from "../../../packages/runtime/src";
 import { digest, verifyCompletedMission } from "../../../packages/proof-core/src";
 import { fleetLimit, nvidiaComplete, NvidiaError } from "./nvidia";
+import { generateNvidiaArtifact } from "./artifact-generation";
 
 export type ArtifactGenerator = (request: DemoRequest) => Promise<{content: string; evidence: EvidenceInput[]}>;
 type Input = { prompt: string; kind: "webapp" | "document"; execution_id: string; conversation_id: string; remember?: boolean };
@@ -82,15 +83,11 @@ export class ChatDelivery {
             if(request.remember)remembered=await memory.remember(session,request.conversation_id,request.prompt);
             memoryContext=await memory.recall(session,request.conversation_id,request.prompt);
           }
-          let generated;
-          if(this.generate)generated=await this.generate(spec);
-          else {
-            const answer=await nvidiaComplete(spec.objective,{...this.env,NVIDIA_MODEL:this.status().model,OSA_ZERO_COST_ONLY:"true"},fetch,{agent:"coding",artifact:spec.kind as "webapp"|"document",...(memoryContext?{memory:memoryContext}:{})});
-            const content=answer.text.replace(/^\s*```(?:html|markdown|md)?\s*\n/i,"").replace(/\n```\s*$/,"");
-            generated={content,evidence:[{kind:"model_artifact_generation",data:{provider:answer.provider,model:answer.model,request_id:answer.request_id,provider_response_id:answer.provider_response_id,request_sha256:answer.request_sha256,response_sha256:createHash("sha256").update(answer.text).digest("hex"),latency_ms:answer.latency_ms,execution_id:request.execution_id,
-              ...(memoryContext?{memory_context_sha256:memoryContext.context_sha256,memory_brain_id:memoryContext.brain_id,memory_ledger_head:memoryContext.ledger_head}:{})}}]};
-          }
-          if(!generated.content.trim() || Buffer.byteLength(generated.content)>128*1024)throw new Error("ARTIFACT_SIZE_INVALID");
+          const generated=this.generate
+            ? await this.generate(spec)
+            : await generateNvidiaArtifact(spec,{...this.env,OSA_DELIVERY_MODEL:this.status().model},memoryContext,undefined,undefined,request.execution_id);
+          if(!generated.content.trim() || Buffer.byteLength(generated.content)>128*1024)
+            throw new Error("ARTIFACT_SIZE_INVALID");
           emit("model_completed",{execution_id:request.execution_id,bytes:Buffer.byteLength(generated.content)});
           return generated;
          }catch(e){emit("model_error",{execution_id:request.execution_id,
