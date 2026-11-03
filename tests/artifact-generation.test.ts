@@ -14,7 +14,7 @@ const complete=(replies:string[],seen:string[]) => (async(prompt:unknown)=>{
   return {provider:"NVIDIA",model:"openai/gpt-oss-20b",text,
     request_id:"fixture-id",provider_response_id:"provider-fixture",request_sha256:"fixture",
     latency_ms:1,finish_reason:"stop",status:"PROVIDER_RESPONSE"} as const;
-}) as ModelComplete;
+}) as unknown as ModelComplete;
 test("P0 commerce demo: HTML returned with Markdown commentary extracts genuine complete bytes and passes Proof structural gate",async()=>{
   const seen:string[]=[],mock=complete(["Raport dla kampanii:\n\x60\x60\x60html\n"+html+"\n\x60\x60\x60"],seen);
   const x=await generateNvidiaArtifact(spec,{NVIDIA_API_KEY:"unit",OSA_NVIDIA_FREE_TIER_ACK:"true"},undefined,mock,()=>{throw Error("NO_SECOND_CALL");});
