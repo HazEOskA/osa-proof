@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useOsa } from "../ctx";
 import AccountControl from "./AccountControl";
-import ChatDeliveryResult, { ChatDeliveryProgress } from "./ChatDelivery";
-import { streamDelivery, type DeliveryBundle, type DeliveryProgress } from "../lib/chat-delivery";
+import ChatDeliveryResult from "./ChatDelivery";
+import UnifiedLiveProgress from "./UnifiedLiveProgress";
+import { appendLiveEvent, clientTraceEvent, newLiveTrace, streamLiveChat, type LiveTrace, type LiveTraceEvent } from "../lib/live-execution";
+import { streamDelivery, type DeliveryBundle } from "../lib/chat-delivery";
 import { loadChatHistory, saveChatHistory } from "../lib/chat-history";
 import { verifyRun } from "../lib/verify";
 import { statusText } from "../ui/primitives";
@@ -14,7 +16,7 @@ import type { MemoryPointer } from "./Memory";
 // Native OSA surface. No iframe, no client secrets, no pretend model execution.
 type AgentId = "jeverson" | "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
 type ModelId = "auto" | "nvidia" | "openrouter";
-type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; jobKind?:"model"|"artifact"; providerModel?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
+type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; trace?:LiveTrace; jobKind?:"model"|"artifact"; providerModel?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
 type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
 type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
 type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{resource:string;method:string;source:string;http_status:null;status:string}> };
@@ -75,8 +77,6 @@ export default function JeversonChat() {
   const [draft,setDraft] = useState("");
   const [artifactMode,setArtifactMode] = useState(false);
   const [artifactKind,setArtifactKind] = useState("webapp");
-  const [deliveryProgress,setDeliveryProgress] = useState<DeliveryProgress|null>(null);
-  const [deliveryBusy,setDeliveryBusy] = useState(false);
   const [remember,setRemember] = useState(false);
   const memoryState = useMemoryStatus();
   const [search,setSearch] = useState("");
@@ -97,6 +97,7 @@ export default function JeversonChat() {
   const [modelReplied,setModelReplied] = useState(false);
   const [lastRun,setLastRun] = useState<{sessionId:string;run:Run;verified:boolean}|null>(null);
   const seq = useRef(0), controller = useRef<AbortController|null>(null), bottom = useRef<HTMLDivElement>(null);
+  const activeExecution = useRef<{executionId:string;conversationId:string}|null>(null);
   const current = sessions.find(s=>s.id===activeId)||sessions[0];
   const agent = AGENTS.find(a=>a.id===current.agent)||AGENTS[0];
   const activeRun = lastRun && lastRun.sessionId===current.id && lastRun.verified?lastRun.run:null;
@@ -201,7 +202,43 @@ export default function JeversonChat() {
     void api<ModelStatus>("/nvidia/status").then(setModelStatus).catch(()=>setModelStatus(null));
     return ()=>{seq.current++;controller.current?.abort();};
   },[]);
-  function cancel(){seq.current++;controller.current?.abort();controller.current=null;setBusy(false);setDeliveryBusy(false);setDeliveryProgress(null);}
+  function updateTrace(sessionId:string,executionId:string,event:LiveTraceEvent){
+    update(sessionId,s=>({...s,updated:stamp(),messages:s.messages.map(m=>
+      m.role==="user"&&m.executionId===executionId&&m.trace?
+      {...m,trace:appendLiveEvent(m.trace,event)}:m)}));
+  }
+  function updateTasks(sessionId:string,executionId:string,tasks:{agent_id:string;state:string}[]){
+    update(sessionId,s=>({...s,messages:s.messages.map(m=>
+      m.role==="user"&&m.executionId===executionId&&m.trace?
+      {...m,trace:{...m.trace,tasks}}:m)}));
+  }
+  function cancel(){
+    const active=activeExecution.current;
+    seq.current++;
+    controller.current?.abort();
+    controller.current=null;activeExecution.current=null;
+    setBusy(false);
+    if(!active)return;
+    updateTrace(active.conversationId,active.executionId,
+      clientTraceEvent(active.executionId,"cancel_requested","CANCEL_REQUESTED","Przesłano żądanie anulowania do API"));
+    // Cancellation is a new authenticated HTTP request: aborting the streaming GET/POST
+    // alone does not prove that the provider stopped its inference.
+    void api<{status:"CANCEL_REQUESTED"|"CANCEL_UNCONFIRMED";detail:string}>("/chat/live-cancel",{
+      execution_id:active.executionId,conversation_id:active.conversationId
+    }).then(result=>{
+      updateTrace(active.conversationId,active.executionId,clientTraceEvent(
+        active.executionId,result.status==="CANCEL_REQUESTED"?"cancel_requested":"cancel_unconfirmed",
+        result.status,result.detail));
+      setError(result.status==="CANCEL_REQUESTED"?
+        "Przerwanie zgłoszone serwerowi. Nie potwierdzono zatrzymania NVIDIA.":
+        "CANCEL_UNCONFIRMED · Serwer nie potwierdził anulowania wykonania.");
+    }).catch(()=>{
+      updateTrace(active.conversationId,active.executionId,
+        clientTraceEvent(active.executionId,"cancel_unconfirmed","CANCEL_UNCONFIRMED",
+          "Brak potwierdzenia anulowania z serwera; wykonanie mogło być kontynuowane."));
+      setError("CANCEL_UNCONFIRMED · Nie udało się potwierdzić anulowania po stronie serwera.");
+    });
+  }
   function openSession(sessionId:string){cancel();setActiveId(sessionId);setMobileHistory(false);setAgentOpen(false);setInspector(false);setError("");}
   function createChat(){const next=empty(current.agent);setSessions(old=>[next,...old].slice(0,50));openSession(next.id);setDraft("");}
   function update(sessionId:string,fn:(s:Session)=>Session){setSessions(old=>old.map(s=>s.id===sessionId?fn(s):s));}
@@ -223,7 +260,11 @@ export default function JeversonChat() {
     const sessionId=current.id;setDraft("");setError("");
     const durableNow=durable&&!remember&&(artifactMode||!command(text));
     const durableId=durableNow?"exec_"+id():undefined;
-    addMessage(sessionId,"user",text,"USER",durableId?{executionId:durableId,jobKind:artifactMode?"artifact":"model"}:{});
+    const executionId=durableId??"exec_"+id();
+    const mode=artifactMode?"artifact":command(text)?"tool":"conversation";
+    addMessage(sessionId,"user",text,"USER",{executionId,
+      trace:newLiveTrace(executionId,sessionId,mode),
+      ...(durableId?{jobKind:artifactMode?"artifact":"model"}:{})});
     if(durableId){
       setBusy(true);
       try{
@@ -239,11 +280,22 @@ export default function JeversonChat() {
     if(artifactMode){
       if(text.length>4000){setError("Cel artefaktu może mieć maksymalnie 4000 znaków.");return;}
       
-      const request=++seq.current,abort=new AbortController(),execution_id="exec_"+id();controller.current=abort;setBusy(true);setDeliveryBusy(true);setDeliveryProgress(null);
+      const request=++seq.current,abort=new AbortController(),execution_id=executionId;controller.current=abort;activeExecution.current={executionId,conversationId:sessionId};setBusy(true);
       try {
         const bundle=await streamDelivery({prompt:text,kind:artifactKind,execution_id,conversation_id:sessionId,remember},(type,data)=>{
           if(request!==seq.current)return;
-          if(type==="progress")setDeliveryProgress(data);
+          if(type==="trace")updateTrace(sessionId,execution_id,data as LiveTraceEvent);
+          if(type==="progress"){
+            const tasks=Array.isArray(data.tasks)?data.tasks.filter((t:unknown)=>
+              Boolean(t)&&typeof t==="object"&&"agent_id" in t&&"state" in t)
+              .map((t:{agent_id:string;state:string})=>({agent_id:t.agent_id,state:t.state})):[];
+            updateTasks(sessionId,execution_id,tasks);
+            updateTrace(sessionId,execution_id,{
+              schema:"osa.live_execution.v1",execution_id,phase:"mission_update",
+              state:"RUNNING",at:data.events?.at(-1)?.timestamp||stamp(),source:"MISSION_KERNEL",
+              detail:"Stan misji: "+String(data.state||"UNKNOWN")
+            });
+          }
           if(type==="model_error")setError(data.error);
         },abort.signal);
         if(request!==seq.current)return;
@@ -251,8 +303,12 @@ export default function JeversonChat() {
          const memoryVerified=bundle.memory_status!=="UNAVAILABLE";
          addMessage(sessionId,"assistant",bundle.artifact?"Zespół zakończył generowanie artefaktu. Poniżej podgląd, dowody i pliki do pobrania.":"Zespół nie dostarczył zaakceptowanego artefaktu. Zachowano faktyczny przebieg i dowody.",bundle.artifact&&memoryVerified?"VERIFIED":"BLOCKED",{executionId:bundle.execution_id,runId:bundle.run.run_id,delivery:bundle});
          if(remember && bundle.memory_statement_receipt)setRemember(false);
-      }catch(e){if(request===seq.current&&!abort.signal.aborted)setError("ARTEFAKT · "+(e instanceof Error?e.message:String(e))+" · "+execution_id);}
-      finally{if(request===seq.current){controller.current=null;setBusy(false);setDeliveryBusy(false);setDeliveryProgress(null);}}
+      }catch(e){if(request===seq.current&&!abort.signal.aborted){
+        updateTrace(sessionId,execution_id,clientTraceEvent(execution_id,"failed","FAILED",
+          "Zakończono bez potwierdzonego bundle: "+(e instanceof Error?e.message:String(e))));
+        setError("ARTEFAKT · "+(e instanceof Error?e.message:String(e))+" · "+execution_id);
+      }}
+      finally{if(request===seq.current){controller.current=null;activeExecution.current=null;setBusy(false);}}
       return;
     }
     if(command(text)&&remember){setError("Zapis wiadomości dotyczy rozmowy. Wyłącz tę opcję przed wykonaniem narzędzia.");return;}
@@ -267,29 +323,41 @@ export default function JeversonChat() {
       setError("MODEL NIEDOSTĘPNY · NVIDIA_API_KEY nie jest jeszcze skonfigurowany w tym środowisku Vercel. Żadne wywołanie nie zostało wykonane.");
       return;
     }
-    const request=++seq.current,abort=new AbortController();controller.current=abort;setBusy(true);
+    const request=++seq.current,abort=new AbortController();controller.current=abort;activeExecution.current={executionId,conversationId:sessionId};setBusy(true);
     try {
       if(!command(text)) {
         const history=current.messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}));
-        const answer=await api<ModelAnswer>("/nvidia/fleet-chat",{prompt:text,agent:current.agent,history,conversation_id:sessionId,remember},abort.signal);
+        const answer=await streamLiveChat({
+          prompt:text,agent:current.agent,history,conversation_id:sessionId,
+          execution_id:executionId,remember
+        },(type,data)=>{
+          if(request!==seq.current)return;
+          if(type==="trace")updateTrace(sessionId,executionId,data as LiveTraceEvent);
+        },abort.signal);
         if(request!==seq.current)return;
         if(!answer.text?.trim()||answer.status!=="PROVIDER_RESPONSE")throw Error("MODEL_INVALID_RESPONSE");
         addMessage(sessionId,"assistant",answer.text,"MODEL",{
           ...(typeof (answer.provider_model||answer.model)==="string" && (answer.provider_model||answer.model) ? {providerModel:answer.provider_model||answer.model} : {}),
           ...(answer.memory ? {memory:{document_id:answer.memory.receipt.document_id,receipt_sha256:answer.memory.receipt.receipt_sha256},remembered:Boolean(answer.memory.remembered)} : {}),
-          memoryUnavailable:answer.memory_status==="UNAVAILABLE",
+          memoryUnavailable:answer.memory_status==="UNAVAILABLE",executionId,
         });
         setRemember(false);
         setModelReplied(true);
         return;
       }
-      const bundle=await api<Bundle>("/unified/execute",{message:text,execution_id:"exec_"+id()},abort.signal);
+      updateTrace(sessionId,executionId,clientTraceEvent(executionId,"request_sent","RUNNING",
+        "Wysłano żądanie narzędzia; API JSON nie emituje etapów SSE."));
+      const bundle=await api<Bundle>("/unified/execute",{message:text,execution_id:executionId},abort.signal);
       if(request!==seq.current)return;await verify(bundle,sessionId);
+      updateTrace(sessionId,executionId,clientTraceEvent(executionId,"tool_completed","COMPLETED",
+        "Odebrano wynik narzędzia i zweryfikowano ProofReceipt."));
       if(request!==seq.current)return;
       const output=bundle.run.final_output as Record<string,unknown>;
       const body=output&&typeof output.sha256==="string"?"SHA-256: "+output.sha256:JSON.stringify(output,null,2).slice(0,8000);
       addMessage(sessionId,"assistant",body,bundle.status==="EXECUTED"?"VERIFIED":"BLOCKED",{executionId:bundle.execution_id,runId:bundle.run.run_id});
     } catch(e) { if(request===seq.current&&!abort.signal.aborted){
+      updateTrace(sessionId,executionId,clientTraceEvent(executionId,"failed","FAILED",
+        "Nie udało się potwierdzić odpowiedzi: "+(e instanceof Error?e.message:String(e))));
       if(e instanceof ChatApiError&&e.memoryWrite){
         const receipt=e.memoryWrite;
         update(sessionId,s=>({...s,messages:s.messages.map((m,i)=>i===s.messages.length-1&&m.role==="user"?{...m,remembered:true,statementReceipt:receipt}:m)}));
@@ -297,7 +365,7 @@ export default function JeversonChat() {
       }
       setError("BŁĄD WYKONANIA · "+(e instanceof Error?e.message:String(e)));
     } }
-    finally {if(request===seq.current){controller.current=null;setBusy(false);}}
+    finally {if(request===seq.current){controller.current=null;activeExecution.current=null;setBusy(false);}}
   }
   async function trace() {
     if(busy)return;setError("");const sessionId=current.id,request=++seq.current,abort=new AbortController();controller.current=abort;setBusy(true);
@@ -346,9 +414,12 @@ export default function JeversonChat() {
         </div></div>:
         <div aria-label="Wiadomości" className="min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6"><div className="mx-auto flex min-h-full max-w-[820px] flex-col">
           {!current.messages.length&&<div className="flex flex-1 flex-col items-center justify-center py-8 text-center"><div aria-hidden className="osa-hermes-hero mb-7 flex h-[100px] w-[100px] items-center justify-center rounded-full border border-cyan/35 bg-cyan/10 text-5xl text-cyan">✦</div><h2 className="text-2xl font-semibold">Czym zajmiemy się dzisiaj?</h2><p className="mt-3 max-w-xl text-sm text-dim">{agent.name} · {agent.purpose}. Jedna rozmowa i dowody z prawdziwego Runtime.</p><div className="mt-6 flex flex-wrap justify-center gap-2">{["Pokaż status runtime","Oblicz SHA-256 tekstu: OSA Proof","Status workera"].map(t=><button key={t} onClick={()=>setDraft(t)} className="rounded-full border border-line bg-panel px-3 py-2 text-xs">{t}</button>)}</div></div>}
-          {current.messages.map(m=><article data-testid="osa-message" key={m.id} className={(m.role==="user"?"justify-end":"justify-start")+" mb-5 flex"}><div className={(m.role==="user"?"bg-[#19314b] text-white":"border border-white/10 bg-[#111b2a]")+" max-w-[min(92%,730px)] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13px] leading-6"}><div className="mb-1 text-[10px] uppercase tracking-wide text-dim">{m.role==="user"?"Ty":m.status==="MODEL"?("ODPOWIEDŹ MODELU AI"+(m.providerModel?" · NVIDIA · "+m.providerModel:"")):"Silnik OSA · "+statusText(m.status)}</div>{m.text}{m.jobKind&&!current.messages.some(x=>x.role==="assistant"&&x.executionId===m.executionId)&&<p role="status" className="mt-2 text-xs text-cyan">Misja {m.executionId} · status odczytywany z serwera. Możesz zamknąć kartę w trybie Durable.</p>}{m.memoryUnavailable&&<p role="status" className="mt-2 border-t border-warn/30 pt-2 text-xs text-warn">NeurOSA niedostępna. Odpowiedź modelu bez pamięci i bez dowodu NeurOSA.</p>}{m.remembered&&<p className="mt-2 text-xs text-cyan">Zapis Twojej wiadomości w NeurOSA został potwierdzony.</p>}{m.statementReceipt&&<MemoryStatementEvidence pointer={m.statementReceipt} statement={m.text}/>} {m.memory&&<MemoryEvidence pointer={m.memory} answer={m.text}/>} {m.delivery&&<ChatDeliveryResult bundle={m.delivery}/>} {m.executionId&&<div className="mt-2 break-all border-t border-white/10 pt-2 font-mono text-[9px] text-dim">{m.executionId}</div>}</div></article>)}
+          {current.messages.map(m=><article data-testid="osa-message" key={m.id} className={(m.role==="user"?"justify-end":"justify-start")+" mb-5 flex"}><div className={(m.role==="user"?"bg-[#19314b] text-white":"border border-white/10 bg-[#111b2a]")+" max-w-[min(92%,730px)] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13px] leading-6"}><div className="mb-1 text-[10px] uppercase tracking-wide text-dim">{m.role==="user"?"Ty":m.status==="MODEL"?("ODPOWIEDŹ MODELU AI"+(m.providerModel?" · NVIDIA · "+m.providerModel:"")):"Silnik OSA · "+statusText(m.status)}</div>{m.text}{m.jobKind&&!current.messages.some(x=>x.role==="assistant"&&x.executionId===m.executionId)&&<p role="status" className="mt-2 text-xs text-cyan">Misja {m.executionId} · status odczytywany z serwera. Możesz zamknąć kartę w trybie Durable.</p>}{m.memoryUnavailable&&<p role="status" className="mt-2 border-t border-warn/30 pt-2 text-xs text-warn">NeurOSA niedostępna. Odpowiedź modelu bez pamięci i bez dowodu NeurOSA.</p>}{m.remembered&&<p className="mt-2 text-xs text-cyan">Zapis Twojej wiadomości w NeurOSA został potwierdzony.</p>}{m.statementReceipt&&<MemoryStatementEvidence pointer={m.statementReceipt} statement={m.text}/>} {m.memory&&<MemoryEvidence pointer={m.memory} answer={m.text}/>} {m.delivery&&<ChatDeliveryResult bundle={m.delivery}/>}
+              {m.trace&&<UnifiedLiveProgress trace={m.trace}
+                active={busy&&activeExecution.current?.executionId===m.executionId}
+                onCancel={()=>cancel()}/>}
+              {m.executionId&&<div className="mt-2 break-all border-t border-white/10 pt-2 font-mono text-[9px] text-dim">{m.executionId}</div>}</div></article>)}
           {busy&&<div role="status" className="text-xs text-dim">Silnik OSA · trwa wykonywanie żądania...</div>}<div ref={bottom}/></div></div>}
-      {deliveryBusy&&<ChatDeliveryProgress value={deliveryProgress}/>}
       {error&&<div role="alert" data-testid="osa-chat-notice" className="mx-3 mb-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-[11px] text-warn">{error}<button className="ml-2 underline" onClick={()=>setError("")}>Zamknij</button></div>}
       {durableChecked&&!durable&&<p role="status" className="px-3 text-[11px] text-warn">Trwały runtime NIEAKTYWNY: zamknięcie ekranu może przerwać odbiór odpowiedzi. Wymagany jest trwały backend i niezależny worker.</p>}
       {durable&&<p role="status" data-testid="osa-durable-ready" className="px-3 text-[11px] text-cyan">Durable Execution · przyjęte misje rozmowy i artefaktów są odzyskiwane po powrocie (bez zapisu NeurOSA).</p>}
@@ -358,7 +429,7 @@ export default function JeversonChat() {
         {artifactMode&&<p className="mb-2 text-[10px] text-dim">Prompt → model → przebieg agentów → artefakt + bundle + evidence + replay. Bez automatycznego wdrożenia.</p>}
         <div className="mb-2 flex flex-wrap items-center gap-3 text-[11px] text-dim">{memoryState.error || <MemoryStatusLine status={memoryState.status}/>}<button type="button" className="underline" onClick={()=>{void memoryState.refresh();void api<ModelStatus>("/nvidia/status").then(setModelStatus).catch(()=>setModelStatus(null));}}>Odśwież stan</button><label className="flex items-center gap-1"><input type="checkbox" checked={remember} disabled={memoryState.status?.state!=="AVAILABLE"||busy} onChange={e=>setRemember(e.target.checked)}/>Zapamiętaj moją wiadomość</label></div>
         <textarea aria-label="Wiadomość do OSA" data-testid="osa-composer" placeholder={"Wiadomość do "+agent.name+"..."} rows={2} maxLength={20000} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={key} className="block max-h-[160px] min-h-[52px] w-full resize-y bg-transparent text-sm outline-none placeholder:text-dim"/>
-        <div className="flex items-center gap-2 border-t border-white/5 pt-2"><label className="text-[10px] text-dim">Model <select aria-label="Wybierz model" value={current.model} onChange={e=>selectModel(e.target.value as ModelId)} className="rounded border border-line bg-panel p-1 text-[11px] text-fg"><option value="auto">Automatycznie</option><option value="nvidia">NVIDIA</option><option value="openrouter" disabled>OpenRouter · brak klucza</option></select></label><button type="button" onClick={()=>void trace()} disabled={busy} className="rounded border border-line p-2 text-[10px] text-cyan disabled:opacity-50">ŚLEDZENIE OSA</button><span className="ml-auto hidden text-[10px] text-dim sm:inline">BEZ PŁATNYCH WYWOŁAŃ</span>{busy?<button type="button" onClick={()=>{cancel();setError("Odbiór przerwany. Serwer mógł kontynuować; wynik niezweryfikowany.");}} className="ml-auto shrink-0 rounded-lg border border-line px-3 py-2 text-xs text-warn">Przerwij</button>:<button data-testid="osa-send" disabled={!draft.trim()||!cacheReady} className="ml-auto shrink-0 rounded-lg bg-cyan px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Wyślij ↑</button>}</div>
+        <div className="flex items-center gap-2 border-t border-white/5 pt-2"><label className="text-[10px] text-dim">Model <select aria-label="Wybierz model" value={current.model} onChange={e=>selectModel(e.target.value as ModelId)} className="rounded border border-line bg-panel p-1 text-[11px] text-fg"><option value="auto">Automatycznie</option><option value="nvidia">NVIDIA</option><option value="openrouter" disabled>OpenRouter · brak klucza</option></select></label><button type="button" onClick={()=>void trace()} disabled={busy} className="rounded border border-line p-2 text-[10px] text-cyan disabled:opacity-50">ŚLEDZENIE OSA</button><span className="ml-auto hidden text-[10px] text-dim sm:inline">BEZ PŁATNYCH WYWOŁAŃ</span>{busy?<button type="button" onClick={()=>cancel()} className="ml-auto shrink-0 rounded-lg border border-line px-3 py-2 text-xs text-warn">Przerwij</button>:<button data-testid="osa-send" disabled={!draft.trim()||!cacheReady} className="ml-auto shrink-0 rounded-lg bg-cyan px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Wyślij ↑</button>}</div>
       </form><p className="mx-auto mt-2 max-w-[820px] text-center text-[10px] text-dim">{!modelStatus?"Stan połączenia z modelem nie został potwierdzony.":modelStatus.configured?"Odpowiedzi AI pochodzą z NVIDIA i nie oznaczają wykonania narzędzi ani zweryfikowanego dowodu.":"Model AI nie jest połączony w tym środowisku. Narzędzia i dowody działają osobno."}</p></div>
     </div>
   </section>;
