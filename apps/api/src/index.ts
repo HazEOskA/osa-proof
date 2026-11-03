@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { ChatDelivery } from "./chat-delivery";
+import { handleDurableRequest } from "./durable";
 import { executeUnified, installUnifiedTools, verifyUnifiedBundle } from "./unified";
 import { handleTrustRequest } from "./trust";
 import { handleNvidiaRequest } from "./nvidia";
@@ -253,6 +254,13 @@ export async function handleApiRequest(
           }
         }
         return send(response, 404, { error: "Trasa pamięci nie istnieje." });
+      }
+
+      if (parts[0] === "durable") {
+        const session=requireSession(request,response,state);
+        if(!session)return;
+        const project=state.memory.adapter?.binding?.project_id??"project_chat_delivery";
+        return handleDurableRequest(request,response,session,project);
       }
 
       if (parts[0] === "unified") {

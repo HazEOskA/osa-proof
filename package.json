@@ -17,7 +17,8 @@
     "worker:start": "node dist-worker/apps/worker/src/server.js",
     "test:unified:browser": "node scripts/test-unified-browser.cjs",
     "docs:sync": "node scripts/sync-api-reference.cjs --write",
-    "docs:check": "node scripts/sync-api-reference.cjs --check"
+    "docs:check": "node scripts/sync-api-reference.cjs --check",
+    "start:durable-worker": "node dist/apps/worker/src/durable-runner.js"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
