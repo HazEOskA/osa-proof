@@ -7,6 +7,7 @@ import { MemoryAccessError, MemoryService } from "./memory";
 import { osaGuideContext } from "./osa-guide";
 import { readBoundedResponse } from "../../../packages/deployment/src";
 import { LiveExecutionRegistry, LiveControlError, liveEvent } from "./live-execution";
+import { checkCommerceArithmetic } from "./commerce-arithmetic-gate";
 
 export const NVIDIA_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b";
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
@@ -207,6 +208,21 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Wynik modelu niezaakceptowany po żądaniu anulowania.");
     progress("model_completed","RUNNING",{source:"NVIDIA",provider_response_id:answer.provider_response_id,
       latency_ms:answer.latency_ms,request_sha256:answer.request_sha256,detail:"Otrzymano i zweryfikowano kompletność odpowiedzi"});
+    // Strict, independent arithmetic check for an explicitly labeled commerce case.
+    // This is NOT a general hallucination detector or a ProofReceipt.
+    // Reject before recording an answer in memory or releasing it to the client.
+    const commerce = checkCommerceArithmetic(typeof body.prompt === "string" ? body.prompt : "", answer.text);
+    if (commerce.state !== "NOT_APPLICABLE") {
+      progress("commerce_guard_checked", commerce.state === "BLOCKED" ? "FAILED" : "RUNNING", {
+        source:"COMMERCE_ARITHMETIC_GATE", code:commerce.state === "BLOCKED" ? commerce.code : "ARITHMETIC_MATCH",
+        verdict:commerce.state === "BLOCKED" ? "BLOCKED" : "ARITHMETIC_ONLY",
+        detail:"Niezależna kontrola sumy pięciu pól PLN; nie ocenia prawidłowości decyzji biznesowej"
+      });
+      if (commerce.state === "BLOCKED") throw new NvidiaError(422, commerce.code,
+        commerce.netPln === undefined
+          ? "WSTRZYMANO: niepełne lub niejednoznaczne dane finansowe. Nie zaakceptowano odpowiedzi modelu."
+          : `WSTRZYMANO: wynik finansowy w odpowiedzi modelu jest niespójny lub nieudokumentowany. Niezależnie obliczony wynik: ${commerce.netPln} zł. Nie zaakceptowano odpowiedzi modelu.`);
+    }
     let evidence: Awaited<ReturnType<MemoryService["recordAnswer"]>> | undefined;
     if (context && !guideOnly) {
       progress("evidence_started","RUNNING",{source:"MEMORY",detail:"Sprawdzenie zapisu dowodu odpowiedzi"});
