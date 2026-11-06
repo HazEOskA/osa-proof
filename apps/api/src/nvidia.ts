@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID, createHash } from "node:crypto";
-import type { BrainMemoryContext, MemoryWriteReceipt, SessionRecord } from "../../../packages/contracts/src";
+import type { BrainMemoryContext, MemoryWriteReceipt, SessionRecord, MissionRecord, RunResult } from "../../../packages/contracts/src";
 import { digest } from "../../../packages/proof-core/src/canonical";
 import { verifyMemoryContext } from "../../../packages/brain/src/memory";
 import { MemoryAccessError, MemoryService } from "./memory";
@@ -213,7 +213,7 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
       : "project_chat_delivery";
     let observed:Awaited<ReturnType<typeof nvidiaComplete>>|undefined;
     progress("cognitive_planning_started","RUNNING",{source:"BRAIN",detail:"Planowanie misji i kontrola uprawnień"});
-    let cognitive:Awaited<ReturnType<typeof runCognitiveChat>>;
+    let cognitive:{answer:Awaited<ReturnType<typeof nvidiaComplete>>;run:RunResult;record:MissionRecord};
     try {
       cognitive=await runCognitiveChat({
         kernel:missionKernel,session,projectId,prompt:body.prompt as string,executionId,
