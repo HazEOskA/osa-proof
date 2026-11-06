@@ -117,7 +117,7 @@ export class MissionKernel {
     if (options.execution_id !== undefined && !/^exec_[a-f0-9-]{36}$/.test(options.execution_id)) throw new Error("INVALID_EXECUTION_ID");
     let record = await this.required(id);
     if (record.state === "COMPLETED" && record.run) {
-      verifyCompletedMission(record);
+      verifyCompletedMission(record,{trustedClaimEnforcement:this.claimEnforcement});
       return structuredClone(record.run);
     }
     if (record.state === "CREATED") record = await this.plan(id, registry);
@@ -146,7 +146,7 @@ export class MissionKernel {
     }, clock: this.clock, missionPlan: record.brain?.plan, ...(options.execution_id ? { createExecutionId: () => options.execution_id! } : {}) });
     try {
       const run = await runtime.run(record.team, record.mission);
-      verifyMissionExecution(record.team, record.mission, run);
+      verifyMissionExecution(record.team, record.mission, run,{trustedClaimEnforcement:this.claimEnforcement});
       record.run = structuredClone(run);
       if (record.brain) {
         record.brain.reflection = reflectOnExecution(this.brainRequest(record), run);
@@ -169,7 +169,7 @@ export class MissionKernel {
             decisions_root: digest(record.brain.decision_receipts), reflection_sha256: record.brain.reflection!.reflection_sha256 } : {}),
         };
         record.mission_receipt = { ...body, receipt_sha256: digest(body) };
-        verifyCompletedMission(record);
+        verifyCompletedMission(record,{trustedClaimEnforcement:this.claimEnforcement});
         await this.save(record);
       }
       return run;
