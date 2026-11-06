@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { BrainPlanRequest, Mission, MissionRecord, MissionState, OSAEvent, RunResult, TeamGraph } from "../../contracts/src";
+import { BrainPlanRequest, ClaimEnforcement, Mission, MissionRecord, MissionState, OSAEvent, RunResult, TeamGraph } from "../../contracts/src";
 import { BrainControlPlane, BrainPlanningError, reflectOnExecution, verifyBrainPlan } from "../../brain/src";
 import { MemoryEventStore } from "../../events/src";
 import { digest, verifyCompletedMission, verifyMissionExecution } from "../../proof-core/src";
@@ -13,7 +13,7 @@ const transitions: Record<MissionState, MissionState[]> = {
   COMPLETED: [], FAILED: [], CANCELLED: [],
 };
 export class MissionKernel {
-  constructor(readonly store: MissionStore = new MemoryMissionStore(), private readonly clock = () => new Date(), readonly brain = new BrainControlPlane(), private readonly onRecord?: (record: MissionRecord) => void) {}
+  constructor(readonly store: MissionStore = new MemoryMissionStore(), private readonly clock = () => new Date(), readonly brain = new BrainControlPlane(), private readonly onRecord?: (record: MissionRecord) => void, private readonly claimEnforcement: ClaimEnforcement = "ENFORCE") {}
   get(id: string): Promise<MissionRecord | undefined> { return this.store.get(id); }
   private event(record: MissionRecord, type: string, payload: Record<string, unknown> = {}, evidence: string[] = []): void {
     const previous = record.timeline.at(-1);
@@ -127,7 +127,7 @@ export class MissionKernel {
     const events = new MemoryEventStore();
     // All MissionKernel missions, including generated apps, retain attribution.
     // NEVER bypass based on mission.kind, objective or generated artifacts.
-    const runtime = new OsaRuntime(registry, { trustedNoExternalFacts:false, eventStore: {
+    const runtime = new OsaRuntime(registry, { trustedNoExternalFacts:false, trustedClaimEnforcement:this.claimEnforcement, eventStore: {
       list: (runId) => events.list(runId),
       append: async (event) => {
         await events.append(event);
