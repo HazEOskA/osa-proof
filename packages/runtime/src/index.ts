@@ -5,6 +5,7 @@ export * from "./mission-store";
 import {
   AgentExecutor,
   ClaimAttributionMode,
+  ClaimEnforcement,
   AgentNode,
   Mission,
   MissionPlan,
@@ -65,6 +66,8 @@ export interface RuntimeOptions {
   /** TRUSTED HOST ONLY: never bind to Mission, HTTP request body or agent output.
    *  Default omitted: attribution enabled for every execution. */
   trustedNoExternalFacts?: boolean;
+  /** Host-only: leave all attribution observations, but do not make heuristic prose matches execution failures. */
+  trustedClaimEnforcement?: ClaimEnforcement;
 }
 
 export class OsaRuntime {
@@ -75,6 +78,7 @@ export class OsaRuntime {
   private readonly createExecutionId: () => string;
   private readonly missionPlan?: MissionPlan;
   private readonly attributionMode: ClaimAttributionMode;
+  private readonly claimEnforcement: ClaimEnforcement;
 
   constructor(private readonly registry: ExecutorRegistry, options: RuntimeOptions = {}) {
     this.eventStore = options.eventStore ?? new MemoryEventStore();
@@ -84,6 +88,7 @@ export class OsaRuntime {
     this.createExecutionId = options.createExecutionId ?? (() => `exec_${randomUUID()}`);
     this.missionPlan = structuredClone(options.missionPlan);
     this.attributionMode = options.trustedNoExternalFacts === true ? "CONTROL_PLANE_NO_EXTERNAL_FACTS" : "DEFAULT_ON";
+    this.claimEnforcement=options.trustedClaimEnforcement==="REPORT_ONLY"?"REPORT_ONLY":"ENFORCE";
   }
 
   static createRunId(graph: TeamGraph, mission: Mission): string {
@@ -234,6 +239,7 @@ export class OsaRuntime {
       evidence,
       tool_calls: toolCalls,
       attribution_mode: this.attributionMode,
+      claim_enforcement: this.claimEnforcement,
       runtime_failure: runtimeFailure,
       final_output: currentInput,
       created_at: this.clock().toISOString(),
