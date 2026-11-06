@@ -1,4 +1,5 @@
 import { randomUUID, createHash } from "node:crypto";
+import { selectExplicitToolCommand } from "../../../packages/contracts/src/explicit-tool-routing";
 import type { AgentExecutor, Mission, TeamGraph, RunResult } from "../../../packages/contracts/src";
 import { ExecutorRegistry, MissionKernel } from "../../../packages/runtime/src";
 import { executeCognitiveMission, planningOnlyKernel } from "./cognitive-execution";
@@ -21,11 +22,7 @@ export function unifiedInput(value: unknown): UnifiedRequest {
 }
 
 export function selectUnifiedTool(message: string): string {
-  if (/^(?:oblicz|policz|wylicz)\s+sha-?256\s+(?:tekstu\s*)?:/i.test(message)) return "osa.crypto.sha256.v1";
-  if (/^sprawdź skonfigurowane repozytorium read-only\.?$/i.test(message.trim())) return "osa.worker.repo.inspect.v1";
-  if (/(?:status|zdrowie|health)\s+(?:workera|worker|hosta)/i.test(message)) return "osa.worker.health.v1";
-  if (/(?:sprawdź|sprawdz|pokaż|pokaz|zbadaj|status|diagnostyka).*(?:runtime|osa proof|narzędzi|narzedzi|api)/is.test(message)) return "osa.runtime.inspect.v1";
-  return "osa.unified.blocked.v1";
+  return selectExplicitToolCommand(message) ?? "osa.unified.blocked.v1";
 }
 
 function runtimeOrigin(env: Env): string | undefined {
