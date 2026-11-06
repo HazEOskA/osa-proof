@@ -76,7 +76,8 @@ test("live HTTP E2E: accepted -> model -> APR execution proof -> content unverif
     assert.equal(audit.execution_id,id);
     assert.equal(audit.final_output,"Analiza A i B zakończona.");
     assert.equal(audit.execution_verdict,"VERIFIED");
-    assert.equal(audit.content_assurance.verdict,"UNVERIFIED");
+    assert.equal(audit.content_assurance.verdict,"UNKNOWN");
+    assert.equal(audit.content_assurance.claim_verification.coverage,"NONE");
     assert.match(audit.planner_receipt.receipt_sha256,/^[0-9a-f]{64}$/);
     assert.match(audit.proof.receipt_sha256,/^[0-9a-f]{64}$/);
     assert.doesNotMatch(text,/artifact\.html/);
