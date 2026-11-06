@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { randomUUID } from "node:crypto";
-import type { BrainMemoryContext, MemoryWriteReceipt, SessionRecord } from "../../../packages/contracts/src";
+import { randomUUID, createHash } from "node:crypto";
+import type { BrainMemoryContext, MemoryWriteReceipt, SessionRecord, MissionRecord, RunResult } from "../../../packages/contracts/src";
 import { digest } from "../../../packages/proof-core/src/canonical";
 import { verifyMemoryContext } from "../../../packages/brain/src/memory";
 import { MemoryAccessError, MemoryService } from "./memory";
@@ -8,11 +8,14 @@ import { osaGuideContext } from "./osa-guide";
 import { readBoundedResponse } from "../../../packages/deployment/src";
 import { LiveExecutionRegistry, LiveControlError, liveEvent } from "./live-execution";
 import { checkCommerceArithmetic } from "./commerce-arithmetic-gate";
+import { MissionKernel } from "../../../packages/runtime/src";
+import { runCognitiveChat } from "./chat-cognitive";
+import { assessChatContent } from "./chat-assurance";
 
 export const NVIDIA_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b";
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
 export class NvidiaError extends Error {
-  constructor(readonly status: number, readonly code: string, message: string) { super(message); }
+  constructor(readonly status: number, readonly code: string, message: string, readonly review?:unknown) { super(message); }
 }
 export function nvidiaStatus(env: NodeJS.ProcessEnv = process.env) {
   return { provider: "NVIDIA", configured: Boolean(env.NVIDIA_API_KEY?.trim()), model: env.NVIDIA_MODEL?.trim() || NVIDIA_MODEL };
@@ -126,7 +129,7 @@ export function fleetLimit() {
   fleetCalls.push(now);
 }
 export async function handleNvidiaRequest(request: IncomingMessage, response: ServerResponse, path: string, memory = new MemoryService(), session?: SessionRecord, registry?:LiveExecutionRegistry,
-  providerFetch:typeof fetch=fetch, providerEnv:NodeJS.ProcessEnv=process.env) {
+  providerFetch:typeof fetch=fetch, providerEnv:NodeJS.ProcessEnv=process.env, missionKernel:MissionKernel=new MissionKernel()) {
   const live=path==="/nvidia/fleet-live";
   let liveId:string|undefined,conversationId:string|undefined,signal:AbortSignal|undefined,streamStarted=false;
   const emit=(type:string,value:unknown)=>{if(streamStarted&&!response.destroyed&&!response.writableEnded)response.write("event: "+type+"\ndata: "+JSON.stringify(value)+"\n\n");};
@@ -202,27 +205,91 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     }
     if(memory.adapter||body.remember)progress("context_completed","RUNNING",{source:"MEMORY",detail:memoryUnavailable?"Odczyt niedostępny — model może odpowiedzieć bez pamięci":"Kontekst sprawdzony"});
     if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Żądano anulowania przed wywołaniem dostawcy.");
-    progress("model_started","RUNNING",{source:"NVIDIA",model:nvidiaStatus(config).model,detail:"Oczekiwanie na odpowiedź modelu"});
-    const answer = await nvidiaComplete(body.prompt, config, providerFetch,
-      { ...conversation, ...(context ? { memory: context } : {}) },signal);
-    if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Wynik modelu niezaakceptowany po żądaniu anulowania.");
-    progress("model_completed","RUNNING",{source:"NVIDIA",provider_response_id:answer.provider_response_id,
-      latency_ms:answer.latency_ms,request_sha256:answer.request_sha256,detail:"Otrzymano i zweryfikowano kompletność odpowiedzi"});
-    // Strict, independent arithmetic check for an explicitly labeled commerce case.
-    // This is NOT a general hallucination detector or a ProofReceipt.
-    // Reject before recording an answer in memory or releasing it to the client.
-    const commerce = checkCommerceArithmetic(typeof body.prompt === "string" ? body.prompt : "", answer.text);
-    if (commerce.state !== "NOT_APPLICABLE") {
-      progress("commerce_guard_checked", commerce.state === "BLOCKED" ? "FAILED" : "RUNNING", {
-        source:"COMMERCE_ARITHMETIC_GATE", code:commerce.state === "BLOCKED" ? commerce.code : "ARITHMETIC_MATCH",
-        verdict:commerce.state === "BLOCKED" ? "BLOCKED" : "ARITHMETIC_ONLY",
-        detail:"Niezależna kontrola sumy pięciu pól PLN; nie ocenia prawidłowości decyzji biznesowej"
+    // Every chat entrypoint goes through the same pinned Brain -> MissionKernel
+    // -> OsaRuntime -> APR chain used by canonical missions.
+    if(!session)throw new NvidiaError(403,"COGNITIVE_SESSION_REQUIRED","Wymagana jest uwierzytelniona sesja.");
+    const executionId=liveId??"exec_"+randomUUID();
+    const projectId=memory.adapter
+      ? memory.scope(session,"chat_"+(typeof body.conversation_id==="string"?body.conversation_id:randomUUID())).project_id
+      : "project_chat_delivery";
+    let observed:Awaited<ReturnType<typeof nvidiaComplete>>|undefined;
+    progress("cognitive_planning_started","RUNNING",{source:"BRAIN",detail:"Planowanie misji i kontrola uprawnień"});
+    let cognitive:{answer:Awaited<ReturnType<typeof nvidiaComplete>>;run:RunResult;record:MissionRecord};
+    try {
+      cognitive=await runCognitiveChat({
+        kernel:missionKernel,session,projectId,prompt:body.prompt as string,executionId,
+        onPlanned:()=>{
+          progress("cognitive_plan_accepted","RUNNING",{source:"BRAIN",detail:"Zaakceptowano plan powiązany z misją"});
+          progress("model_started","RUNNING",{source:"NVIDIA",model:nvidiaStatus(config).model,detail:"Oczekiwanie na odpowiedź modelu"});
+        },
+        complete:()=>nvidiaComplete(body.prompt,config,providerFetch,
+          {...conversation,...(context?{memory:context}:{})},signal),
+        onAnswer:a=>{
+          observed=a;
+          progress("model_completed","RUNNING",{source:"NVIDIA",provider_response_id:a.provider_response_id,
+            latency_ms:a.latency_ms,request_sha256:a.request_sha256,detail:"Odebrano odpowiedź roboczą NVIDIA"});
+        },
       });
-      if (commerce.state === "BLOCKED") throw new NvidiaError(422, commerce.code,
-        commerce.netPln === undefined
-          ? "WSTRZYMANO: niepełne lub niejednoznaczne dane finansowe. Nie zaakceptowano odpowiedzi modelu."
-          : `WSTRZYMANO: wynik finansowy w odpowiedzi modelu jest niespójny lub nieudokumentowany. Niezależnie obliczony wynik: ${commerce.netPln} zł. Nie zaakceptowano odpowiedzi modelu.`);
+    }catch(err){
+      if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Nie potwierdzono zatrzymania modelu.");
+      if(observed){
+        const review={schema:"osa.chat_review.v1",execution_id:executionId,
+          conversation_id:typeof body.conversation_id==="string"?body.conversation_id:null,
+          raw_response:observed.text,
+          response_sha256:createHash("sha256").update(observed.text,"utf8").digest("hex"),
+          provider_response_id:observed.provider_response_id,model:observed.model,
+          code:"COGNITIVE_EXECUTION_UNCONFIRMED",apr_verdict:"UNKNOWN",proof_receipt_sha256:null,
+          limitations:["Wykonanie lub weryfikacja nie zostały potwierdzone. Surowy tekst nie jest zaakceptowaną odpowiedzią."]};
+        emit("review",review);
+        throw new NvidiaError(502,"COGNITIVE_EXECUTION_UNCONFIRMED",
+          "Odpowiedź modelu istnieje, ale wykonanie poznawcze/APR nie zostało potwierdzone.",review);
+      }
+      throw err;
     }
+    const {answer,run,record}=cognitive;
+    if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Nie potwierdzono zatrzymania modelu.");
+    progress("apr_verification_checked",run.verdict==="VERIFIED"?"RUNNING":"FAILED",{
+      source:"APR",verdict:run.verdict,code:run.verdict==="VERIFIED"?"APR_EXECUTION_CHECKED":"APR_VERIFICATION_FAILED",
+      detail:"Weryfikacja wykonania i obsługiwanych twierdzeń; nie jest dowodem pełnej prawdziwości odpowiedzi"});
+    const commerce=checkCommerceArithmetic(body.prompt as string,answer.text);
+    if(commerce.state!=="NOT_APPLICABLE"){
+      progress("commerce_guard_checked",commerce.state==="BLOCKED"?"FAILED":"RUNNING",{
+        source:"COMMERCE_ARITHMETIC_GATE",code:commerce.state==="BLOCKED"?commerce.code:"ARITHMETIC_MATCH",
+        verdict:commerce.state==="BLOCKED"?"BLOCKED":"ARITHMETIC_ONLY",
+        detail:"Niezależna kontrola pięciu pól PLN; nie ocenia decyzji biznesowej"
+      });
+    }
+    const contentAssurance=assessChatContent(run.verdict,
+      commerce.state==="NOT_APPLICABLE"?"NOT_APPLICABLE":commerce.state==="BLOCKED"?"BLOCKED":"MATCH");
+    progress("content_assurance_checked",contentAssurance.verdict==="BLOCKED"?"FAILED":"RUNNING",{
+      source:"CONTENT_ASSURANCE",verdict:contentAssurance.verdict,
+      code:contentAssurance.verdict==="UNVERIFIED"?"CONTENT_NOT_VERIFIED":contentAssurance.verdict,
+      detail:contentAssurance.disclosure_pl,
+    });
+    if(run.verdict!=="VERIFIED"||commerce.state==="BLOCKED"){
+      const code=commerce.state==="BLOCKED"?commerce.code:"APR_VERIFICATION_FAILED";
+      const review={schema:"osa.chat_review.v1",execution_id:executionId,
+        conversation_id:typeof body.conversation_id==="string"?body.conversation_id:null,
+        mission_id:record.mission.mission_id,run_id:run.run_id,
+        raw_response:answer.text,
+        response_sha256:createHash("sha256").update(answer.text,"utf8").digest("hex"),
+        provider_response_id:answer.provider_response_id,model:answer.model,
+        planning_receipt_sha256:record.brain!.planning_receipt.receipt_sha256,
+        proof_receipt_sha256:run.proof.receipt_sha256,
+        apr_verdict:run.verdict,proof:run.proof,evidence:run.evidence,
+        commerce_verdict:commerce,content_assurance:contentAssurance,code,
+        verification_scope:"EXECUTION_AND_SUPPORTED_CLAIMS_NOT_GENERAL_FACTUAL_ACCURACY",
+        limitations:["Surowa odpowiedź została odrzucona. Żaden moduł nie gwarantuje prawdziwości każdego twierdzenia.",
+          "Eksport jest lokalny w przeglądarce, nie jest trwałym dowodem serwera."]};
+      emit("review",review);
+      throw new NvidiaError(422,code,
+        commerce.state==="BLOCKED"
+          ? "WSTRZYMANO: wynik finansowy w odpowiedzi jest niespójny lub nieudokumentowany. Niezależnie obliczony wynik: "+
+            (commerce.netPln??"UNKNOWN")+" zł. Nie zaakceptowano odpowiedzi modelu."
+          : "WSTRZYMANO: APR nie potwierdził odpowiedzi w granicach obsługiwanych kontroli.",review);
+    }
+    progress("cognitive_execution_completed","RUNNING",{source:"BRAIN_APR",verdict:"EXECUTION_VERIFIED",
+      detail:"Plan Brain i kontrola APR zakończone; prawdziwość ogólna odpowiedzi pozostaje niezweryfikowana"});
     let evidence: Awaited<ReturnType<MemoryService["recordAnswer"]>> | undefined;
     if (context && !guideOnly) {
       progress("evidence_started","RUNNING",{source:"MEMORY",detail:"Sprawdzenie zapisu dowodu odpowiedzi"});
@@ -234,9 +301,28 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     }
     if(context&&!guideOnly)progress("evidence_completed","RUNNING",{source:"MEMORY",detail:evidence?"Dowód pamięci otrzymany": "Dowód pamięci niepotwierdzony"});
     if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Wykonanie przerwano po żądaniu anulowania; nie potwierdzono zatrzymania NVIDIA.");
+    const memoryAssurance={
+      state:context?"CONTEXT_USED":memoryUnavailable?"UNAVAILABLE":memory.adapter?"NO_CONTEXT":"UNCONFIGURED",
+      context_sha256:context?.context_sha256??null,
+      evidence_receipt_sha256:evidence?.receipt?.receipt_sha256??null,
+      persistence_verified:false,
+    };
+    const audit={schema:"osa.chat_audit.v1",execution_id:executionId,
+      conversation_id:conversationId??(typeof body.conversation_id==="string"?body.conversation_id:null),
+      mission_id:record.mission.mission_id,run_id:run.run_id,
+      planner_receipt:record.brain?.planning_receipt,
+      proof:run.proof,evidence:run.evidence,observations:run.observations,
+      tool_calls:run.tool_calls,final_output:answer.text,
+      response_sha256:createHash("sha256").update(answer.text,"utf8").digest("hex"),
+      execution_verdict:run.verdict,content_assurance:contentAssurance,memory_assurance:memoryAssurance,
+      limitations:["Weryfikacja APR jest ograniczona do obsługiwanych wymagań i twierdzeń.",
+        "Eksport pochodzi z sesji przeglądarki, nie jest zewnętrzną atestacją ani trwałym dowodem serwera."]};
+    emit("audit",audit);
     if(liveId)registry?.finish(session!,liveId,"COMPLETED");
     progress("completed","COMPLETED",{source:"API",detail:"Odpowiedź kompletna, gotowa do zapisania w historii przeglądarki"});
-    return send(200, { ...answer, ...(evidence ? { memory: evidence } : {}),
+    return send(200, { ...answer, content_assurance:contentAssurance,
+      memory_assurance:memoryAssurance,execution_verdict:run.verdict,
+      ...(evidence ? { memory: evidence } : {}),
       ...(guideOnly && context ? { memory_context: { context_sha256: context.context_sha256, references: context.references } } : {}),
       ...(memoryUnavailable ? { memory_status: "UNAVAILABLE" } : {}) });
   } catch (error) {
@@ -246,7 +332,7 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
       source:"API",code:error instanceof NvidiaError||error instanceof MemoryAccessError?error.code:"NVIDIA_EXECUTION_FAILED",
       detail:cancelled?"Próba anulowania wysłana; nie potwierdzono zatrzymania dostawcy.":"Wykonanie nie zakończyło się potwierdzoną odpowiedzią"});
     if (error instanceof LiveControlError)return send(error.status,{error:error.code,code:error.code});
-    if (error instanceof NvidiaError) return send(error.status, { error: error.message + (remembered ? " Zapis Twojej wiadomości w pamięci został potwierdzony." : ""), code: error.code, ...(remembered ? { memory_write: remembered } : {}) });
+    if (error instanceof NvidiaError) return send(error.status, { error: error.message + (remembered ? " Zapis Twojej wiadomości w pamięci został potwierdzony." : ""), code: error.code, ...(error.review ? {review:error.review}:{}), ...(remembered ? { memory_write: remembered } : {}) });
     if (error instanceof MemoryAccessError) return send(error.status, { error: error.message, code: error.code, ...(remembered ? { memory_write: remembered } : {}) });
     if (memory.adapter) return send(502, { error: remembered
       ? "Zapis Twojej wiadomości w pamięci został potwierdzony. Nie ukończono późniejszego odczytu lub zapisu dowodu odpowiedzi."

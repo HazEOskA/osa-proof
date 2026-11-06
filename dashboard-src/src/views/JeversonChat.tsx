@@ -4,7 +4,7 @@ import { useOsa } from "../ctx";
 import AccountControl from "./AccountControl";
 import ChatDeliveryResult from "./ChatDelivery";
 import UnifiedLiveProgress from "./UnifiedLiveProgress";
-import { appendLiveEvent, clientTraceEvent, newLiveTrace, streamLiveChat, type LiveTrace, type LiveTraceEvent } from "../lib/live-execution";
+import { appendLiveEvent, clientTraceEvent, newLiveTrace, streamLiveChat, downloadChatReview, downloadChatAudit, type ChatReview, type ChatAudit, type LiveTrace, type LiveTraceEvent } from "../lib/live-execution";
 import { streamDelivery, type DeliveryBundle } from "../lib/chat-delivery";
 import { loadChatHistory, saveChatHistory } from "../lib/chat-history";
 import { verifyRun } from "../lib/verify";
@@ -16,7 +16,7 @@ import type { MemoryPointer } from "./Memory";
 // Native OSA surface. No iframe, no client secrets, no pretend model execution.
 type AgentId = "jeverson" | "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
 type ModelId = "auto" | "nvidia" | "openrouter";
-type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; trace?:LiveTrace; jobKind?:"model"|"artifact"; providerModel?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
+type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; trace?:LiveTrace; review?:ChatReview; audit?:ChatAudit; contentAssurance?:{verdict:string;disclosure_pl:string}; memoryAssurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null}; jobKind?:"model"|"artifact"; providerModel?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
 type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
 type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
 type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{resource:string;method:string;source:string;http_status:null;status:string}> };
@@ -338,6 +338,8 @@ export default function JeversonChat() {
       return;
     }
     const request=++seq.current,abort=new AbortController();controller.current=abort;activeExecution.current={executionId,conversationId:sessionId};setBusy(true);
+    let blockedReview:ChatReview|undefined;
+    let acceptedAudit:ChatAudit|undefined;
     try {
       if(!command(text)) {
         const history=current.messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}));
@@ -347,6 +349,10 @@ export default function JeversonChat() {
         },(type,data)=>{
           if(request!==seq.current)return;
           if(type==="trace")updateTrace(sessionId,executionId,data as LiveTraceEvent);
+          if(type==="review" && data?.schema==="osa.chat_review.v1" && data.execution_id===executionId && typeof data.raw_response==="string")
+            blockedReview=data as ChatReview;
+          if(type==="audit" && data?.schema==="osa.chat_audit.v1" && data.execution_id===executionId && data.conversation_id===sessionId)
+            acceptedAudit=data as ChatAudit;
         },abort.signal);
         if(request!==seq.current)return;
         if(!answer.text?.trim()||answer.status!=="PROVIDER_RESPONSE")throw Error("MODEL_INVALID_RESPONSE");
@@ -354,6 +360,8 @@ export default function JeversonChat() {
           ...(typeof (answer.provider_model||answer.model)==="string" && (answer.provider_model||answer.model) ? {providerModel:answer.provider_model||answer.model} : {}),
           ...(answer.memory ? {memory:{document_id:answer.memory.receipt.document_id,receipt_sha256:answer.memory.receipt.receipt_sha256},remembered:Boolean(answer.memory.remembered)} : {}),
           memoryUnavailable:answer.memory_status==="UNAVAILABLE",executionId,
+          audit:acceptedAudit,contentAssurance:answer.content_assurance,
+          memoryAssurance:answer.memory_assurance,
         });
         setRemember(false);
         setModelReplied(true);
@@ -370,6 +378,10 @@ export default function JeversonChat() {
       const body=output&&typeof output.sha256==="string"?"SHA-256: "+output.sha256:JSON.stringify(output,null,2).slice(0,8000);
       addMessage(sessionId,"assistant",body,bundle.status==="EXECUTED"?"VERIFIED":"BLOCKED",{executionId:bundle.execution_id,runId:bundle.run.run_id});
     } catch(e) { if(request===seq.current&&!abort.signal.aborted){
+      if(blockedReview){
+        addMessage(sessionId,"assistant","ODRZUCONA ODPOWIEDŹ MODELU · NIE JEST ZWERYFIKOWANA\n\n"+blockedReview.raw_response,
+          "BLOCKED",{executionId,review:blockedReview});
+      }
       updateTrace(sessionId,executionId,clientTraceEvent(executionId,"failed","FAILED",
         "Nie udało się potwierdzić odpowiedzi: "+(e instanceof Error?e.message:String(e))));
       if(e instanceof ChatApiError&&e.memoryWrite){
@@ -428,7 +440,7 @@ export default function JeversonChat() {
         </div></div>:
         <div aria-label="Wiadomości" className="min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6"><div className="mx-auto flex min-h-full max-w-[820px] flex-col">
           {!current.messages.length&&<div className="flex flex-1 flex-col items-center justify-center py-8 text-center"><div aria-hidden className="osa-hermes-hero mb-7 flex h-[100px] w-[100px] items-center justify-center rounded-full border border-cyan/35 bg-cyan/10 text-5xl text-cyan">✦</div><h2 className="text-2xl font-semibold">Czym zajmiemy się dzisiaj?</h2><p className="mt-3 max-w-xl text-sm text-dim">{agent.name} · {agent.purpose}. Jedna rozmowa i dowody z prawdziwego Runtime.</p><div className="mt-6 flex flex-wrap justify-center gap-2">{["Pokaż status runtime","Oblicz SHA-256 tekstu: OSA Proof","Status workera"].map(t=><button key={t} onClick={()=>setDraft(t)} className="rounded-full border border-line bg-panel px-3 py-2 text-xs">{t}</button>)}</div></div>}
-          {current.messages.map(m=><article data-testid="osa-message" key={m.id} className={(m.role==="user"?"justify-end":"justify-start")+" mb-5 flex"}><div className={(m.role==="user"?"bg-[#19314b] text-white":"border border-white/10 bg-[#111b2a]")+" max-w-[min(92%,730px)] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13px] leading-6"}><div className="mb-1 text-[10px] uppercase tracking-wide text-dim">{m.role==="user"?"Ty":m.status==="MODEL"?("ODPOWIEDŹ MODELU AI"+(m.providerModel?" · NVIDIA · "+m.providerModel:"")):"Silnik OSA · "+statusText(m.status)}</div>{m.text}{m.jobKind&&!current.messages.some(x=>x.role==="assistant"&&x.executionId===m.executionId)&&<p role="status" className="mt-2 text-xs text-cyan">Misja {m.executionId} · status odczytywany z serwera. Możesz zamknąć kartę w trybie Durable.</p>}{m.memoryUnavailable&&<p role="status" className="mt-2 border-t border-warn/30 pt-2 text-xs text-warn">NeurOSA niedostępna. Odpowiedź modelu bez pamięci i bez dowodu NeurOSA.</p>}{m.remembered&&<p className="mt-2 text-xs text-cyan">Zapis Twojej wiadomości w NeurOSA został potwierdzony.</p>}{m.statementReceipt&&<MemoryStatementEvidence pointer={m.statementReceipt} statement={m.text}/>} {m.memory&&<MemoryEvidence pointer={m.memory} answer={m.text}/>} {m.delivery&&<ChatDeliveryResult bundle={m.delivery}/>}
+          {current.messages.map(m=><article data-testid="osa-message" key={m.id} className={(m.role==="user"?"justify-end":"justify-start")+" mb-5 flex"}><div className={(m.role==="user"?"bg-[#19314b] text-white":"border border-white/10 bg-[#111b2a]")+" max-w-[min(92%,730px)] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13px] leading-6"}><div className="mb-1 text-[10px] uppercase tracking-wide text-dim">{m.role==="user"?"Ty":m.status==="MODEL"?("ODPOWIEDŹ MODELU AI"+(m.providerModel?" · NVIDIA · "+m.providerModel:"")):"Silnik OSA · "+statusText(m.status)}</div>{m.text}{m.jobKind&&!current.messages.some(x=>x.role==="assistant"&&x.executionId===m.executionId)&&<p role="status" className="mt-2 text-xs text-cyan">Misja {m.executionId} · status odczytywany z serwera. Możesz zamknąć kartę w trybie Durable.</p>}{m.memoryUnavailable&&<p role="status" className="mt-2 border-t border-warn/30 pt-2 text-xs text-warn">NeurOSA niedostępna. Odpowiedź modelu bez pamięci i bez dowodu NeurOSA.</p>}{m.remembered&&<p className="mt-2 text-xs text-cyan">Zapis Twojej wiadomości w NeurOSA został potwierdzony.</p>}{m.statementReceipt&&<MemoryStatementEvidence pointer={m.statementReceipt} statement={m.text}/>} {m.memory&&<MemoryEvidence pointer={m.memory} answer={m.text}/>} {m.delivery&&<ChatDeliveryResult bundle={m.delivery}/>} {m.role==="assistant"&&m.status==="MODEL"&&<div data-testid="osa-content-assurance" role="status" className="mt-3 rounded-lg border border-warn/40 bg-warn/10 p-2 text-[11px] text-warn"><strong>Treść: {m.contentAssurance?.verdict==="PARTIALLY_CHECKED"?"CZĘŚCIOWO SPRAWDZONA":"NIEZWERYFIKOWANA"}</strong><div className="mt-1">{m.contentAssurance?.disclosure_pl||"Brak potwierdzenia weryfikacji treści. Odpowiedź jest wynikiem modelu."}</div><div className="mt-1 text-dim">APR: {m.audit?.execution_verdict==="VERIFIED"?"WYKONANIE ZWERYFIKOWANE":"WYKONANIE NIEPOTWIERDZONE"} · NeurOSA: {m.memoryAssurance?.state==="CONTEXT_USED"?"KONTEKST UŻYTY":m.memoryAssurance?.state==="UNAVAILABLE"?"NIEDOSTĘPNA":m.memoryAssurance?.state==="NO_CONTEXT"?"BEZ KONTEKSTU":"NIEPODŁĄCZONA / NIEPOTWIERDZONA"}</div></div>} {m.audit&&<button data-testid="osa-chat-audit-download" type="button" onClick={()=>downloadChatAudit(m.audit!)} className="mt-3 rounded border border-cyan/40 p-2 text-xs text-cyan">Pobierz bundle Brain + APR + treść</button>} {m.review&&<button type="button" onClick={()=>downloadChatReview(m.review!)} className="mt-3 rounded border border-warn/50 p-2 text-xs text-warn">Pobierz odrzuconą odpowiedź i dowody JSON</button>}
               {m.trace&&<UnifiedLiveProgress trace={m.trace}
                 active={busy&&activeExecution.current?.executionId===m.executionId}
                 onCancel={()=>cancel()}/>}

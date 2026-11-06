@@ -43,7 +43,7 @@ test("live trace: cancelled NVIDIA request cannot become a successful model resp
   },undefined,controller.signal);
   await assert.rejects(request,(e:unknown)=>e instanceof NvidiaError&&e.code==="NVIDIA_CANCEL_UNCONFIRMED");
 });
-test("live HTTP E2E: accepted -> model -> real response metadata -> complete, without artifact or fake receipt",async()=>{
+test("live HTTP E2E: accepted -> model -> APR execution proof -> content unverified -> complete",async()=>{
   const identity=session("server-a"),controller=new LiveExecutionRegistry(),conversation=randomUUID(),id=runId();
   const seen:string[]=[];
   const provider=(async(_url:unknown,init:RequestInit)=>{
@@ -66,7 +66,20 @@ test("live HTTP E2E: accepted -> model -> real response metadata -> complete, wi
     assert.match(text,/"phase":"completed"/);
     assert.match(text,/provider-live-response/);
     assert.match(text,/Analiza A i B zakończona/);
-    assert.doesNotMatch(text,/proof_id|artifact\.html|ProofReceipt/);
+    assert.match(text,/event: audit/);
+    const rawAudit=text.split("\n\n").find(block=>block.startsWith("event: audit\n"));
+    assert.ok(rawAudit,"APR audit SSE frame must be present");
+    const payload=rawAudit.split("\n").find(line=>line.startsWith("data: "));
+    assert.ok(payload);
+    const audit=JSON.parse(payload.slice(6));
+    assert.equal(audit.schema,"osa.chat_audit.v1");
+    assert.equal(audit.execution_id,id);
+    assert.equal(audit.final_output,"Analiza A i B zakończona.");
+    assert.equal(audit.execution_verdict,"VERIFIED");
+    assert.equal(audit.content_assurance.verdict,"UNVERIFIED");
+    assert.match(audit.planner_receipt.receipt_sha256,/^[0-9a-f]{64}$/);
+    assert.match(audit.proof.receipt_sha256,/^[0-9a-f]{64}$/);
+    assert.doesNotMatch(text,/artifact\.html/);
     assert.equal(seen.length,1);
   }finally{server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));}
 });
