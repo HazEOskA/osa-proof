@@ -15,6 +15,15 @@ Istniejące BrainControlPlane, MissionKernel, OsaRuntime i Proof Core są wykorz
 - UI pokazuje materiał jako **ODRZUCONĄ, NIEZWERYFIKOWANĄ ODPOWIEDŹ**, z lokalnym pobraniem JSON.
 - Delivery Lab, chat i Unified korzystają z tego samego skonfigurowanego **plannera Brain** i magazynu misji; adapter pamięci nie jest ponownie wywoływany w planowaniu. Dostęp do NeurOSA zachowuje istniejące, autoryzowane `MemoryService`.
 
+## P0 — odbiór treści i pełny eksport dowodów
+- W czacie **oddzielne** statusy: \`execution_verdict\` oznacza kontrolę wykonania APR; \`content_assurance.verdict\` oznacza zakres faktycznej kontroli treści.
+- \`UNVERIFIED\` jest obowiązkowe, gdy brak niezależnych źródeł dla twierdzeń merytorycznych. \`PARTIALLY_CHECKED\` dotyczy wyłącznie rozpoznanego rachunku Commerce Gate; pozostałe twierdzenia nadal nie są zweryfikowane.
+- Dla przyjętej odpowiedzi serwer wysyła \`osa.chat_audit.v1\` w sesji SSE, w tym \`PlanningReceipt\`, \`ProofReceipt\`, evidence/observations/tool calls, oryginalne \`final_output\`, SHA-256 oraz zakres kontroli.
+- UI oznacza widocznie, że **zweryfikowane wykonanie nie dowodzi prawdziwości analizy** i udostępnia \`*-apr-audit-bundle.json\` do pobrania.
+- \`memory_assurance\` odróżnia \`CONTEXT_USED\`, \`NO_CONTEXT\`, \`UNAVAILABLE\` i \`UNCONFIGURED\`. \`CONTEXT_USED\` dotyczy kontekstu przekazanego NVIDIA, nie oznacza użycia pamięci przez planner.
+- Pełny test NeurOSA/OAuth wymaga zalogowania na kanonicznym adresie produkcyjnym po zatwierdzonym merge. Preview nie jest równoważne produkcyjnemu OAuth; nie przełączać ani kopiować tokenów.
+- To jest rozdzielenie dowodu i prawdziwości, nie automatyczny analizator wszystkich przepisów, faktów czy rekomendacji.
+
 ## Granice uczciwego dowodu
 - Sam `PlanningReceipt` nie oznacza poprawności rozumowania.
 - `APR VERIFIED` dotyczy obsługiwanych wymagań i twierdzeń; nie oznacza prawdziwości dowolnej analizy prawnej, ekonomicznej czy historycznej.
