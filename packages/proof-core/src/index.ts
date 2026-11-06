@@ -1,6 +1,7 @@
 import {
   AcceptanceRequirement,
   ClaimAttributionMode,
+  ClaimEnforcement,
   EvidenceRecord,
   ExecutionBinding,
   Mission,
@@ -166,6 +167,8 @@ export interface VerifyParams {
   tool_calls?: ToolCallRecord[];
   /** Set only by the runtime host; not mission data. */
   attribution_mode?: ClaimAttributionMode;
+  /** Trusted host only. REPORT_ONLY retains heuristic findings without blocking a chat. */
+  claim_enforcement?: ClaimEnforcement;
   runtime_failure?: string;
   final_output: unknown;
   created_at: string;
@@ -249,7 +252,7 @@ export class DeterministicProofVerifier {
     const calls = params.tool_calls ?? [];
     const mode = params.attribution_mode ?? "DEFAULT_ON";
     const attribution = attributeExternalClaims(params.mission, params.final_output, calls, mode);
-    if (attribution.active && attribution.claims.length > 0) {
+    if (attribution.active && attribution.claims.length > 0 && params.claim_enforcement!=="REPORT_ONLY") {
       requirementVerdicts.push({
         requirement_id: "__claim_attribution__",
         verdict: attribution.failure_code ? "FAILED" : "VERIFIED",
@@ -289,6 +292,7 @@ export class DeterministicProofVerifier {
       verdict: aggregateVerdict(requirementVerdicts),
       requirement_verdicts: requirementVerdicts,
       attribution_mode: mode,
+      ...(params.claim_enforcement==="REPORT_ONLY" ? {claim_enforcement:"REPORT_ONLY" as const} : {}),
       ...(attribution.active ? {claim_attribution: attribution.claims} : {}),
       ...((attribution.active || calls.length > 0) ? {
         tool_call_refs: calls.map(c => ({tool_call_id:c.tool_call_id, record_sha256:c.record_sha256})),
