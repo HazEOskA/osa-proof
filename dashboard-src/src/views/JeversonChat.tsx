@@ -12,6 +12,7 @@ import { statusText } from "../ui/primitives";
 import type { Mission, Run, TeamGraph } from "../data/types";
 import { MemoryEvidence, MemoryStatementEvidence, MemoryStatusLine, useMemoryStatus } from "./Memory";
 import type { MemoryPointer } from "./Memory";
+import { selectExplicitToolCommand } from "../../../packages/contracts/src/explicit-tool-routing";
 
 // Native OSA surface. No iframe, no client secrets, no pretend model execution.
 type AgentId = "jeverson" | "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
@@ -53,11 +54,7 @@ function restore():Session[] {
     return valid.length?valid:[empty()];
   } catch { return [empty()]; }
 }
-const command = (text:string) =>
-  /^sprawdź skonfigurowane repozytorium read-only\.?$/i.test(text.trim()) ||
-  /^(?:oblicz|policz|wylicz)\s+sha-?256\s+(?:tekstu\s*)?:/i.test(text) ||
-  /(?:status|zdrowie|health)\s+(?:workera|worker|hosta)/i.test(text) ||
-  /(?:sprawdź|sprawdz|pokaż|pokaz|zbadaj|status|diagnostyka).*(?:runtime|osa proof|narzędzi|narzedzi|api)/is.test(text);
+const command = (text:string) => selectExplicitToolCommand(text)!==null;
 class ChatApiError extends Error {
   constructor(message:string,readonly memoryWrite?:MemoryPointer){super(message);}
 }
