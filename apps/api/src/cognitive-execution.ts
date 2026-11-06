@@ -1,6 +1,16 @@
-import type { Mission, TeamGraph } from "../../../packages/contracts/src";
+import type { Mission, MissionRecord, TeamGraph } from "../../../packages/contracts/src";
 import { ExecutorRegistry, MissionKernel } from "../../../packages/runtime/src";
-import { verifyBrainPlan } from "../../../packages/brain/src";
+import { BrainControlPlane, verifyBrainPlan } from "../../../packages/brain/src";
+
+/**
+ * The route has already authorized or fetched its own scoped memory. Avoid a
+ * second NeurOSA lookup while retaining the actual configured planner, policy,
+ * MissionStore, MissionKernel lifecycle and APR verification. The plan receipt
+ * does not claim to include memory that was not supplied to the planner.
+ */
+export function planningOnlyKernel(parent: MissionKernel, onRecord?: (record: MissionRecord) => void): MissionKernel {
+  return new MissionKernel(parent.store,undefined,new BrainControlPlane(parent.brain.planner),onRecord);
+}
 
 /**
  * One canonical path for API entrypoints that execute agents or tools.
