@@ -77,10 +77,10 @@ test("P0: chat evidence contains a hash of the exact model response, without dec
   assert.match(String(evidence.data.response_sha256),/^[a-f0-9]{64}$/);
 });
 
-test("P0 live SSE: blocked arithmetic answer remains available as raw downloadable review, with exact hash and Brain/APR receipt IDs",async()=>{
+test("v2 live: arithmetic disagreements never globally block chat, APR and unknown content remain visible",async()=>{
   const state=new ApiState(undefined,undefined,undefined,"open");
   const user=state.sessions.create({
-    identity_id:"cognitive_p0_test",provider:"microsoft",subject:"cognitive_p0_test",
+    identity_id:"cognitive_v2_test",provider:"microsoft",subject:"cognitive_v2_test",
     display_name:"P0 tester",organization_id:"org_p0",project_ids:["project_chat_delivery"],
     roles:[],verified:true,
   });
@@ -91,12 +91,12 @@ test("P0 live SSE: blocked arithmetic answer remains available as raw downloadab
   process.env.NVIDIA_API_KEY="test-provider-key";
   process.env.OSA_ZERO_COST_ONLY="false";
   let providerCalls=0;
-  const wrong="Wynik operacyjny: 18 000 zł. Nie zwiększaj budżetu.";
+  const reply="Wynik operacyjny: 18 000 zł. Zweryfikuj źródła przed decyzją.";
   globalThis.fetch=async(url,init)=>{
     if(String(url)!=="https://integrate.api.nvidia.com/v1/chat/completions")return originalFetch(url,init);
     providerCalls++;
     return Response.json({id:"provider_response_p0",model:"nvidia/test-provider",
-      choices:[{message:{content:wrong},finish_reason:"stop"}]});
+      choices:[{message:{content:reply},finish_reason:"stop"}]});
   };
   try{
     const execution_id=executionId(), conversation_id=randomUUID();
@@ -104,28 +104,26 @@ test("P0 live SSE: blocked arithmetic answer remains available as raw downloadab
     const response=await fetch(base+"/nvidia/fleet-live",{method:"POST",
       headers:{authorization:"Bearer "+user.token,origin:base,"content-type":"application/json"},
       body:JSON.stringify({prompt,agent:"commerce",history:[],remember:false,execution_id,conversation_id})});
-    assert.equal(response.status,200,"SSE transport must establish before final verdict");
+    assert.equal(response.status,200);
     const stream=await response.text();
-    const event=(type:string)=>{
-      const block=stream.split("\n\n").find(x=>x.startsWith("event: "+type+"\n"));
-      assert.ok(block,"missing SSE event "+type);
-      const line=block.split("\n").find(x=>x.startsWith("data: "));
-      assert.ok(line);
-      return JSON.parse(line.slice(6)) as Record<string,any>;
-    };
-    const review=event("review"), error=event("error");
-    assert.equal(error.code,"COMMERCE_MODEL_RESULT_MISMATCH");
-    assert.equal(review.execution_id,execution_id);
-    assert.equal(review.conversation_id,conversation_id);
-    assert.equal(review.raw_response,wrong);
-    assert.equal(review.response_sha256,createHash("sha256").update(wrong,"utf8").digest("hex"));
-    assert.match(review.planning_receipt_sha256,/^[a-f0-9]{64}$/);
-    assert.match(review.proof_receipt_sha256,/^[a-f0-9]{64}$/);
+    const frames=(type:string)=>stream.split("\n\n").filter(block=>block.startsWith("event: "+type+"\n"))
+      .map(block=>JSON.parse(block.split("\n").find(line=>line.startsWith("data: "))!.slice(6)) as Record<string,any>);
+    const audit=frames("audit")[0], complete=frames("complete")[0];
     assert.equal(providerCalls,1);
+    assert.equal(frames("error").length,0);
+    assert.equal(frames("review").length,0);
+    assert.equal(complete.text,reply);
+    assert.equal(complete.content_assurance.verdict,"UNKNOWN");
+    assert.equal(complete.execution_verdict,"VERIFIED");
+    assert.equal(audit.final_output,reply);
+    assert.equal(audit.content_assurance.claim_verification.coverage,"NONE");
+    assert.equal(audit.response_sha256,createHash("sha256").update(reply,"utf8").digest("hex"));
+    assert.match(audit.planner_receipt.receipt_sha256,/^[a-f0-9]{64}$/);
+    assert.match(audit.proof.receipt_sha256,/^[a-f0-9]{64}$/);
+    assert.equal(frames("trace").filter(t=>t.phase==="commerce_guard_checked").length,0);
     const record=await state.missionKernel.get("chat_"+execution_id.slice(5));
     assert.ok(record?.brain?.planning_receipt);
     assert.ok(record?.run?.proof);
-    assert.equal(stream.includes("event: complete"),false,"blocked response must never be released as complete");
   }finally{
     await new Promise<void>(resolve=>server.close(()=>resolve()));
     globalThis.fetch=originalFetch;
@@ -134,21 +132,17 @@ test("P0 live SSE: blocked arithmetic answer remains available as raw downloadab
   }
 });
 
-
-test("P0 content assurance never equates APR VERIFIED with factual accuracy",()=>{
-  const legal=assessChatContent("VERIFIED","NOT_APPLICABLE");
+test("v2 content assurance never equates APR VERIFIED with factual accuracy",()=>{
+  const legal=assessChatContent("VERIFIED");
   assert.equal(legal.execution_verdict,"VERIFIED");
-  assert.equal(legal.verdict,"UNVERIFIED");
+  assert.equal(legal.verdict,"UNKNOWN");
   assert.equal(legal.verified_scope.length,0);
-  assert.ok(legal.not_verified.includes("LEGAL_JURISDICTION_AND_CURRENT_LAW"));
-  const arithmetic=assessChatContent("VERIFIED","MATCH");
-  assert.equal(arithmetic.verdict,"PARTIALLY_CHECKED");
-  assert.deepEqual(arithmetic.verified_scope,["COMMERCE_FIVE_FIELD_ARITHMETIC_ONLY"]);
-  assert.ok(arithmetic.not_verified.includes("ALL_OTHER_SEMANTIC_CLAIMS"));
-  assert.equal(assessChatContent("FAILED","MATCH").verdict,"BLOCKED");
+  assert.equal(legal.claim_verification.coverage,"NONE");
+  assert.deepEqual(legal.not_verified,["CLAIMS_NOT_INDEPENDENTLY_EXTRACTED_OR_VERIFIED"]);
+  assert.equal(assessChatContent("FAILED").verdict,"UNKNOWN");
 });
 
-test("P0 live: accepted legal analysis carries separate UNVERIFIED label, APR bundle and exact model output",async()=>{
+test("P0 live: accepted legal analysis carries separate UNKNOWN label, APR bundle and exact model output",async()=>{
   const state=new ApiState(undefined,undefined,undefined,"open");
   const user=state.sessions.create({
     identity_id:"legal_p0_test",provider:"microsoft",subject:"legal_p0_test",
@@ -189,13 +183,14 @@ test("P0 live: accepted legal analysis carries separate UNVERIFIED label, APR bu
     assert.equal(audit.final_output,wrongLegal);
     assert.equal(audit.response_sha256,createHash("sha256").update(wrongLegal).digest("hex"));
     assert.equal(audit.execution_verdict,"VERIFIED");
-    assert.equal(audit.content_assurance.verdict,"UNVERIFIED");
+    assert.equal(audit.content_assurance.verdict,"UNKNOWN");
+    assert.equal(audit.content_assurance.claim_verification.coverage,"NONE");
     assert.match(audit.planner_receipt.receipt_sha256,/^[a-f0-9]{64}$/);
     assert.match(audit.proof.receipt_sha256,/^[a-f0-9]{64}$/);
     assert.equal(audit.memory_assurance.state,"UNCONFIGURED");
-    assert.equal(complete.content_assurance.verdict,"UNVERIFIED");
+    assert.equal(complete.content_assurance.verdict,"UNKNOWN");
     assert.equal(complete.execution_verdict,"VERIFIED");
-    assert.ok(trace.some(t=>t.phase==="content_assurance_checked"&&t.verdict==="UNVERIFIED"));
+    assert.ok(trace.some(t=>t.phase==="content_assurance_checked"&&t.verdict==="UNKNOWN"));
     assert.equal(frames("review").length,0);
   }finally{
     await new Promise<void>(resolve=>server.close(()=>resolve()));
