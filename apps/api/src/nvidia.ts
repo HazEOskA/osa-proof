@@ -7,7 +7,6 @@ import { MemoryAccessError, MemoryService } from "./memory";
 import { osaGuideContext } from "./osa-guide";
 import { readBoundedResponse } from "../../../packages/deployment/src";
 import { LiveExecutionRegistry, LiveControlError, liveEvent } from "./live-execution";
-import { checkCommerceArithmetic } from "./commerce-arithmetic-gate";
 import { MissionKernel } from "../../../packages/runtime/src";
 import { runCognitiveChat } from "./chat-cognitive";
 import { assessChatContent } from "./chat-assurance";
@@ -251,23 +250,21 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     progress("apr_verification_checked",run.verdict==="VERIFIED"?"RUNNING":"FAILED",{
       source:"APR",verdict:run.verdict,code:run.verdict==="VERIFIED"?"APR_EXECUTION_CHECKED":"APR_VERIFICATION_FAILED",
       detail:"Weryfikacja wykonania i obsługiwanych twierdzeń; nie jest dowodem pełnej prawdziwości odpowiedzi"});
-    const commerce=checkCommerceArithmetic(body.prompt as string,answer.text);
-    if(commerce.state!=="NOT_APPLICABLE"){
-      progress("commerce_guard_checked",commerce.state==="BLOCKED"?"FAILED":"RUNNING",{
-        source:"COMMERCE_ARITHMETIC_GATE",code:commerce.state==="BLOCKED"?commerce.code:"ARITHMETIC_MATCH",
-        verdict:commerce.state==="BLOCKED"?"BLOCKED":"ARITHMETIC_ONLY",
-        detail:"Niezależna kontrola pięciu pól PLN; nie ocenia decyzji biznesowej"
-      });
-    }
-    const contentAssurance=assessChatContent(run.verdict,
-      commerce.state==="NOT_APPLICABLE"?"NOT_APPLICABLE":commerce.state==="BLOCKED"?"BLOCKED":"MATCH");
-    progress("content_assurance_checked",contentAssurance.verdict==="BLOCKED"?"FAILED":"RUNNING",{
+    // P0 v2: no commerce-specialized parser has global veto power over chat.
+    // Host-owned independent verifiers may supply bound claim findings later.
+    // In this deployment none are configured: every factual assertion stays UNKNOWN.
+    const contentAssurance=assessChatContent(run.verdict,{
+      candidates:[],findings:[],evidenceRefs:run.proof.evidence_refs,trustedVerifiers:[],
+    });
+    progress("content_assurance_checked","RUNNING",{
       source:"CONTENT_ASSURANCE",verdict:contentAssurance.verdict,
-      code:contentAssurance.verdict==="UNVERIFIED"?"CONTENT_NOT_VERIFIED":contentAssurance.verdict,
+      code:"CLAIMS_NOT_INDEPENDENTLY_VERIFIED",
       detail:contentAssurance.disclosure_pl,
     });
-    if(run.verdict!=="VERIFIED"||commerce.state==="BLOCKED"){
-      const code=commerce.state==="BLOCKED"?commerce.code:"APR_VERIFICATION_FAILED";
+    // Blocking remains for real APR/runtime failures, not uncertain prose or
+    // format-dependent domain parsers. Preserve original response as review.
+    if(run.verdict!=="VERIFIED"){
+      const code="APR_VERIFICATION_FAILED";
       const review={schema:"osa.chat_review.v1",execution_id:executionId,
         conversation_id:typeof body.conversation_id==="string"?body.conversation_id:null,
         mission_id:record.mission.mission_id,run_id:run.run_id,
@@ -277,16 +274,14 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
         planning_receipt_sha256:record.brain!.planning_receipt.receipt_sha256,
         proof_receipt_sha256:run.proof.receipt_sha256,
         apr_verdict:run.verdict,proof:run.proof,evidence:run.evidence,
-        commerce_verdict:commerce,content_assurance:contentAssurance,code,
-        verification_scope:"EXECUTION_AND_SUPPORTED_CLAIMS_NOT_GENERAL_FACTUAL_ACCURACY",
-        limitations:["Surowa odpowiedź została odrzucona. Żaden moduł nie gwarantuje prawdziwości każdego twierdzenia.",
+        content_assurance:contentAssurance,code,
+        verification_scope:"EXECUTION_NOT_GENERAL_FACTUAL_ACCURACY",
+        limitations:["Wykonanie APR nie zostało potwierdzone.",
+          "Surowa odpowiedź jest materiałem audytowym, nie zaakceptowaną odpowiedzią.",
           "Eksport jest lokalny w przeglądarce, nie jest trwałym dowodem serwera."]};
       emit("review",review);
       throw new NvidiaError(422,code,
-        commerce.state==="BLOCKED"
-          ? "WSTRZYMANO: wynik finansowy w odpowiedzi jest niespójny lub nieudokumentowany. Niezależnie obliczony wynik: "+
-            (commerce.netPln??"UNKNOWN")+" zł. Nie zaakceptowano odpowiedzi modelu."
-          : "WSTRZYMANO: APR nie potwierdził odpowiedzi w granicach obsługiwanych kontroli.",review);
+        "WSTRZYMANO: APR nie potwierdził poprawnego wykonania misji.",review);
     }
     progress("cognitive_execution_completed","RUNNING",{source:"BRAIN_APR",verdict:"EXECUTION_VERIFIED",
       detail:"Plan Brain i kontrola APR zakończone; prawdziwość ogólna odpowiedzi pozostaje niezweryfikowana"});

@@ -1,4 +1,4 @@
-import { Mission, MissionRecord, RunResult, TeamGraph } from "../../contracts/src";
+import { ClaimEnforcement, Mission, MissionRecord, RunResult, TeamGraph } from "../../contracts/src";
 import { bindingFor, DeterministicProofVerifier, digest, verifyProofReceipt } from "./index";
 import { getLinearExecutionOrder, validateMissionAgainstGraph } from "../../team-graph/src";
 import { verifyBrainPlan } from "../../brain/src/plan";
@@ -8,7 +8,7 @@ import { reflectOnExecution } from "../../brain/src";
 // requirements and binding. A caller cannot choose the expected tenant or verdict.
 export function verifyMissionExecution(
   graph: TeamGraph, mission: Mission, run: RunResult,
-  trustedHost: { trustedNoExternalFacts?: boolean } = {}
+  trustedHost: { trustedNoExternalFacts?: boolean; trustedClaimEnforcement?: ClaimEnforcement } = {}
 ): void {
   validateMissionAgainstGraph(graph, mission);
   // Recheck the pinned executor policy independently of the creation path.
@@ -29,9 +29,13 @@ export function verifyMissionExecution(
       expectedMode !== "CONTROL_PLANE_NO_EXTERNAL_FACTS") {
     throw new Error("VerificationReceipt untrusted attribution opt-out rejected");
   }
+  const expectedEnforcement:ClaimEnforcement=trustedHost.trustedClaimEnforcement==="REPORT_ONLY"?"REPORT_ONLY":"ENFORCE";
+  if(run.proof.claim_enforcement==="REPORT_ONLY" && expectedEnforcement!=="REPORT_ONLY")
+    throw new Error("VerificationReceipt untrusted claim reporting opt-out rejected");
   const expected = new DeterministicProofVerifier().verify({
     graph, mission, run_id: run.run_id, execution_id: run.execution_id,
-    evidence: run.evidence, tool_calls: run.tool_calls, attribution_mode: expectedMode, final_output: run.final_output, runtime_failure: run.proof.runtime_failure, created_at: run.proof.created_at,
+    evidence: run.evidence, tool_calls: run.tool_calls, attribution_mode: expectedMode,
+    claim_enforcement:expectedEnforcement, final_output: run.final_output, runtime_failure: run.proof.runtime_failure, created_at: run.proof.created_at,
   });
   if (!integrity.ok || digest(binding) !== digest(run.proof.binding) ||
       expected.proof.receipt_sha256 !== run.proof.receipt_sha256 || run.verdict !== run.proof.verdict) {
@@ -39,9 +43,9 @@ export function verifyMissionExecution(
   }
 }
 
-export function verifyCompletedMission(record: MissionRecord): void {
+export function verifyCompletedMission(record: MissionRecord, trustedHost: { trustedNoExternalFacts?: boolean; trustedClaimEnforcement?: ClaimEnforcement } = {}): void {
   if (record.state !== "COMPLETED" || !record.run || !record.verification_receipt || !record.mission_receipt) throw new Error("completed mission receipts required");
-  verifyMissionExecution(record.team, record.mission, record.run);
+  verifyMissionExecution(record.team, record.mission, record.run, trustedHost);
   // Runtime events are exported separately from the receipt-sealed mission timeline.
   // Reconcile the two so a modified replay cannot pass by retaining an intact receipt.
   const projected = record.timeline.filter(event => event.payload.run_id !== undefined || event.payload.execution_id !== undefined);

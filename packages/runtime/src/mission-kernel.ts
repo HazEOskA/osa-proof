@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { BrainPlanRequest, Mission, MissionRecord, MissionState, OSAEvent, RunResult, TeamGraph } from "../../contracts/src";
+import { BrainPlanRequest, ClaimEnforcement, Mission, MissionRecord, MissionState, OSAEvent, RunResult, TeamGraph } from "../../contracts/src";
 import { BrainControlPlane, BrainPlanningError, reflectOnExecution, verifyBrainPlan } from "../../brain/src";
 import { MemoryEventStore } from "../../events/src";
 import { digest, verifyCompletedMission, verifyMissionExecution } from "../../proof-core/src";
@@ -13,7 +13,7 @@ const transitions: Record<MissionState, MissionState[]> = {
   COMPLETED: [], FAILED: [], CANCELLED: [],
 };
 export class MissionKernel {
-  constructor(readonly store: MissionStore = new MemoryMissionStore(), private readonly clock = () => new Date(), readonly brain = new BrainControlPlane(), private readonly onRecord?: (record: MissionRecord) => void) {}
+  constructor(readonly store: MissionStore = new MemoryMissionStore(), private readonly clock = () => new Date(), readonly brain = new BrainControlPlane(), private readonly onRecord?: (record: MissionRecord) => void, private readonly claimEnforcement: ClaimEnforcement = "ENFORCE") {}
   get(id: string): Promise<MissionRecord | undefined> { return this.store.get(id); }
   private event(record: MissionRecord, type: string, payload: Record<string, unknown> = {}, evidence: string[] = []): void {
     const previous = record.timeline.at(-1);
@@ -117,7 +117,7 @@ export class MissionKernel {
     if (options.execution_id !== undefined && !/^exec_[a-f0-9-]{36}$/.test(options.execution_id)) throw new Error("INVALID_EXECUTION_ID");
     let record = await this.required(id);
     if (record.state === "COMPLETED" && record.run) {
-      verifyCompletedMission(record);
+      verifyCompletedMission(record,{trustedClaimEnforcement:this.claimEnforcement});
       return structuredClone(record.run);
     }
     if (record.state === "CREATED") record = await this.plan(id, registry);
@@ -127,7 +127,7 @@ export class MissionKernel {
     const events = new MemoryEventStore();
     // All MissionKernel missions, including generated apps, retain attribution.
     // NEVER bypass based on mission.kind, objective or generated artifacts.
-    const runtime = new OsaRuntime(registry, { trustedNoExternalFacts:false, eventStore: {
+    const runtime = new OsaRuntime(registry, { trustedNoExternalFacts:false, trustedClaimEnforcement:this.claimEnforcement, eventStore: {
       list: (runId) => events.list(runId),
       append: async (event) => {
         await events.append(event);
@@ -146,7 +146,7 @@ export class MissionKernel {
     }, clock: this.clock, missionPlan: record.brain?.plan, ...(options.execution_id ? { createExecutionId: () => options.execution_id! } : {}) });
     try {
       const run = await runtime.run(record.team, record.mission);
-      verifyMissionExecution(record.team, record.mission, run);
+      verifyMissionExecution(record.team, record.mission, run,{trustedClaimEnforcement:this.claimEnforcement});
       record.run = structuredClone(run);
       if (record.brain) {
         record.brain.reflection = reflectOnExecution(this.brainRequest(record), run);
@@ -169,7 +169,7 @@ export class MissionKernel {
             decisions_root: digest(record.brain.decision_receipts), reflection_sha256: record.brain.reflection!.reflection_sha256 } : {}),
         };
         record.mission_receipt = { ...body, receipt_sha256: digest(body) };
-        verifyCompletedMission(record);
+        verifyCompletedMission(record,{trustedClaimEnforcement:this.claimEnforcement});
         await this.save(record);
       }
       return run;
