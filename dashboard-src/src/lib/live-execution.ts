@@ -11,6 +11,15 @@ export type LiveTrace ={
   execution_id:string;conversation_id:string;mode:LiveMode;state:LiveState;
   events:LiveTraceEvent[];tasks?:{agent_id:string;state:string}[];
 };
+export type ChatAudit = {
+  schema:"osa.chat_audit.v1";
+  execution_id:string;
+  conversation_id?:string|null;
+  execution_verdict:string;
+  content_assurance:{verdict:"UNVERIFIED"|"PARTIALLY_CHECKED"|"BLOCKED";disclosure_pl:string};
+  memory_assurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null};
+  [key:string]:unknown;
+};
 export type ChatReview = {
   schema:"osa.chat_review.v1";
   execution_id:string;
@@ -28,6 +37,9 @@ export type ChatReview = {
 /** Browser-local export; no server durability or external attestation claimed. */
 export function downloadChatReview(review:ChatReview):void {
   downloadDelivery(review.execution_id+"-blocked-review.json",JSON.stringify(review,null,2),"application/json");
+}
+export function downloadChatAudit(audit:ChatAudit):void {
+  downloadDelivery(audit.execution_id+"-apr-audit-bundle.json",JSON.stringify(audit,null,2),"application/json");
 }
 export function appendLiveEvent(current:LiveTrace, event:LiveTraceEvent):LiveTrace {
   if(event.execution_id!==current.execution_id || event.schema!=="osa.live_execution.v1")
@@ -61,7 +73,10 @@ export async function streamLiveChat(
   payload:LiveChatInput,onEvent:(type:string,data:any)=>void,signal:AbortSignal
 ):Promise<{text:string;status:"PROVIDER_RESPONSE";model:string;provider_model?:string;
   provider_response_id:string|null;request_id:string;latency_ms:number;
-  memory_status?:string;memory?:{receipt:{document_id:string;receipt_sha256:string};remembered?:unknown}}> {
+  memory_status?:string;memory?:{receipt:{document_id:string;receipt_sha256:string};remembered?:unknown};
+  content_assurance?:{verdict:"UNVERIFIED"|"PARTIALLY_CHECKED"|"BLOCKED";disclosure_pl:string};
+  memory_assurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null};
+  execution_verdict?:string}> {
   const response=await fetch("/api/nvidia/fleet-live",{method:"POST",signal,cache:"no-store",
     headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
   if(!response.ok){
