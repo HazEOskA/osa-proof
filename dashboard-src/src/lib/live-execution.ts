@@ -11,6 +11,24 @@ export type LiveTrace ={
   execution_id:string;conversation_id:string;mode:LiveMode;state:LiveState;
   events:LiveTraceEvent[];tasks?:{agent_id:string;state:string}[];
 };
+export type ChatReview = {
+  schema:"osa.chat_review.v1";
+  execution_id:string;
+  conversation_id?:string|null;
+  raw_response:string;
+  response_sha256:string;
+  code:string;
+  apr_verdict:string;
+  mission_id?:string;
+  run_id?:string;
+  planning_receipt_sha256?:string|null;
+  proof_receipt_sha256?:string|null;
+  [key:string]:unknown;
+};
+/** Browser-local export; no server durability or external attestation claimed. */
+export function downloadChatReview(review:ChatReview):void {
+  downloadDelivery(review.execution_id+"-blocked-review.json",JSON.stringify(review,null,2),"application/json");
+}
 export function appendLiveEvent(current:LiveTrace, event:LiveTraceEvent):LiveTrace {
   if(event.execution_id!==current.execution_id || event.schema!=="osa.live_execution.v1")
     throw Error("LIVE_TRACE_BINDING_INVALID");
