@@ -91,39 +91,42 @@ test("v2 live: arithmetic disagreements never globally block chat, APR and unkno
   process.env.NVIDIA_API_KEY="test-provider-key";
   process.env.OSA_ZERO_COST_ONLY="false";
   let providerCalls=0;
-  const reply="Wynik operacyjny: 18 000 zł. Zweryfikuj źródła przed decyzją.";
+  const replies=["Wynik operacyjny: 18 000 zł. Zweryfikuj źródła przed decyzją.",
+    "Wynik finansowy: 18 000 zł – 30 000 zł = –12 000 zł (strata netto)."];
   globalThis.fetch=async(url,init)=>{
     if(String(url)!=="https://integrate.api.nvidia.com/v1/chat/completions")return originalFetch(url,init);
     providerCalls++;
     return Response.json({id:"provider_response_p0",model:"nvidia/test-provider",
-      choices:[{message:{content:reply},finish_reason:"stop"}]});
+      choices:[{message:{content:replies[providerCalls-1]},finish_reason:"stop"}]});
   };
   try{
-    const execution_id=executionId(), conversation_id=randomUUID();
     const prompt="Sklep internetowy ROAS 4,0.\nPrzychód netto: 81 000 zł\nKoszt reklam: 30 000 zł\nKoszt sprzedanych produktów: 53 000 zł\nLogistyka: 8 000 zł\nOpłaty transakcyjne: 2 000 zł";
-    const response=await fetch(base+"/nvidia/fleet-live",{method:"POST",
-      headers:{authorization:"Bearer "+user.token,origin:base,"content-type":"application/json"},
-      body:JSON.stringify({prompt,agent:"commerce",history:[],remember:false,execution_id,conversation_id})});
-    assert.equal(response.status,200);
-    const stream=await response.text();
-    const frames=(type:string)=>stream.split("\n\n").filter(block=>block.startsWith("event: "+type+"\n"))
-      .map(block=>JSON.parse(block.split("\n").find(line=>line.startsWith("data: "))!.slice(6)) as Record<string,any>);
-    const audit=frames("audit")[0], complete=frames("complete")[0];
-    assert.equal(providerCalls,1);
-    assert.equal(frames("error").length,0);
-    assert.equal(frames("review").length,0);
-    assert.equal(complete.text,reply);
-    assert.equal(complete.content_assurance.verdict,"UNKNOWN");
-    assert.equal(complete.execution_verdict,"VERIFIED");
-    assert.equal(audit.final_output,reply);
-    assert.equal(audit.content_assurance.claim_verification.coverage,"NONE");
-    assert.equal(audit.response_sha256,createHash("sha256").update(reply,"utf8").digest("hex"));
-    assert.match(audit.planner_receipt.receipt_sha256,/^[a-f0-9]{64}$/);
-    assert.match(audit.proof.receipt_sha256,/^[a-f0-9]{64}$/);
-    assert.equal(frames("trace").filter(t=>t.phase==="commerce_guard_checked").length,0);
-    const record=await state.missionKernel.get("chat_"+execution_id.slice(5));
-    assert.ok(record?.brain?.planning_receipt);
-    assert.ok(record?.run?.proof);
+    for(const [index,reply] of replies.entries()){
+      const execution_id=executionId(), conversation_id=randomUUID();
+      const response=await fetch(base+"/nvidia/fleet-live",{method:"POST",
+        headers:{authorization:"Bearer "+user.token,origin:base,"content-type":"application/json"},
+        body:JSON.stringify({prompt,agent:"commerce",history:[],remember:false,execution_id,conversation_id})});
+      assert.equal(response.status,200);
+      const stream=await response.text();
+      const frames=(type:string)=>stream.split("\n\n").filter(frame=>frame.startsWith("event: "+type+"\n"))
+        .map(frame=>JSON.parse(frame.split("\n").find(line=>line.startsWith("data: "))!.slice(6)) as Record<string,any>);
+      const audit=frames("audit")[0], complete=frames("complete")[0];
+      assert.equal(providerCalls,index+1);
+      assert.equal(frames("error").length,0);
+      assert.equal(frames("review").length,0);
+      assert.equal(complete.text,reply);
+      assert.equal(complete.content_assurance.verdict,"UNKNOWN");
+      assert.equal(complete.execution_verdict,"VERIFIED");
+      assert.equal(audit.final_output,reply);
+      assert.equal(audit.content_assurance.claim_verification.coverage,"NONE");
+      assert.equal(audit.response_sha256,createHash("sha256").update(reply,"utf8").digest("hex"));
+      assert.match(audit.planner_receipt.receipt_sha256,/^[a-f0-9]{64}$/);
+      assert.match(audit.proof.receipt_sha256,/^[a-f0-9]{64}$/);
+      assert.equal(frames("trace").filter(t=>t.phase==="commerce_guard_checked").length,0);
+      const record=await state.missionKernel.get("chat_"+execution_id.slice(5));
+      assert.ok(record?.brain?.planning_receipt);
+      assert.ok(record?.run?.proof);
+    }
   }finally{
     await new Promise<void>(resolve=>server.close(()=>resolve()));
     globalThis.fetch=originalFetch;
