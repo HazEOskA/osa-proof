@@ -3,8 +3,8 @@ import { downloadLiveEvidence, downloadLiveTrace } from "../lib/live-execution";
 
 const labels:Record<string,string>={
   accepted:"Przyjęcie i zakres",context_started:"Kontekst i pamięć — rozpoczęto",
-  context_completed:"Kontekst i pamięć — zakończono",model_started:"NVIDIA — oczekiwanie na model",
-  model_completed:"NVIDIA — odpowiedź modelu",evidence_started:"Dowody — rozpoczęto",
+  context_completed:"Kontekst i pamięć — zakończono",cognitive_planning_started:"Cognitive Layer — planowanie",cognitive_plan_accepted:"Cognitive Layer — plan przyjęty",model_started:"NVIDIA — oczekiwanie na model",
+  model_completed:"NVIDIA — odpowiedź modelu",apr_verification_checked:"APR — weryfikacja wyniku",cognitive_execution_completed:"Brain i APR — zakończono",evidence_started:"Dowody — rozpoczęto",
   evidence_completed:"Dowody — zakończono",completed:"Wykonanie zakończono",
   failed:"Błąd wykonania",cancel_requested:"Wysłano sygnał przerwania",
   cancel_unconfirmed:"Anulowanie niepotwierdzone",request_sent:"Wysłano żądanie",
