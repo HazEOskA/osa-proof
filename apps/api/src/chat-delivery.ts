@@ -8,7 +8,7 @@ import { digest, verifyCompletedMission } from "../../../packages/proof-core/src
 import { fleetLimit, nvidiaComplete, NvidiaError } from "./nvidia";
 import { generateNvidiaArtifact } from "./artifact-generation";
 import { LiveExecutionRegistry, LiveControlError, liveEvent } from "./live-execution";
-import { executeCognitiveMission } from "./cognitive-execution";
+import { executeCognitiveMission, planningOnlyKernel } from "./cognitive-execution";
 
 export type ArtifactGenerator = (request: DemoRequest) => Promise<{content: string; evidence: EvidenceInput[]}>;
 type Input = { prompt: string; kind: "webapp" | "document"; execution_id: string; conversation_id: string; remember?: boolean };
@@ -80,7 +80,7 @@ export class ChatDelivery {
       let memoryContext: BrainMemoryContext | undefined;
       let remembered: MemoryWriteReceipt | undefined;
       let cursor=0;
-      const observing=new MissionKernel(kernel.store,undefined,kernel.brain,record=>{
+      const observing=planningOnlyKernel(kernel,record=>{
         emit("progress",{execution_id:request.execution_id,mission_id:record.mission.mission_id,state:record.state,tasks:record.task_graph.nodes,events:record.timeline.slice(cursor)});
         cursor=record.timeline.length;
       });
