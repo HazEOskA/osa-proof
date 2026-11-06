@@ -1,7 +1,7 @@
 import { randomUUID, createHash } from "node:crypto";
 import type { AgentExecutor, Mission, TeamGraph, RunResult } from "../../../packages/contracts/src";
 import { ExecutorRegistry, MissionKernel } from "../../../packages/runtime/src";
-import { executeCognitiveMission } from "./cognitive-execution";
+import { executeCognitiveMission, planningOnlyKernel } from "./cognitive-execution";
 import { verifyProofReceipt, bindingFor, canonicalJson, digest } from "../../../packages/proof-core/src";
 
 type Env = Record<string, string | undefined>;
@@ -146,7 +146,7 @@ export async function executeUnified(value: unknown, organizationId: string, reg
     requirements:[{requirement_id:"tool_completed",type:"evidence_field_equals",evidence_kind:"unified_tool_result",field:"status",expected:"OK",agent_id:"osa-tool-worker"}]};
   // Native-tool results remain subject to attribution; user-supplied model
   // dispatch cannot grant an opt-out of external factual claims.
-  const {run} = await executeCognitiveMission(kernel ?? new MissionKernel(),effectiveRegistry,team,mission,input.execution_id);
+  const {run} = await executeCognitiveMission(planningOnlyKernel(kernel ?? new MissionKernel()),effectiveRegistry,team,mission,input.execution_id);
   const output = run.final_output as {status?:string;reason?:string} | null;
   const status = run.verdict === "VERIFIED" ? "EXECUTED" : output?.status === "BLOCKED" ? "BLOCKED" : "FAILED";
   const integrity = verifyUnifiedBundle({team,mission,run});
