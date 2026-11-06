@@ -10,6 +10,7 @@ import { LiveExecutionRegistry, LiveControlError, liveEvent } from "./live-execu
 import { checkCommerceArithmetic } from "./commerce-arithmetic-gate";
 import { MissionKernel } from "../../../packages/runtime/src";
 import { runCognitiveChat } from "./chat-cognitive";
+import { assessChatContent } from "./chat-assurance";
 
 export const NVIDIA_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b";
 const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
@@ -258,6 +259,13 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
         detail:"Niezależna kontrola pięciu pól PLN; nie ocenia decyzji biznesowej"
       });
     }
+    const contentAssurance=assessChatContent(run.verdict,
+      commerce.state==="NOT_APPLICABLE"?"NOT_APPLICABLE":commerce.state==="BLOCKED"?"BLOCKED":"MATCH");
+    progress("content_assurance_checked",contentAssurance.verdict==="BLOCKED"?"FAILED":"RUNNING",{
+      source:"CONTENT_ASSURANCE",verdict:contentAssurance.verdict,
+      code:contentAssurance.verdict==="UNVERIFIED"?"CONTENT_NOT_VERIFIED":contentAssurance.verdict,
+      detail:contentAssurance.disclosure_pl,
+    });
     if(run.verdict!=="VERIFIED"||commerce.state==="BLOCKED"){
       const code=commerce.state==="BLOCKED"?commerce.code:"APR_VERIFICATION_FAILED";
       const review={schema:"osa.chat_review.v1",execution_id:executionId,
@@ -269,7 +277,7 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
         planning_receipt_sha256:record.brain!.planning_receipt.receipt_sha256,
         proof_receipt_sha256:run.proof.receipt_sha256,
         apr_verdict:run.verdict,proof:run.proof,evidence:run.evidence,
-        commerce_verdict:commerce,code,
+        commerce_verdict:commerce,content_assurance:contentAssurance,code,
         verification_scope:"EXECUTION_AND_SUPPORTED_CLAIMS_NOT_GENERAL_FACTUAL_ACCURACY",
         limitations:["Surowa odpowiedź została odrzucona. Żaden moduł nie gwarantuje prawdziwości każdego twierdzenia.",
           "Eksport jest lokalny w przeglądarce, nie jest trwałym dowodem serwera."]};
@@ -293,9 +301,28 @@ export async function handleNvidiaRequest(request: IncomingMessage, response: Se
     }
     if(context&&!guideOnly)progress("evidence_completed","RUNNING",{source:"MEMORY",detail:evidence?"Dowód pamięci otrzymany": "Dowód pamięci niepotwierdzony"});
     if(signal?.aborted)throw new NvidiaError(409,"NVIDIA_CANCEL_UNCONFIRMED","Wykonanie przerwano po żądaniu anulowania; nie potwierdzono zatrzymania NVIDIA.");
+    const memoryAssurance={
+      state:context?"CONTEXT_USED":memoryUnavailable?"UNAVAILABLE":memory.adapter?"NO_CONTEXT":"UNCONFIGURED",
+      context_sha256:context?.context_sha256??null,
+      evidence_receipt_sha256:evidence?.receipt?.receipt_sha256??null,
+      persistence_verified:false,
+    };
+    const audit={schema:"osa.chat_audit.v1",execution_id:executionId,
+      conversation_id:conversationId??(typeof body.conversation_id==="string"?body.conversation_id:null),
+      mission_id:record.mission.mission_id,run_id:run.run_id,
+      planner_receipt:record.brain?.planning_receipt,
+      proof:run.proof,evidence:run.evidence,observations:run.observations,
+      tool_calls:run.tool_calls,final_output:answer.text,
+      response_sha256:createHash("sha256").update(answer.text,"utf8").digest("hex"),
+      execution_verdict:run.verdict,content_assurance:contentAssurance,memory_assurance:memoryAssurance,
+      limitations:["Weryfikacja APR jest ograniczona do obsługiwanych wymagań i twierdzeń.",
+        "Eksport pochodzi z sesji przeglądarki, nie jest zewnętrzną atestacją ani trwałym dowodem serwera."]};
+    emit("audit",audit);
     if(liveId)registry?.finish(session!,liveId,"COMPLETED");
     progress("completed","COMPLETED",{source:"API",detail:"Odpowiedź kompletna, gotowa do zapisania w historii przeglądarki"});
-    return send(200, { ...answer, ...(evidence ? { memory: evidence } : {}),
+    return send(200, { ...answer, content_assurance:contentAssurance,
+      memory_assurance:memoryAssurance,execution_verdict:run.verdict,
+      ...(evidence ? { memory: evidence } : {}),
       ...(guideOnly && context ? { memory_context: { context_sha256: context.context_sha256, references: context.references } } : {}),
       ...(memoryUnavailable ? { memory_status: "UNAVAILABLE" } : {}) });
   } catch (error) {
