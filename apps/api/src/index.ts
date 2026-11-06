@@ -289,7 +289,7 @@ export async function handleApiRequest(
           const memoryScope = state.memory.adapter ? state.memory.scope(session, "unified-execute") : undefined;
           installUnifiedTools(registry);
           let result;
-          try {result = await executeUnified(body,session.identity.organization_id,registry,memoryScope?.project_id);}
+          try {result = await executeUnified(body,session.identity.organization_id,registry,memoryScope?.project_id,state.missionKernel);}
           catch {return send(response,400,{status:"BLOCKED",error:"UNIFIED_INVALID_INPUT"});}
           state.runs.set(result.run.run_id,structuredClone(result.run));
           state.teams.set(state.teamKey(result.team.team_id,result.team.version),result.team);
@@ -349,7 +349,7 @@ export async function handleApiRequest(
       if (parts[0] === "nvidia") {
         const session = requireSession(request, response, state);
         if (!session) return;
-        return handleNvidiaRequest(request, response, url.pathname, state.memory, session, state.live);
+        return handleNvidiaRequest(request, response, url.pathname, state.memory, session, state.live, undefined, undefined, state.missionKernel);
       }
 
       if (parts[0] === "templates" && parts[1] === "delivery-lab") {
