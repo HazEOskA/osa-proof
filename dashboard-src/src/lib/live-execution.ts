@@ -16,7 +16,7 @@ export type ChatAudit = {
   execution_id:string;
   conversation_id?:string|null;
   execution_verdict:string;
-  content_assurance:{verdict:"UNVERIFIED"|"PARTIALLY_CHECKED"|"BLOCKED";disclosure_pl:string};
+  content_assurance:{verdict:"SUPPORTED"|"CONTRADICTED"|"UNKNOWN";disclosure_pl:string};
   memory_assurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null};
   [key:string]:unknown;
 };
@@ -74,7 +74,7 @@ export async function streamLiveChat(
 ):Promise<{text:string;status:"PROVIDER_RESPONSE";model:string;provider_model?:string;
   provider_response_id:string|null;request_id:string;latency_ms:number;
   memory_status?:string;memory?:{receipt:{document_id:string;receipt_sha256:string};remembered?:unknown};
-  content_assurance?:{verdict:"UNVERIFIED"|"PARTIALLY_CHECKED"|"BLOCKED";disclosure_pl:string};
+  content_assurance?:{verdict:"SUPPORTED"|"CONTRADICTED"|"UNKNOWN";disclosure_pl:string};
   memory_assurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null};
   execution_verdict?:string}> {
   const response=await fetch("/api/nvidia/fleet-live",{method:"POST",signal,cache:"no-store",
