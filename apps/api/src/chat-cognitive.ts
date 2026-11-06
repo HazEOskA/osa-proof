@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Mission, SessionRecord, TeamGraph } from "../../../packages/contracts/src";
 import { ExecutorRegistry, MissionKernel } from "../../../packages/runtime/src";
-import { executeCognitiveMission } from "./cognitive-execution";
+import { executeCognitiveMission, planningOnlyKernel } from "./cognitive-execution";
 
 const CHAT_EXECUTOR = "osa.chat.nvidia.v1";
 const hash = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
@@ -68,7 +68,7 @@ export async function runCognitiveChat<T extends CognitiveModelAnswer>(options: 
       },content:answer.text}],
     };
   });
-  const {run,record} = await executeCognitiveMission(kernel,registry,team,mission,executionId,options.onPlanned);
+  const {run,record} = await executeCognitiveMission(planningOnlyKernel(kernel),registry,team,mission,executionId,options.onPlanned);
   if (!answer || run.execution_id !== executionId || !record.brain?.planning_receipt)
     throw Error("COGNITIVE_EXECUTION_INTEGRITY_MISSING");
   return {answer,run,record};
