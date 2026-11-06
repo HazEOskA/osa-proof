@@ -11,7 +11,7 @@ export type ExplicitToolRef =
   | "osa.worker.health.v1"
   | "osa.runtime.inspect.v1";
 
-const SHA256 = /^(?:oblicz|policz|wylicz)\s+sha-?256\s+(?:tekstu\s*)?:[\s\S]*$/i;
+const SHA256 = /^(?:oblicz|policz|wylicz)\s+sha-?256(?:\s+tekstu)?\s*:[\s\S]*$/i;
 const REPOSITORY = /^sprawdź skonfigurowane repozytorium read-only\.?$/i;
 const WORKER = /^(?:(?:pokaż|pokaz|sprawdź|sprawdz)\s+)?(?:status|zdrowie|health)\s+(?:workera|worker|hosta)[.!?]?$/i;
 const RUNTIME = /^(?:(?:sprawdź|sprawdz|pokaż|pokaz|zbadaj)\s+(?:(?:aktualny)\s+)?(?:status\s+)?|(?:status|diagnostyka)\s+)(?:runtime(?:\s+osa proof)?|osa proof|narzędzi|narzedzi|narzędzia|narzedzia|api)[.!?]?$/i;
