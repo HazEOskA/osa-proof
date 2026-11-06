@@ -65,6 +65,21 @@ test("P0 unified: native tool must pass configured Brain before APR",async()=>{
   assert.ok(record?.brain?.planning_receipt.receipt_sha256);
 });
 
+test("v2: legacy weather heuristics are recorded in APR but cannot veto the conversational response",async()=>{
+  const {answer,run}=await runCognitiveChat({
+    kernel:new MissionKernel(),session,projectId:"project_p0",
+    prompt:"Podaj aktualną pogodę (bez narzędzi).",executionId:executionId(),
+    complete:async()=>({text:"Aktualna temperatura wynosi 21 °C.",model:"nvidia/test",
+      provider_response_id:"test-attribution",request_sha256:"f".repeat(64)}),
+  });
+  assert.equal(answer.text,"Aktualna temperatura wynosi 21 °C.");
+  assert.equal(run.verdict,"VERIFIED");
+  assert.equal(run.proof.attribution_mode,"DEFAULT_ON");
+  assert.equal(run.proof.claim_enforcement,"REPORT_ONLY");
+  assert.ok(run.proof.claim_attribution?.some(c=>c.status==="UNSUPPORTED"&&c.reason_code==="CLAIM_UNSUPPORTED"));
+  assert.equal(run.proof.requirement_verdicts.some(r=>r.requirement_id==="__claim_attribution__"),false);
+});
+
 test("P0: chat evidence contains a hash of the exact model response, without declaring its truth",async()=>{
   const {run}=await runCognitiveChat({
     kernel:new MissionKernel(),session,projectId:"project_p0",
