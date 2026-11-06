@@ -20,6 +20,7 @@ export * from "./canonical";
 export * from "./mission-verifier";
 export * from "./artifact-content";
 export * from "./source-attribution";
+export * from "./claim-verification";
 
 export const RUNTIME_EXECUTION_REQUIREMENT_ID = "__runtime_execution__";
 
