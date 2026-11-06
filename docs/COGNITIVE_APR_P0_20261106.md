@@ -13,7 +13,7 @@ Istniejące BrainControlPlane, MissionKernel, OsaRuntime i Proof Core są wykorz
 - APR ocenia dowody wykonania i obsługiwane twierdzenia. Odrzucenie nie jest mylone z odpowiedzią `VERIFIED`.
 - Przy `BLOCKED` strumień SSE przekazuje do uprawnionej przeglądarki `osa.chat_review.v1` z oryginalną odpowiedzią, SHA-256, identyfikatorami misji/wykonania, werdyktem i istniejącymi dowodami APR.
 - UI pokazuje materiał jako **ODRZUCONĄ, NIEZWERYFIKOWANĄ ODPOWIEDŹ**, z lokalnym pobraniem JSON.
-- Delivery Lab używa tego samego obiektu `kernel.brain`. Unified używa wskazanego przez serwer `state.missionKernel`.
+- Delivery Lab, chat i Unified korzystają z tego samego skonfigurowanego **plannera Brain** i magazynu misji; adapter pamięci nie jest ponownie wywoływany w planowaniu. Dostęp do NeurOSA zachowuje istniejące, autoryzowane `MemoryService`.
 
 ## Granice uczciwego dowodu
 - Sam `PlanningReceipt` nie oznacza poprawności rozumowania.
@@ -22,7 +22,7 @@ Istniejące BrainControlPlane, MissionKernel, OsaRuntime i Proof Core są wykorz
 - Na Vercel `MissionStore` jest procesowy. Pobranie JSON na urządzenie nie jest trwałym magazynem serwerowym ani niezależną atestacją.
 - Konfiguracja `OSA_BRAIN_MODE=model` może wykonać osobne wywołanie modelu do planowania; to dodatkowy koszt/latencja. Tryb `native` tworzy strukturalny plan bez modelowego rozumowania.
 - Planowanie Brain nie ma obecnie pełnego abort; przy utracie połączenia nie należy deklarować potwierdzonego zatrzymania dostawcy.
-- NeurOSA pozostaje opcjonalna. Dodatkowe odczyty kontekstu muszą zostać zmierzone i zweryfikowane przed produkcyjnym GO.
+- NeurOSA pozostaje opcjonalna. P0 unika podwójnego recall, więc sam PlanningReceipt nie poświadcza użycia pamięci przez planner. Powiązanie kontekstu z planem semantycznym należy do dalszego etapu, po testach zakresów tenantów.
 
 ## Konieczne testy przed GO
 1. Pełne `npm test` + dashboard build + regresje przeglądarkowe.
