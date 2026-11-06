@@ -1,4 +1,4 @@
-import type { Mission, MissionRecord, TeamGraph } from "../../../packages/contracts/src";
+import type { ClaimEnforcement, Mission, MissionRecord, TeamGraph } from "../../../packages/contracts/src";
 import { ExecutorRegistry, MissionKernel } from "../../../packages/runtime/src";
 import { BrainControlPlane, verifyBrainPlan } from "../../../packages/brain/src";
 
@@ -8,8 +8,8 @@ import { BrainControlPlane, verifyBrainPlan } from "../../../packages/brain/src"
  * MissionStore, MissionKernel lifecycle and APR verification. The plan receipt
  * does not claim to include memory that was not supplied to the planner.
  */
-export function planningOnlyKernel(parent: MissionKernel, onRecord?: (record: MissionRecord) => void): MissionKernel {
-  return new MissionKernel(parent.store,undefined,new BrainControlPlane(parent.brain.planner),onRecord);
+export function planningOnlyKernel(parent: MissionKernel, onRecord?: (record: MissionRecord) => void, claimEnforcement:ClaimEnforcement="ENFORCE"): MissionKernel {
+  return new MissionKernel(parent.store,undefined,new BrainControlPlane(parent.brain.planner),onRecord,claimEnforcement);
 }
 
 /**
