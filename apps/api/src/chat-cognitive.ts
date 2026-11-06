@@ -68,7 +68,7 @@ export async function runCognitiveChat<T extends CognitiveModelAnswer>(options: 
       },content:answer.text}],
     };
   });
-  const {run,record} = await executeCognitiveMission(planningOnlyKernel(kernel),registry,team,mission,executionId,options.onPlanned);
+  const {run,record} = await executeCognitiveMission(planningOnlyKernel(kernel,undefined,"REPORT_ONLY"),registry,team,mission,executionId,options.onPlanned);
   if (!answer || run.execution_id !== executionId || !record.brain?.planning_receipt)
     throw Error("COGNITIVE_EXECUTION_INTEGRITY_MISSING");
   return {answer,run,record};
