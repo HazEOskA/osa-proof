@@ -201,6 +201,8 @@ export interface ToolCallRecord {
 }
 /** Runtime-owned attribution mode, never sourced from mission input or an executor. */
 export type ClaimAttributionMode = "DEFAULT_ON" | "CONTROL_PLANE_NO_EXTERNAL_FACTS";
+/** Trusted runtime-host policy for enforcing vs reporting legacy heuristic findings. */
+export type ClaimEnforcement = "ENFORCE" | "REPORT_ONLY";
 
 export interface ClaimAttribution {
   claim: string;
@@ -231,6 +233,8 @@ export interface ProofReceipt {
   requirement_verdicts: RequirementVerdict[];
   /** Default-on claim checking. Opt-out is only from a trusted host constructor. */
   attribution_mode?: ClaimAttributionMode;
+  /** REPORT_ONLY records findings without treating heuristic matches as failed execution. */
+  claim_enforcement?: ClaimEnforcement;
   claim_attribution?: ClaimAttribution[];
   tool_call_refs?: Array<{tool_call_id: string; record_sha256: string}>;
   tool_call_root?: string;
