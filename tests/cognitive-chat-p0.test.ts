@@ -99,16 +99,16 @@ test("P0 live SSE: blocked arithmetic answer remains available as raw downloadab
   };
   try{
     const execution_id=executionId(), conversation_id=randomUUID();
-    const prompt="Sklep internetowy ROAS 4,0.\\nPrzychód netto: 81 000 zł\\nKoszt reklam: 30 000 zł\\nKoszt sprzedanych produktów: 53 000 zł\\nLogistyka: 8 000 zł\\nOpłaty transakcyjne: 2 000 zł";
+    const prompt="Sklep internetowy ROAS 4,0.\nPrzychód netto: 81 000 zł\nKoszt reklam: 30 000 zł\nKoszt sprzedanych produktów: 53 000 zł\nLogistyka: 8 000 zł\nOpłaty transakcyjne: 2 000 zł";
     const response=await fetch(base+"/nvidia/fleet-live",{method:"POST",
       headers:{authorization:"Bearer "+user.token,origin:base,"content-type":"application/json"},
       body:JSON.stringify({prompt,agent:"commerce",history:[],remember:false,execution_id,conversation_id})});
     assert.equal(response.status,200,"SSE transport must establish before final verdict");
     const stream=await response.text();
     const event=(type:string)=>{
-      const block=stream.split("\\n\\n").find(x=>x.startsWith("event: "+type+"\\n"));
+      const block=stream.split("\n\n").find(x=>x.startsWith("event: "+type+"\n"));
       assert.ok(block,"missing SSE event "+type);
-      const line=block.split("\\n").find(x=>x.startsWith("data: "));
+      const line=block.split("\n").find(x=>x.startsWith("data: "));
       assert.ok(line);
       return JSON.parse(line.slice(6)) as Record<string,any>;
     };
