@@ -75,8 +75,8 @@ export default function OsaHelpDock(){
   return <>
     <button type="button" data-testid="osa-help-trigger" aria-label="Zapytaj OSĘ" aria-expanded={open}
       onClick={()=>{setOpen(v=>!v);setError("");}}
-      className={"focus-ring fixed right-4 z-[65] flex min-h-[48px] items-center gap-2 rounded-full border border-cyan/50 bg-[#122337] px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_30px_rgba(0,0,0,.5)] hover:border-cyan sm:right-6 "+(view==="jeverson-chat"?"top-[45%]":"bottom-5 sm:bottom-6")}>
-      <span aria-hidden="true" className="text-lg text-cyan">✦</span> {open?"Zamknij OSĘ":"Zapytaj OSĘ"}
+      className={"focus-ring fixed right-4 z-[65] flex min-h-[48px] items-center gap-2 rounded-full border border-cyan/50 bg-[#122337] px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_30px_rgba(0,0,0,.5)] hover:border-cyan sm:right-6 "+(view==="jeverson-chat"?"osa-help-in-chat top-[45%]":"bottom-5 sm:bottom-6")}>
+      <span aria-hidden="true" className="text-lg text-cyan">✦</span> <span className="osa-help-label">{open?"Zamknij OSĘ":"Zapytaj OSĘ"}</span>
     </button>
     {open&&<>
       <div className="fixed inset-0 z-[66] bg-black/60 md:hidden" onClick={()=>setOpen(false)} aria-hidden="true"/>

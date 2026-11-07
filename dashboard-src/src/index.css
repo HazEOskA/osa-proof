@@ -112,6 +112,8 @@ button { font: inherit; color: inherit; }
   .osa-options-button { background: rgb(var(--raise-rgb)); }
   .osa-chat-compose [data-testid="osa-send"] { min-width: 44px; min-height: 44px; padding-inline: 14px; }
   .osa-chat-compose > p { margin-top: 7px; font-size: 10px; line-height: 1.3; }
+  .osa-help-in-chat { top: 66px; right: 12px; width: 40px; min-height: 40px; height: 40px; justify-content: center; padding: 0; background: rgb(var(--panel-rgb)); }
+  .osa-help-in-chat .osa-help-label { display: none; }
 }
 @media (min-width: 768px) {
   .osa-chat-compose form { display: grid; grid-template-columns: minmax(0, 1fr) auto; }

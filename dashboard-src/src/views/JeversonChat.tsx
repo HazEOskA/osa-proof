@@ -144,7 +144,7 @@ export default function JeversonChat() {
       }
     });
   },[sessions,current.id,cacheReady]);
-  useEffect(()=>{bottom.current?.scrollIntoView({block:"end"});},[current.id,current.messages.length,busy]);
+  useEffect(()=>{if(current.messages.length || busy)bottom.current?.scrollIntoView({block:"end"});},[current.id,current.messages.length,busy]);
   useEffect(()=>{
     let alive=true;
     void api<{enabled:boolean}>("/durable/status").then(x=>{if(alive){setDurable(x.enabled);setDurableChecked(true);}})
