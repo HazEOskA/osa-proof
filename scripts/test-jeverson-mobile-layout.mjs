@@ -25,6 +25,7 @@ try {
     assert.equal(await home.getByRole("button",{name:"Czat floty agentów",exact:true}).count(),1,"Chat Fleet is an optional Home module");
     await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     const shell=page.getByTestId("osa-native-chat");await shell.waitFor({state:"visible",timeout:15000});
+    await page.screenshot({path:out+"/"+name+"-pusty-czat.png",fullPage:true});
     assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
     if(width<768) {
       const options=page.getByRole("button",{name:"Opcje czatu"});

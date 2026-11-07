@@ -95,7 +95,8 @@ button { font: inherit; color: inherit; }
   .osa-chat-header { min-height: 62px; border: 0; background: transparent; }
   .osa-chat-header > button:first-child { width: 42px; height: 42px; font-size: 18px; }
   .osa-chat-header h1 { font-size: 16px; letter-spacing: -.02em; }
-  .osa-chat-header > button[aria-label="Wybierz agenta"] { max-width: 118px; border: 0; background: transparent; font-size: 13px; }
+  .osa-chat-header > div { flex: 0 0 auto; }
+  .osa-chat-header > button[aria-label="Wybierz agenta"] { max-width: 88px; margin-left: auto; border: 0; background: transparent; font-size: 13px; }
   .osa-inspector-button { width: 40px; height: 40px; border: 0; font-size: 22px; }
   .osa-chat-agents { justify-content: flex-start; }
   .osa-chat-messages { padding-inline: 20px; }
