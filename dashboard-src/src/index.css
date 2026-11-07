@@ -92,6 +92,36 @@ button { font: inherit; color: inherit; }
   .osa-chat-compose textarea { font-size: 16px; line-height: 1.45; }
   .osa-chat-compose button, .osa-chat-compose select { min-height: 36px; }
   .osa-chat-compose [data-testid="osa-send"] { border-radius: 999px; min-width: 44px; }
+  .osa-chat-header { min-height: 62px; border: 0; background: transparent; }
+  .osa-chat-header > button:first-child { width: 42px; height: 42px; font-size: 18px; }
+  .osa-chat-header h1 { font-size: 16px; letter-spacing: -.02em; }
+  .osa-chat-header > button[aria-label="Wybierz agenta"] { max-width: 118px; border: 0; background: transparent; font-size: 13px; }
+  .osa-inspector-button { width: 40px; height: 40px; border: 0; font-size: 22px; }
+  .osa-chat-agents { justify-content: flex-start; }
+  .osa-chat-messages { padding-inline: 20px; }
+  .osa-chat-empty h2 { max-width: 290px; font-size: 25px; line-height: 1.2; letter-spacing: -.035em; }
+  .osa-chat-empty > p { max-width: 300px; font-size: 13px; line-height: 1.55; }
+  .osa-chat-empty-icon { width: 52px; height: 52px; margin-bottom: 20px; font-size: 24px; }
+  .osa-chat-compose { background: rgb(var(--void-rgb)); }
+  .osa-chat-compose form { border-radius: 26px; padding: 14px 14px 10px; background: rgb(var(--panel-rgb)); }
+  .osa-compose-settings { display: none; }
+  .osa-compose-settings.is-open { display: block; max-height: min(36dvh, 290px); overflow-y: auto; margin-bottom: 12px; }
+  .osa-chat-compose textarea { min-height: 42px; resize: none; }
+  .osa-compose-actions { padding-top: 4px; }
+  .osa-options-button { background: rgb(var(--raise-rgb)); }
+  .osa-chat-compose [data-testid="osa-send"] { min-width: 44px; min-height: 44px; padding-inline: 14px; }
+  .osa-chat-compose > p { margin-top: 7px; font-size: 10px; line-height: 1.3; }
+}
+@media (min-width: 768px) {
+  .osa-chat-compose form { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .osa-compose-settings { display: contents; }
+  .osa-compose-modes { grid-column: 1 / -1; order: 1; }
+  .osa-compose-hint { grid-column: 1 / -1; order: 2; }
+  .osa-compose-memory { grid-column: 1 / -1; order: 3; }
+  .osa-compose-active { grid-column: 1 / -1; order: 4; }
+  .osa-chat-compose textarea { grid-column: 1 / -1; order: 5; }
+  .osa-chat-model-row { grid-column: 1; order: 6; }
+  .osa-compose-actions { grid-column: 2; order: 7; border-top: 1px solid rgb(255 255 255 / .05); }
 }
 
 /* Vercel-inspired appearance is scoped to this optional theme. */
