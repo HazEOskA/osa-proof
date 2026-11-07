@@ -26,10 +26,12 @@ async function main(){
       assert.equal(await page.getByTestId("osa-native-chat").count(),0,"Framework Home must load first");
       await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
       await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
+      if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
       await page.getByText("Pamięć niepołączona",{exact:true}).waitFor({state:"visible"});
       assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
       assert.equal(await page.getByRole("link",{name:"Zaloguj przez GitHub"}).count(),0);
       assert.equal(await page.getByRole("checkbox",{name:"Zapamiętaj moją wiadomość"}).isDisabled(),true);
+      if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
       assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0);
       const input="OSA Unified Runtime V1";
       const expectedHash=crypto.createHash("sha256").update(input).digest("hex");
