@@ -115,6 +115,13 @@ button { font: inherit; color: inherit; }
   .osa-help-in-chat { top: 66px; right: 12px; width: 40px; min-height: 40px; height: 40px; justify-content: center; padding: 0; background: rgb(var(--panel-rgb)); }
   .osa-help-in-chat .osa-help-label { display: none; }
 }
+@media (max-width: 767px) and (max-height: 700px) {
+  .osa-chat-empty { padding-block: 8px; }
+  .osa-chat-empty-icon { width: 44px; height: 44px; margin-bottom: 10px; }
+  .osa-chat-empty h2 { font-size: 22px; }
+  .osa-chat-empty > p { margin-top: 8px; }
+  .osa-chat-empty > div:last-child { margin-top: 12px; }
+}
 @media (min-width: 768px) {
   .osa-chat-compose form { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
   .osa-compose-settings { display: contents; }
