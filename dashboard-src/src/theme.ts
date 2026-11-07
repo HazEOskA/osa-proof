@@ -9,6 +9,7 @@ const light: Record<Token,string> = {void:'#f7f8fc',ink:'#f0f2f8',panel:'#ffffff
 const preset = (id:string,name:string,mode:'dark'|'light',tokens:Partial<Record<Token,string>> = {}):ThemeDefinition => ({schema:'osa.theme.v1',id,name,mode,tokens:{...(mode==='dark'?dark:light),...tokens}});
 export const BUILTIN_THEMES: ThemeDefinition[] = [
  preset('proof','Proof','dark'),
+ preset('osa-gold','OSA · czerń i złoto','dark',{void:'#090909',ink:'#101010',panel:'#181818',raise:'#222222',line:'#34312a',line2:'#62583b',fg:'#f3f1eb',hero:'#ffffff',dim:'#b7b2a7',faint:'#b7b2a7',brand:'#ffd43b',onbrand:'#161100',cyan:'#ffd43b',steel:'#ffd43b',violet:'#e5c66a',ok:'#61d9a2',warn:'#ffca68',bad:'#ff8d83',info:'#a9cfff'}),
  preset('vercel','Vercel · czerń','dark',{void:'#000000',ink:'#0a0a0a',panel:'#111111',raise:'#1a1a1a',line:'#2e2e2e',line2:'#444444',fg:'#ededed',hero:'#ffffff',dim:'#a1a1a1',faint:'#a1a1a1',brand:'#ffffff',onbrand:'#000000',cyan:'#ededed',steel:'#ededed',violet:'#b3b3b3',ok:'#50e3c2',warn:'#f5a623',bad:'#ff6369',info:'#3291ff'}),
  preset('graphite','Graphite','dark',{void:'#101113',ink:'#161719',panel:'#1c1e21',raise:'#282b30',line:'#40444d',line2:'#69717e',dim:'#afb7c5',faint:'#afb7c5',brand:'#a9c0ee',onbrand:'#172033',cyan:'#bfd0ef',steel:'#bfd0ef'}),
  preset('midnight','Midnight','dark',{void:'#070919',ink:'#0e1228',panel:'#141a36',raise:'#202847',line:'#394779',brand:'#a393ff',onbrand:'#181333',dim:'#b0bad8',faint:'#b0bad8'}),

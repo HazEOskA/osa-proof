@@ -68,6 +68,32 @@ button { font: inherit; color: inherit; }
 .theme-dialog { width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
 .theme-dialog::backdrop { background: rgb(0 0 0 / .55); }
 
+/* Mobile chat keeps the OSA identity while respecting an explicitly selected theme. */
+@media (max-width: 767px) {
+  :root[data-osa-theme="proof"] .osa-chat {
+    --void-rgb: 9 9 9; --ink-rgb: 16 16 16; --panel-rgb: 24 24 24; --raise-rgb: 37 37 37;
+    --line-rgb: 52 49 42; --line2-rgb: 98 88 59;
+    --fg-rgb: 243 241 235; --hero-rgb: 255 255 255; --dim-rgb: 183 178 167; --faint-rgb: 183 178 167;
+    --cyan-rgb: 255 212 59; --steel-rgb: 255 212 59; --brand-rgb: 255 212 59; --onbrand-rgb: 22 17 0;
+  }
+  .osa-chat { font-family: "Geist Variable", system-ui, sans-serif; }
+  .osa-chat-topline { min-height: 34px; padding-inline: 12px; }
+  .osa-chat-topline > span { display: none; }
+  .osa-chat-header { min-height: 58px; padding-inline: 12px; }
+  .osa-chat-header > button { min-height: 40px; }
+  .osa-chat-agents { gap: 6px; padding: 7px 12px; overflow-x: auto; }
+  .osa-chat-agents > * { flex-shrink: 0; }
+  .osa-chat-messages { padding: 20px 16px; overscroll-behavior: contain; }
+  .osa-chat-messages article > div { font-size: 14px; line-height: 1.65; }
+  .osa-chat-messages .osa-message-assistant { max-width: 100%; padding-inline: 0; border: 0; background: transparent; }
+  .osa-chat-messages .osa-message-user { max-width: 88%; border-radius: 18px 18px 5px 18px; }
+  .osa-chat-compose { padding: 10px 12px max(10px, env(safe-area-inset-bottom)); }
+  .osa-chat-compose form { border-radius: 22px; padding: 12px; }
+  .osa-chat-compose textarea { font-size: 16px; line-height: 1.45; }
+  .osa-chat-compose button, .osa-chat-compose select { min-height: 36px; }
+  .osa-chat-compose [data-testid="osa-send"] { border-radius: 999px; min-width: 44px; }
+}
+
 /* Vercel-inspired appearance is scoped to this optional theme. */
 :root[data-osa-theme="vercel"] body,
 :root[data-osa-theme="vercel"] .font-sans,

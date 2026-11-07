@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BUILTIN_THEMES, MAX_THEME_BYTES, TOKEN_KEYS, contrast, parseTheme, restoreThemes, themeRgb } from '../dashboard-src/src/theme';
 const palette = () => JSON.parse(JSON.stringify(BUILTIN_THEMES.find(t => t.id === 'porcelain')!));
-test('eleven complete palettes include Vercel black and preserve five light themes', () => {
- assert.equal(BUILTIN_THEMES.length, 11);
+test('twelve complete palettes include OSA gold, Vercel black and five light themes', () => {
+ assert.equal(BUILTIN_THEMES.length, 12);
+ assert.ok(BUILTIN_THEMES.some(t => t.id === 'osa-gold' && t.mode === 'dark'));
  assert.equal(BUILTIN_THEMES.filter(t => t.mode === 'light').length, 5);
- assert.equal(new Set(BUILTIN_THEMES.map(t => t.id)).size, 11);
- assert.equal(new Set(BUILTIN_THEMES.map(t => t.tokens.void)).size, 11);
+ assert.equal(new Set(BUILTIN_THEMES.map(t => t.id)).size, 12);
+ assert.equal(new Set(BUILTIN_THEMES.map(t => t.tokens.void)).size, 12);
  for (const theme of BUILTIN_THEMES) {
   assert.deepEqual(Object.keys(theme.tokens).sort(), [...TOKEN_KEYS].sort());
   assert.doesNotThrow(() => parseTheme(JSON.stringify(theme)), theme.name);
