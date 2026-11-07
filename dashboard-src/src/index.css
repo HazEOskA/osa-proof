@@ -67,6 +67,10 @@ button { font: inherit; color: inherit; }
 
 .theme-dialog { width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
 .theme-dialog::backdrop { background: rgb(0 0 0 / .55); }
+.osa-message-actions { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.osa-copy-button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 9px; border-radius: 10px; color: rgb(var(--dim-rgb)); font-size: 12px; transition: color .16s ease, background .16s ease; }
+.osa-copy-button:hover, .osa-copy-button:focus-visible { color: rgb(var(--fg-rgb)); background: rgb(var(--raise-rgb)); }
+.osa-copy-error { color: rgb(var(--warn-rgb)); font-size: 11px; line-height: 1.4; }
 
 /* Mobile chat keeps the OSA identity while respecting an explicitly selected theme. */
 @media (max-width: 767px) {
@@ -105,6 +109,10 @@ button { font: inherit; color: inherit; }
   .osa-chat-empty-icon { width: 52px; height: 52px; margin-bottom: 20px; font-size: 24px; }
   .osa-chat-compose { background: rgb(var(--void-rgb)); }
   .osa-chat-compose form { border-radius: 26px; padding: 14px 14px 10px; background: rgb(var(--panel-rgb)); }
+  .osa-chat-compose form { border-color: rgb(var(--line2-rgb) / .75); box-shadow: 0 8px 30px rgb(0 0 0 / .18); }
+  .osa-message-user { border: 1px solid rgb(var(--line2-rgb) / .45); }
+  .osa-message-assistant { line-height: 1.7; }
+  .osa-copy-button { min-height: 40px; }
   .osa-compose-settings { display: none; }
   .osa-compose-settings.is-open { display: block; max-height: min(36dvh, 290px); overflow-y: auto; margin-bottom: 12px; }
   .osa-chat-compose textarea { min-height: 42px; resize: none; }

@@ -17,6 +17,7 @@ async function main(){
   try {
     for(const [name,width,height] of [["android-390",390,844],["desktop",1440,900]]){
       const page=await browser.newPage({viewport:{width,height},reducedMotion:"reduce"});
+      await page.context().grantPermissions(["clipboard-read","clipboard-write"],{origin:base});
       const failures=[],requests=[];page.on("pageerror",e=>failures.push(e.message));
       page.on("request",r=>{if(r.url().includes("/api/unified/"))requests.push({method:r.method(),url:r.url()});});
       const loaded=await page.goto(base,{waitUntil:"domcontentloaded"});
@@ -39,6 +40,11 @@ async function main(){
       await page.getByTestId("osa-send").click();
       const answer=page.getByTestId("osa-message").filter({hasText:expectedHash});
       await answer.waitFor({state:"visible",timeout:25000});
+      await page.getByRole("button",{name:"Kopiuj pytanie"}).click();
+      assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),"Oblicz SHA-256 tekstu: "+input,"Copies the entire question");
+      await page.getByRole("button",{name:"Kopiuj odpowiedź"}).click();
+      assert.match(await page.evaluate(()=>navigator.clipboard.readText()),new RegExp(expectedHash),"Copies the complete response text");
+      await page.getByText("Skopiowano całą treść wiadomości.").waitFor({state:"attached"});
       assert.match(await answer.innerText(),/ZWERYFIKOWANO/);
       const execution=await answer.innerText();
       assert.match(execution,/exec_[a-f0-9-]{36}/);
