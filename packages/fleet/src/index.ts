@@ -3,11 +3,28 @@ import { JobQueue, Job, ControlError } from "../../control/src";
 import { AgentExecutionContext, AgentExecutionResult, AgentExecutor } from "../../contracts/src";
 import { digest } from "../../proof-core/src";
 import { WorkspaceProvider, WorkspaceHandle } from "../../workspace-runtime/src";
+import { FileDurableJobStore, type DurableScope } from "../../durable-execution/src";
 
 export interface Worker { worker_id: string; organization_id: string; project_id: string; capacity: number; active: number; heartbeat_at: number; draining: boolean }
 export interface Lease { job_id: string; worker_id: string; token: string; generation: number; expires_at: number }
 /** Reuses JobQueue storage. Single-process fencing; not a distributed durable broker. */
 export class FleetQueue extends JobQueue {
+  /** Read-only projection of the authoritative Durable lease. It creates no
+   * Fleet job, token, generation or retry policy and is not proof of execution. */
+  static async observeDurable(store: FileDurableJobStore, scope: DurableScope, executionId: string) {
+    const job = await store.get(scope, executionId);
+    if (!job) return undefined;
+    const state = await store.publicStatus(job);
+    return {
+      schema: "osa.fleet_durable_observation.v1" as const,
+      source: "DURABLE" as const,
+      execution_id: state.execution_id,
+      status: state.status,
+      worker_id: state.lease?.worker_id ?? null,
+      generation: state.lease?.generation ?? null,
+      lease_expires_at: state.lease?.expires_at ?? null,
+    };
+  }
   private workers = new Map<string, Worker>();
   private leases = new Map<string, Lease>();
   private generations = new Map<string, number>();
@@ -52,7 +69,12 @@ export class FleetQueue extends JobQueue {
   recover(): void {
     const now = this.clock().getTime();
     for (const lease of [...this.leases.values()]) if (lease.expires_at <= now || now - this.worker(lease.worker_id).heartbeat_at > 30000) {
-      this.jobs.find(j => j.job_id === lease.job_id)!.status = "QUEUED"; this.release(lease);
+      // A timed-out worker may already have performed an external side effect.
+      // Expiry fences its result; it is not evidence that retry is safe.
+      const job = this.jobs.find(j => j.job_id === lease.job_id)!;
+      job.status = "UNKNOWN";
+      job.error = "FLEET_EXECUTION_UNCONFIRMED";
+      this.release(lease);
     }
   }
   snapshot(): Worker[] { return structuredClone([...this.workers.values()]); }

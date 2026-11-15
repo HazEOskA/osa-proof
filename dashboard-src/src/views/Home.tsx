@@ -39,9 +39,9 @@ export default function Home() {
     { n: "Połącz tożsamość", s: social.authenticated ? "DONE" : "NOT CONNECTED", note: social.authenticated ? "Konto OAuth zweryfikowane" : "Google i GitHub: logowanie aktywne po konfiguracji dostawców; operator to rola, nie odrębne konto" },
     { n: "Połącz GitHub", s: "UNKNOWN", note: "Repozytorium jest publiczne; brak informacji o połączeniu" },
     { n: "Połącz model", s: anyModel ? "DONE" : "UNKNOWN", note: anyModel ? "model_ref ustawiono" : "agenci nie mają przypisanego modelu" },
-    { n: "Utwórz środowisko pracy", s: "DONE", note: `${data.team.organization_id} / ${data.team.project_id}` },
+    { n: "Utwórz środowisko pracy", s: data.team.team_id === "UNKNOWN" ? "UNKNOWN" : "DONE", note: `${data.team.organization_id} / ${data.team.project_id}` },
     { n: "Zainicjuj wiedzę", s: "UNKNOWN", note: `${data.repo.docs.length} dokumentów w grafie; brak zgłoszonej bazy wiedzy` },
-    { n: "Utwórz agenta", s: "DONE", note: `${data.team.agents.length} agentów w grafie zespołu v${data.team.version}` },
+    { n: "Utwórz agenta", s: data.team.agents.length ? "DONE" : "UNKNOWN", note: `${data.team.agents.length} agentów w grafie zespołu v${data.team.version}` },
     { n: "Uruchom misję", s: data.runs.length ? "DONE" : "PENDING", note: `${data.runs.length} zarejestrowanych wykonań` },
     { n: "Sprawdź dowody", s: verified ? "DONE" : "PENDING", note: `${verified} zweryfikowanych · ${failed} błędnych` },
   ];
@@ -125,6 +125,8 @@ export default function Home() {
       <section aria-label="Misje">
         <div className="mb-2 flex items-center justify-between"><span className="label">OSTATNIE MISJE</span><Mono className="text-[10.5px] text-dim">{source.kind} · {source.detail}</Mono></div>
         <div className="divide-y divide-line rounded-lg border border-line">
+          {!data.missions.length&&<p className="px-4 py-3 text-sm text-dim">{source.kind === "LIVE" ? "Brak zapisanych misji." : "Stan misji niepotwierdzony."}</p>}
+          {data.missions.filter(m=>!data.runs.some(r=>r.proof.mission_id===m.mission_id)).map(m=><div key={m.mission_id} className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3"><span className="mono text-[12px]">{m.mission_id}</span><span className="min-w-0 flex-1 truncate text-[14px]">{m.objective}</span><Status v={data.missionStates?.[m.mission_id]??"UNKNOWN"}/></div>)}
           {data.runs.map((r) => {
             const m = data.missions.find((x) => x.mission_id === r.proof.mission_id);
             return (

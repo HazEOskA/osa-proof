@@ -13,13 +13,13 @@ const hash = (text: string) => createHash("sha256").update(text,"utf8").digest("
 export type CognitiveModelAnswer = {
   text: string;
   model: string;
+  provider_model?: string;
   provider_response_id: string | null;
   request_sha256: string;
 };
 export type SupervisorRepair = { feedback: string; prior_response_sha256: string };
 export type CognitiveChatOptions<T extends CognitiveModelAnswer> = {
   kernel: MissionKernel;
-  session: SessionRecord;
   projectId: string;
   prompt: string;
   executionId: string;
@@ -28,15 +28,26 @@ export type CognitiveChatOptions<T extends CognitiveModelAnswer> = {
   onAnswer?: (answer:T) => void;
   onSupervisor?: (review:SupervisorReview,attempt:number) => void;
   onRepair?: (repair:SupervisorRepair) => void;
-};
+  /** Host-observed Durable claim; never sourced from model output. */
+  durableLease?:{worker_id:string;generation:number;execution_id:string};
+} & ({session:SessionRecord; durableScope?:never} | {
+  session?:never;
+  // Scope was authorized by the durable API before the job was persisted.
+  // This is deliberately not a fabricated SessionRecord or a renewed session.
+  durableScope:{organization_id:string;project_id:string;identity_id:string};
+});
 /** Mandatory path: approved Brain plan -> Worker -> independent bounded
  * Supervisor -> APR. Repairs occur INSIDE the supervised executor, before APR.
  * A checked equation never certifies general factual correctness.
  */
 export async function runCognitiveChat<T extends CognitiveModelAnswer>(options:CognitiveChatOptions<T>) {
-  const {kernel,session,projectId,prompt,executionId}=options;
-  const organizationId=session.identity.organization_id;
-  if(!organizationId||!projectId||!/^exec_[a-f0-9-]{36}$/i.test(executionId))
+  const {kernel,projectId,prompt,executionId}=options;
+  const organizationId=options.session?.identity.organization_id??options.durableScope?.organization_id;
+  if(!organizationId||!projectId||!/^exec_[a-f0-9-]{36}$/i.test(executionId)||
+     (options.durableScope&&(!options.durableScope.identity_id||options.durableScope.project_id!==projectId))||
+     (options.durableLease&&(!options.durableScope||!options.durableLease.worker_id||
+       !Number.isSafeInteger(options.durableLease.generation)||options.durableLease.generation<1||
+       options.durableLease.execution_id!==executionId)))
     throw Error("COGNITIVE_SCOPE_INVALID");
   const team:TeamGraph={
     organization_id:organizationId,project_id:projectId,
@@ -49,7 +60,8 @@ export async function runCognitiveChat<T extends CognitiveModelAnswer>(options:C
   };
   const mission:Mission={
     organization_id:organizationId,project_id:projectId,
-    mission_id:"chat_"+executionId.slice(5),team_id:team.team_id,team_version:team.version,
+    // Durable IDs are scoped: different identities may choose the same execution ID.
+    mission_id:options.durableScope?"chat_"+hash(JSON.stringify([organizationId,projectId,options.durableScope.identity_id,executionId])):"chat_"+executionId.slice(5),team_id:team.team_id,team_version:team.version,
     objective:prompt,entry_agent_id:"nvidia",input:{prompt},
     policy:{allowed_executor_refs:[CHAT_EXECUTOR,SUPERVISOR_EXECUTOR],required_receipts:[]},
     budget:{max_tasks:2,max_context_chars:12000},
@@ -67,8 +79,9 @@ export async function runCognitiveChat<T extends CognitiveModelAnswer>(options:C
     answer=await options.complete();
     options.onAnswer?.(answer);
     return {output:answer.text,evidence:[{kind:"chat_provider_response",data:{
-      complete:true,model:answer.model,provider_response_id:answer.provider_response_id,
+      complete:true,model:answer.provider_model??answer.model,requested_model:answer.model,provider_response_id:answer.provider_response_id,
       request_sha256:answer.request_sha256,response_sha256:hash(answer.text),
+      ...(options.durableLease?{worker_id:options.durableLease.worker_id,lease_generation:options.durableLease.generation}:{}),
     },content:answer.text}]};
   });
   registry.register(SUPERVISOR_EXECUTOR,async context=>{

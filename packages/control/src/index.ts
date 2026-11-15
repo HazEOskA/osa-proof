@@ -343,7 +343,7 @@ export const PERMISSIONS: ReadonlyArray<PermissionRow> = [
 // Missions queued to run now or at run_at. There is no background worker in a serverless function, so due
 // jobs run when POST /queue/drain is called (a cron can call it). Each finished job keeps its run_id and
 // verdict, so it points at a sealed receipt.
-export type JobStatus = "QUEUED" | "RUNNING" | "DONE" | "FAILED";
+export type JobStatus = "QUEUED" | "RUNNING" | "DONE" | "FAILED" | "UNKNOWN";
 export interface Job {
   job_id: string; mission_id: string; deployment_id: string | null; run_at: string; created_at: string;
   status: JobStatus; run_id: string | null; verdict: string | null; error: string | null;

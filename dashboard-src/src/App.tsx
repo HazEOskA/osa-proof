@@ -7,10 +7,15 @@ import Shell from "./views/Shell";
 import { useThemes } from "./useThemes";
 
 export default function App() {
-  const { data, source, runningMission, actionError, runMission, enterLayer, inspectExecution } = useOsaData();
-  const graph = useMemo(() => buildGraph(data), [data]);
+  const { data: storedData, source, runningMission, actionError, runMission, enterLayer, inspectExecution } = useOsaData();
   const [view, setView] = useState<ViewId>("home");
-  const [runId, setRunId] = useState(data.runs[0]?.run_id ?? "");
+  const [runId, setRunId] = useState(storedData.runs[0]?.run_id ?? "");
+  const data = useMemo(() => {
+    const run = storedData.runs.find(item => item.run_id === runId) ?? storedData.runs[0];
+    const team = run && storedData.teams?.find(item => item.team_id === run.proof.team_id && item.version === run.proof.team_version && item.organization_id === run.proof.binding.organization_id && item.project_id === run.proof.binding.project_id);
+    return team ? { ...storedData, team } : storedData;
+  }, [storedData, runId]);
+  const graph = useMemo(() => buildGraph(data), [data]);
   const [focus, setFocus] = useState<string | null>(null);
   const [palette, setPalette] = useState(false);
   const themeSettings = useThemes();

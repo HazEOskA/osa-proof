@@ -26,16 +26,17 @@ function plan(): DeploymentPlan {
   const body = { schema: "osa.image_receipt.v1" as const,...scope,build_receipt_sha256: build.receipt_sha256,image,created_at: new Date().toISOString() };
   return prepareDeployment({ ...scope,provider: "azure.container-apps",target: "osa-app",image,image_receipt: { ...body,receipt_sha256: digest(body) },build,health_path: "/health",expected_body_sha256: digest("live-app") });
 }
-test("fleet fences recovered leases, scopes placement, respects capacity and draining", () => {
+test("fleet fences expired leases without replay, scopes placement, respects capacity and draining", () => {
   let now = 0; const q = new FleetQueue(() => new Date(now));
   q.register({worker_id:"w",organization_id:"org",project_id:"project",capacity:1});
   q.register({worker_id:"other",organization_id:"other",project_id:"project",capacity:1});
   q.enqueueScoped(scope); assert.equal(q.claim("other"),undefined); assert.equal(q.takeDue().length,0);
   const l = q.claim("w",100)!; assert.ok(l); assert.equal(q.claim("w"),undefined);
   assert.throws(() => q.finish(l.job_id,{run_id:"r",verdict:"VERIFIED"}),/lease required/);
-  now = 101; const next = q.claim("w",100)!; assert.equal(next.generation,2);
+  now = 101; assert.equal(q.claim("w",100),undefined);
+  assert.equal(q.list().find(job=>job.job_id===l.job_id)?.status,"UNKNOWN");
   assert.throws(() => q.complete(l,{run_id:"r",verdict:"VERIFIED"}),/stale lease/);
-  q.complete(next,{run_id:"r",verdict:"VERIFIED"}); assert.equal(q.snapshot()[0].active,0);
+  assert.equal(q.snapshot()[0].active,0);
   q.enqueueScoped({...scope,mission_id:"second"}); q.drain("w"); assert.equal(q.claim("w"),undefined);
 });
 test("capability grants are pinned and checked before executor side effects", async () => {

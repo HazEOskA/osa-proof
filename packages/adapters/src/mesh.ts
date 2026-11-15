@@ -19,7 +19,8 @@ export class ModelMesh implements ModelProvider {
     for (const target of this.targets) {
       try {
         const response = await target.complete(request);
-        hops.push({ provider: target.id, model: target.model, ok: true, attempts: response.attempts ?? 1 });
+        // The gateway may report a serving model different from the requested target.
+        hops.push({ provider: response.provider, model: response.model, ok: true, attempts: response.attempts ?? 1 });
         return { ...response, hops };
       } catch (error) {
         if (!(error instanceof ProviderCallError)) throw error;

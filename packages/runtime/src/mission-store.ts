@@ -1,4 +1,4 @@
-import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
+import { mkdir, open, readFile, readdir, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { MissionRecord } from "../../contracts/src";
@@ -8,6 +8,8 @@ export class MissionConflictError extends Error {}
 export interface MissionStore {
   readonly persistence: "PROCESS_MEMORY" | "LOCAL_FILESYSTEM";
   get(missionId: string): Promise<MissionRecord | undefined>;
+  /** Enumerate only records in the supplied organization. API must also enforce project access. */
+  list(organizationId: string): Promise<MissionRecord[]>;
   // undefined means create-only. Revisions are optimistic concurrency tokens.
   save(record: MissionRecord, expectedRevision?: number): Promise<void>;
 }
@@ -21,6 +23,10 @@ export class MemoryMissionStore implements MissionStore {
   private readonly records = new Map<string, MissionRecord>();
   async get(id: string): Promise<MissionRecord | undefined> {
     return structuredClone(this.records.get(id));
+  }
+  async list(organizationId: string): Promise<MissionRecord[]> {
+    if (!organizationId) throw new Error("mission organization required");
+    return structuredClone([...this.records.values()].filter(record => record.mission.organization_id === organizationId));
   }
   async save(record: MissionRecord, expectedRevision?: number): Promise<void> {
     checkRevision(this.records.get(record.mission.mission_id), record, expectedRevision);
@@ -56,6 +62,30 @@ export class FileMissionStore implements MissionStore {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
       throw error;
     }
+  }
+  async list(organizationId: string): Promise<MissionRecord[]> {
+    if (!organizationId) throw new Error("mission organization required");
+    let files: string[];
+    try { files = await readdir(this.directory); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+      throw error;
+    }
+    const records: MissionRecord[] = [];
+    for (const file of files.filter(name => /^[a-f0-9]{64}\.json$/.test(name)).sort()) {
+      let envelope: { record: MissionRecord; sha256: string };
+      try { envelope = JSON.parse(await readFile(join(this.directory, file), "utf8")); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+        throw error;
+      }
+      const record = envelope.record;
+      if (!record || record.schema !== "osa.mission.v1" || !Number.isInteger(record.revision) || record.revision < 1 ||
+          !record.mission || typeof record.mission.mission_id !== "string" || digest(record.mission.mission_id) + ".json" !== file ||
+          digest(record) !== envelope.sha256) throw new Error("mission snapshot integrity failure");
+      if (record.mission.organization_id === organizationId) records.push(record);
+    }
+    return records;
   }
   async save(record: MissionRecord, expectedRevision?: number): Promise<void> {
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
