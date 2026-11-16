@@ -81,7 +81,7 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
   const kernel=new MissionKernel(new FileMissionStore(join(root,"missions")));
   const registry=new ExecutorRegistry();
   const team=demoTeam({organization_id:job.scope.organization_id,project_id:job.scope.project_id});
-  const mission=demoMission({objective:input.prompt,kind:input.artifact_kind!,mode:"connected",target:"artifact"},team);
+  const mission=demoMission({objective:input.prompt,kind:input.artifact_kind!,mode:"connected",target:"artifact"},team,true);
   // Execution IDs are unique only within durable scope, not globally.
   // Existing records remain readable with their original mission IDs.
   mission.mission_id="delivery_"+digest([job.scope.organization_id,job.scope.project_id,job.scope.identity_id,input.execution_id]);
@@ -93,7 +93,7 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
       response_sha256:createHash("sha256").update(answer.text).digest("hex"),latency_ms:answer.latency_ms,
       execution_id:input.execution_id}}]};
   });
-  installDemoExecutors(registry,{executionMode:"provider",artifactGenerator:async spec=>{
+  installDemoExecutors(registry,{executionMode:"provider",supervisorGate:true,artifactGenerator:async spec=>{
     const result=await generate(spec);
     if(!result.content.trim()||Buffer.byteLength(result.content)>128*1024)throw Error("DURABLE_ARTIFACT_SIZE_INVALID");
     return {...result,evidence:[...result.evidence,...(job.lease?.worker_id?[{

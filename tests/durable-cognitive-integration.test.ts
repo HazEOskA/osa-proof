@@ -9,6 +9,7 @@ import { executeDurableJob, runDurableWorkerOnce } from "../apps/worker/src/dura
 import { FileDurableJobStore } from "../packages/durable-execution/src";
 import { FleetQueue } from "../packages/fleet/src";
 import { verifyProofReceipt } from "../packages/proof-core/src";
+import type { RunResult } from "../packages/contracts/src";
 
 // The isolated test directories are deliberately left in place; no user data
 // or generated files are deleted by this test.
@@ -127,6 +128,40 @@ test("TEST: artifact proof binds host-observed worker lease without exposing tok
   assert.equal(evidence?.data.lease_generation,job?.lease?.generation);
   assert.equal(evidence?.binding.execution_id,body.execution_id);
   assert.equal("token" in (evidence?.data??{}),false);
+  assert.equal(verifyProofReceipt({receipt:result.run.proof,evidence:result.run.evidence,
+    observations:result.run.observations,final_output:result.run.final_output,tool_calls:result.run.tool_calls}).ok,true);
+});
+
+test("TEST: Durable artifact proof requires the existing Supervisor release",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"osa-artifact-supervisor-pass-"));
+  const body={...input(),kind:"artifact" as const,agent:undefined,artifact_kind:"webapp" as const};delete body.agent;
+  const {job}=await new FileDurableJobStore(root).submit(scope,body);
+  const generate=async()=>({content:'<!doctype html><html lang="pl"><title>Durable</title><body><p>2+2=4</p></body></html>',
+    evidence:[{kind:"model_artifact_generation",data:{source:"CONTROLLED_TEST_GENERATOR"}}]});
+  const result=await executeDurableJob(job,root,{generate}) as {status:string;report:{ready_for_review:boolean};run:RunResult;artifact:unknown|null};
+  assert.equal(result.status,"EXECUTED");
+  assert.equal(result.report.ready_for_review,true);
+  const receipt=result.run.proof.requirement_verdicts.find(item=>item.requirement_id==="supervisor_release");
+  assert.equal(receipt?.verdict,"VERIFIED");
+  const release=result.run.evidence.find(item=>item.kind==="chat_supervisor_release");
+  assert.equal(release?.agent_id,"reviewer");
+  assert.equal(release?.data.publishable,true);
+  assert.equal(verifyProofReceipt({receipt:result.run.proof,evidence:result.run.evidence,
+    observations:result.run.observations,final_output:result.run.final_output,tool_calls:result.run.tool_calls}).ok,true);
+});
+
+test("TEST: Durable artifact with failed Supervisor equation cannot be published",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"osa-artifact-supervisor-fail-"));
+  const body={...input(),kind:"artifact" as const,agent:undefined,artifact_kind:"webapp" as const};delete body.agent;
+  const {job}=await new FileDurableJobStore(root).submit(scope,body);
+  const generate=async()=>({content:'<!doctype html><html lang="pl"><title>Durable</title><body><p>2+2=5</p></body></html>',
+    evidence:[{kind:"model_artifact_generation",data:{source:"CONTROLLED_TEST_GENERATOR"}}]});
+  const result=await executeDurableJob(job,root,{generate}) as {status:string;report:{ready_for_review:boolean};run:RunResult;artifact:unknown|null};
+  assert.equal(result.status,"FAILED");
+  assert.equal(result.artifact,null);
+  assert.equal(result.report.ready_for_review,false);
+  assert.equal(result.run.verdict,"FAILED");
+  assert.equal(result.run.proof.requirement_verdicts.find(item=>item.requirement_id==="supervisor_release")?.verdict,"FAILED");
   assert.equal(verifyProofReceipt({receipt:result.run.proof,evidence:result.run.evidence,
     observations:result.run.observations,final_output:result.run.final_output,tool_calls:result.run.tool_calls}).ok,true);
 });

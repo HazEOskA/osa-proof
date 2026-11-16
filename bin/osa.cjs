@@ -86,9 +86,10 @@ function createLocalHandler(options, api) {
     try { requested = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname); }
     catch { return reject(res, 400); }
     if (requested.includes("\\") || requested.includes("\0")) return reject(res);
-    const target = path.resolve(options.staticRoot, "." + requested);
+    let target = path.resolve(options.staticRoot, "." + requested);
     if (!isInside(options.staticRoot, target)) return reject(res);
     try {
+      if ((await fsp.stat(target)).isDirectory()) target = path.join(target, "index.html");
       const real = await fsp.realpath(target);
       if (!isInside(options.staticRoot, real) || !(await fsp.stat(real)).isFile()) return reject(res, 404);
       const bytes = req.method === "HEAD" ? undefined : await fsp.readFile(real);

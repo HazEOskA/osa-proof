@@ -10,6 +10,8 @@ const { createLocalHandler } = require("../bin/osa.cjs");
 test("OSA Local: jednorazowy bilet, UI, API i CSRF", async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "osa-local-test-"));
   await fs.writeFile(path.join(root, "index.html"), "OSA OK");
+  await fs.mkdir(path.join(root,"docs"));
+  await fs.writeFile(path.join(root,"docs","index.html"),"OSA DOCS OK");
   const options = { port: 0, staticRoot: root, ticket: "test-ticket", cookie: "a".repeat(64), used: false };
   let apiCalls = 0;
   const handler = createLocalHandler(options, async(req, res) => {
@@ -34,6 +36,11 @@ test("OSA Local: jednorazowy bilet, UI, API i CSRF", async t => {
   const page = await fetch(base + "/", { headers: { cookie } });
   assert.equal(page.status, 200);
   assert.equal(await page.text(), "OSA OK");
+  for(const docsPath of ["/docs","/docs/"]) {
+    const docs=await fetch(base+docsPath,{headers:{cookie}});
+    assert.equal(docs.status,200);
+    assert.equal(await docs.text(),"OSA DOCS OK");
+  }
   const api = await fetch(base + "/api/build/status", { headers: { cookie } });
   assert.equal(await api.text(), "/build/status");
   const badOrigin = await fetch(base + "/api/teams", {
