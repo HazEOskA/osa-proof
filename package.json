@@ -2,13 +2,15 @@
   "name": "osa-proof",
   "version": "0.1.0",
   "private": true,
+  "bin": { "osa": "bin/osa.cjs" },
   "description": "Proof-first backend for verifiable agentic systems.",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "build": "npm run docs:check && node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/tests/*.test.js",
+    "test": "npm run build && node --test dist/tests/*.test.js && node --test tests/osa-local-runtime.test.cjs",
+    "test:local-runtime": "node --test tests/osa-local-runtime.test.cjs",
     "start": "node dist/apps/api/src/server.js",
     "start:worker": "node dist/apps/worker/src/server.js",
     "test:delivery-lab:browser": "npm run build && node scripts/test-delivery-lab.cjs",
