@@ -25,17 +25,23 @@ try {
     assert.equal(await home.getByRole("button",{name:"Czat floty agentów",exact:true}).count(),1,"Chat Fleet is an optional Home module");
     await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     const shell=page.getByTestId("osa-native-chat");await shell.waitFor({state:"visible",timeout:15000});
+    await page.screenshot({path:out+"/"+name+"-pusty-czat.png",fullPage:true});
     assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
+    if(width<768) {
+      const options=page.getByRole("button",{name:"Opcje czatu"});
+      assert.equal(await options.getAttribute("aria-expanded"),"false");
+      await options.click();
+      assert.equal(await options.getAttribute("aria-expanded"),"true");
+    }
     await page.getByText("TRYB TESTOWY · MODEL NIEDOSTĘPNY",{exact:true}).waitFor();
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
     assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
-    assert.equal(await page.getByRole("heading",{name:"Jeverson · flota OSA"}).count(),1,"One chat-module header");
+    assert.equal(await page.getByRole("heading",{name:width<768?"OSA Proof":"Jeverson · flota OSA"}).count(),1,"One chat-module header");
     assert.equal(await page.getByTestId("osa-hermes-switch").count(),1,"Persistent Hermes switch is present");
     assert.equal(await page.getByTestId("osa-jeverson-switch").count(),1,"Persistent Jeverson switch is present");
     await page.getByTestId("osa-jeverson-switch").click();
     assert.equal(await page.getByTestId("osa-jeverson-switch").getAttribute("aria-pressed"),"true");
-    assert.equal(await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).count(),1,"Framework return always accessible");
-    assert.equal(await page.getByRole("button",{name:"Powrót do OSA Proof"}).count(),1,"Workspace exit remains reachable");
+    if(width>=768) assert.equal(await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).count(),1,"Framework return on desktop");
     assert.equal(await page.getByTestId("osa-session").count(),1,"Exactly one initial session");
     await page.getByRole("button",{name:"Wybierz agenta"}).click();
     await page.getByTestId("osa-agent-picker").getByRole("button",{name:/Agent programistyczny/}).click();
@@ -64,7 +70,10 @@ try {
     await page.getByTestId("osa-inspector").waitFor({state:"visible"});
     assert.match(await page.getByTestId("osa-inspector").innerText(),/BRAK ZWERYFIKOWANEGO WYKONANIA/);
     await page.getByRole("button",{name:"Zamknij",exact:true}).first().click();
-    await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).click();
+    if(width<768) {
+      await page.getByRole("button",{name:"Otwórz historię"}).click();
+      await page.getByRole("button",{name:"Powrót do OSA Proof"}).click();
+    } else await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).click();
     await home.waitFor({state:"visible"});
     assert.equal(await shell.count(),0,"Chat must not replace the framework after return");
     assert.equal(await home.getByRole("button",{name:"Świat",exact:true}).count(),1,"Original World module preserved");
@@ -102,6 +111,7 @@ try {
     });
     await page.reload({waitUntil:"domcontentloaded"});
     await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+    if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
     await page.getByText("NVIDIA · KLUCZ GOTOWY").waitFor({state:"visible",timeout:15000});
     await page.getByTestId("osa-composer").fill("Cześć OSA");
     await page.getByTestId("osa-send").click();

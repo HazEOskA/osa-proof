@@ -30,6 +30,7 @@ async function ready(){for(let i=0;i<80;i++){try{if((await fetch(url+"/api/durab
       await page.getByText("DURABLE MODEL ODZYSKANY: P0 prompt po zgaszeniu ekranu").waitFor({timeout:30000});
       assert.equal(await page.getByText("DURABLE MODEL ODZYSKANY: P0 prompt po zgaszeniu ekranu").count(),1);
       await page.screenshot({path:path.join(out,name+"-model-recovered.png")});
+      if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
       await page.getByRole("button",{name:"Utwórz artefakt",exact:true}).click();
       const artifactAccepted=page.waitForResponse(r=>r.url().endsWith("/api/durable/jobs")&&r.request().method()==="POST"&&r.status()===202);
       await page.getByTestId("osa-composer").fill("Zbuduj bezpieczną stronę po polsku");

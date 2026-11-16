@@ -80,6 +80,7 @@ try{
     await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     await status(page);
     await page.getByTestId("osa-message").filter({hasText:legacy}).waitFor();
+    if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
     await page.getByText("NVIDIA · KLUCZ GOTOWY").waitFor();
     await page.getByTestId("osa-composer").fill("Historia zostaje po wyjściu z aplikacji");
     await page.getByTestId("osa-send").click();
