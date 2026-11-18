@@ -16,10 +16,11 @@ export default function App() {
     const team = run && storedData.teams?.find(item => item.team_id === run.proof.team_id && item.version === run.proof.team_version && item.organization_id === run.proof.binding.organization_id && item.project_id === run.proof.binding.project_id);
     return team ? { ...storedData, team } : storedData;
   }, [storedData, runId]);
-  // The force layout is quadratic. Do not calculate it while chatting, and
-  // bound the World projection to recent executions instead of full history.
+  // Home requires a real sun node for SolarWorld; only World needs run history.
+  // Keep the quadratic layout out of chat and bound World to recent executions.
   const graph = useMemo<Graph>(() => view === "world"
     ? buildGraph({...data, runs:worldRuns(data.runs)})
+    : view === "home" ? buildGraph({...data, runs:[]})
     : {nodes:[],edges:[],byId:new Map()}, [data,view]);
   const [focus, setFocus] = useState<string | null>(null);
   const [palette, setPalette] = useState(false);

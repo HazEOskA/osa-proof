@@ -39,6 +39,12 @@ test("Missions shows pending records even when another mission already has a ver
   const pending = pendingMissions({...snapshot, missions:[...snapshot.missions,makeMission("team-a","mission-not-yet-executed")]});
   assert.deepEqual(pending.map(m=>m.mission_id),["mission-not-yet-executed"]);
 });
+test("Home solar preview retains a real sun node without running expensive history layout", () => {
+  const home=buildGraph({...snapshot,runs:[]});
+  assert.ok(home.nodes.length>0);
+  assert.ok(home.byId.has("team"));
+  assert.equal(home.nodes.some(n=>n.type==="MISSION"),false);
+});
 test("World graph caps history without losing full MissionStore run listing", () => {
   const allRuns=Array.from({length:MAX_WORLD_RUNS+12},(_,i)=>makeRun("team-a","mission-a","run-"+i));
   assert.equal(worldRuns(allRuns).length,MAX_WORLD_RUNS);
