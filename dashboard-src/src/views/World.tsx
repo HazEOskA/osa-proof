@@ -15,7 +15,7 @@ function Inspector({ n, onClose, onSelect, graph }: { graph: Graph; n: GNode; on
   const { data } = useOsa();
   const rel = graph.edges.filter((e) => e.from === n.id || e.to === n.id);
   const proofs = graph.nodes.filter((p) => p.type === "PROOF" && n.runId && p.runId === n.runId && p.id !== n.id);
-  const events = n.type === "AGENT" ? data.runs.flatMap((r) => r.events.filter((e) => `agent:${e.agent_id}` === n.id)).length : n.runId ? data.runs.find((r) => r.run_id === n.runId)?.events.length : undefined;
+  const events = n.type === "AGENT" ? data.runs.flatMap((r) => r.events.filter((e) => e.agent_id === n.detail.identity && JSON.stringify([r.proof.binding.organization_id, r.proof.binding.project_id, r.proof.team_id, r.proof.team_version]) === n.teamScope)).length : n.runId ? data.runs.find((r) => r.run_id === n.runId)?.events.length : undefined;
   return (
     <div className="flex h-full flex-col bg-ink">
       <div className="flex items-start justify-between gap-3 border-b border-line p-4">
@@ -33,8 +33,8 @@ function Inspector({ n, onClose, onSelect, graph }: { graph: Graph; n: GNode; on
         <Section title="Identity"><Kv k="id">{val(n.detail.identity)}</Kv><Kv k="kind">{val(n.detail.kind)}</Kv></Section>
         <Section title="Stan"><div className="py-1">{n.detail.state ? (n.state ? <Status v={n.state} /> : <span className="mono text-[12px]">{n.detail.state}</span>) : <Unknown />}</div></Section>
         <Section title={`Relationships · ${rel.length}`}>
-          <ul className="space-y-0.5">{rel.map((e) => { const other = graph.byId.get(e.from === n.id ? e.to : e.from)!; return (
-            <li key={e.id}><button onClick={() => onSelect(other.id)} className="focus-ring flex w-full items-center justify-between gap-3 rounded px-1.5 py-1 text-left hover:bg-raise"><span className="mono truncate text-[12px]">{e.from === n.id ? "→" : "←"} {other.label}</span><span className="mono shrink-0 text-[10px] text-dim">{e.kind}</span></button></li>); })}</ul>
+          <ul className="space-y-0.5">{rel.map((e) => { const other = graph.byId.get(e.from === n.id ? e.to : e.from); return (
+            <li key={e.id}>{other ? <button onClick={() => onSelect(other.id)} className="focus-ring flex w-full items-center justify-between gap-3 rounded px-1.5 py-1 text-left hover:bg-raise"><span className="mono truncate text-[12px]">{e.from === n.id ? "→" : "←"} {other.label}</span><span className="mono shrink-0 text-[10px] text-dim">{e.kind}</span></button> : <span className="block px-1.5 py-1 text-[11px] text-dim">Brak węzła relacji · UNKNOWN ({e.kind})</span>}</li>); })}</ul>
         </Section>
         <Section title="Inputs">{val(n.detail.inputs)}</Section>
         <Section title="Outputs">{val(n.detail.outputs)}</Section>
@@ -70,7 +70,7 @@ export default function World() {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Szukaj w grafie…" aria-label="Szukaj w grafie" className="focus-ring tap mono w-full rounded-md border border-line bg-panel px-3 text-[12px] placeholder:text-dim sm:w-56" />
         <select aria-label="Pokaż ścieżkę przyczynową" value={causal} onChange={(e) => { setCausal(e.target.value); setSel(null); }} className="focus-ring tap mono rounded-md border border-line bg-panel px-2 text-[12px] text-dim">
           <option value="">Causal path: off</option>
-          {data.runs.map((r) => <option key={r.run_id} value={r.proof.mission_id}>Show causal path · {r.proof.mission_id} ({r.verdict})</option>)}
+          {data.runs.map((r) => <option key={r.run_id} value={r.run_id}>Show causal path · {r.proof.mission_id} ({r.verdict})</option>)}
         </select>
         <button onClick={() => document.fullscreenElement ? document.exitFullscreen() : box.current?.requestFullscreen?.()} className="focus-ring tap mono rounded-md border border-line px-3 text-[12px] text-dim hover:text-fg">Pełny ekran</button>
         <button onClick={() => go("replay")} className="focus-ring tap mono rounded-md border border-line px-3 text-[12px] text-dim hover:text-fg">Oś czasu → Odtwarzanie</button>

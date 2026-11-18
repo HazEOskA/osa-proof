@@ -8,7 +8,7 @@ export const NODE_TYPES: NodeType[] = ["WEB3","AGENT", "MODEL", "MISSION", "TOOL
 export interface GNode {
   id: string; type: NodeType; label: string; sub?: string;
   state?: "VERIFIED" | "FAILED"; detail: Record<string, string | undefined>;
-  runId?: string; x: number; y: number; r: number;
+  runId?: string; teamScope?: string; x: number; y: number; r: number;
 }
 export interface GEdge { id: string; from: string; to: string; kind: string; flow?: boolean }
 export interface Graph { nodes: GNode[]; edges: GEdge[]; byId: Map<string, GNode> }
@@ -33,13 +33,41 @@ export function buildGraph(d: Snapshot): Graph {
   const edges: GEdge[] = [];
   const add = (n: Omit<GNode, "x" | "y" | "r"> & { r?: number }) => nodes.push({ x: 0, y: 0, r: 7, ...n });
   const link = (from: string, to: string, kind: string, flow = false) => edges.push({ id: `${from}>${to}:${kind}`, from, to, kind, flow });
-  const t = d.team;
+  const teamScope = (team: Snapshot["team"]) => JSON.stringify([team.organization_id, team.project_id, team.team_id, team.version]);
+  const teams = [...(d.teams ?? []), d.team].filter((team, index, all) => all.findIndex(other => teamScope(other) === teamScope(team)) === index);
+  const selectedScope = teamScope(d.team);
+  const teamNodeIds = new Map(teams.map(team => [teamScope(team), teamScope(team) === selectedScope ? "team" : `team:${encodeURIComponent(teamScope(team))}`]));
+  const agentNodeIds = new Map<string, string>();
+  const scopedId = (prefix: string, scope: string, id: string) => `${prefix}:${encodeURIComponent(scope)}:${encodeURIComponent(id)}`;
+  const runTeam = (run: Snapshot["runs"][number]) => teams.find(team =>
+    team.organization_id === run.proof.binding.organization_id &&
+    team.project_id === run.proof.binding.project_id &&
+    team.team_id === run.proof.team_id && team.version === run.proof.team_version);
 
-  add({ id: "org", type: "WORKSPACE", label: t.organization_id, sub: "organization", r: 10, detail: { identity: t.organization_id, kind: "organization" } });
-  add({ id: "prj", type: "WORKSPACE", label: t.project_id, sub: "project", r: 9, detail: { identity: t.project_id, kind: "project", owner: t.organization_id } });
-  link("org", "prj", "contains");
-  add({ id: "team", type: "WORKSPACE", label: t.team_id, sub: `Team Graph v${t.version}`, r: 10, detail: { identity: t.team_id, kind: "Team Graph (source of truth)", version: t.version, owner: t.project_id } });
-  link("prj", "team", "contains");
+  for (const team of teams) {
+    const scope = teamScope(team), tid = teamNodeIds.get(scope)!;
+    const orgId = scope === selectedScope ? "org" : `org:${encodeURIComponent(team.organization_id)}`;
+    const projectId = scope === selectedScope ? "prj" : `prj:${encodeURIComponent(JSON.stringify([team.organization_id, team.project_id]))}`;
+    if (!nodes.some(node => node.id === orgId)) add({ id: orgId, type: "WORKSPACE", label: team.organization_id, sub: "organization", r: 10, detail: { identity: team.organization_id, kind: "organization" } });
+    if (!nodes.some(node => node.id === projectId)) add({ id: projectId, type: "WORKSPACE", label: team.project_id, sub: "project", r: 9, detail: { identity: team.project_id, kind: "project", owner: team.organization_id } });
+    link(orgId, projectId, "contains");
+    add({ id: tid, type: "WORKSPACE", label: team.team_id, sub: `Team Graph v${team.version}`, r: 10, teamScope: scope, detail: { identity: team.team_id, kind: "Team Graph (source of truth)", version: team.version, owner: team.project_id } });
+    link(projectId, tid, "contains");
+    for (const agent of team.agents) {
+      const aid = scope === selectedScope ? `agent:${agent.agent_id}` : scopedId("agent", scope, agent.agent_id);
+      const execId = scope === selectedScope ? `exec:${agent.executor_ref}` : scopedId("exec", scope, agent.executor_ref);
+      agentNodeIds.set(`${scope}\u0000${agent.agent_id}`, aid);
+      add({ id: aid, type: "AGENT", label: agent.agent_id, sub: agent.role, r: 9, teamScope: scope, detail: { identity: agent.agent_id, kind: `agent · ${agent.role}`, version: `team v${team.version}`, owner: team.team_id, dependencies: agent.executor_ref, model: agent.model_ref } });
+      link(tid, aid, "contains");
+      add({ id: execId, type: "CODE", label: agent.executor_ref, sub: "executor ref", r: 5.5, detail: { identity: agent.executor_ref, kind: "executor binding", owner: "osa-proof API registry" } });
+      link(aid, execId, "runs");
+    }
+    for (const edge of team.edges) {
+      const from = agentNodeIds.get(`${scope}\u0000${edge.from_agent_id}`);
+      const to = agentNodeIds.get(`${scope}\u0000${edge.to_agent_id}`);
+      if (from && to) link(from, to, edge.kind, true);
+    }
+  }
 
   add({ id: "repo", type: "REPOSITORY", label: "osa-proof", sub: d.source.repo, r: 12, detail: { identity: d.source.repo, version: d.source.commit ?? undefined, kind: "git repository" } });
   for (const p of d.repo.packages) {
@@ -58,25 +86,22 @@ export function buildGraph(d: Snapshot): Graph {
     add({ id: `layer:${l.layer_id}`, type: "POLICY", label: `${l.label} gate`, sub: `${l.product_layer} · ${l.access_mode}`, r: 6, detail: { identity: `layer:${l.layer_id}`, kind: "layer entry policy", state: l.access_mode === "REGULATED" ? "GATED (fails closed)" : "ALLOWED", inputs: l.requirements.length ? l.requirements.join(", ") : "none required", owner: "osa-proof API (POST /layers/:id/enter)" } });
     link("app:api", `layer:${l.layer_id}`, "enforces");
   }
-  for (const a of t.agents) {
-    add({ id: `agent:${a.agent_id}`, type: "AGENT", label: a.agent_id, sub: a.role, r: 9, detail: { identity: a.agent_id, kind: `agent · ${a.role}`, version: `team v${t.version}`, owner: t.team_id, dependencies: a.executor_ref, model: a.model_ref } });
-    link("team", `agent:${a.agent_id}`, "contains");
-    add({ id: `exec:${a.executor_ref}`, type: "CODE", label: a.executor_ref, sub: "executor ref", r: 5.5, detail: { identity: a.executor_ref, kind: "executor binding", owner: "osa-proof API registry" } });
-    link(`agent:${a.agent_id}`, `exec:${a.executor_ref}`, "runs");
-  }
-  for (const e of t.edges) link(`agent:${e.from_agent_id}`, `agent:${e.to_agent_id}`, e.kind, true);
-
   for (const run of d.runs) {
-    const m = d.missions.find((x) => x.mission_id === run.proof.mission_id);
+    const team = runTeam(run);
+    const scope = team ? teamScope(team) : undefined;
+    const teamId = scope ? teamNodeIds.get(scope) : undefined;
+    const m = d.missions.find((x) => x.mission_id === run.proof.mission_id && x.organization_id === run.proof.binding.organization_id && x.project_id === run.proof.binding.project_id && x.team_id === run.proof.team_id && x.team_version === run.proof.team_version);
     const state = run.verdict === "FAILED" ? "FAILED" : run.verdict === "VERIFIED" ? "VERIFIED" : undefined;
     const mid = `mission:${run.proof.mission_id}`;
-    add({ id: mid, type: "MISSION", label: run.proof.mission_id, sub: m?.objective ?? "mission", r: 9, state, runId: run.run_id, detail: { identity: run.proof.mission_id, kind: "mission", state: run.verdict, version: `team v${run.proof.team_version}`, inputs: m ? JSON.stringify(m.input) : undefined, outputs: `final_output sha256 ${short(String(run.proof.final_output_sha256), 16)}`, owner: run.proof.team_id } });
-    link("team", mid, "executes");
-    if (m) link(mid, `agent:${m.entry_agent_id}`, "entry", true);
+    add({ id: mid, type: "MISSION", label: run.proof.mission_id, sub: m?.objective ?? "mission", r: 9, state, runId: run.run_id, teamScope: scope, detail: { identity: run.proof.mission_id, kind: "mission", state: run.verdict, version: `team v${run.proof.team_version}`, inputs: m ? JSON.stringify(m.input) : undefined, outputs: `final_output sha256 ${short(String(run.proof.final_output_sha256), 16)}`, owner: run.proof.team_id } });
+    if (teamId) link(teamId, mid, "executes");
+    const entryAgent = scope && m ? agentNodeIds.get(`${scope}\u0000${m.entry_agent_id}`) : undefined;
+    if (entryAgent) link(mid, entryAgent, "entry", true);
     for (const ev of run.evidence) {
       const eid = `evidence:${ev.evidence_id}`;
       add({ id: eid, type: "EVIDENCE", label: `${ev.kind} #${ev.sequence}`, sub: short(ev.evidence_sha256, 14), r: 6, runId: run.run_id, detail: { identity: ev.evidence_id, kind: `evidence · ${ev.kind}`, state: String(ev.data.status ?? ""), inputs: `operation ${ev.producer.operation_id}`, outputs: `evidence_sha256 ${ev.evidence_sha256}`, owner: ev.agent_id, version: ev.provenance } });
-      link(`agent:${ev.agent_id}`, eid, "produced", true);
+      const producerAgent = scope ? agentNodeIds.get(`${scope}\u0000${ev.agent_id}`) : undefined;
+      if (producerAgent) link(producerAgent, eid, "produced", true);
       link(mid, eid, "evidence");
     }
     const pid = `proof:${run.proof.proof_id}`;
@@ -125,12 +150,12 @@ export function layout(g: Graph): Graph {
 // Causal path for a mission, using only nodes that exist in the captured run.
 export function causalPath(g: Graph, missionId: string): { nodes: Set<string>; edges: Set<string> } {
   const ids = new Set<string>();
-  const start = g.byId.get(`mission:${missionId}`);
+  const start = g.nodes.find(node => node.type === "MISSION" && node.runId === missionId) ?? g.nodes.find(node => node.type === "MISSION" && node.detail.identity === missionId);
   if (!start) return { nodes: ids, edges: new Set() };
   const eIds = new Set<string>();
   const KINDS = new Set(["entry", "produced", "handoff", "verified in", "sealed by"]);
-  // Follow only edges that belong to this mission's run; agents are shared across runs.
-  const inRun = (id: string) => { const n = g.byId.get(id)!; return n.type === "AGENT" || n.runId === start.runId; };
+  // Traverse run-bound evidence through agents shared only within the same Team Graph.
+  const inRun = (id: string) => { const n = g.byId.get(id); return !!n && (n.type === "AGENT" ? n.teamScope === start.teamScope : n.runId === start.runId); };
   const walk = (id: string) => {
     if (ids.has(id)) return; ids.add(id);
     for (const e of g.edges) if (e.from === id && KINDS.has(e.kind) && inRun(e.to)) { eIds.add(e.id); walk(e.to); }
