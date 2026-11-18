@@ -33,6 +33,8 @@ import { BuildWorkspace, validateBuildWorkspace } from "./build";
 import { BrainControlPlane, verifyBrainPlan } from "../../../packages/brain/src";
 import { runTraceProbe, TraceInputError } from "./trace-probe";
 import { digest } from "../../../packages/proof-core/src";
+import { FileDurableJobStore } from "../../../packages/durable-execution/src";
+import { durableMissionVisible, publishedDurableMissionIds } from "./durable-publication";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
 // "open": no login, for the Vercel preview dashboard; every open-mode request acts as OPEN_MODE_SESSION.
@@ -99,7 +101,8 @@ export class ApiState {
     brain?: BrainControlPlane,
     readonly web3: Web3Service = new Web3Service(),
     readonly previewOperator?: PreviewOperator,
-    readonly durableMissionStore?: MissionStore
+    readonly durableMissionStore?: MissionStore,
+    readonly durableJobStore?: FileDurableJobStore
   ) {
     this.intelligence = intelligence;
     this.datasets = datasets;
@@ -716,10 +719,14 @@ export async function handleApiRequest(
         if (!session) return;
         const organization = session.identity.organization_id;
         if (!organization) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
-        const sources = await Promise.all([state.missionKernel.store.list(organization), state.durableMissionStore?.list(organization) ?? Promise.resolve([])]);
+        const [sources, published] = await Promise.all([
+          Promise.all([state.missionKernel.store.list(organization), state.durableMissionStore?.list(organization) ?? Promise.resolve([])]),
+          state.durableJobStore ? publishedDurableMissionIds(state.durableJobStore) : Promise.resolve(undefined),
+        ]);
         const records = new Map<string, { record: (typeof sources)[number][number]; storage_source: string }>();
         for (const [index, entries] of sources.entries()) for (const record of entries) {
           if (!canAccessProject(session, record.mission.organization_id, record.mission.project_id)) continue;
+          if (index === 1 && published && !durableMissionVisible(record, published)) continue;
           if (!missionRecordScopeValid(record)) return send(response, 409, {error:"MISSION_SCOPE_INCONSISTENT"});
           const previous = records.get(record.mission.mission_id);
           if (previous && digest(previous.record) !== digest(record)) return send(response, 409, { error:"MISSION_STORE_ID_CONFLICT" });
@@ -747,6 +754,8 @@ export async function handleApiRequest(
         if (!session) return;
         const primary = await state.missionKernel.get(parts[1]);
         const secondary = await state.durableMissionStore?.get(parts[1]);
+        const published = state.durableJobStore ? await publishedDurableMissionIds(state.durableJobStore) : undefined;
+        if (secondary && published && !durableMissionVisible(secondary, published)) return send(response, 404, {error:"DURABLE_RESULT_NOT_PUBLISHED"});
         const available = [primary, secondary].filter((item): item is NonNullable<typeof item> => !!item && canAccessProject(session, item.mission.organization_id, item.mission.project_id));
         if (available.length === 2 && digest(available[0]) !== digest(available[1])) return send(response, 409, {error:"MISSION_STORE_ID_CONFLICT"});
         const record = available[0];

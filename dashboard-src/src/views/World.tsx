@@ -6,6 +6,7 @@ import SolarWorld from "../ui/SolarWorld";
 import { NODE_TYPES, causalPath, typeColor, type GNode } from "../lib/graph";
 import { Kv, Section, Status, Unknown } from "../ui/primitives";
 import { useOsa } from "../ctx";
+import { MAX_WORLD_RUNS, worldRuns } from "../data/projection";
 import { mergeNvidiaGraph, NVIDIA_ROOT } from "../lib/nvidia";
 import { tok } from "../lib/tok";
 
@@ -70,8 +71,9 @@ export default function World() {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Szukaj w grafie…" aria-label="Szukaj w grafie" className="focus-ring tap mono w-full rounded-md border border-line bg-panel px-3 text-[12px] placeholder:text-dim sm:w-56" />
         <select aria-label="Pokaż ścieżkę przyczynową" value={causal} onChange={(e) => { setCausal(e.target.value); setSel(null); }} className="focus-ring tap mono rounded-md border border-line bg-panel px-2 text-[12px] text-dim">
           <option value="">Causal path: off</option>
-          {data.runs.map((r) => <option key={r.run_id} value={r.run_id}>Show causal path · {r.proof.mission_id} ({r.verdict})</option>)}
+          {worldRuns(data.runs).map((r) => <option key={r.run_id} value={r.run_id}>Show causal path · {r.proof.mission_id} ({r.verdict})</option>)}
         </select>
+        {data.runs.length>MAX_WORLD_RUNS && <span className="mono text-[11px] text-dim">Graf: ostatnie {MAX_WORLD_RUNS} z {data.runs.length} wykonań</span>}
         <button onClick={() => document.fullscreenElement ? document.exitFullscreen() : box.current?.requestFullscreen?.()} className="focus-ring tap mono rounded-md border border-line px-3 text-[12px] text-dim hover:text-fg">Pełny ekran</button>
         <button onClick={() => go("replay")} className="focus-ring tap mono rounded-md border border-line px-3 text-[12px] text-dim hover:text-fg">Oś czasu → Odtwarzanie</button>
       </div>

@@ -1,4 +1,8 @@
-import type { Mission, Run, TeamGraph } from "./types";
+import type { Mission, Run, TeamGraph, Snapshot } from "./types";
+
+export const MAX_WORLD_RUNS=30;
+export const worldRuns=(runs: Run[]):Run[]=>runs.slice(0,MAX_WORLD_RUNS);
+export const pendingMissions=(data:Snapshot):Mission[]=>data.missions.filter(m=>!data.runs.some(r=>r.proof.mission_id===m.mission_id));
 
 export type MissionRecordView = { mission: Mission; team: TeamGraph; state: string; run?: Run };
 export type InspectedExecution = { identity_id: string; team: TeamGraph; mission: Mission; run: Run };

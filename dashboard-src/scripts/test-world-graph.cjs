@@ -9,6 +9,7 @@ require.extensions[".ts"] = (module, filename) => {
   module._compile(output, filename);
 };
 const { buildGraph, causalPath } = require(path.join(__dirname, "../src/lib/graph.ts"));
+const { pendingMissions, worldRuns, MAX_WORLD_RUNS } = require(path.join(__dirname, "../src/data/projection.ts"));
 const makeTeam = (teamId) => ({ organization_id: "org-1", project_id: "project-1", team_id: teamId, version: "1", agents: [{ agent_id: "shared-agent", role: teamId, executor_ref: "exec-" + teamId, model_ref: "free-model" }], edges: [] });
 const makeMission = (teamId, missionId) => ({ organization_id: "org-1", project_id: "project-1", mission_id: missionId, team_id: teamId, team_version: "1", objective: missionId, entry_agent_id: "shared-agent", input: {}, requirements: [] });
 const makeRun = (teamId, missionId, runId) => ({
@@ -33,6 +34,16 @@ test("causal paths are scoped to the selected run and tolerate an absent endpoin
   assert.equal(pathB.nodes.has("evidence:evidence-run-b"), true); assert.equal(pathB.nodes.has("evidence:evidence-run-a"), false);
   const damaged = { ...graph, edges: [...graph.edges, { id: "missing", from: "mission:mission-b", to: "agent:missing", kind: "entry" }] };
   assert.doesNotThrow(() => causalPath(damaged, "run-b"));
+});
+test("Missions shows pending records even when another mission already has a verified run", () => {
+  const pending = pendingMissions({...snapshot, missions:[...snapshot.missions,makeMission("team-a","mission-not-yet-executed")]});
+  assert.deepEqual(pending.map(m=>m.mission_id),["mission-not-yet-executed"]);
+});
+test("World graph caps history without losing full MissionStore run listing", () => {
+  const allRuns=Array.from({length:MAX_WORLD_RUNS+12},(_,i)=>makeRun("team-a","mission-a","run-"+i));
+  assert.equal(worldRuns(allRuns).length,MAX_WORLD_RUNS);
+  assert.equal(worldRuns(allRuns)[0].run_id,allRuns[0].run_id);
+  assert.equal(allRuns.length,MAX_WORLD_RUNS+12);
 });
 test("single-team graph keeps its existing team and agent identifiers", () => {
   const singleTeam = { ...snapshot, teams: [teamA], runs: [snapshot.runs[0]], missions: [snapshot.missions[0]] }, graph = buildGraph(singleTeam);

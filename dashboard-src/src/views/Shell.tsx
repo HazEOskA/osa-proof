@@ -16,6 +16,7 @@ import AccountControl from "./AccountControl";
 import Home from "./Home";
 import World from "./World";
 import Missions from "./Missions";
+import { pendingMissions } from "../data/projection";
 import Trace from "./Trace";
 import Proofs from "./Proofs";
 import BuildWorkspace from "./BuildWorkspace";
@@ -120,7 +121,7 @@ function ShellContent({ palette, closePalette }: { palette: boolean; closePalett
   else if (v === "delivery-lab") body = <DeliveryLab />;
   else if (v === "home") body = <Home />;
   else if (v === "world") body = <World />;
-  else if (v === "missions" && !data.runs.length && data.missions.length) body = <section className="mx-auto max-w-4xl p-6"><h2 className="mb-4 text-lg">Zapisane misje</h2>{data.missions.map(m=>{const team=data.teams?.find(t=>t.team_id===m.team_id&&t.version===m.team_version&&t.organization_id===m.organization_id&&t.project_id===m.project_id);return <article key={m.mission_id} className="mb-3 rounded-lg border border-line p-4"><div className="flex items-center gap-3"><strong>{m.mission_id}</strong><Status v={data.missionStates?.[m.mission_id]??"UNKNOWN"}/></div><p className="my-2">{m.objective}</p><p className="text-xs text-dim">Team Graph {m.team_id} · v{m.team_version} · {team?.agents.map(a=>a.role).join(" → ") || "role niepotwierdzone"}</p><p className="text-xs text-dim">Brak zapisanego wyniku i ProofReceipt.</p></article>})}</section>;
+  else if (v === "missions" && data.missions.length) body = <><section className="mx-auto max-w-4xl p-6">{pendingMissions(data).map(m=>{const team=data.teams?.find(t=>t.team_id===m.team_id&&t.version===m.team_version&&t.organization_id===m.organization_id&&t.project_id===m.project_id);return <article key={m.mission_id} className="mb-3 rounded-lg border border-line p-4"><div className="flex items-center gap-3"><strong>{m.mission_id}</strong><Status v={data.missionStates?.[m.mission_id]??"UNKNOWN"}/></div><p className="my-2">{m.objective}</p><p className="text-xs text-dim">Team Graph {m.team_id} · v{m.team_version} · {team?.agents.map(a=>a.role).join(" → ") || "role niepotwierdzone"}</p><p className="text-xs text-dim">Brak zapisanego wyniku i ProofReceipt.</p></article>})}</section>{data.runs.length>0&&<Missions/>}</>;
   else if (!data.runs.length && ["missions", "trace", "proofs", "replay", "ops:timeline"].includes(v)) body = <Empty title="BRAK WYKONAŃ" body={source.kind === "LIVE" ? "Brak zapisanych wykonań w dostępnym zakresie." : "Nie można potwierdzić stanu misji. Sprawdź połączenie z API."} />;
   else if (v === "missions") body = <Missions />;
   else if (v === "trace") body = <Trace />;

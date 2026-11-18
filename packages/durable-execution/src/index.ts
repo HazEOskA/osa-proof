@@ -120,6 +120,19 @@ export class FileDurableJobStore {
   async get(scope:DurableScope,executionId:string) {
     return this.read(this.filename(scope,executionId));
   }
+  // Read-only discovery for API publication fencing; never accepts a model's
+  // success claim as authority over the durable job result.
+  async listRecords():Promise<DurableJob[]> {
+    let names:string[];
+    try {names=await readdir(this.root);}catch(e){if(isENOENT(e))return [];throw e;}
+    const jobs:DurableJob[]=[];
+    for(const name of names.filter(name=>/^[a-f0-9]{64}\.json$/.test(name))){
+      const job=await this.read(join(this.root,name));
+      if(!job)throw new DurableConflict("DURABLE_RECORD_UNCONFIRMED");
+      jobs.push(job);
+    }
+    return jobs;
+  }
   // The claim directory is also understood by legacy workers. Cancellation
   // never interrupts a running provider and never removes the durable record.
   async cancelQueued(scope:DurableScope,executionId:string):Promise<DurableJob> {

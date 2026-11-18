@@ -86,8 +86,10 @@ export function useOsaData(): {
       const valid = records.filter(record => record?.mission && record?.team);
       const pinned=inspectedExecution.current;
       const projection=projectMissionRecords(valid,pinned,activeIdentity.current);
-      setData({ ...emptyData, layers:Array.isArray(layers)?layers:[], team:projection.teams[0]??emptyTeam, teams:projection.teams,
-        missions:projection.missions, missionStates:projection.missionStates, runs:projection.runs });
+      const updated={ ...emptyData, layers:Array.isArray(layers)?layers:[], team:projection.teams[0]??emptyTeam, teams:projection.teams,
+        missions:projection.missions, missionStates:projection.missionStates, runs:projection.runs };
+      // Keep React memoized graph stable when polling returns unchanged records.
+      setData(current=>JSON.stringify(current)===JSON.stringify(updated)?current:updated);
       setSource({kind:"LIVE",detail:`Odczyt MissionStore · ${valid.length} misji${pinned?" · przypięte oglądane wykonanie":""}`});
       setChecking(false);
       } finally { pending = false; }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { OsaCtx, type ViewId } from "./ctx";
 import { useOsaData } from "./data/data";
-import { buildGraph } from "./lib/graph";
+import { worldRuns } from "./data/projection";
+import { buildGraph, type Graph } from "./lib/graph";
 import { BuildProvider } from "./build";
 import Shell from "./views/Shell";
 import { useThemes } from "./useThemes";
@@ -15,7 +16,11 @@ export default function App() {
     const team = run && storedData.teams?.find(item => item.team_id === run.proof.team_id && item.version === run.proof.team_version && item.organization_id === run.proof.binding.organization_id && item.project_id === run.proof.binding.project_id);
     return team ? { ...storedData, team } : storedData;
   }, [storedData, runId]);
-  const graph = useMemo(() => buildGraph(data), [data]);
+  // The force layout is quadratic. Do not calculate it while chatting, and
+  // bound the World projection to recent executions instead of full history.
+  const graph = useMemo<Graph>(() => view === "world"
+    ? buildGraph({...data, runs:worldRuns(data.runs)})
+    : {nodes:[],edges:[],byId:new Map()}, [data,view]);
   const [focus, setFocus] = useState<string | null>(null);
   const [palette, setPalette] = useState(false);
   const themeSettings = useThemes();
