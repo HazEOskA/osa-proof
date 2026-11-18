@@ -17,7 +17,7 @@ import { PlatformControlPlane } from "../../../packages/platform/src";
 import { FleetQueue } from "../../../packages/fleet/src";
 import { DeploymentPlan } from "../../../packages/deployment/src";
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
-import { Mission, RunResult, SessionRecord, TeamGraph } from "../../../packages/contracts/src";
+import { Mission, MissionRecord, RunResult, SessionRecord, TeamGraph } from "../../../packages/contracts/src";
 import { enterLayer, getLayerProfile, listLayerProfiles } from "../../../packages/access-control/src";
 import { createLocalDevIdentity } from "../../../packages/identity/src";
 import { ExecutorRegistry, OsaRuntime, MissionKernel, MissionStore, MissionConflictError } from "../../../packages/runtime/src";
@@ -32,6 +32,9 @@ import { KnowledgeError, KnowledgeStore } from "../../../packages/knowledge/src"
 import { BuildWorkspace, validateBuildWorkspace } from "./build";
 import { BrainControlPlane, verifyBrainPlan } from "../../../packages/brain/src";
 import { runTraceProbe, TraceInputError } from "./trace-probe";
+import { digest } from "../../../packages/proof-core/src";
+import { FileDurableJobStore } from "../../../packages/durable-execution/src";
+import { durableMissionVisible, publishedDurableMissionIds } from "./durable-publication";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
 // "open": no login, for the Vercel preview dashboard; every open-mode request acts as OPEN_MODE_SESSION.
@@ -97,7 +100,9 @@ export class ApiState {
     missionStore?: MissionStore,
     brain?: BrainControlPlane,
     readonly web3: Web3Service = new Web3Service(),
-    readonly previewOperator?: PreviewOperator
+    readonly previewOperator?: PreviewOperator,
+    readonly durableMissionStore?: MissionStore,
+    readonly durableJobStore?: FileDurableJobStore
   ) {
     this.intelligence = intelligence;
     this.datasets = datasets;
@@ -172,6 +177,17 @@ function canAccessProject(session: SessionRecord, organization: string, project:
   const identity = session.identity;
   return identity.organization_id === organization && typeof project === "string" && project.length > 0 &&
     (identity.provider === "local-dev" || (identity.verified === true && Array.isArray(identity.project_ids) && identity.project_ids.includes(project)));
+}
+
+/** Never expose a nested graph or proof from another tenant through a scoped mission. */
+function missionRecordScopeValid(record: MissionRecord): boolean {
+  const mission = record.mission, team = record.team;
+  if (!mission || !team || team.organization_id !== mission.organization_id || team.project_id !== mission.project_id) return false;
+  if (record.run && !record.run.proof) return false;
+  for (const receipt of [record.run?.proof, record.verification_receipt]) {
+    if (receipt && (!receipt.binding || receipt.binding.organization_id !== mission.organization_id || receipt.binding.project_id !== mission.project_id)) return false;
+  }
+  return true;
 }
 
 export async function handleApiRequest(
@@ -262,6 +278,8 @@ export async function handleApiRequest(
         const session=requireSession(request,response,state);
         if(!session)return;
         const project=state.memory.adapter?.binding?.project_id??"project_chat_delivery";
+        if(!session.identity.organization_id||!canAccessProject(session,session.identity.organization_id,project))
+          return send(response,403,{error:"TENANT_SCOPE_DENIED"});
         return handleDurableRequest(request,response,session,project);
       }
 
@@ -696,6 +714,27 @@ export async function handleApiRequest(
         return graph ? send(response, 200, graph) : send(response, 404, { error: "team not found" });
       }
 
+      if (method === "GET" && url.pathname === "/missions") {
+        const session = requireSession(request, response, state);
+        if (!session) return;
+        const organization = session.identity.organization_id;
+        if (!organization) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
+        const [sources, published] = await Promise.all([
+          Promise.all([state.missionKernel.store.list(organization), state.durableMissionStore?.list(organization) ?? Promise.resolve([])]),
+          state.durableJobStore ? publishedDurableMissionIds(state.durableJobStore) : Promise.resolve(undefined),
+        ]);
+        const records = new Map<string, { record: (typeof sources)[number][number]; storage_source: string }>();
+        for (const [index, entries] of sources.entries()) for (const record of entries) {
+          if (!canAccessProject(session, record.mission.organization_id, record.mission.project_id)) continue;
+          if (index === 1 && published && !durableMissionVisible(record, published)) continue;
+          if (!missionRecordScopeValid(record)) return send(response, 409, {error:"MISSION_SCOPE_INCONSISTENT"});
+          const previous = records.get(record.mission.mission_id);
+          if (previous && digest(previous.record) !== digest(record)) return send(response, 409, { error:"MISSION_STORE_ID_CONFLICT" });
+          records.set(record.mission.mission_id, { record, storage_source: previous ? "API_AND_DURABLE" : index ? "DURABLE" : "API" });
+        }
+        return send(response, 200, [...records.values()].map(({record,storage_source})=>({...record,storage_source})));
+      }
+
       if (method === "POST" && url.pathname === "/missions") {
         const session = requireSession(request, response, state);
         if (!session) return;
@@ -713,13 +752,22 @@ export async function handleApiRequest(
       if (parts[0] === "missions" && parts.length >= 2 && parts.length <= 3) {
         const session = requireSession(request, response, state);
         if (!session) return;
-        const record = await state.missionKernel.get(parts[1]);
+        const primary = await state.missionKernel.get(parts[1]);
+        const secondary = await state.durableMissionStore?.get(parts[1]);
+        const published = state.durableJobStore ? await publishedDurableMissionIds(state.durableJobStore) : undefined;
+        if (secondary && published && !durableMissionVisible(secondary, published)) return send(response, 404, {error:"DURABLE_RESULT_NOT_PUBLISHED"});
+        const available = [primary, secondary].filter((item): item is NonNullable<typeof item> => !!item && canAccessProject(session, item.mission.organization_id, item.mission.project_id));
+        if (available.length === 2 && digest(available[0]) !== digest(available[1])) return send(response, 409, {error:"MISSION_STORE_ID_CONFLICT"});
+        const record = available[0];
+        if (!record && (primary || secondary)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
         if (!record) return send(response, 404, { error: "mission not found" });
+        if (!available.every(missionRecordScopeValid)) return send(response, 409, {error:"MISSION_SCOPE_INCONSISTENT"});
         if (!canAccessProject(session, record.mission.organization_id, record.mission.project_id)) return send(response, 403, { error: "TENANT_SCOPE_DENIED" });
-        if (method === "GET" && parts.length === 2) return send(response, 200, record);
+        if (method === "GET" && parts.length === 2) return send(response, 200, {...record,storage_source:available.length === 2 ? "API_AND_DURABLE" : primary === record ? "API" : "DURABLE"});
         if (method === "GET" && parts[2] === "timeline") return send(response, 200, record.timeline);
         if (method === "GET" && parts[2] === "run") return record.run ? send(response, 200, record.run) : send(response, 404, { error: "mission has no run" });
         if (method === "GET" && parts[2] === "receipt") return record.mission_receipt ? send(response, 200, record.mission_receipt) : send(response, 404, { error: "mission has no receipt" });
+        if (method === "POST" && (!primary || !canAccessProject(session, primary.mission.organization_id, primary.mission.project_id))) return send(response, 409, {error:"DURABLE_MISSION_READ_ONLY"});
         if (method === "POST" && parts[2] === "plan") return send(response, 200, await state.missionKernel.plan(parts[1], registry));
         if (method === "GET" && parts[2] === "plan") {
           if (!record.brain) return send(response, 404, { error: "mission has no accepted plan" });

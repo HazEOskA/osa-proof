@@ -16,6 +16,7 @@ import AccountControl from "./AccountControl";
 import Home from "./Home";
 import World from "./World";
 import Missions from "./Missions";
+import { pendingMissions } from "../data/projection";
 import Trace from "./Trace";
 import Proofs from "./Proofs";
 import BuildWorkspace from "./BuildWorkspace";
@@ -87,7 +88,7 @@ function LiveRail() {
   const { data, runId, source } = useOsa();
   const run = data.runs.find((r) => r.run_id === runId) ?? data.runs[0];
   const [open, setOpen] = useState<number | null>(null);
-  if (source.kind === "SNAPSHOT") return <aside className="hidden w-[210px] shrink-0 border-l border-line bg-ink p-4 text-[11px] text-dim xl:block" aria-label="Live system rail">Brak nowego wykonania. Dane archiwalne oznaczono jako SNAPSHOT; wyślij zadanie w czacie.</aside>;
+  if (source.kind !== "LIVE") return <aside className="hidden w-[210px] shrink-0 border-l border-line bg-ink p-4 text-[11px] text-dim xl:block" aria-label="Live system rail">Stan wykonania niepotwierdzony. {source.detail}</aside>;
   if (!run) return null;
   return (
     <aside className="hidden w-[210px] shrink-0 flex-col border-l border-line bg-ink xl:flex" aria-label="Live system rail">
@@ -109,7 +110,7 @@ function LiveRail() {
 }
 
 function ShellContent({ palette, closePalette }: { palette: boolean; closePalette: () => void }) {
-  const { view, source, openPalette } = useOsa();
+  const { view, data, source, openPalette } = useOsa();
   const web3 = useWeb3Data();
   const [drawer, setDrawer] = useState(false);
   // Optional Agent Chat Fleet module retains its immersive layout; Home stays the framework entry point.
@@ -120,6 +121,8 @@ function ShellContent({ palette, closePalette }: { palette: boolean; closePalett
   else if (v === "delivery-lab") body = <DeliveryLab />;
   else if (v === "home") body = <Home />;
   else if (v === "world") body = <World />;
+  else if (v === "missions" && data.missions.length) body = <><section className="mx-auto max-w-4xl p-6">{pendingMissions(data).map(m=>{const team=data.teams?.find(t=>t.team_id===m.team_id&&t.version===m.team_version&&t.organization_id===m.organization_id&&t.project_id===m.project_id);return <article key={m.mission_id} className="mb-3 rounded-lg border border-line p-4"><div className="flex items-center gap-3"><strong>{m.mission_id}</strong><Status v={data.missionStates?.[m.mission_id]??"UNKNOWN"}/></div><p className="my-2">{m.objective}</p><p className="text-xs text-dim">Team Graph {m.team_id} · v{m.team_version} · {team?.agents.map(a=>a.role).join(" → ") || "role niepotwierdzone"}</p><p className="text-xs text-dim">Brak zapisanego wyniku i ProofReceipt.</p></article>})}</section>{data.runs.length>0&&<Missions/>}</>;
+  else if (!data.runs.length && ["missions", "trace", "proofs", "replay", "ops:timeline"].includes(v)) body = <Empty title="BRAK WYKONAŃ" body={source.kind === "LIVE" ? "Brak zapisanych wykonań w dostępnym zakresie." : "Nie można potwierdzić stanu misji. Sprawdź połączenie z API."} />;
   else if (v === "missions") body = <Missions />;
   else if (v === "trace") body = <Trace />;
   else if (v === "proofs") body = <Proofs />;

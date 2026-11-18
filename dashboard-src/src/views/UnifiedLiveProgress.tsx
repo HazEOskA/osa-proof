@@ -6,12 +6,12 @@ const labels:Record<string,string>={
   context_completed:"Kontekst i pamięć — zakończono",cognitive_planning_started:"Cognitive Layer — planowanie",cognitive_plan_accepted:"Cognitive Layer — plan przyjęty",model_started:"NVIDIA — oczekiwanie na model",
   model_completed:"NVIDIA — odpowiedź modelu",supervisor_checked:"Supervisor — kontrola wyniku",supervisor_repair_started:"Supervisor — zwrot do Workera",supervisor_rejected:"Supervisor — zatrzymano publikację",apr_verification_checked:"APR — weryfikacja wykonania",content_assurance_checked:"Treść — osobna ocena zakresu weryfikacji",cognitive_execution_completed:"Brain i APR — zakończono",evidence_started:"Dowody — rozpoczęto",
   evidence_completed:"Dowody — zakończono",completed:"Wykonanie zakończono",
-  failed:"Błąd wykonania",cancel_requested:"Wysłano sygnał przerwania",
+  failed:"Błąd wykonania",durable_cancelled:"Potwierdzono anulowanie",cancel_requested:"Wysłano sygnał przerwania",
   cancel_unconfirmed:"Anulowanie niepotwierdzone",request_sent:"Wysłano żądanie",
   tool_completed:"Wynik narzędzia",mission_update:"Mission Kernel — aktualizacja"
 };
 const statusLabel:Record<string,string>={
-  RUNNING:"TRWA",COMPLETED:"ZAKOŃCZONO",FAILED:"BŁĄD",
+  RUNNING:"TRWA",COMPLETED:"ZAKOŃCZONO",FAILED:"BŁĄD",CANCELLED:"ANULOWANO",
   CANCEL_REQUESTED:"PRZERWANIE ZGŁOSZONE",CANCEL_UNCONFIRMED:"ANULOWANIE NIEPOTWIERDZONE"
 };
 export default function UnifiedLiveProgress({

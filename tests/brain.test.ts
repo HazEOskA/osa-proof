@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { BrainMemory, BrainPlanProposal, BrainPlanRequest, BrainPlanner, Mission, TeamGraph } from "../packages/contracts/src";
 import { BrainControlPlane, NativeBrainPlanner, verifyBrainPlan } from "../packages/brain/src";
-import { ModelBrainPlanner, NeurosaMemoryAdapter, createConfiguredBrain, ModelProvider } from "../packages/adapters/src";
+import { ModelBrainPlanner, ModelMesh, NeurosaMemoryAdapter, createConfiguredBrain, ModelProvider } from "../packages/adapters/src";
 import { digest } from "../packages/proof-core/src/canonical";
 import { verifyCompletedMission } from "../packages/proof-core/src";
 import { ExecutorRegistry, MemoryMissionStore, MissionKernel, OsaRuntime } from "../packages/runtime/src";
@@ -225,7 +225,7 @@ test("unknown model routing and malformed JSON cannot produce a planning receipt
   const malformed: ModelProvider = { ...provider, complete: async (request) => ({ ...await provider.complete(request), text: "not JSON" }) };
   await assert.rejects(new BrainControlPlane(new ModelBrainPlanner(malformed)).plan(request()), /INVALID_PLAN/);
   const alias: ModelProvider = { ...provider, complete: async (request) => ({ ...await provider.complete(request), model: "brain-resolved-version" }) };
-  const resolved = await new BrainControlPlane(new ModelBrainPlanner(alias)).plan(request());
+  const resolved = await new BrainControlPlane(new ModelBrainPlanner(new ModelMesh([alias]))).plan(request());
   assert.equal(resolved.planning_receipt.evidence.configured_model_ref, "openai:brain");
   assert.equal(resolved.planning_receipt.evidence.model, "brain-resolved-version");
 });

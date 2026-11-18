@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import raw from "./snapshot.json";
 import type { Snapshot, Source, Run, TeamGraph, LayerProfile, Mission } from "./types";
+import { projectMissionRecords, type InspectedExecution, type MissionRecordView } from "./projection";
 
 export const snapshot = raw as unknown as Snapshot;
+const emptyTeam: TeamGraph = { organization_id:"UNKNOWN", project_id:"UNKNOWN", team_id:"UNKNOWN", version:"UNKNOWN", agents:[], edges:[] };
+// Keep bundled snapshot for explicit fixtures, never seed it into a user's mission view.
+const emptyData: Snapshot = { ...snapshot, layers:[], team:emptyTeam, teams:[], missions:[], runs:[] };
 
 export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const ctl = new AbortController();
@@ -52,48 +56,57 @@ export function useOsaData(): {
   enterLayer: (layerId: string) => Promise<LayerEnterResult>;
   inspectExecution: (team: TeamGraph, mission: Mission, run: Run) => void;
 } {
-  const liveExecution = useRef(false);
-  const [data, setData] = useState<Snapshot>(snapshot);
-  const [source, setSource] = useState<Source>({ kind: "SNAPSHOT", detail: `captured ${snapshot.captured_at.slice(0, 16).replace("T", " ")}Z · ${snapshot.source.mode} mode` });
+  const [data, setData] = useState<Snapshot>(emptyData);
+  const [source, setSource] = useState<Source>({ kind: "UNKNOWN", detail: "Sprawdzanie danych misji" });
   const [checking, setChecking] = useState(true);
   const [runningMission, setRunningMission] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const activeIdentity = useRef<string|null>(null);
+  const inspectedExecution = useRef<InspectedExecution|null>(null);
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      const layers = await getJson<LayerProfile[]>("/layers");
+    let alive = true, pending = false;
+    const refresh = async () => {
+      if (pending) return;
+      pending = true;
+      try {
+      const [layers, records, session] = await Promise.all([
+        getJson<LayerProfile[]>("/layers"), getJson<MissionRecordView[]>("/missions"),
+        getJson<{identity?:{identity_id?:string}}>("/session"),
+      ]);
       if (!alive) return;
-      if (!Array.isArray(layers)) { setChecking(false); return; }
-      const t = snapshot.team;
-      const team = await getJson<TeamGraph>(`/teams/${t.team_id}?version=${t.version}`);
-      const retrieved = await Promise.all(snapshot.runs.map(r => getJson<Run>(`/runs/${r.run_id}`)));
-      const runs = retrieved.map((run,index)=>run ?? snapshot.runs[index]);
-      if (!alive) return;
-      if (liveExecution.current) { setData(current=>({...current,layers}));setChecking(false);return; }
-      setData({ ...snapshot, layers, team: team ?? snapshot.team, runs });
-      const allLive = retrieved.every(Boolean);
-      setSource({kind:allLive?"LIVE":"SNAPSHOT",detail:allLive?"osa-proof API reachable":"API online · zapisany snapshot fixture; brak nowego wykonania"});
+      activeIdentity.current=typeof session?.identity?.identity_id==="string"?session.identity.identity_id:null;
+      if(inspectedExecution.current&&inspectedExecution.current.identity_id!==activeIdentity.current)inspectedExecution.current=null;
+      if (!Array.isArray(records)) {
+        // A failed or unauthorized read must not leave another session's mission data visible.
+        setData({ ...emptyData, layers:Array.isArray(layers)?layers:[] });
+        setSource({kind:"OFFLINE",detail:"Nie można odczytać misji z API; stan misji UNKNOWN"});
+        setChecking(false); return;
+      }
+      const valid = records.filter(record => record?.mission && record?.team);
+      const pinned=inspectedExecution.current;
+      const projection=projectMissionRecords(valid,pinned,activeIdentity.current);
+      const updated={ ...emptyData, layers:Array.isArray(layers)?layers:[], team:projection.teams[0]??emptyTeam, teams:projection.teams,
+        missions:projection.missions, missionStates:projection.missionStates, runs:projection.runs };
+      // Keep React memoized graph stable when polling returns unchanged records.
+      setData(current=>JSON.stringify(current)===JSON.stringify(updated)?current:updated);
+      setSource({kind:"LIVE",detail:`Odczyt MissionStore · ${valid.length} misji${pinned?" · przypięte oglądane wykonanie":""}`});
       setChecking(false);
-    })();
-    return () => { alive = false; };
+      } finally { pending = false; }
+    };
+    void refresh();
+    const timer = setInterval(() => { void refresh(); }, 5000);
+    return () => { alive = false; clearInterval(timer); };
   }, []);
 
   const runMission = useCallback(async (missionId: string): Promise<Run> => {
     const mission = data.missions.find((item) => item.mission_id === missionId);
     if (!mission) throw new Error(`mission not found in dashboard data: ${missionId}`);
     setRunningMission(missionId);
+    inspectedExecution.current=null;
     setActionError(null);
     try {
-      // ApiState is intentionally in-memory today. Seed the canonical Team Graph and
-      // mission before every execution so a cold serverless instance still has the
-      // exact state needed for this run.
-      if (!data.team.agents.some(agent => agent.executor_ref.startsWith("demo."))) {
-      await requestJson<TeamGraph>("/teams", { method: "POST", body: JSON.stringify(data.team) });
-      await requestJson<Mission>("/missions", { method: "POST", body: JSON.stringify(mission) });
-      }
       const run = await requestJson<Run>(`/missions/${encodeURIComponent(missionId)}/run`, { method: "POST", body: "{}" });
-      liveExecution.current = true;
       setData((current) => ({
         ...current,
         runs: [run, ...current.runs.filter((item) => item.run_id !== run.run_id)],
@@ -107,13 +120,12 @@ export function useOsaData(): {
     } finally {
       setRunningMission(null);
     }
-  }, [data.missions, data.team]);
+  }, [data.missions]);
 
   const enterLayer = useCallback(async (layerId: string): Promise<LayerEnterResult> => {
     setActionError(null);
     try {
       const result = await requestJson<LayerEnterResult>(`/layers/${encodeURIComponent(layerId)}/enter`, { method: "POST", body: "{}" });
-      setSource({ kind: "LIVE", detail: `${result.layer.label} access: ${result.decision}` });
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -123,9 +135,9 @@ export function useOsaData(): {
   }, []);
 
   const inspectExecution = useCallback((team: TeamGraph, mission: Mission, run: Run) => {
-    liveExecution.current = true;
     // A scoped projection of the exact API result, not a second execution or invented world state.
-    setData(current => ({...current,team,missions:[mission],runs:[run]}));
+    inspectedExecution.current=activeIdentity.current?{identity_id:activeIdentity.current,team,mission,run}:null;
+    setData(current => ({...current,team,teams:[team],missions:[mission],runs:[run]}));
     setSource({kind:"LIVE",detail:`${mission.mission_id.startsWith("unified_") ? "OSA Unified" : mission.mission_id.startsWith("osa-trace-") ? "OSA TRACE" : mission.mission_id.startsWith("build_") ? "Studio" : "Delivery Lab"} execution ${run.execution_id}`});
   }, []);
   return { data, source, checking, runningMission, actionError, runMission, enterLayer, inspectExecution };

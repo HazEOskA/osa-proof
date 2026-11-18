@@ -95,6 +95,15 @@ test("mesh: healthy primary serves alone; fallback untouched", async () => {
   assert.deepEqual(call.data.hops, [{ provider: "openai", model: "gpt-primary", ok: true, attempts: 1 }]);
 });
 
+test("mesh: configured model alias remains policy identity while resolved model stays provenance", async () => {
+  const mesh=new ModelMesh([{id:"openai",model:"brain",complete:async()=>({provider:"openai",model:"brain-resolved-version",
+    response_id:"fixture",http_status:200,stop_reason:"stop",text:PLAN,usage:{},latency_ms:1,
+    request_sha256:"a".repeat(64),response_sha256:"b".repeat(64)})}]);
+  const response=await mesh.complete({system:"",prompt:"",output_schema:{}});
+  assert.deepEqual(response.hops,[{provider:"openai",model:"brain",ok:true,attempts:1}]);
+  assert.equal(response.model,"brain-resolved-version");
+});
+
 test("mesh: every target down -> FAILED, sealed receipt names each hop", async () => {
   const { result, hits } = await run({});
   assert.equal(result.verdict, "FAILED");

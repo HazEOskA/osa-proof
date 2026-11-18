@@ -1,6 +1,6 @@
 import { downloadDelivery } from "./chat-delivery";
 
-export type LiveState="RUNNING"|"COMPLETED"|"FAILED"|"CANCEL_REQUESTED"|"CANCEL_UNCONFIRMED";
+export type LiveState="RUNNING"|"COMPLETED"|"FAILED"|"CANCELLED"|"CANCEL_REQUESTED"|"CANCEL_UNCONFIRMED";
 export type LiveMode="conversation"|"artifact"|"tool";
 export type LiveTraceEvent={
   schema:"osa.live_execution.v1";execution_id:string;at:string;phase:string;state:LiveState;

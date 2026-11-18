@@ -117,7 +117,7 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
   const text = data?.choices?.[0]?.message?.content;
   if (typeof text !== "string" || !text.trim() || text.length > 40000) throw new NvidiaError(502, "NVIDIA_EMPTY_RESPONSE", "NVIDIA zwróciła pustą lub zbyt dużą odpowiedź.");
   const providerModel = typeof data.model === "string" && /^[A-Za-z0-9][A-Za-z0-9_.\/-]{0,199}$/.test(data.model) ? data.model : undefined;
-  return { provider: "NVIDIA", model, ...(providerModel ? { provider_model: providerModel } : {}), text, request_id: randomUUID(), request_sha256: digest(requestBody), provider_response_id: typeof data.id === "string" ? data.id : null, latency_ms: Date.now() - started, finish_reason: data.choices?.[0]?.finish_reason ?? null, status: "PROVIDER_RESPONSE" };
+  return { provider: "NVIDIA", model, ...(providerModel ? { provider_model: providerModel } : {}), text, request_id: randomUUID(), request_sha256: digest(requestBody), provider_response_id: typeof data.id === "string" ? data.id : null, latency_ms: Date.now() - started, http_status:response.status, finish_reason: data.choices?.[0]?.finish_reason ?? null, status: "PROVIDER_RESPONSE" };
 }
 
 // Per-instance ceiling; deployment protection provides the outer authenticated preview boundary.

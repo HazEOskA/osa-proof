@@ -40,7 +40,7 @@ export async function handleDurableRequest(
   }
   if(!durableSupported(env))return send(res,503,{code:"DURABLE_BACKEND_NOT_CONFIGURED",
     error:"Trwałe wykonanie wymaga współdzielonego trwałego magazynu i osobnego workera. Zadanie nie zostało przyjęte."});
-  if(req.method==="POST"&&u.pathname==="/durable/jobs"&&!sameOrigin(req,env))
+  if(req.method==="POST"&&(u.pathname==="/durable/jobs"||/^\/durable\/jobs\/exec_[a-f0-9-]{36}\/cancel$/i.test(u.pathname))&&!sameOrigin(req,env))
     return send(res,403,{code:"DURABLE_ORIGIN_DENIED"});
   let scope:DurableScope;
   try{scope=scopeFor(session,projectId);}catch{return send(res,403,{code:"DURABLE_SCOPE_DENIED"});}
@@ -59,6 +59,20 @@ export async function handleDurableRequest(
     }catch(e){
       if(e instanceof DurableConflict)return send(res,e.code==="DURABLE_ID_CONFLICT"?409:422,{code:e.code});
       return send(res,503,{code:"DURABLE_WRITE_UNCONFIRMED"});
+    }
+  }
+  const cancellation=/^\/durable\/jobs\/(exec_[a-f0-9-]{36})\/cancel$/i.exec(u.pathname);
+  if(req.method==="POST"&&cancellation){
+    try {
+      const job=await backend.cancelQueued(scope,cancellation[1]);
+      return send(res,200,await backend.publicStatus(job));
+    }catch(e){
+      if(e instanceof DurableConflict) {
+        const status=e.code==="DURABLE_JOB_NOT_FOUND"?404:
+          e.code==="DURABLE_CANCEL_BUSY"||e.code==="DURABLE_CANCEL_UNCONFIRMED"?409:422;
+        return send(res,status,{code:e.code});
+      }
+      return send(res,503,{code:"DURABLE_CANCEL_UNCONFIRMED"});
     }
   }
   if(req.method==="GET"&&/^\/durable\/jobs\/exec_[a-f0-9-]{36}$/i.test(u.pathname)){

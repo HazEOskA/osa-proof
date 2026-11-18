@@ -23,7 +23,7 @@ export interface LayerProfile { layer_id: string; label: string; product_layer: 
 export interface Snapshot {
   captured_at: string;
   source: { api: string; mode: string; repo: string; commit: string | null };
-  layers: LayerProfile[]; team: TeamGraph; missions: Mission[]; runs: Run[];
+  layers: LayerProfile[]; team: TeamGraph; teams?: TeamGraph[]; missions: Mission[]; missionStates?: Record<string,string>; runs: Run[];
   repo: { packages: string[]; apps: string[]; docs: string[] };
 }
-export type Source = { kind: "LIVE" | "SNAPSHOT"; detail: string };
+export type Source = { kind: "LIVE" | "SNAPSHOT" | "OFFLINE" | "UNKNOWN"; detail: string };

@@ -3,6 +3,8 @@ import { registerBuiltInWorkspaceProviders } from "../../../packages/workspace-r
 import { installUnifiedTools } from "./unified";
 import { createConfiguredWeb3 } from "../../../packages/web3/src";
 import { Server } from "node:http";
+import { resolve } from "node:path";
+import { FileDurableJobStore } from "../../../packages/durable-execution/src";
 import { ApiState, createApiServer, loadAuthMode } from "./index";
 import { AgentExecutor } from "../../../packages/contracts/src";
 import { ExecutorRegistry, FileMissionStore } from "../../../packages/runtime/src";
@@ -189,7 +191,15 @@ export function startApiServer(env: Env = process.env): Server {
   const execution = createDevExecution(env);
   const authMode = loadAuthMode(env);
   const missionStore = env.OSA_MISSION_STORE_DIR ? new FileMissionStore(env.OSA_MISSION_STORE_DIR) : undefined;
-  const server = createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, authMode, missionStore, execution.brain, createConfiguredWeb3(env), PreviewOperator.fromEnvironment(env)), execution.description);
+  const durableMissionsDir = env.OSA_DURABLE_DIR?.trim() ? resolve(env.OSA_DURABLE_DIR, "missions") : undefined;
+  const samePath = durableMissionsDir && env.OSA_MISSION_STORE_DIR &&
+    (process.platform === "win32" ? durableMissionsDir.toLowerCase() === resolve(env.OSA_MISSION_STORE_DIR).toLowerCase() : durableMissionsDir === resolve(env.OSA_MISSION_STORE_DIR));
+  // Sharing the primary and durable mission directory would bypass the
+  // authoritative publication fence through the primary MissionStore.
+  if (samePath) throw Error("DURABLE_MISSION_STORE_PATH_COLLISION");
+  const durableMissionStore = durableMissionsDir ? new FileMissionStore(durableMissionsDir) : undefined;
+  const durableJobStore = durableMissionsDir ? new FileDurableJobStore(resolve(env.OSA_DURABLE_DIR!)) : undefined;
+  const server = createApiServer(execution.registry, new ApiState(undefined, undefined, undefined, authMode, missionStore, execution.brain, createConfiguredWeb3(env), PreviewOperator.fromEnvironment(env), durableMissionStore, durableJobStore), execution.description);
   server.listen(port, host, () => {
     console.log(JSON.stringify({
       service: "osa-proof-api",

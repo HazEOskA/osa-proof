@@ -3,6 +3,7 @@ import { Script } from 'node:vm';
 import { AgentExecutionContext, AgentExecutor, EvidenceInput, Mission, MissionRecord, TeamGraph } from '../../contracts/src';
 import { ExecutorRegistry } from '../../runtime/src';
 import { digest, verifyCompletedMission, verifyProofReceipt } from '../../proof-core/src';
+import { reviewChatCandidate, sealSupervisorRelease } from '../../supervisor-adapter/src/chat-supervisor';
 import { buildAndTest, verifyBuildReceipt, BuildReceipt } from '../../deployment/src';
 import { WorkspaceProvider } from '../../workspace-runtime/src';
 
@@ -21,7 +22,7 @@ export interface DemoOutput {
   request: DemoRequest; checks: DemoCheck[]; artifact?: DemoArtifact;
   plan?: unknown; build_receipt?: BuildReceipt; ready_for_review?: boolean;
 }
-export interface DemoOptions { executionMode: string; workspace?: WorkspaceProvider; artifactGenerator?: (request: DemoRequest) => Promise<{content: string; evidence: EvidenceInput[]}> }
+export interface DemoOptions { executionMode: string; workspace?: WorkspaceProvider; artifactGenerator?: (request: DemoRequest) => Promise<{content: string; evidence: EvidenceInput[]}>; supervisorGate?: boolean }
 export const DEMO_ROLES = [
   ['intake', 'Input & scope'], ['planner', 'Plan'], ['producer', 'Artifact producer'],
   ['inspector', 'Artifact inspector'], ['policy', 'Policy gate'], ['builder', 'Sandbox build'],
@@ -39,11 +40,12 @@ export function demoTeam(scope: {organization_id:string;project_id:string}): Tea
     agents:DEMO_ROLES.map(([id,role]) => ({agent_id:id,role,executor_ref:`demo.${id}.v1`})),
     edges:DEMO_ROLES.slice(1).map(([id],i) => ({edge_id:`${DEMO_ROLES[i][0]}_${id}`,from_agent_id:DEMO_ROLES[i][0],to_agent_id:id,kind:'handoff' as const}))};
 }
-export function demoMission(request:DemoRequest, team:TeamGraph): Mission {
+export function demoMission(request:DemoRequest, team:TeamGraph, supervisorGate=false): Mission {
   return {organization_id:team.organization_id,project_id:team.project_id,mission_id:`demo_${randomUUID()}`,team_id:team.team_id,team_version:team.version,
     objective:request.objective,entry_agent_id:'intake',input:request,
     policy:{allowed_executor_refs:team.agents.map(a=>a.executor_ref),required_receipts:request.target==='azure'?['build_receipt','image_receipt','deployment_receipt','live_verification_receipt']:request.target==='sandbox'?['build_receipt']:[]},budget:{max_tasks:10,max_context_chars:12000},
-    requirements:[{requirement_id:'delivery_ready_for_review',type:'evidence_field_equals',agent_id:'reporter',evidence_kind:'demo_completion',field:'ready_for_review',expected:true}]};
+    requirements:[{requirement_id:'delivery_ready_for_review',type:'evidence_field_equals',agent_id:'reporter',evidence_kind:'demo_completion',field:'ready_for_review',expected:true},
+      ...(supervisorGate?[{requirement_id:'supervisor_release',type:'evidence_field_equals' as const,agent_id:'reviewer',evidence_kind:'chat_supervisor_release',field:'publishable',expected:true}]:[])]};
 }
 const sha = (text:string) => createHash('sha256').update(text).digest('hex');
 const escapeHtml = (text:string) => text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -165,7 +167,17 @@ export function installDemoExecutors(registry:ExecutorRegistry, options:DemoOpti
     return {status:failures.length?'FAIL':'PASS',detail:failures.join(' ')||'Structural checks passed. Browser behavior, security review, factual accuracy and fitness for purpose remain UNKNOWN.'};
   });
   stage('delivery',state=>({status:state.request.target==='azure'?'BLOCKED':state.checks.some(c=>['FAIL','BLOCKED'].includes(c.status))?'BLOCKED':'PASS',detail:state.request.target==='azure'?'Azure image publishing, scoped grant and live verification are not wired into this template. No URL or deployment receipt fabricated.':'Artifact ready for human review only after the requested gates. Download is not a cloud deployment.'}));
-  stage('reviewer',()=>({status:'UNKNOWN',detail:'Independent semantic review, vulnerability discovery, benchmark workload, persistent memory, parallel fleet and arbitrary output types are not exercised. No bugs found is not a security conclusion.'}));
+  stage('reviewer',state=>{
+    if(!options.supervisorGate)return {status:'UNKNOWN',detail:'Independent semantic review, vulnerability discovery, benchmark workload, persistent memory, parallel fleet and arbitrary output types are not exercised. No bugs found is not a security conclusion.'};
+    if(!state.artifact)return {status:'BLOCKED',detail:'Artifact missing; Supervisor was not run.'};
+    const review=reviewChatCandidate(state.artifact.content);
+    const release=sealSupervisorRelease([{attempt:1,response_sha256:review.response_sha256,provider_response_id:null,review}],state.artifact.content);
+    return {status:release.publishable?(review.verdict==='UNKNOWN'?'UNKNOWN':'PASS'):'FAIL',
+      detail:release.publishable?'Existing Supervisor checked explicit arithmetic only; other content remains UNKNOWN.':'Existing Supervisor rejected an explicit arithmetic mismatch.',
+      evidence:[{kind:'chat_supervisor_release',data:{publishable:release.publishable,decision:release.decision,
+        content_verdict:release.content_verdict,reason_code:release.reason_code,repair_count:release.repair_count,
+        final_response_sha256:release.final_response_sha256,attempts:release.attempts},content:JSON.stringify(release)}]};
+  });
   stage('reporter',state=>{
     state.ready_for_review=!!state.artifact && !state.checks.some(c=>c.status==='FAIL'||c.status==='BLOCKED');
     return {status:state.ready_for_review?'PASS':'BLOCKED',detail:state.ready_for_review?'Requested artifact gates met; human acceptance remains required.':'One or more required gates blocked or failed. Mission cannot be COMPLETED.',evidence:[{kind:'demo_completion',data:{ready_for_review:state.ready_for_review,checks_sha256:digest(state.checks),artifact_sha256:state.artifact?.sha256??null}}]};
