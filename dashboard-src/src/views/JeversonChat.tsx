@@ -176,11 +176,22 @@ export default function JeversonChat() {
   },[sessions,current.id,cacheReady]);
   useEffect(()=>{if(current.messages.length || busy)bottom.current?.scrollIntoView({block:"end"});},[current.id,current.messages.length,busy]);
   useEffect(()=>{
-    let alive=true;
-    const read=()=>{void api<{enabled:boolean}>("/durable/status").then(x=>{if(alive)setDurable(x.enabled);}).catch(()=>{if(alive)setDurable(false);});};
+    let alive=true, generation=0;
+    let controller:AbortController|null=null;
+    const read=()=>{
+      controller?.abort();
+      const current=new AbortController();
+      controller=current;
+      const ticket=++generation;
+      void api<{enabled:boolean}>("/durable/status",undefined,current.signal).then(x=>{
+        if(alive&&ticket===generation)setDurable(x.enabled);
+      }).catch(()=>{
+        if(alive&&ticket===generation&&!current.signal.aborted)setDurable(false);
+      });
+    };
     read();
     const timer=setInterval(read,1000);
-    return()=>{alive=false;clearInterval(timer);};
+    return()=>{alive=false;controller?.abort();clearInterval(timer);};
   },[]);
   useEffect(()=>{
     if(!cacheReady)return; // Pending jobs remain readable even when the worker is temporarily offline.
