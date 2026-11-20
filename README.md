@@ -14,12 +14,12 @@ Framework do projektowania, wykonywania i audytowania systemów agentowych AI. �
 
 **`Proof-first` · `TypeScript` · `Node.js` · `Agentic Runtime` · `Evidence` · `Fail-closed`**
 
-[Panel OSA Proof](https://osa-proof-three.vercel.app/) · [Dokumentacja](./docs/README.md) · [Aktualny stan](./docs/STATUS_2026-11-03.md) · [Architektura](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md) · [GitHub Actions](https://github.com/HazEOskA/osa-proof/actions)
+[Panel OSA Proof](https://osa-proof-three.vercel.app/) · [Dokumentacja](./docs/README.md) · [Aktualny stan](./docs/STATUS_2026-11-18.md) · [Architektura](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md) · [GitHub Actions](https://github.com/HazEOskA/osa-proof/actions)
 
 </div>
 
 > [!IMPORTANT]
-> **Stan udokumentowany: 3 listopada 2026 · `main` @ `9aa81ab667a12b6ab38ff4d6bd61a1d7c52a41e6`.** Działa ścieżka generowania artefaktu z NVIDIA, eksportów Evidence/ProofReceipt i weryfikacji integralności dla zaobserwowanego wykonania. **To nie oznacza potwierdzonego produkcyjnego E2E dwóch rzeczywistych workerów, trwałej historii, izolowanego sandboxa ani wydania GA.** Aktualny werdykt w [raporcie statusu](./docs/STATUS_2026-11-03.md).
+> **Stan udokumentowany: 18 listopada 2026 · `main` @ `8180e20d11bf0ecfa2f954baa9c393657394592b`.** Zintegrowano lokalny single-operator host (`osa dashboard`) z plikowym MissionStore i DurableJobStore, Docker preflight oraz CLI. Ścieżka generowania artefaktu, eksportów Evidence/ProofReceipt i weryfikacji integralności działa dla zaobserwowanych wykonań. **To nie oznacza potwierdzonego produkcyjnego E2E dwóch rzeczywistych workerów, trwałej historii cross-device, pełnego izolowanego sandboxa ani wydania GA.** Aktualny werdykt w [raporcie statusu](./docs/STATUS_2026-11-18.md).
 
 ## Po co powstał OSA Proof?
 
@@ -36,8 +36,9 @@ Sam komunikat „zadanie wykonane” od agenta nie wystarcza. OSA Proof oddziela
 
 ## Co można sprawdzić już teraz?
 
-| Funkcja | Stan na 03.11.2026 | Zakres |
+| Funkcja | Stan na 18.11.2026 | Zakres |
 | --- | --- | --- |
+| **Lokalny host (`osa dashboard`)** | **IMPLEMENTED / LOOPBACK** | Single-operator, cookie gate, FileMissionStore + FileDurableJobStore, Docker preflight |
 | **Team Graph + Mission Kernel** | **LOCAL TESTED / PARTIAL** | Wersjonowany graf, liniowe handoff, kontrakt misji i CAS w lokalnym MissionStore |
 | **NVIDIA → artefakt HTML** | **OBSERVED / PROOF INTEGRITY PASS** | Zaobserwowany zapis generowania przez `openai/gpt-oss-20b`, zwrócony HTML, kontrola struktury i hashy |
 | **APR / Evidence / ProofReceipt v2** | **INTEGRITY PASS dla eksportu** | Weryfikacja lokalna wskazanego przez operatora bundle, ProofReceipt, Evidence, trace i pliku HTML |
@@ -46,10 +47,10 @@ Sam komunikat „zadanie wykonane” od agenta nie wystarcza. OSA Proof oddziela
 | **NeurOSA** | **OBSERVED / DURABILITY UNKNOWN** | Dla badanego eksportu status pamięci `VERIFIED`; brak niezależnego restart-readback bieżącej usługi |
 | **Durable Execution** | **LOCAL CODE / PRODUCTION BLOCKED** | Plikowy store i osobny worker dla zatwierdzonego hosta; Vercel nie spełnia warunków trwałości |
 | **Dwa rzeczywiste workery + sandbox** | **NOT PROVEN** | W badanym eksporcie wykonawcy `demo.*`, `tool_calls = 0`; osobny E2E wymagany |
-| **Trwała historia Team Graph / misji / czatów** | **GAP** | Brak wspólnego trwałego źródła prawdy; naprawa w planie |
+| **Trwała historia Team Graph / misji / czatów** | **GAP (lokalna plikowa częściowo)** | Brak wspólnego trwaleńszego źródła prawdy poza lokalnymi plikami; naprawa w planie |
 | **Produkcyjne OAuth / pełne RBAC** | **ACCEPTANCE OPEN** | Zgłoszone `OAUTH_STATE_INVALID`; root cause nieustalony w tym audycie |
 
-Szczegóły i precyzyjne źródła: [Status](./docs/STATUS_2026-11-03.md) · [Luki historii](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md) · [Jak czytać dowody](./docs/PROOF_EXPORTS_GUIDE.md).
+Szczegóły i precyzyjne źródła: [Status](./docs/STATUS_2026-11-18.md) · [Luki historii](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md) · [Jak czytać dowody](./docs/PROOF_EXPORTS_GUIDE.md).
 
 ## Architektura
 
@@ -64,12 +65,14 @@ flowchart TD
   PF --> RP["ProofReceipt v2 · Replay · Eksport"]
   MK -. "opcjonalny kontekst / remember" .-> NM["NeurOSA · Memory Plane"]
   API -. "docelowo: projekt, nie deployment" .-> DB[("Własny PostgreSQL · Storage Plane")]
+  CLI["osa dashboard (loopback)"] --> API
 ```
 
 **Źródła prawdy są rozdzielone:** Mission Kernel i Runtime prowadzą wykonanie; Proof Core weryfikuje zapisy; NeurOSA odpowiada za pamięć, a projektowany Storage Plane ma przechowywać trwały stan strukturalny. Nie tworzymy drugiego silnika agentów ani kopii pamięci NeurOSA.
 
 ```text
 osa-proof/
+├── bin/osa.cjs               # lokalny CLI (doctor / dashboard)
 ├── api/                       # adapter Vercel
 ├── apps/
 │   ├── api/src/               # HTTP, auth, NVIDIA, Mission API
@@ -91,22 +94,31 @@ osa-proof/
 
 ## Szybki start — środowisko lokalne
 
-Wymagane: **Node.js 20+**, npm oraz środowisko z powłoką POSIX (Bash/WSL), ponieważ obecny skrypt `build` wykorzystuje `rm -rf`. `OSA_AUTH_MODE=open` jest **wyłącznie do izolowanego testu lokalnego** — nie podawaj go jako publicznego serwera z danymi prywatnymi.
+Wymagane: **Node.js 20+**, npm oraz środowisko z powłoką POSIX (Bash/WSL) albo PowerShell. `OSA_AUTH_MODE=open` jest **wyłącznie do izolowanego testu lokalnego** — nie podawaj go jako publicznego serwera z danymi prywatnymi.
 
 ```bash
 npm ci
 npm test
 node scripts/build-dashboard.cjs
+osa doctor          # preflight (build, Docker, brakujące pliki)
+osa dashboard       # loopback host + cookie gate + lokalne pliki
+```
+
+`osa dashboard` startuje pod `http://127.0.0.1:3111` (domyślnie), otwiera przeglądarkę przez jednorazowy ticket, zapisuje misje i durable jobs lokalnie. Integracje zewnętrzne (NeurOSA remote, remote workers) są wyłączone w trybie P0.
+
+Alternatywnie (starsza ścieżka):
+
+```bash
 OSA_EXECUTION_MODE=fixture OSA_AUTH_MODE=open npm start
 ```
 
-API wystartuje domyślnie pod `http://localhost:3000` (nie jest to automatyczne uruchomienie osobnego deweloperskiego serwera dashboardu). Stan można odczytać w drugim terminalu:
+API wystartuje domyślnie pod `http://localhost:3000`. Stan:
 
 ```bash
 curl http://localhost:3000/build/status
 ```
 
-`npm test` obejmuje lokalny build i zestaw testów. **Samo uruchomienie serwera nie wytwarza ProofReceipt.** Historyczny wynik testów z 31 października (**305 PASS, 0 FAIL, 3 SKIP**) dotyczy wskazanego w [historycznym raporcie](./docs/OSA_PROOF_STATUS_2026-10-31.md) SHA, nie stanowi nowego wyniku CI dla bieżącego `main`.
+`npm test` obejmuje lokalny build i zestaw testów. **Samo uruchomienie serwera nie wytwarza ProofReceipt.**
 
 ## Proof i Replay — trzy różne typy materiałów
 
@@ -116,11 +128,11 @@ curl http://localhost:3000/build/status
 | `osa.mission.v1` | Zapis misji z Mission Kernel, jej stan i receipt | Że wszystkie zewnętrzne integracje/side effects zostały niezależnie poświadczone |
 | `osa.live_execution.v1` + `osa.live_metadata.v1` | Zdarzenia i metadane obserwowane w Live UI | Kryptograficznego APR ProofReceipt, jeśli takiego nie dołączono |
 
-**Ważny test z 3 listopada:** w przekazanym prywatnie eksporcie ChatDelivery odnotowano **65 zdarzeń timeline, 47 zdarzeń Runtime, 13 Evidence, 27 verifier observations i 10 rozpoczętych ról**. Zewnętrznie sprawdzone hashe bundle, receipt, Evidence i artefaktu były zgodne; **`tool_calls = 0`**, więc nie jest to test rzeczywistych narzędzi dwóch workerów. Identyfikatory i zawartość prywatnego pakietu nie są publikowane w repo. [Przewodnik weryfikacji](./docs/PROOF_EXPORTS_GUIDE.md).
+**Wcześniejszy test (3 listopada):** w przekazanym prywatnie eksporcie ChatDelivery odnotowano **65 zdarzeń timeline, 47 zdarzeń Runtime, 13 Evidence, 27 verifier observations i 10 rozpoczętych ról**. Zewnętrznie sprawdzone hashe bundle, receipt, Evidence i artefaktu były zgodne; **`tool_calls = 0`**, więc nie jest to test rzeczywistych narzędzi dwóch workerów. Identyfikatory i zawartość prywatnego pakietu nie są publikowane w repo. [Przewodnik weryfikacji](./docs/PROOF_EXPORTS_GUIDE.md).
 
 ## Znane ograniczenia i roadmapa
 
-**P0 — trwałość i odnajdywanie pracy:** Team Graph i Build workspace są zapisywane lokalnie albo w pamięci instancji API; Studio nie oferuje katalogu dawnych misji; historia czatów w IndexedDB nie jest sortowana po `updated`. Szczegóły i kryteria odbioru: [Rejestr luk](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md).
+**P0 — trwałość i odnajdywanie pracy:** Team Graph i Build workspace są zapisywane lokalnie albo w pamięci instancji API; Studio nie oferuje katalogu dawnych misji; historia czatów w IndexedDB nie jest sortowana po `updated`. Lokalny host używa plików, ale nie zamyka cross-device. Szczegóły: [Rejestr luk](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md).
 
 **P0 — własny storage, host jeszcze niewybrany:** provider-neutral adapter do **PostgreSQL** jest **propozycją architektoniczną**, nie utworzoną bazą ani planem deployu. Do czasu potwierdzenia hosta i osobnej zgody pozostaje `BLOCKED`. [Architektura Storage v1](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md).
 
@@ -134,7 +146,8 @@ curl http://localhost:3000/build/status
 | Kategoria | Dokument |
 | --- | --- |
 | Indeks dokumentacji | [docs/README.md](./docs/README.md) |
-| Stan na 03.11.2026 | [STATUS_2026-11-03](./docs/STATUS_2026-11-03.md) |
+| Stan na 18.11.2026 | [STATUS_2026-11-18](./docs/STATUS_2026-11-18.md) |
+| Stan na 03.11.2026 (historyczny) | [STATUS_2026-11-03](./docs/STATUS_2026-11-03.md) |
 | Priorytetowe usterki | [HISTORY_AND_WORKSPACE_GAPS](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md) |
 | Trwały magazyn — projekt | [PERSISTENCE_ARCHITECTURE_V1](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md) |
 | Eksporty i audyt | [PROOF_EXPORTS_GUIDE](./docs/PROOF_EXPORTS_GUIDE.md) |
