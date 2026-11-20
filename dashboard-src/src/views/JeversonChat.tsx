@@ -177,9 +177,10 @@ export default function JeversonChat() {
   useEffect(()=>{if(current.messages.length || busy)bottom.current?.scrollIntoView({block:"end"});},[current.id,current.messages.length,busy]);
   useEffect(()=>{
     let alive=true;
-    void api<{enabled:boolean}>("/durable/status").then(x=>{if(alive)setDurable(x.enabled);})
-      .catch(()=>{if(alive)setDurable(false);});
-    return()=>{alive=false;};
+    const read=()=>{void api<{enabled:boolean}>("/durable/status").then(x=>{if(alive)setDurable(x.enabled);}).catch(()=>{if(alive)setDurable(false);});};
+    read();
+    const timer=setInterval(read,1000);
+    return()=>{alive=false;clearInterval(timer);};
   },[]);
   useEffect(()=>{
     if(!cacheReady)return; // Pending jobs remain readable even when the worker is temporarily offline.
