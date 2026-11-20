@@ -23,7 +23,7 @@ try {
     const shell=page.getByTestId("osa-native-chat");
     await shell.waitFor({state:"visible",timeout:15000});
     assert.equal(await home.count(),0,"Chat is the entry; the framework stays underneath");
-    await page.getByRole("heading",{name:"Jarvis",exact:true}).waitFor();
+    await page.getByRole("heading",{name:"Jarvis",exact:true}).first().waitFor();
     await page.screenshot({path:out+"/"+name+"-pusty-czat.png",fullPage:true});
     assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
     const options=page.getByRole("button",{name:"Opcje czatu"});
