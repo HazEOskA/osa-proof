@@ -1,6 +1,7 @@
-// Coding hosts sit under the chat. A present key is not an agent session.
+// Public coding-host status. This process has no Cursor, Claude Code, or ChatGPT
+// agent session. Key presence stays on the session-gated secrets inventory.
 export type CodingHostId = "cursor" | "claude_code" | "chatgpt";
-export type CodingHostState = "NOT_CONNECTED" | "KEY_PRESENT";
+export type CodingHostState = "NOT_CONNECTED";
 
 export interface CodingHost {
   id: CodingHostId;
@@ -9,22 +10,17 @@ export interface CodingHost {
   detail: string;
 }
 
-const HOSTS: Array<{ id: CodingHostId; label: string; env: string }> = [
-  { id: "cursor", label: "Cursor", env: "CURSOR_API_KEY" },
-  { id: "claude_code", label: "Claude Code", env: "ANTHROPIC_API_KEY" },
-  { id: "chatgpt", label: "ChatGPT", env: "OPENAI_API_KEY" },
+const HOSTS: Array<{ id: CodingHostId; label: string }> = [
+  { id: "cursor", label: "Cursor" },
+  { id: "claude_code", label: "Claude Code" },
+  { id: "chatgpt", label: "ChatGPT" },
 ];
 
-export function codingHosts(env: Record<string, string | undefined>): CodingHost[] {
-  return HOSTS.map((host) => {
-    const present = Boolean(env[host.env]?.trim());
-    return {
-      id: host.id,
-      label: host.label,
-      state: present ? "KEY_PRESENT" : "NOT_CONNECTED",
-      detail: present
-        ? "Klucz jest w środowisku procesu. Nie ma sesji agenta ani połączenia z czatem."
-        : "Brak klucza i brak sesji agenta w tym procesie.",
-    };
-  });
+export function codingHosts(): CodingHost[] {
+  return HOSTS.map((host) => ({
+    id: host.id,
+    label: host.label,
+    state: "NOT_CONNECTED",
+    detail: "Brak sesji agenta w tym procesie.",
+  }));
 }

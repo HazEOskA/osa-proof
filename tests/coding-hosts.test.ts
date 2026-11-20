@@ -2,21 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { codingHosts } from "../apps/api/src/coding-hosts";
 
-test("coding hosts stay disconnected without a key and never report a session", () => {
-  const hosts = codingHosts({});
-  assert.deepEqual(hosts.map((host) => host.id), ["cursor", "claude_code", "chatgpt"]);
-  assert.ok(hosts.every((host) => host.state === "NOT_CONNECTED"));
-  assert.ok(hosts.every((host) => !/połączon/i.test(host.detail) || /brak/i.test(host.detail)));
-});
-
-test("a present key is not a Cursor, Claude Code, or ChatGPT session", () => {
-  const hosts = codingHosts({
-    CURSOR_API_KEY: "cursor-secret",
-    ANTHROPIC_API_KEY: "claude-secret",
-    OPENAI_API_KEY: " ",
-  });
-  assert.equal(hosts.find((host) => host.id === "cursor")?.state, "KEY_PRESENT");
-  assert.equal(hosts.find((host) => host.id === "claude_code")?.state, "KEY_PRESENT");
-  assert.equal(hosts.find((host) => host.id === "chatgpt")?.state, "NOT_CONNECTED");
-  assert.match(hosts[0].detail, /Nie ma sesji agenta/);
+test("public coding hosts never reveal whether provider keys are configured", () => {
+  const hosts = codingHosts();
+  const body = JSON.stringify(hosts);
+  assert.deepEqual(hosts.map((host) => [host.id, host.state]), [
+    ["cursor", "NOT_CONNECTED"],
+    ["claude_code", "NOT_CONNECTED"],
+    ["chatgpt", "NOT_CONNECTED"],
+  ]);
+  assert.equal(body.includes("KEY_PRESENT"), false);
+  assert.equal(/klucz|key|secret/i.test(body), false);
+  assert.ok(hosts.every((host) => host.detail === "Brak sesji agenta w tym procesie."));
 });

@@ -73,7 +73,7 @@ const FALLBACK_HOSTS: CodingHost[] = [
   {id:"claude_code",label:"Claude Code",state:"UNKNOWN",detail:"Stan połączenia nie został odczytany."},
   {id:"chatgpt",label:"ChatGPT",state:"UNKNOWN",detail:"Stan połączenia nie został odczytany."},
 ];
-const hostLabel = (state:string) => state==="KEY_PRESENT"?"KLUCZ JEST · SESJI BRAK":state==="NOT_CONNECTED"?"NIEPOŁĄCZONE":"STAN NIEZNANY";
+const hostLabel = (state:string) => state==="NOT_CONNECTED"?"NIEPOŁĄCZONE":"STAN NIEZNANY";
 const id = () => crypto.randomUUID();
 const stamp = () => new Date().toISOString();
 const empty = (selected:AgentId="jeverson"):Session => ({id:id(),title:"Nowa rozmowa",agent:selected,model:"auto",updated:stamp(),messages:[]});
