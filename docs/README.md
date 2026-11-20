@@ -1,15 +1,16 @@
 # Dokumentacja techniczna OSA Proof
 
-**Punkt odniesienia:** 3.11.2026 · `main` @ `9aa81ab667a12b6ab38ff4d6bd61a1d7c52a41e6`. Poniższy indeks odróżnia aktualny stan kodu, obserwacje operatora, historyczne testy i projekty przyszłych zmian. Nie zastępuje weryfikacji konkretnego deploymentu.
+**Punkt odniesienia:** 18.11.2026 · `main` @ `8180e20d11bf0ecfa2f954baa9c393657394592b`. Poniższy indeks odróżnia aktualny stan kodu, obserwacje operatora, historyczne testy i projekty przyszłych zmian. Nie zastępuje weryfikacji konkretnego deploymentu.
 
 ## Zacznij tutaj
 
 | Pytanie | Dokument | Status |
 | --- | --- | --- |
-| Co działa, a co jeszcze nie? | [STATUS_2026-11-03.md](./STATUS_2026-11-03.md) | Bieżący bilans na wskazanym SHA |
+| Co działa, a co jeszcze nie? | [STATUS_2026-11-18.md](./STATUS_2026-11-18.md) | Bieżący bilans na wskazanym SHA |
 | Dlaczego znika Team Graph/historia misji i dlaczego czaty są pomieszane? | [HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md](./HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md) | Diagnoza w kodzie, plan bez mutacji |
 | Jak będzie wyglądał własny, trwały storage? | [PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md](./PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md) | **PROPOSED / HOST UNKNOWN** |
 | Jak odróżniać `VERIFIED` od dowodu rzeczywistej operacji? | [PROOF_EXPORTS_GUIDE.md](./PROOF_EXPORTS_GUIDE.md) | Runbook READ_ONLY |
+| Lokalny host i CLI | [OSA_WORKER_HOST_V0.1.md](./OSA_WORKER_HOST_V0.1.md) (częściowo) + `bin/osa.cjs` | IMPLEMENTOWANE (loopback) |
 
 ## Kontrakty źródłowe
 
@@ -21,11 +22,13 @@
 - [P0_DURABLE_EXECUTION_20261103.md](./P0_DURABLE_EXECUTION_20261103.md) — lokalny durable worker, ale **Production BLOCKED**.
 - [NEXT_STEP_MEMORY_ACTIVATION.md](./NEXT_STEP_MEMORY_ACTIVATION.md) — oddzielny plan trwałego NeurOSA i MissionStore.
 - [BUILD_RESEARCH_AND_VERIFICATION.md](./BUILD_RESEARCH_AND_VERIFICATION.md) — historyczny zakres Builder/Studio.
+- [OSA_UNIFIED_RUNTIME_V1.md](./OSA_UNIFIED_RUNTIME_V1.md) — integracja preview czatu z narzędziami OSA.
 
 ## Audyty historyczne — nie łączyć statusów
 
 - [OSA_PROOF_STATUS_2026-10-31.md](./OSA_PROOF_STATUS_2026-10-31.md) — **305 PASS / 0 FAIL / 3 SKIP** na innym, wcześniejszym SHA.
 - [OSA_PROOF_PREVIEW_STATUS_2026-10-28.md](./OSA_PROOF_PREVIEW_STATUS_2026-10-28.md) — chronione Preview z 28.10, nie bieżąca produkcyjna akceptacja.
+- [STATUS_2026-11-03.md](./STATUS_2026-11-03.md) — bilans z 3 listopada (przed integracją lokalnego runtime).
 - [HERMES_AUDIT_QUICK_START.md](./HERMES_AUDIT_QUICK_START.md) — offline audyt konkretnych eksportów; uważnie sprawdzaj wersję narzędzi względem bazowego SHA.
 - [final-boss/OSA_PROOF_FUNCTION_MATRIX.md](./final-boss/OSA_PROOF_FUNCTION_MATRIX.md) — historyczna macierz wybranych capability; nie aktualna pełna inwentaryzacja.
 
