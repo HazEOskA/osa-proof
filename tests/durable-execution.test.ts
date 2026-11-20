@@ -18,6 +18,13 @@ async function withStore<T>(fn:(store:FileDurableJobStore)=>Promise<T>):Promise<
   try{return await fn(new FileDurableJobStore(root));}
   finally{await rm(root,{recursive:true,force:true});}
 }
+test("durable model jobs accept jarvis and reject an unknown agent",async()=>{
+  await withStore(async store=>{
+    const accepted=await store.submit(scope,{...input(),agent:"jarvis"});
+    assert.equal(accepted.created,true);
+    await assert.rejects(store.submit(scope,{...input(),agent:"not-an-agent"}),(e:unknown)=>e instanceof DurableConflict&&e.code==="DURABLE_INVALID_INPUT");
+  });
+});
 test("durable: accepted job survives a new store instance, idempotent replay, rejects mismatched prompt and another identity",async()=>{
   await withStore(async store=>{
     const body=input();

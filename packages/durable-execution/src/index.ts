@@ -41,7 +41,7 @@ export class DurableConflict extends Error {
 const ID=/^exec_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const CONVERSATION=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const LEASE_MS=240000;
-const AGENTS=new Set(["jeverson","leader","coding","commerce","hermes","security","research","runtime"]);
+const AGENTS=new Set(["jarvis","jeverson","leader","coding","commerce","hermes","security","research","runtime"]);
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 export function validateDurableInput(raw:unknown):DurableInput {
   if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new DurableConflict("DURABLE_INVALID_INPUT");
