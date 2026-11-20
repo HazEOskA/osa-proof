@@ -79,7 +79,7 @@ try{
     await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
     await status(page);
     await page.getByTestId("osa-message").filter({hasText:legacy}).waitFor();
-    if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
+    if(await page.getByRole("button",{name:"Opcje czatu"}).getAttribute("aria-expanded")!=="true") await page.getByRole("button",{name:"Opcje czatu"}).click();
     await page.getByText("NVIDIA · KLUCZ GOTOWY").waitFor();
     await page.getByTestId("osa-composer").fill("Historia zostaje po wyjściu z aplikacji");
     await page.getByTestId("osa-send").click();

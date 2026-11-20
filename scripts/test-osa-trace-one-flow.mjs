@@ -17,7 +17,7 @@ try {
     assert.equal(opened.status(), 200);
     await page.getByTestId("osa-native-chat").waitFor({ state: "visible" });
     await page.getByTestId("osa-native-chat").waitFor();
-    if (width < 768) await page.getByRole("button", { name: "Opcje czatu" }).click();
+    await page.getByRole("button", { name: "Opcje czatu" }).click();
     const pending = page.waitForResponse(r => r.url().endsWith("/api/trace-probe") && r.request().method() === "POST");
     await page.getByRole("button", { name: "ŚLEDZENIE OSA", exact: true }).click();
     const response = await pending;

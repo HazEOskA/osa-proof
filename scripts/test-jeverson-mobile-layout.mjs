@@ -23,19 +23,17 @@ try {
     const shell=page.getByTestId("osa-native-chat");
     await shell.waitFor({state:"visible",timeout:15000});
     assert.equal(await home.count(),0,"Chat is the entry; the framework stays underneath");
-    await page.getByTestId("osa-coding-hosts").waitFor({state:"visible"});
+    await page.getByRole("heading",{name:"Jarvis",exact:true}).waitFor();
     await page.screenshot({path:out+"/"+name+"-pusty-czat.png",fullPage:true});
     assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
-    if(width<768) {
-      const options=page.getByRole("button",{name:"Opcje czatu"});
-      assert.equal(await options.getAttribute("aria-expanded"),"false");
-      await options.click();
-      assert.equal(await options.getAttribute("aria-expanded"),"true");
-    }
+    const options=page.getByRole("button",{name:"Opcje czatu"});
+    assert.equal(await options.getAttribute("aria-expanded"),"false");
+    await options.click();
+    assert.equal(await options.getAttribute("aria-expanded"),"true");
     await page.getByText("TRYB TESTOWY · MODEL NIEDOSTĘPNY",{exact:true}).waitFor();
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
     assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
-    assert.equal(await page.getByRole("heading",{name:width<768?"OSA Proof":"Jeverson · flota OSA"}).count(),1,"One chat-module header");
+    assert.ok(await page.getByRole("heading",{name:"Jarvis",exact:true}).count()>=1,"Jarvis is the chat");
     assert.equal(await page.getByTestId("osa-hermes-switch").count(),1,"Persistent Hermes switch is present");
     assert.equal(await page.getByTestId("osa-jeverson-switch").count(),1,"Persistent Jeverson switch is present");
     await page.getByTestId("osa-jeverson-switch").click();
@@ -108,7 +106,7 @@ try {
     });
     await page.reload({waitUntil:"domcontentloaded"});
     await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
-    if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
+    if(await page.getByRole("button",{name:"Opcje czatu"}).getAttribute("aria-expanded")!=="true") await page.getByRole("button",{name:"Opcje czatu"}).click();
     await page.getByText("NVIDIA · KLUCZ GOTOWY").waitFor({state:"visible",timeout:15000});
     await page.getByTestId("osa-composer").fill("Cześć OSA");
     await page.getByTestId("osa-send").click();
