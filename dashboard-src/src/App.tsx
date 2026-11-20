@@ -9,7 +9,7 @@ import { useThemes } from "./useThemes";
 
 export default function App() {
   const { data: storedData, source, runningMission, actionError, runMission, enterLayer, inspectExecution } = useOsaData();
-  const [view, setView] = useState<ViewId>("home");
+  const [view, setView] = useState<ViewId>("jeverson-chat");
   const [runId, setRunId] = useState(storedData.runs[0]?.run_id ?? "");
   const data = useMemo(() => {
     const run = storedData.runs.find(item => item.run_id === runId) ?? storedData.runs[0];

@@ -15,9 +15,9 @@ try {
     page.on("pageerror", e => errors.push(e.message));
     const opened = await page.goto("http://127.0.0.1:3100", { waitUntil: "domcontentloaded" });
     assert.equal(opened.status(), 200);
-    await page.locator('section[aria-label="Uruchamianie"]').getByRole("button", { name: "Czat floty agentów", exact: true }).click();
+    await page.getByTestId("osa-native-chat").waitFor({ state: "visible" });
     await page.getByTestId("osa-native-chat").waitFor();
-    if (width < 768) await page.getByRole("button", { name: "Opcje czatu" }).click();
+    await page.getByRole("button", { name: "Opcje czatu" }).click();
     const pending = page.waitForResponse(r => r.url().endsWith("/api/trace-probe") && r.request().method() === "POST");
     await page.getByRole("button", { name: "ŚLEDZENIE OSA", exact: true }).click();
     const response = await pending;

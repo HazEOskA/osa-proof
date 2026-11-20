@@ -113,7 +113,7 @@ function ShellContent({ palette, closePalette }: { palette: boolean; closePalett
   const { view, data, source, openPalette } = useOsa();
   const web3 = useWeb3Data();
   const [drawer, setDrawer] = useState(false);
-  // Optional Agent Chat Fleet module retains its immersive layout; Home stays the framework entry point.
+  // Chat is the entry. The framework shell stays underneath and opens from the chat.
   if (view === "jeverson-chat") return <><div className="h-[100dvh] min-h-0 min-w-0 overflow-hidden bg-void"><JeversonChat /></div><OsaHelpDock /></>;
   let body;
   const v: ViewId = view;

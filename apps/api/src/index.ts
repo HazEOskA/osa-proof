@@ -35,6 +35,7 @@ import { runTraceProbe, TraceInputError } from "./trace-probe";
 import { digest } from "../../../packages/proof-core/src";
 import { FileDurableJobStore } from "../../../packages/durable-execution/src";
 import { durableMissionVisible, publishedDurableMissionIds } from "./durable-publication";
+import { codingHosts } from "./coding-hosts";
 
 // "session" (default): teams, missions, runs and run results need a DEV session.
 // "open": no login, for the Vercel preview dashboard; every open-mode request acts as OPEN_MODE_SESSION.
@@ -465,7 +466,7 @@ export async function handleApiRequest(
       }
 
       if (url.pathname === "/build/status" && method === "GET") {
-        return send(response, 200, { ...executionDescription, auth_mode: state.authMode, executors: registry.refs(), persistence: "PROCESS_MEMORY", mission_persistence: state.missionKernel.store.persistence, brain: state.missionKernel.brain.describe(), protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" } });
+        return send(response, 200, { ...executionDescription, auth_mode: state.authMode, executors: registry.refs(), persistence: "PROCESS_MEMORY", mission_persistence: state.missionKernel.store.persistence, brain: state.missionKernel.brain.describe(), protocols: { MCP: "UNSUPPORTED", A2A: "UNSUPPORTED" }, coding_hosts: codingHosts() });
       }
 
       if (url.pathname === "/build/workspace" && method === "GET") {

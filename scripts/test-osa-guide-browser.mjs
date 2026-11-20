@@ -18,6 +18,9 @@ try{
       return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({status:"PROVIDER_RESPONSE",text:"Otwórz BUDOWANIE → Agenci."})});
     });
     await page.goto(base,{waitUntil:"domcontentloaded"});
+    await page.getByTestId("osa-native-chat").waitFor({state:"visible",timeout:15000});
+    if(width<768){await page.getByRole("button",{name:"Otwórz historię"}).click();await page.getByRole("button",{name:"Powrót do OSA Proof"}).click();}
+    else await page.getByRole("button",{name:"Powrót do frameworka OSA Proof"}).click();
     const home=page.locator('section[aria-label="Uruchamianie"]');
     await home.waitFor({state:"visible",timeout:15000});
     const trigger=page.getByTestId("osa-help-trigger");

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { nvidiaComplete } from "../apps/api/src/nvidia";
-for (const [agent,label] of [["jeverson","Jeversonem"],["hermes","Hermesem"]] as const) {
+for (const [agent,label] of [["jarvis","Jarvisem"],["jeverson","Jeversonem"],["hermes","Hermesem"]] as const) {
   test(`OSA agent ${agent} uses its own model role, without a paid provider call`,async()=>{
     let calls=0;
     const answer=await nvidiaComplete("Witaj",{NVIDIA_API_KEY:"example-provider-key"},async(_url,init)=>{

@@ -20,23 +20,20 @@ try {
     const opened=await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     assert.equal(opened?.status(),200,"Dashboard HTTP 200");
     const home=page.locator('section[aria-label="Uruchamianie"]');
-    await home.waitFor({state:"visible",timeout:15000});
-    assert.equal(await page.getByTestId("osa-native-chat").count(),0,"Framework Home, not chat, is default");
-    assert.equal(await home.getByRole("button",{name:"Czat floty agentów",exact:true}).count(),1,"Chat Fleet is an optional Home module");
-    await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
-    const shell=page.getByTestId("osa-native-chat");await shell.waitFor({state:"visible",timeout:15000});
+    const shell=page.getByTestId("osa-native-chat");
+    await shell.waitFor({state:"visible",timeout:15000});
+    assert.equal(await home.count(),0,"Chat is the entry; the framework stays underneath");
+    await page.getByRole("heading",{name:"Jarvis",exact:true}).first().waitFor();
     await page.screenshot({path:out+"/"+name+"-pusty-czat.png",fullPage:true});
     assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
-    if(width<768) {
-      const options=page.getByRole("button",{name:"Opcje czatu"});
-      assert.equal(await options.getAttribute("aria-expanded"),"false");
-      await options.click();
-      assert.equal(await options.getAttribute("aria-expanded"),"true");
-    }
+    const options=page.getByRole("button",{name:"Opcje czatu"});
+    assert.equal(await options.getAttribute("aria-expanded"),"false");
+    await options.click();
+    assert.equal(await options.getAttribute("aria-expanded"),"true");
     await page.getByText("TRYB TESTOWY · MODEL NIEDOSTĘPNY",{exact:true}).waitFor();
     assert.equal(await page.locator('iframe[title="Jeverson Chat"]').count(),0,"No cross-origin iframe");
     assert.equal(await page.locator(".osa-sidebar").count(),0,"No nested OSA dashboard navigation");
-    assert.equal(await page.getByRole("heading",{name:width<768?"OSA Proof":"Jeverson · flota OSA"}).count(),1,"One chat-module header");
+    assert.ok(await page.getByRole("heading",{name:"Jarvis",exact:true}).count()>=1,"Jarvis is the chat");
     assert.equal(await page.getByTestId("osa-hermes-switch").count(),1,"Persistent Hermes switch is present");
     assert.equal(await page.getByTestId("osa-jeverson-switch").count(),1,"Persistent Jeverson switch is present");
     await page.getByTestId("osa-jeverson-switch").click();
@@ -79,8 +76,6 @@ try {
     assert.equal(await home.getByRole("button",{name:"Świat",exact:true}).count(),1,"Original World module preserved");
     assert.equal(await home.getByRole("button",{name:"Misje",exact:true}).count(),1,"Original Missions module preserved");
     await page.reload({waitUntil:"domcontentloaded"});
-    await home.waitFor({state:"visible"});
-    await home.getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     await shell.waitFor({state:"visible"});
     assert.equal(await page.getByText("Logowanie GitHub nie jest skonfigurowane.",{exact:true}).count(),0);
     assert.match(await page.getByTestId("osa-message").innerText(),/sesji A/);
@@ -110,8 +105,8 @@ try {
       return route.fulfill({status:200,contentType:"text/event-stream; charset=utf-8",body:events.map(([type,data])=>"event: "+type+"\ndata: "+JSON.stringify(data)+"\n\n").join("")});
     });
     await page.reload({waitUntil:"domcontentloaded"});
-    await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
-    if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
+    await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
+    if(await page.getByRole("button",{name:"Opcje czatu"}).getAttribute("aria-expanded")!=="true") await page.getByRole("button",{name:"Opcje czatu"}).click();
     await page.getByText("NVIDIA · KLUCZ GOTOWY").waitFor({state:"visible",timeout:15000});
     await page.getByTestId("osa-composer").fill("Cześć OSA");
     await page.getByTestId("osa-send").click();
@@ -158,7 +153,6 @@ try {
     assert.match(await page.getByRole("button",{name:"Wybierz agenta"}).innerText(),/Hermes/);
     assert.equal(await page.getByTestId("osa-hermes-switch").count(),1);
     await page.reload({waitUntil:"domcontentloaded"});
-    await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
     await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
     await page.getByRole("button",{name:"Wybierz agenta"}).filter({hasText:"Hermes"}).waitFor();
     assert.equal(await page.getByTestId("osa-hermes-switch").getAttribute("aria-pressed"),"true");

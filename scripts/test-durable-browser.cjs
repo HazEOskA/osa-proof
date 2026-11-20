@@ -7,14 +7,14 @@ const child=spawn(process.execPath,["scripts/durable-e2e-server.cjs"],{stdio:"in
 async function ready(){for(let i=0;i<80;i++){try{if((await fetch(url+"/api/durable/status")).ok)return;}catch{}await new Promise(r=>setTimeout(r,250));}throw Error("DURABLE_TEST_SERVER_NOT_READY");}
 (async()=>{
   await ready();
-  const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
+  const browser=await chromium.launch({headless:true,...(process.env.OSA_CHROMIUM_EXECUTABLE?{executablePath:process.env.OSA_CHROMIUM_EXECUTABLE}:{}),args:["--no-sandbox","--disable-dev-shm-usage"]});
   try{
     for(const [name,width,height] of [["android-390",390,844],["desktop-1440",1440,900]]){
       const context=await browser.newContext({viewport:{width,height}});
       async function chat(){
         const p=await context.newPage();
         await p.goto(url);
-        await p.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+        await p.getByTestId("osa-native-chat").waitFor({state:"visible"});
         await p.getByTestId("osa-durable-ready").waitFor();
         await p.waitForFunction(()=>document.querySelector('[data-testid="osa-history-status"]')?.textContent?.includes("ZAPISANO W INDEXEDDB"),null,{timeout:20000});
         return p;
@@ -30,7 +30,7 @@ async function ready(){for(let i=0;i<80;i++){try{if((await fetch(url+"/api/durab
       await page.getByText("DURABLE MODEL ODZYSKANY: P0 prompt po zgaszeniu ekranu").waitFor({timeout:30000});
       assert.equal(await page.getByText("DURABLE MODEL ODZYSKANY: P0 prompt po zgaszeniu ekranu").count(),1);
       await page.screenshot({path:path.join(out,name+"-model-recovered.png")});
-      if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
+      await page.getByRole("button",{name:"Opcje czatu"}).click();
       await page.getByRole("button",{name:"Utwórz artefakt",exact:true}).click();
       const artifactAccepted=page.waitForResponse(r=>r.url().endsWith("/api/durable/jobs")&&r.request().method()==="POST"&&r.status()===202);
       await page.getByTestId("osa-composer").fill("Zbuduj bezpieczną stronę po polsku");

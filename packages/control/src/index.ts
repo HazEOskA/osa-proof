@@ -235,6 +235,7 @@ export class OrganizationStore {
 export const KNOWN_SECRETS: ReadonlyArray<{ name: string; used_by: string }> = [
   { name: "ANTHROPIC_API_KEY", used_by: "llm-gateway (OSA_PROVIDER=anthropic)" },
   { name: "OPENAI_API_KEY", used_by: "llm-gateway (OSA_PROVIDER=openai)" },
+  { name: "CURSOR_API_KEY", used_by: "coding host cursor (no agent session)" },
 ];
 export function secretStatus(env: Record<string, string | undefined>): Array<{ name: string; set: boolean; used_by: string }> {
   return KNOWN_SECRETS.map((s) => ({ name: s.name, set: typeof env[s.name] === "string" && env[s.name]!.length > 0, used_by: s.used_by }));

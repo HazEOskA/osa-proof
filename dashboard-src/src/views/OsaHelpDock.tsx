@@ -9,7 +9,7 @@ const nav=[HOME_ITEM,...NAV.flatMap(g=>g.items)];
 const FALLBACK="Oprowadź mnie po tym module OSA Proof. Wyjaśnij, co tutaj działa, co jest ograniczone i od czego zacząć.";
 const help:Record<string,{intro:string;questions:string[];next?:ViewId}>={
   home:{intro:"Centralny punkt startowy. OSA pomoże Ci znaleźć odpowiednie narzędzia.",questions:["Jak zacząć pracę z OSA Proof?","Pokaż drogę od agenta do zweryfikowanego dowodu."],next:"build:agents"},
-  "jeverson-chat":{intro:"Czat floty agentów służy do rozmów z wybranymi profilami. Weryfikacja wykonań jest osobną funkcją.",questions:["Czym różni się rozmowa z modelem od wykonania misji?","Którego agenta wybrać do mojego zadania?"],next:"build:agents"},
+  "jeverson-chat":{intro:"Czat jest wejściem. Cursor, Claude Code i ChatGPT są hostami pod rozmową. Framework OSA zostaje pod spodem i nie wykonuje się sam.",questions:["Czym różni się rozmowa z modelem od wykonania misji?","Którego agenta wybrać do mojego zadania?"],next:"build:agents"},
   "build:agents":{intro:"Twórz role w grafie zespołu. Sam zapis agenta nie oznacza uruchomionego wykonawcy.",questions:["Jak skonfigurować nowego agenta?","Co oznaczają executor_ref i model_ref?"],next:"build:mesh"},
   "build:mesh":{intro:"Połącz agentów w kanonicznym grafie zespołu.",questions:["Jak zaplanować przekazywanie zadań między agentami?","Jakie ograniczenia ma Team Graph?"],next:"build:studio"},
   "build:studio":{intro:"Zbuduj misję: cel, zespół, wejście i kryteria odbioru.",questions:["Jak zbudować pierwszą misję od zera?","Co sprawdza Gate Zero przed uruchomieniem?"],next:"build:playground"},

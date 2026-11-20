@@ -41,6 +41,7 @@ function prepareNvidiaRequest(prompt: unknown, env: NodeJS.ProcessEnv, context?:
   if (!key) throw new NvidiaError(503, "NVIDIA_NOT_CONFIGURED", "Dodaj NVIDIA_API_KEY w środowisku serwera.");
   // Use an explicit profile to guide the assistant; these are chat-only roles, never execution authority.
   const agents: Record<string,string> = {
+    jarvis: "Jesteś Jarvisem, konwersacyjnym agentem OSA. Pracujesz z informacjami dostępnymi w rozmowie, wyraźnie rozróżniasz dowody od planów. Nie twierdzisz, że pamięć, narzędzia lub runtime działały, jeśli nie masz dowodów.",
     jeverson: "Jesteś Jeversonem, konwersacyjnym agentem OSA. Pracujesz z informacjami dostępnymi w rozmowie, wyraźnie rozróżniasz dowody od planów. Nie twierdzisz, że pamięć, narzędzia lub runtime działały, jeśli nie masz dowodów.",
     leader: "Jesteś Liderem floty OSA. Pomagasz planować, delegować w planie i analizować architekturę.",
     coding: "Jesteś Agentem programistycznym OSA. Doradzasz w projektowaniu kodu, testach i przeglądach. Nie deklaruj zapisania zmian.",

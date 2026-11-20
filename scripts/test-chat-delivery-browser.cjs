@@ -9,10 +9,10 @@ const child=process.env.OSA_DELIVERY_E2E_URL?undefined:spawn(process.execPath,['
   const browser=await chromium.launch({headless:true,...(process.env.OSA_CHROMIUM_EXECUTABLE?{executablePath:process.env.OSA_CHROMIUM_EXECUTABLE}:{}),args:['--no-sandbox']});
   try{for(const [name,width,height] of [['android',390,844],['desktop',1440,1000]]){
     const page=await browser.newPage({viewport:{width,height}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
-    await page.goto(base);await page.locator('section[aria-label="Uruchamianie"]').getByRole('button',{name:'Czat floty agentów',exact:true}).click();
+    await page.goto(base);await page.getByTestId('osa-native-chat').waitFor({state:'visible'});
     await page.getByTestId('osa-history-status').waitFor();
     await page.waitForFunction(()=>document.querySelector('[data-testid="osa-history-status"]')?.textContent?.includes('ZAPISANO W INDEXEDDB'),null,{timeout:20000});
-    if(width<768) await page.getByRole('button',{name:'Opcje czatu'}).click();
+    await page.getByRole('button',{name:'Opcje czatu'}).click();
     await page.getByRole('button',{name:'Utwórz artefakt',exact:true}).click();
     await page.getByTestId('osa-composer').fill('OSA Commerce Decision Agent: interaktywny polski dashboard kampanii A, B i C. A wydatki 1200, przychód 6000, marża 40%, CPA 30 do 48. B wydatki 1800, przychód 3000, marża 35%, CPA 45 do 70. C wydatki 900, przychód NIEZNANY, CPA 20 do 24. Przedstaw DRAFT i pilot 10 przypadków, nie wymyślaj brakujących danych. Dodaj licznik z przyciskiem Dodaj. Bez sieci i bibliotek.');
     await page.waitForFunction(()=>{const button=document.querySelector('[data-testid="osa-send"]');return button instanceof HTMLButtonElement&&!button.disabled;},null,{timeout:20000});
@@ -37,7 +37,7 @@ const child=process.env.OSA_DELIVERY_E2E_URL?undefined:spawn(process.execPath,['
     await result.getByRole('button',{name:'Replay wykonania',exact:true}).click();await page.getByRole('slider',{name:'Pozycja odtwarzania'}).waitFor();
     await page.screenshot({path:path.join(out,name+'-replay.png'),fullPage:true});
     const offline=await browser.newPage();await offline.goto('file://'+files['Pobierz replay offline']);await offline.getByText(/Integralność pakietu: PASS/).waitFor();await offline.close();
-    await page.reload();await page.locator('section[aria-label="Uruchamianie"]').getByRole('button',{name:'Czat floty agentów',exact:true}).click();await page.getByTestId('osa-delivery-result').getByText('ARTEFAKT GOTOWY · integralność zweryfikowana',{exact:true}).waitFor();
+    await page.reload();await page.getByTestId('osa-native-chat').waitFor({state:'visible'});await page.getByTestId('osa-delivery-result').getByText('ARTEFAKT GOTOWY · integralność zweryfikowana',{exact:true}).waitFor();
     assert.deepEqual(errors,[]);console.log(JSON.stringify({name,result:'PASS',execution_id:bundle.execution_id,downloads:6,agent_starts:bundle.run.events.filter(e=>e.type==='AGENT_STARTED').length,provider:process.env.OSA_DELIVERY_E2E_URL?'LIVE_SERVER':'CONTROLLED_TEST_GENERATOR',offline_replay:true,artifact_interaction:true}));await page.close();
   }}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>child?.kill('SIGTERM'));
