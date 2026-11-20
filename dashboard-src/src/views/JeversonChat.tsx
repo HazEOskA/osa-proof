@@ -512,7 +512,7 @@ export default function JeversonChat() {
         <button aria-label="Wybierz agenta" aria-expanded={agentOpen} onClick={()=>setAgentOpen(!agentOpen)} className="focus-ring max-w-[125px] truncate rounded-lg border border-line bg-panel px-2 py-2 text-xs sm:max-w-[195px]">{agent.icon} {agent.name} ▾</button>
         <button onClick={()=>setInspector(!inspector)} aria-expanded={inspector} aria-label={inspector?"Zamknij":"Inspektor"} className="focus-ring osa-inspector-button rounded-lg border border-line px-2 py-2 text-xs"><span className="md:hidden" aria-hidden>{inspector?"✕":"⋯"}</span><span className="hidden md:inline">{inspector?"Zamknij":"Inspektor"}</span></button>
       </header>
-      <div data-testid="osa-coding-hosts" className="flex flex-wrap items-center gap-2 border-b border-line bg-ink px-3 py-2 text-[10px]">
+      <div data-testid="osa-coding-hosts" className="osa-coding-hosts flex flex-wrap items-center gap-2 border-b border-line bg-ink px-3 py-2 text-[10px]">
         <span className="text-dim">Agent kodu</span>
         {(status?.coding_hosts?.length?status.coding_hosts:FALLBACK_HOSTS).map(host=><span key={host.id} title={host.detail} className="rounded-full border border-line px-2 py-1 text-fg">{host.label} · {hostLabel(host.state)}</span>)}
         <span className="text-dim">Framework OSA jest pod spodem rozmowy.</span>
