@@ -13,8 +13,7 @@ const status=async page=>{
 };
 const openChat=async page=>{
   await page.goto(base,{waitUntil:"domcontentloaded"});
-  await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
-  await page.getByTestId("osa-native-chat").waitFor();
+  await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
 };
 const fixedMessage=(text,role)=>({id:randomUUID(),role,text,at:new Date().toISOString(),status:role==="user"?"USER":"MODEL"});
 const fetchRow=async (page,id)=>page.evaluate(async({dbName,sessionId})=>{
@@ -77,7 +76,7 @@ try{
       return route.fulfill({status:200,contentType:"text/event-stream",body:events.map(([type,data])=>"event: "+type+"\ndata: "+JSON.stringify(data)+"\n\n").join("")});
     });
     await page.reload({waitUntil:"domcontentloaded"});
-    await page.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+    await page.getByTestId("osa-native-chat").waitFor({state:"visible"});
     await status(page);
     await page.getByTestId("osa-message").filter({hasText:legacy}).waitFor();
     if(width<768) await page.getByRole("button",{name:"Opcje czatu"}).click();
@@ -128,7 +127,7 @@ try{
     assert.equal((await fetchRow(restored,largeId)).messages[1].delivery.artifact.content.length,bytes);
     // Refresh must not truncate the large proof object or revert to stale localStorage.
     await restored.reload({waitUntil:"domcontentloaded"});
-    await restored.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+    await restored.getByTestId("osa-native-chat").waitFor({state:"visible"});
     await status(restored);
     assert.equal((await fetchRow(restored,largeId)).messages[1].delivery.artifact.content.length,bytes);
     assert.equal(await restored.getByTestId("osa-session").count(),2);

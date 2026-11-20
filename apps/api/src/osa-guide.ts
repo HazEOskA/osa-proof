@@ -5,7 +5,7 @@
  */
 export const OSA_GUIDE_PAGES: Record<string,{title:string;what:string;next?:string}> = {
   home:{title:"Strona główna",what:"Punkt startowy OSA Proof. Wybierz kafelek lub menu. Kafelki pokazują także funkcje, które mogą być niedostępne.",next:"build:agents"},
-  "jeverson-chat":{title:"Czat floty agentów",what:"Osobne środowisko rozmów z profilami agentów, historią i wywołaniami do NVIDIA. Odpowiedź AI nie jest wykonaniem zadania ani ProofReceipt.",next:"build:agents"},
+  "jeverson-chat":{title:"Czat floty agentów",what:"Czat jest wejściem. Cursor, Claude Code i ChatGPT są hostami agenta kodu pod rozmową i pozostają niepołączone, dopóki proces nie ma sesji. Framework OSA (misje, śledzenie, dowody) jest pod spodem i nie jest ukrytym wykonaniem.",next:"build:agents"},
   "delivery-lab":{title:"Laboratorium wdrożeń",what:"Formularz celu misji, typ artefaktu, tryb wykonania i weryfikacja. Tryb szablonowy nie zastępuje autonomicznego buildera.",next:"proofs"},
   "nvidia:models":{title:"Modele NVIDIA",what:"Konfiguracja modelu i osobny interfejs rozmowy. Klucze są tajne, nie wprowadzaj ich do promptu.",next:"jeverson-chat"},
   "build:agents":{title:"Agenci",what:"W edytorze Agenci zarządzasz wpisami kanonicznego Team Graph: rola, agent_id, executor_ref, model_ref i możliwości. Samo przypisanie model_ref nie gwarantuje wykonawcy.",next:"build:mesh"},

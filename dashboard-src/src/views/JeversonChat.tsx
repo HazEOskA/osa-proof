@@ -22,7 +22,8 @@ type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:
 type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
 type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
 type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{resource:string;method:string;source:string;http_status:null;status:string}> };
-type StatusInfo = { mode?:string; auth_mode?:string; persistence?:string };
+type CodingHost = { id:string; label:string; state:string; detail?:string };
+type StatusInfo = { mode?:string; auth_mode?:string; persistence?:string; coding_hosts?:CodingHost[] };
 type ModelStatus = { configured:boolean; provider:string; model:string };
 type DurableStatus = {execution_id:string;conversation_id:string;kind:"model"|"artifact";status:"QUEUED"|"RUNNING"|"COMPLETED"|"FAILED"|"UNKNOWN"|"CANCELLED";result?:unknown;error_code?:string};
 type DurableChatAudit = ChatAudit & {run:Run; mission:Mission; team:TeamGraph; final_output:string; response_sha256:string; anchor_preparation?:{status:string}};
@@ -60,13 +61,19 @@ const ACTIVE = "osa.native-chat.active.v1";
 const AGENTS: Array<{id:AgentId;name:string;purpose:string;state:string;icon:string}> = [
   {id:"jeverson",name:"Jeverson",purpose:"OSA Agent · rozmowa · planowanie · ocena dowodów",state:"ASYSTENT AI",icon:"✧"},
   {id:"leader",name:"Lider",purpose:"Team Graph · delegowanie · plan",state:"OGRANICZONY",icon:"◇"},
-  {id:"coding",name:"Agent programistyczny",purpose:"Kod · repo · testy · review",state:"OGRANICZONY",icon:"⌘"},
+  {id:"coding",name:"Agent programistyczny",purpose:"Cursor · Claude Code · ChatGPT pod rozmową · framework OSA pod spodem",state:"NIEPOŁĄCZONY",icon:"⌘"},
   {id:"commerce",name:"Handel internetowy",purpose:"Sklep · produkty · integracje",state:"PLANOWANY",icon:"▣"},
   {id:"hermes",name:"Hermes",purpose:"Analiza · samodoskonalenie (propozycje)",state:"TYLKO PROPOZYCJE",icon:"✦"},
   {id:"security",name:"Bezpieczeństwo",purpose:"Uprawnienia · audyt · policy",state:"OGRANICZONY",icon:"⬡"},
   {id:"research",name:"Badania",purpose:"OSINT · badania · weryfikacja",state:"OGRANICZONY",icon:"⌕"},
   {id:"runtime",name:"Wykonanie / Dowody",purpose:"Dozwolone narzędzia · tracing · replay",state:"API",icon:"◎"}
 ];
+const FALLBACK_HOSTS: CodingHost[] = [
+  {id:"cursor",label:"Cursor",state:"UNKNOWN",detail:"Stan połączenia nie został odczytany."},
+  {id:"claude_code",label:"Claude Code",state:"UNKNOWN",detail:"Stan połączenia nie został odczytany."},
+  {id:"chatgpt",label:"ChatGPT",state:"UNKNOWN",detail:"Stan połączenia nie został odczytany."},
+];
+const hostLabel = (state:string) => state==="KEY_PRESENT"?"KLUCZ JEST · SESJI BRAK":state==="NOT_CONNECTED"?"NIEPOŁĄCZONE":"STAN NIEZNANY";
 const id = () => crypto.randomUUID();
 const stamp = () => new Date().toISOString();
 const empty = (selected:AgentId="jeverson"):Session => ({id:id(),title:"Nowa rozmowa",agent:selected,model:"auto",updated:stamp(),messages:[]});
@@ -505,6 +512,11 @@ export default function JeversonChat() {
         <button aria-label="Wybierz agenta" aria-expanded={agentOpen} onClick={()=>setAgentOpen(!agentOpen)} className="focus-ring max-w-[125px] truncate rounded-lg border border-line bg-panel px-2 py-2 text-xs sm:max-w-[195px]">{agent.icon} {agent.name} ▾</button>
         <button onClick={()=>setInspector(!inspector)} aria-expanded={inspector} aria-label={inspector?"Zamknij":"Inspektor"} className="focus-ring osa-inspector-button rounded-lg border border-line px-2 py-2 text-xs"><span className="md:hidden" aria-hidden>{inspector?"✕":"⋯"}</span><span className="hidden md:inline">{inspector?"Zamknij":"Inspektor"}</span></button>
       </header>
+      <div data-testid="osa-coding-hosts" className="flex flex-wrap items-center gap-2 border-b border-line bg-ink px-3 py-2 text-[10px]">
+        <span className="text-dim">Agent kodu</span>
+        {(status?.coding_hosts?.length?status.coding_hosts:FALLBACK_HOSTS).map(host=><span key={host.id} title={host.detail} className="rounded-full border border-line px-2 py-1 text-fg">{host.label} · {hostLabel(host.state)}</span>)}
+        <span className="text-dim">Framework OSA jest pod spodem rozmowy.</span>
+      </div>
       {agentOpen&&<div data-testid="osa-agent-picker" className="absolute inset-x-2 top-[60px] z-20 max-h-[min(75dvh,530px)] overflow-y-auto rounded-xl border border-line2 bg-panel p-3 shadow-2xl sm:left-auto sm:right-3 sm:w-[350px] md:top-[90px]">
         <div className="mb-2 flex items-center justify-between text-xs"><strong>Wybór agenta</strong><button onClick={()=>setAgentOpen(false)} aria-label="Zamknij wybór">✕</button></div>
         {AGENTS.map(a=><button key={a.id} onClick={()=>selectAgent(a.id)} aria-pressed={a.id===current.agent} className={(a.id===current.agent?"bg-cyan/10":"hover:bg-white/5")+" mb-1 w-full rounded-lg p-3 text-left"}><span className="flex items-center justify-between text-xs"><strong>{a.icon} {a.name}</strong><span className="text-[9px] text-dim">{a.state}</span></span><span className="mt-1 block text-[11px] text-dim">{a.purpose}</span></button>)}

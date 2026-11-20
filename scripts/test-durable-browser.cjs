@@ -14,7 +14,7 @@ async function ready(){for(let i=0;i<80;i++){try{if((await fetch(url+"/api/durab
       async function chat(){
         const p=await context.newPage();
         await p.goto(url);
-        await p.locator('section[aria-label="Uruchamianie"]').getByRole("button",{name:"Czat floty agentów",exact:true}).click();
+        await p.getByTestId("osa-native-chat").waitFor({state:"visible"});
         await p.getByTestId("osa-durable-ready").waitFor();
         await p.waitForFunction(()=>document.querySelector('[data-testid="osa-history-status"]')?.textContent?.includes("ZAPISANO W INDEXEDDB"),null,{timeout:20000});
         return p;
