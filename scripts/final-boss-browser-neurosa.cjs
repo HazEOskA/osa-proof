@@ -58,7 +58,12 @@ async function main(){
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(ws=>localStorage.setItem('osa.build.workspace.v1',JSON.stringify(ws)),workspace);
   const response=await page.goto(base,{waitUntil:'domcontentloaded'});assert.equal(response.status(),200);
-  if(mobile) await page.getByRole('button',{name:'Otwórz nawigację'}).click();
+  await page.getByTestId('osa-native-chat').waitFor();
+  if(mobile){
+    await page.getByRole('button',{name:'Otwórz historię'}).click();
+    await page.getByRole('button',{name:'Powrót do OSA Proof'}).click();
+    await page.getByRole('button',{name:'Otwórz nawigację'}).click();
+  }else await page.getByRole('button',{name:'Powrót do frameworka OSA Proof'}).click();
   const navigation=mobile?page.getByRole('dialog',{name:'Nawigacja'}).getByRole('navigation',{name:'Primary'}):page.getByRole('navigation',{name:'Primary'}).filter({visible:true});
   await navigation.getByRole('button',{name:'Studio',exact:true}).click();
   await page.getByLabel('Cel / Definition of Done').fill(`${marker} Sprawdź dwa pliki dozwolonego repozytorium`);
