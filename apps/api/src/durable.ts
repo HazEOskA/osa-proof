@@ -1,3 +1,4 @@
+import { forwardDurable, remoteDurableConfig } from "./durable-remote";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { SessionRecord } from "../../../packages/contracts/src";
 import { FileDurableJobStore, DurableConflict, durableLocalSandboxConfigured, validateDurableInput, type DurableScope } from "../../../packages/durable-execution/src";
@@ -30,6 +31,17 @@ function sameOrigin(req:IncomingMessage,env:Env) {
 export async function handleDurableRequest(
   req:IncomingMessage,res:ServerResponse,session:SessionRecord,projectId:string,env:Env=process.env
 ):Promise<void> {
+  if(req.method==="POST"&&!sameOrigin(req,env))return send(res,403,{code:"DURABLE_ORIGIN_DENIED"});
+  let scope:DurableScope;
+  try{scope=scopeFor(session,projectId);}catch{return send(res,403,{code:"DURABLE_SCOPE_DENIED"});}
+  const remote=remoteDurableConfig(env);
+  if(env.VERCEL==="1"&&remote){
+    if(!session.identity.verified||!session.identity.roles.includes("owner")||!session.identity.roles.includes("operator"))return send(res,403,{code:"DURABLE_REMOTE_SCOPE_DENIED"});
+    return forwardDurable(req,res,scope,remote);
+  }
+  return handleScopedDurableRequest(req,res,scope,env);
+}
+export async function handleScopedDurableRequest(req:IncomingMessage,res:ServerResponse,scope:DurableScope,env:Env=process.env):Promise<void>{
   const u=new URL(req.url??"/","http://localhost");
   if(u.pathname==="/durable/status"&&req.method==="GET") {
     const configured=durableSupported(env);
@@ -40,10 +52,6 @@ export async function handleDurableRequest(
   }
   if(!durableSupported(env))return send(res,503,{code:"DURABLE_BACKEND_NOT_CONFIGURED",
     error:"Trwałe wykonanie wymaga współdzielonego trwałego magazynu i osobnego workera. Zadanie nie zostało przyjęte."});
-  if(req.method==="POST"&&(u.pathname==="/durable/jobs"||/^\/durable\/jobs\/exec_[a-f0-9-]{36}\/cancel$/i.test(u.pathname))&&!sameOrigin(req,env))
-    return send(res,403,{code:"DURABLE_ORIGIN_DENIED"});
-  let scope:DurableScope;
-  try{scope=scopeFor(session,projectId);}catch{return send(res,403,{code:"DURABLE_SCOPE_DENIED"});}
   const backend=store(env);
   if(req.method==="POST"&&u.pathname==="/durable/jobs"&&!(await backend.workerHealthy()))
     return send(res,503,{code:"DURABLE_WORKER_UNAVAILABLE",error:"Worker nie potwierdził gotowości. Zadanie nie zostało przyjęte."});

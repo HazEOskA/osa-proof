@@ -21,6 +21,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
+      - run: node --test dist/tests/durable-bridge.test.js
       - run: node scripts/build-dashboard.cjs
       - run: npm install --no-save --ignore-scripts playwright
       - run: npx playwright install --with-deps chromium
