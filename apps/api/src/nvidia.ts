@@ -18,7 +18,8 @@ export class NvidiaError extends Error {
   constructor(readonly status: number, readonly code: string, message: string, readonly review?:unknown) { super(message); }
 }
 export function nvidiaStatus(env: NodeJS.ProcessEnv = process.env) {
-  return { provider: "NVIDIA", configured: Boolean(env.NVIDIA_API_KEY?.trim()), model: env.NVIDIA_MODEL?.trim() || NVIDIA_MODEL };
+  const local = env.OSA_LOCAL_MODEL_PROVIDER === "ollama";
+  return { provider: local ? "Ollama (local)" : "NVIDIA", configured: local ? Boolean(env.OSA_MODEL_BASE_URL?.trim()) : Boolean(env.NVIDIA_API_KEY?.trim()), model: local ? env.OSA_LOCAL_MODEL_NAME?.trim() || "qwen2.5:3b" : env.NVIDIA_MODEL?.trim() || NVIDIA_MODEL };
 }
 export function nvidiaRequestConfig(options: { apiKey?: unknown; model?: unknown }, env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   const config = { ...env };
@@ -35,10 +36,11 @@ export function nvidiaRequestConfig(options: { apiKey?: unknown; model?: unknown
 type NvidiaContext = { agent?: unknown; history?: unknown; view?: unknown; memory?: BrainMemoryContext; artifact?: "webapp" | "document"; repair?: { feedback:string; prior_response_sha256:string } };
 function prepareNvidiaRequest(prompt: unknown, env: NodeJS.ProcessEnv, context?: NvidiaContext) {
   if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 8000) throw new NvidiaError(400, "INVALID_PROMPT", "Wpisz prompt od 1 do 8000 znaków.");
-  if(env.OSA_ZERO_COST_ONLY==="true"&&env.OSA_NVIDIA_FREE_TIER_ACK!=="true")
+  const local = env.OSA_LOCAL_MODEL_PROVIDER === "ollama";
+  if(!local&&env.OSA_ZERO_COST_ONLY==="true"&&env.OSA_NVIDIA_FREE_TIER_ACK!=="true")
     throw new NvidiaError(403,"NVIDIA_COST_POLICY_BLOCKED","NVIDIA: wymagane potwierdzenie bezpłatnego dostępu przed wywołaniem modelu.");
-  const key = env.NVIDIA_API_KEY?.trim();
-  if (!key) throw new NvidiaError(503, "NVIDIA_NOT_CONFIGURED", "Dodaj NVIDIA_API_KEY w środowisku serwera.");
+  const key = local ? "" : env.NVIDIA_API_KEY?.trim();
+  if (!local&&!key) throw new NvidiaError(503, "NVIDIA_NOT_CONFIGURED", "Dodaj NVIDIA_API_KEY w środowisku serwera.");
   // Use an explicit profile to guide the assistant; these are chat-only roles, never execution authority.
   const agents: Record<string,string> = {
     jeverson: "Jesteś Jeversonem, konwersacyjnym agentem OSA. Pracujesz z informacjami dostępnymi w rozmowie, wyraźnie rozróżniasz dowody od planów. Nie twierdzisz, że pamięć, narzędzia lub runtime działały, jeśli nie masz dowodów.",
@@ -88,7 +90,11 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
   const timeoutMs = 180_000; // Both chat and artifacts have the same server-side deadline.
   let response: Response;
   try {
-    response = await fetcher(ENDPOINT, { method: "POST", redirect: "error", signal: cancelSignal ? AbortSignal.any([AbortSignal.timeout(timeoutMs),cancelSignal]) : AbortSignal.timeout(timeoutMs), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(requestBody) });
+    const local = env.OSA_LOCAL_MODEL_PROVIDER === "ollama";
+    const endpoint = local
+      ? `${(env.OSA_MODEL_BASE_URL?.trim() || "http://127.0.0.1:11434/v1").replace(/\/+$/, "")}/chat/completions`
+      : ENDPOINT;
+    response = await fetcher(endpoint, { method: "POST", redirect: "error", signal: cancelSignal ? AbortSignal.any([AbortSignal.timeout(timeoutMs),cancelSignal]) : AbortSignal.timeout(timeoutMs), headers: { ...(key ? { authorization: `Bearer ${key}` } : {}), "content-type": "application/json" }, body: JSON.stringify(requestBody) });
   } catch (error) {
     // Distinguish provider latency from transport failures without leaking
     // provider URLs, transport messages, request payloads, or credentials.
@@ -116,8 +122,8 @@ export async function nvidiaComplete(prompt: unknown, env: NodeJS.ProcessEnv = p
     throw new NvidiaError(502, "NVIDIA_NON_TEXT_RESPONSE", "NVIDIA zwróciła odmowę lub żądanie narzędzia zamiast odpowiedzi tekstowej.");
   const text = data?.choices?.[0]?.message?.content;
   if (typeof text !== "string" || !text.trim() || text.length > 40000) throw new NvidiaError(502, "NVIDIA_EMPTY_RESPONSE", "NVIDIA zwróciła pustą lub zbyt dużą odpowiedź.");
-  const providerModel = typeof data.model === "string" && /^[A-Za-z0-9][A-Za-z0-9_.\/-]{0,199}$/.test(data.model) ? data.model : undefined;
-  return { provider: "NVIDIA", model, ...(providerModel ? { provider_model: providerModel } : {}), text, request_id: randomUUID(), request_sha256: digest(requestBody), provider_response_id: typeof data.id === "string" ? data.id : null, latency_ms: Date.now() - started, http_status:response.status, finish_reason: data.choices?.[0]?.finish_reason ?? null, status: "PROVIDER_RESPONSE" };
+  const providerModel = typeof data.model === "string" && /^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,199}$/.test(data.model) ? data.model : undefined;
+  return { provider: env.OSA_LOCAL_MODEL_PROVIDER === "ollama" ? "Ollama" : "NVIDIA", model, ...(providerModel ? { provider_model: providerModel } : {}), text, request_id: randomUUID(), request_sha256: digest(requestBody), provider_response_id: typeof data.id === "string" ? data.id : null, latency_ms: Date.now() - started, http_status:response.status, finish_reason: data.choices?.[0]?.finish_reason ?? null, status: "PROVIDER_RESPONSE" };
 }
 
 // Per-instance ceiling; deployment protection provides the outer authenticated preview boundary.

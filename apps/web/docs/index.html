@@ -699,6 +699,9 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
       <p>Gateway sprawdza dok&#322;adn&#261; tras&#281; bez parametr&oacute;w zapytania, weryfikowanego w&#322;a&#347;ciciela/operatora i zakres organizacji, to&#380;samo&#347;ci i projektu. Parametry rewrite nie s&#261; przekazywane do adaptera. Brak gotowo&#347;ci nie mo&#380;e zosta&#263; zamaskowany jako sukces.</p>
       <p>Odbi&oacute;r: zaloguj si&#281;, sprawd&#378; <code>GET /api/durable/status</code> (HTTP 200, <code>enabled=true</code>, <code>worker=HEALTHY</code>, <code>browser_independent=true</code>, <code>production_supported=true</code>), wy&#347;lij zadanie, zamknij kart&#281; po potwierdzeniu przyj&#281;cia, otw&oacute;rz czat ponownie i sprawd&#378; wynik oraz ProofReceipt. Gotowo&#347;&#263; nie zast&#281;puje dowodu wykonania.</p>
       <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/DURABLE_REMOTE_BRIDGE.md">Konfiguracja serwerowa i granice autoryzacji</a>.</p>
+      <h3 class="h">Podpis i zakotwiczenie dowodu</h3>
+      <p>Worker Durable korzysta z lokalnego modelu Ollama na <code>127.0.0.1:11434</code>. Dla skonfigurowanej tożsamości i zakresu może zapisać atestację, delegację i podpisany Ed25519 <code>ActionReceipt</code> po akceptacji Supervisora. Merkle batch obejmuje ProofReceipt V2 i podpisany ActionReceipt. Możesz pobrać artefakty z audytu rozmowy i zweryfikować podpis względem publicznego klucza zatwierdzonej tożsamości.</p>
+      <p><code>NOT_ANCHORED</code> oznacza, że nie ma potwierdzonego zapisu w rejestrze. Historyczny Genesis Anchor w Solana Memo jest odrębnym dowodem. OSA Proof Registry przechowuje skrót batcha i Merkle root, bez treści rozmowy. Stan <code>VERIFIED</code> wymaga niezależnego odczytu sfinalizowanej transakcji i konta programu na Devnet. Samo utworzenie batcha nie potwierdza zakotwiczenia.</p>
     </section>
 
     <section id="delivery-lab" aria-labelledby="h-delivery-lab">

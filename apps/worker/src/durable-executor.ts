@@ -12,6 +12,7 @@ import { nvidiaComplete, nvidiaStatus, fleetLimit } from "../../api/src/nvidia";
 import { FileDurableJobStore, durableLocalSandboxConfigured, type DurableJob } from "../../../packages/durable-execution/src";
 import { FleetQueue } from "../../../packages/fleet/src";
 import { DockerWorkspaceProvider } from "../../../packages/workspace-runtime/src";
+import { startDurableChatTrust } from "./durable-trust";
 
 export type DurableArtifactGenerator=(request:DemoRequest)=>Promise<{content:string;evidence:EvidenceInput[]}>;
 export class DurableWorkerBlocked extends Error {
@@ -26,19 +27,19 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
   const input=job.input;
   const sandbox=input.kind==="artifact"&&input.artifact_target==="sandbox";
   if(sandbox&&!durableLocalSandboxConfigured(options.env??process.env))throw new DurableWorkerBlocked("DURABLE_SANDBOX_NOT_CONFIGURED");
-  // A provider-wide acknowledgement is not proof that the selected model and
-  // account cannot incur charges. Until a model-specific cost contract exists,
-  // block live calls. Injected functions are reserved for isolated test harnesses.
-  if(!options.model&&(input.kind==="model"||!options.generate))
+  const env: NodeJS.ProcessEnv = {...(options.env??process.env),OSA_ZERO_COST_ONLY:"true"};
+  const localModel = env.OSA_LOCAL_MODEL_PROVIDER === "ollama";
+  // The durable host uses its loopback Ollama instance, with no paid fallback.
+  if(!options.model&&(input.kind==="model"||!options.generate)&&
+    (!localModel || !durableLocalSandboxConfigured(env)))
     throw new DurableWorkerBlocked("DURABLE_ZERO_COST_MODEL_UNCONFIRMED");
   const model=options.model??nvidiaComplete;
-  const env={...(options.env??process.env),OSA_ZERO_COST_ONLY:"true"};
   // Use the existing mesh with the one provider whose cost policy this worker
   // can currently enforce. Additional targets need an independently verified
   // free-cost policy and adapter; no fallback to a paid/unknown target.
   async function complete(prompt:string,context:Parameters<typeof nvidiaComplete>[3]) {
     let answer:Awaited<ReturnType<typeof nvidiaComplete>>|undefined;
-    const target:ModelProvider={id:"NVIDIA",model:nvidiaStatus(env).model,complete:async()=>{
+    const target:ModelProvider={id:localModel?"Ollama":"NVIDIA",model:nvidiaStatus(env).model,complete:async()=>{
       if(!options.model)fleetLimit(); // count every actual call, including repair
       answer=await model(prompt,env,fetch,context);
       return {provider:answer.provider,model:answer.provider_model??answer.model,
@@ -51,6 +52,9 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
     return {answer,hops:routed.hops??[]};
   }
   if(input.kind==="model") {
+    let seal: ReturnType<typeof startDurableChatTrust>;
+    try { seal = startDurableChatTrust(job, env.OSA_DURABLE_CHAT_TRUST); }
+    catch { throw new DurableWorkerBlocked("DURABLE_CHAT_TRUST_CONFIGURATION_INVALID"); }
     const kernel=new MissionKernel(new FileMissionStore(join(root,"missions")));
     const hops:unknown[]=[];
     const {answer,supervisor,run,record}=await runCognitiveChat({
@@ -65,14 +69,18 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
     verifyMissionExecution(record.team,record.mission,run,{trustedClaimEnforcement:"REPORT_ONLY"});
     if(run.verdict==="VERIFIED")verifyCompletedMission(record,{trustedClaimEnforcement:"REPORT_ONLY"});
     const content_assurance=assessChatContent(run.verdict);
-    const anchor_preparation=prepareOfflineProofAnchor({receipt:run.proof,evidence:run.evidence,
-      observations:run.observations,final_output:run.final_output,tool_calls:run.tool_calls},new Date().toISOString());
+    const signed_trust = run.verdict === "VERIFIED" && supervisor.publishable ? seal?.(run) : undefined;
+    const anchor_preparation = signed_trust
+      ? { status: signed_trust.anchor_status, batch: signed_trust.proof_batch, inclusion: signed_trust.inclusion[0] }
+      : prepareOfflineProofAnchor({receipt:run.proof,evidence:run.evidence,
+          observations:run.observations,final_output:run.final_output,tool_calls:run.tool_calls},new Date().toISOString());
     const audit={schema:"osa.chat_audit.v1",execution_id:input.execution_id,conversation_id:input.conversation_id,
       mission_id:record.mission.mission_id,run_id:run.run_id,team:record.team,mission:record.mission,run,
       planner_receipt:record.brain?.planning_receipt,
       proof:run.proof,evidence:run.evidence,observations:run.observations,tool_calls:run.tool_calls,
       supervisor,final_output:answer.text,response_sha256:createHash("sha256").update(answer.text).digest("hex"),
       execution_verdict:run.verdict,content_assurance,model_hops:hops,anchor_preparation,
+      ...(signed_trust ? { signed_trust } : {}),
       limitations:["APR ocenia wykonanie i obsługiwane wymagania, nie ogólną prawdziwość treści.",
         "Anchor przygotowano offline; brak potwierdzenia on-chain i brak zapisu NeurOSA."]};
     // Never expose a rejected model answer as PROVIDER_RESPONSE to the UI.

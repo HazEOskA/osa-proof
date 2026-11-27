@@ -10,6 +10,10 @@ import { FileDurableJobStore } from "../packages/durable-execution/src";
 import { FleetQueue } from "../packages/fleet/src";
 import { verifyProofReceipt } from "../packages/proof-core/src";
 import type { RunResult } from "../packages/contracts/src";
+import { createAgentIdentityV1, createAgentKeyPair, signerFromPrivateKey } from "../packages/identity/src/agent-crypto";
+import { createDelegationV1, verifyActionReceiptV1, verifyRuntimeAttestationV1 } from "../packages/runtime/src/trust";
+import { verifyMerkleProofV1 } from "../packages/proof-core/src";
+import { registryCommitInstruction, verifyRegistryCommitment } from "../packages/web3/src/solana/proof-registry";
 
 // The isolated test directories are deliberately left in place; no user data
 // or generated files are deleted by this test.
@@ -17,6 +21,66 @@ const scope={organization_id:"org_fixture",project_id:"project_fixture",identity
 const input=()=>({execution_id:"exec_"+randomUUID(),conversation_id:randomUUID(),kind:"model",prompt:"Ile to 2+2?",agent:"jeverson"});
 const reply=(text:string)=>({provider:"NVIDIA",model:"fixture",text,request_id:"fixture",request_sha256:"a".repeat(64),
   provider_response_id:"fixture",latency_ms:1,http_status:200,finish_reason:"stop",status:"PROVIDER_RESPONSE"});
+
+test("TEST: Durable chat seals the scoped result and rejects forged registry evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "osa-trust-fixture-"));
+  const store = new FileDurableJobStore(root);
+  const body = input();
+  const controller = createAgentKeyPair();
+  const agent = createAgentKeyPair();
+  const build_digest = "a".repeat(64);
+  const policy_digest = "b".repeat(64);
+  const identity = createAgentIdentityV1({
+    ai_id: "@ai:osa.test/jeverson", controller: "@ai:osa.test", agent_id: "jeverson",
+    created_at: new Date().toISOString(), public_key_pem: agent.public_key_pem, key_id: agent.key_id,
+  });
+  function credentials(expires: number) {
+    const delegation = createDelegationV1({
+      principal: identity.controller, agent_ai_id: identity.ai_id, policy_digest,
+      scopes: ["durable:chat"], max_cost: 0,
+      valid_from: new Date(Date.now() - 60_000).toISOString(), valid_until: new Date(Date.now() + expires).toISOString(),
+    }, signerFromPrivateKey(controller.private_key_pem, controller.key_id));
+    return JSON.stringify({ scope, identity, delegation, build_digest, policy_digest,
+      controller_public_key_pem: controller.public_key_pem, private_key_pem: agent.private_key_pem });
+  }
+  const model = (async () => reply("2+2=4")) as typeof nvidiaComplete;
+  await store.submit(scope, body);
+  await runDurableWorkerOnce(store, {model, env: {OSA_DURABLE_CHAT_TRUST: credentials(60_000)}});
+  const job = await new FileDurableJobStore(root).get(scope, body.execution_id);
+  assert.equal(job?.status, "COMPLETED");
+  const result = job.result as Awaited<ReturnType<typeof executeDurableJob>>;
+  const trust = result.audit?.signed_trust;
+  assert.ok(trust);
+  assert.equal(trust.anchor_status, "NOT_ANCHORED");
+  assert.equal(trust.runtime_attestation.execution_id, body.execution_id);
+  assert.ok(verifyRuntimeAttestationV1(trust.runtime_attestation, identity).ok);
+  const action = trust.action_receipts[0];
+  assert.ok(verifyActionReceiptV1(action, identity).ok);
+  assert.equal(verifyActionReceiptV1({...action, result_digest: "0".repeat(64)}, identity).ok, false);
+  assert.equal(verifyActionReceiptV1({...action, signature: {...action.signature, value: "invalid"}}, identity).ok, false);
+  assert.ok(trust.inclusion.every(verifyMerkleProofV1));
+  assert.equal(registryCommitInstruction(trust.proof_batch).length, 65);
+  assert.throws(() => registryCommitInstruction({...trust.proof_batch, merkle_root: "0".repeat(64)}));
+  assert.equal(JSON.stringify(result).includes("PRIVATE KEY"), false);
+
+  const policy = { programId: "1".repeat(32), authority: "1".repeat(32) };
+  const signature = "1".repeat(64);
+  const unavailable: typeof fetch = async () => { throw Error("fixture: RPC unavailable"); };
+  const devnetResult = (init: RequestInit | undefined, result: unknown) =>
+    Response.json({result: typeof init?.body === "string" && JSON.parse(init.body).method === "getGenesisHash"
+      ? "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG" : result});
+  const missing: typeof fetch = async (_url, init) => devnetResult(init, null);
+  assert.deepEqual(await verifyRegistryCommitment(policy, trust.proof_batch, signature, unavailable), {status: "UNKNOWN"});
+  assert.deepEqual(await verifyRegistryCommitment(policy, trust.proof_batch, signature, missing), {status: "UNKNOWN"});
+  const forged: typeof fetch = async (_url, init) => devnetResult(init, {slot: 1, meta: {err: null},
+    transaction: {signatures: [signature], message: {accountKeys: [{pubkey: policy.authority, signer: false}], instructions: []}}});
+  assert.deepEqual(await verifyRegistryCommitment(policy, trust.proof_batch, signature, forged), {status: "FAILED"});
+
+  const expired = input();
+  await store.submit(scope, expired);
+  await runDurableWorkerOnce(store, {model, env: {OSA_DURABLE_CHAT_TRUST: credentials(-1_000)}});
+  assert.equal((await store.get(scope, expired.execution_id))?.status, "FAILED");
+});
 
 test("TEST E2E fixture: submit, worker, durable readback, proof and no replay",async()=>{
   const root=await mkdtemp(join(tmpdir(),"osa-cognitive-e2e-"));
