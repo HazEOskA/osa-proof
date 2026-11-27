@@ -82,3 +82,19 @@ test("P0 HTML: campaign dashboard with provider wrapper is extracted, structural
   assert.ok(inspectArtifact(incomplete,"webapp").includes("Standalone HTML document required."));
 });
 function requireHash(text:string){return createHash("sha256").update(text).digest("hex");}
+
+test('LIVE Docker: Delivery Lab packages exact artifact bytes and seals BuildReceipt', {skip:process.env.OSA_LOCAL_DOCKER_TEST!=='1'}, async()=>{
+ const {DockerWorkspaceProvider}=await import('../packages/workspace-runtime/src');
+ const {verifyBuildReceipt}=await import('../packages/deployment/src');
+ const registry=new ExecutorRegistry(),kernel=new MissionKernel(),team=demoTeam({organization_id:'org_demo_live',project_id:'project_demo_live'});
+ const content='<!doctype html><html lang="pl"><head><title>Test</title></head><body><p>Test sandbox</p></body></html>';
+ installDemoExecutors(registry,{executionMode:'provider',workspace:new DockerWorkspaceProvider({network:'none'}),artifactGenerator:async()=>({content,evidence:[{kind:'controlled_test_generator',data:{fixture:true}}]})});
+ const mission=demoMission({objective:'Test izolowanego pakowania',kind:'webapp',mode:'connected',target:'sandbox'},team);
+ await kernel.create(mission,team);await kernel.execute(mission.mission_id,registry);
+ const record=(await kernel.get(mission.mission_id))!;const report=demoReport(record);
+ assert.equal(record.state,'COMPLETED',JSON.stringify(report.checks));
+ assert.equal(report.ready_for_review,true);assert.equal(report.artifact?.content,content);
+ assert.equal(report.checks.find(c=>c.stage==='builder')?.status,'PASS');
+ const receipt=(record.run!.final_output as DemoOutput).build_receipt!;assert.ok(receipt);verifyBuildReceipt(receipt);
+ assert.equal(receipt.source_sha256,requireHash(content));verifyCompletedMission(record);
+});

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { SessionRecord } from "../../../packages/contracts/src";
-import { FileDurableJobStore, DurableConflict, type DurableScope } from "../../../packages/durable-execution/src";
+import { FileDurableJobStore, DurableConflict, durableLocalSandboxConfigured, validateDurableInput, type DurableScope } from "../../../packages/durable-execution/src";
 
 type Env=NodeJS.ProcessEnv;
 function send(res:ServerResponse,status:number,body:unknown) {
@@ -36,7 +36,7 @@ export async function handleDurableRequest(
     const healthy=configured&&await store(env).workerHealthy();
     return send(res,200,{enabled:healthy,persistence:configured?"PERSISTENT_FILESYSTEM_WITH_EXTERNAL_WORKER":"UNAVAILABLE",
       worker:healthy?"HEALTHY":"UNAVAILABLE",browser_independent:healthy,
-      production_supported:env.VERCEL!=="1"});
+      sandbox_configured:configured&&durableLocalSandboxConfigured(env),production_supported:env.VERCEL!=="1"});
   }
   if(!durableSupported(env))return send(res,503,{code:"DURABLE_BACKEND_NOT_CONFIGURED",
     error:"Trwałe wykonanie wymaga współdzielonego trwałego magazynu i osobnego workera. Zadanie nie zostało przyjęte."});
@@ -54,7 +54,9 @@ export async function handleDurableRequest(
     try {body=JSON.parse(Buffer.concat(chunks).toString("utf8"));}
     catch{return send(res,400,{code:"DURABLE_BAD_JSON"});}
     try {
-      const {job,created}=await backend.submit(scope,body);
+      const input=validateDurableInput(body);
+      if(input.artifact_target==="sandbox"&&!durableLocalSandboxConfigured(env))return send(res,403,{code:"DURABLE_SANDBOX_NOT_CONFIGURED"});
+      const {job,created}=await backend.submit(scope,input);
       return send(res,created?202:200,{...(await backend.publicStatus(job)),idempotent_replay:!created});
     }catch(e){
       if(e instanceof DurableConflict)return send(res,e.code==="DURABLE_ID_CONFLICT"?409:422,{code:e.code});
