@@ -328,7 +328,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
 
     <section id="pipeline" aria-labelledby="h-p">
       <h2 id="h-p">How a run is proven</h2>
-      <p>Sześć etapów: Team Graph, misja, runtime, evidence, verifier i receipt. Błędy runtime i rozpoznane niepoparte twierdzenia uniemożliwiają VERIFIED. Nie jest to sieciowy sandbox ani kryptograficzny podpis źródła.</p>
+      <p>Sześć etapów: Team Graph, misja, runtime, evidence, verifier i receipt. Błędy runtime uniemożliwiają VERIFIED. W trybie egzekwowania Attribution Gate rozpoznane niepoparte twierdzenia mogą skutkować FAILED; ścieżka czatu używa REPORT_ONLY, w którym obserwacje pozostają w dowodzie, ale same nie blokują werdyktu. Nie jest to sieciowy sandbox ani kryptograficzny podpis źródła.</p>
       <div class="pipe" role="list">
         <div class="stage" role="listitem"><span class="label n">01</span><b>Team Graph</b><span>validated</span></div>
         <div class="stage" role="listitem"><span class="label n">02</span><b>Mission</b><span>requirements set</span></div>
@@ -556,7 +556,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
     <section id="config" aria-labelledby="h-cfg">
       <h2 id="h-cfg">Configuration</h2>
-      <p>Everything is read from the environment. Secrets never reach events, evidence, receipts, logs or error messages.</p>
+      <p>Configuration is read from the environment. Provider errors are redacted by the adapter; this does not establish that every log, event, evidence record or receipt is free of secrets.</p>
       <div class="tbl"><table>
         <thead><tr><th>Variable</th><th>Required</th><th>Default</th><th>Meaning</th></tr></thead>
         <tbody>
@@ -569,7 +569,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
           <tr><td><code>OSA_PROVIDER_MAX_TOKENS</code></td><td>No</td><td><code>16000</code></td><td>Output token cap per call.</td></tr>
           <tr><td><code>OSA_PROVIDER_MAX_RETRIES</code></td><td>No</td><td><code>2</code></td><td>Retries for connection errors, timeouts, 408, 409, 429 and 5xx (0 to 10).</td></tr>
           <tr><td><code>OSA_MODEL_FALLBACKS</code></td><td>No</td><td>none</td><td>Ordered <code>provider:model</code> fallbacks (max 4) tried after the primary fails; every hop is evidence.</td></tr>
-          <tr><td><code>OSA_PROVIDER_RETRY_BASE_MS</code></td><td>No</td><td><code>500</code></td><td>First backoff step; doubles per retry up to 8 s. <code>retry-after</code> wins.</td></tr>
+          <tr><td><code>OSA_PROVIDER_RETRY_BASE_MS</code></td><td>No</td><td><code>500</code></td><td>First backoff step; doubles per retry up to 8 s. A valid <code>retry-after</code> of at most 60 seconds takes precedence.</td></tr>
           <tr><td><code>OSA_AUTH_MODE</code></td><td>No</td><td><code>session</code></td><td><code>session</code> requires a DEV token on routes marked session below. <code>open</code> skips login with a shared identity (including where explicitly configured in Production). Other values refuse to start.</td></tr>
           <tr><td><code>PORT</code> · <code>HOST</code></td><td>No</td><td><code>3000</code> · <code>0.0.0.0</code></td><td>Where the API listens.</td></tr>
           <tr><td><code>OSA_LIVE_PROVIDER_TEST</code></td><td>No</td><td>off</td><td>Set to <code>1</code> to run the live provider test.</td></tr>
@@ -744,7 +744,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
     <section id="themes" aria-labelledby="h-themes">
       <h2 id="h-themes">Workspace themes</h2>
-      <p>The framework includes five dark palettes (Proof, Graphite, Midnight, Forest, Plum) and five light palettes (Porcelain, Sand, Sky, Mint, Rose). Use the theme selector in the header, mobile navigation or Settings. Themes also update the runtime world colors.</p>
+      <p>The framework includes seven dark palettes (Proof, OSA · czerń i złoto, Vercel · czerń, Graphite, Midnight, Forest, Plum) and five light palettes (Porcelain, Sand, Sky, Mint, Rose). Use the theme selector in the header, mobile navigation or Settings. Themes also update the runtime world colors.</p>
       <p>Open <strong>Themes</strong> to preview palettes, export the selected palette or import a community JSON file. The format is <code>osa.theme.v1</code>: id, name, mode, optional author and a complete tokens object. Export a built-in palette as your starting template. Only six-digit hex colors are accepted; text contrast must reach 4.5:1. Files are limited to 24 KB and 20 community themes per browser. Importing the same ID updates that community theme.</p>
       <p>Selection and community palettes are stored in this browser. Removing an active community palette restores Proof. There is no hosted theme marketplace or cross-device sync.</p>
     </section>
