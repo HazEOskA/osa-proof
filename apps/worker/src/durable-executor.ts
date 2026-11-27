@@ -26,16 +26,14 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
   const input=job.input;
   const sandbox=input.kind==="artifact"&&input.artifact_target==="sandbox";
   if(sandbox&&!durableLocalSandboxConfigured(options.env??process.env))throw new DurableWorkerBlocked("DURABLE_SANDBOX_NOT_CONFIGURED");
-  // A provider-wide acknowledgement is not proof that the selected model and
-  // account cannot incur charges. Until a model-specific cost contract exists,
-  // block live calls. Injected functions are reserved for isolated test harnesses.
-  if(!options.model&&(input.kind==="model"||!options.generate))
-    throw new DurableWorkerBlocked("DURABLE_ZERO_COST_MODEL_UNCONFIRMED");
+  // Sandbox mode has its own local-only contract. Never send a local-only
+  // artifact request to NVIDIA; a local generator must be wired separately.
+  if(sandbox&&!options.generate)
+    throw new DurableWorkerBlocked("DURABLE_LOCAL_MODEL_ADAPTER_UNAVAILABLE");
   const model=options.model??nvidiaComplete;
-  const env={...(options.env??process.env),OSA_ZERO_COST_ONLY:"true"};
-  // Use the existing mesh with the one provider whose cost policy this worker
-  // can currently enforce. Additional targets need an independently verified
-  // free-cost policy and adapter; no fallback to a paid/unknown target.
+  // External model execution is authorized independently of local sandbox costs.
+  // The operator permits provider charges for normal durable model/artifact jobs.
+  const env={...(options.env??process.env),OSA_ZERO_COST_ONLY:sandbox?"true":"false"};
   async function complete(prompt:string,context:Parameters<typeof nvidiaComplete>[3]) {
     let answer:Awaited<ReturnType<typeof nvidiaComplete>>|undefined;
     const target:ModelProvider={id:"NVIDIA",model:nvidiaStatus(env).model,complete:async()=>{

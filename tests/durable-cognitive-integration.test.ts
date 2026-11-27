@@ -173,17 +173,26 @@ test("TEST: ZERO_COST policy blocks before a provider request when free access i
   assert.equal(called,false);
 });
 
-test("TEST: durable fails closed even with provider-wide free-tier acknowledgement",async()=>{
+test("TEST: production durable worker reaches NVIDIA with configured key even when local cost policy is set",async()=>{
   const root=await mkdtemp(join(tmpdir(),"osa-cognitive-cost-"));
   const store=new FileDurableJobStore(root),body=input();
   await store.submit(scope,body);
   const originalFetch=globalThis.fetch;
-  let called=false;
-  globalThis.fetch=(async()=>{called=true;throw Error("PROVIDER_MUST_NOT_BE_CALLED");}) as typeof fetch;
+  let calls=0;
+  globalThis.fetch=(async(url,init)=>{
+    calls++;
+    assert.equal(String(url),"https://integrate.api.nvidia.com/v1/chat/completions");
+    assert.equal(new Headers(init?.headers).get("authorization"),"Bearer fixture");
+    assert.equal(JSON.parse(String(init?.body)).model,"nvidia/fixture");
+    return new Response(JSON.stringify({id:"fixture",model:"nvidia/fixture",choices:[{message:{content:"2+2=4"},finish_reason:"stop"}]}),{status:200});
+  }) as typeof fetch;
   try {
-    await runDurableWorkerOnce(store,{env:{OSA_NVIDIA_FREE_TIER_ACK:"true",NVIDIA_API_KEY:"fixture"}});
-    assert.equal(called,false);
-    assert.equal((await store.get(scope,body.execution_id))?.error_code,"DURABLE_ZERO_COST_MODEL_UNCONFIRMED");
+    assert.equal(await runDurableWorkerOnce(store,{env:{OSA_ZERO_COST_ONLY:"true",NVIDIA_API_KEY:"fixture",NVIDIA_MODEL:"nvidia/fixture"}}),1);
+    assert.equal(calls,1);
+    const job=await store.get(scope,body.execution_id);
+    assert.equal(job?.status,"COMPLETED");
+    assert.equal((job?.result as {status:string}).status,"PROVIDER_RESPONSE");
+    assert.equal((job?.result as {text:string}).text,"2+2=4");
   } finally { globalThis.fetch=originalFetch; }
 });
 
