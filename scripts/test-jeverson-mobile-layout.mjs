@@ -105,7 +105,7 @@ try {
         ["trace",{schema:"osa.live_execution.v1",execution_id:body.execution_id,phase:"model_started",state:"RUNNING",at:new Date().toISOString(),source:"NVIDIA",detail:"Model uruchomiony"}],
         ["trace",{schema:"osa.live_execution.v1",execution_id:body.execution_id,phase:"model_completed",state:"RUNNING",at:new Date().toISOString(),source:"NVIDIA",detail:"Odpowiedź"}],
         ["trace",{schema:"osa.live_execution.v1",execution_id:body.execution_id,phase:"completed",state:"COMPLETED",at:new Date().toISOString(),source:"API",detail:"Zakończono"}],
-        ["complete",{execution_id:body.execution_id,conversation_id:body.conversation_id,text:"Witaj, jestem asystentem OSA.",model:"nvidia/test-model",provider_response_id:"synthetic-contract-id",request_id:"synthetic-contract-request",latency_ms:1,status:"PROVIDER_RESPONSE"}]
+        ["complete",{execution_id:body.execution_id,conversation_id:body.conversation_id,text:"Witaj, jestem asystentem OSA.",provider:"NVIDIA",model:"nvidia/test-model",provider_response_id:"synthetic-contract-id",request_id:"synthetic-contract-request",latency_ms:1,status:"PROVIDER_RESPONSE"}]
       ];
       return route.fulfill({status:200,contentType:"text/event-stream; charset=utf-8",body:events.map(([type,data])=>"event: "+type+"\ndata: "+JSON.stringify(data)+"\n\n").join("")});
     });
