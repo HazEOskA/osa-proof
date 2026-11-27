@@ -72,7 +72,7 @@ export function downloadLiveEvidence(trace:LiveTrace) {
 type LiveChatInput={prompt:string;agent:string;history:{role:"user"|"assistant";content:string}[];conversation_id:string;execution_id:string;remember:boolean};
 export async function streamLiveChat(
   payload:LiveChatInput,onEvent:(type:string,data:any)=>void,signal:AbortSignal
-):Promise<{text:string;status:"PROVIDER_RESPONSE";model:string;provider_model?:string;
+):Promise<{text:string;status:"PROVIDER_RESPONSE";model:string;provider?:string;provider_model?:string;
   provider_response_id:string|null;request_id:string;latency_ms:number;
   memory_status?:string;memory?:{receipt:{document_id:string;receipt_sha256:string};remembered?:unknown};
   content_assurance?:{verdict:"SUPPORTED"|"CONTRADICTED"|"UNKNOWN";disclosure_pl:string};
