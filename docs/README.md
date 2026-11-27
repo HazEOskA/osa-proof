@@ -15,7 +15,7 @@ Start with the [public developer documentation](https://osa-proof-three.vercel.a
 | Blockchain commitments | [Solana Devnet Registry](./PROOF_REGISTRY_DEVNET.md), [execution evidence](./STATUS_2026-11-27.md) |
 | Durable execution | [Durable Remote Bridge](./DURABLE_REMOTE_BRIDGE.md), [public guide](https://osa-proof-three.vercel.app/docs#durable-runtime) |
 | Developer/API reference | [Quickstart](https://osa-proof-three.vercel.app/docs#quickstart), [first mission](https://osa-proof-three.vercel.app/docs#first-mission), [HTTP API](https://osa-proof-three.vercel.app/docs#api) |
-| Audit and Replay | [Proof exports guide — historical Polish guide](./PROOF_EXPORTS_GUIDE.md), [current verification boundaries](./STATUS_2026-11-27.md) |
+| Audit and Replay | [Proof exports and signed audit guide](./PROOF_EXPORTS_GUIDE.md), [current verification boundaries](./STATUS_2026-11-27.md) |
 | Storage architecture | [Persistence proposal](./PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md) — proposed, not deployed PostgreSQL |
 
 ## Evidence hierarchy

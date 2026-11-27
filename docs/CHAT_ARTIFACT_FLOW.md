@@ -1,44 +1,51 @@
-# Czat → model → artefakt → dowody
+# Chat → model → artifact → evidence
 
-W czacie floty wybierz **Utwórz artefakt**, format **Aplikacja HTML** albo **Dokument Markdown**, wpisz cel i wyślij.
+This guide describes the existing ChatDelivery path. It is distinct from the signed Durable chat path and its Devnet Registry integration, documented in [Durable Bridge](./DURABLE_REMOTE_BRIDGE.md) and [Registry](./PROOF_REGISTRY_DEVNET.md).
 
-1. API przyjmuje cel, conversation_id i execution_id; sprawdza sesję, origin, bezpłatny dostęp i limit wywołań.
-2. Istniejący MissionKernel prowadzi dziesięć ról Delivery Lab. Zdarzenia zapisane przez kernel są wysyłane SSE do czatu; nie są symulowaną animacją ani prywatnym rozumowaniem modelu.
-3. Plan zakresu jest natywny. Rola producer wywołuje rzeczywisty model NVIDIA i otrzymuje pełny plik; nie ma fallbacku do szablonu przy braku modelu lub błędzie.
-4. Kolejne role kontrolują bajty, SHA-256, strukturę, składnię skryptów i deklarowane bramki. Sandbox/deploy nie są uruchamiane ani deklarowane.
-5. Kernel pieczętuje evidence, ProofReceipt i MissionReceipt. Przeglądarka niezależnie przelicza digest bundle, artefaktu i proof; następnie otwiera trace/replay w istniejących widokach.
-6. Dostępne są pliki: artefakt, kompletny bundle JSON, evidence JSON, trace JSONL, ProofReceipt JSON i samodzielny replay HTML. Replay offline przelicza integralność i odtwarza zapisane zdarzenia, nie ponawia narzędzi.
+In fleet chat, choose Create artifact, select HTML application or Markdown document, enter the objective and submit.
 
-## Konfiguracja
+1. The API accepts the objective, conversation_id and execution_id; checks session, origin, free-tier acknowledgement and call limits.
+2. The existing MissionKernel executes the ten Delivery Lab roles. Kernel-recorded events are streamed to chat over SSE, rather than a simulated animation or private model reasoning.
+3. Native scope planning precedes the producer's configured NVIDIA call. In connected mode the producer returns the complete file; a model failure does not silently fall back to a template.
+4. Subsequent roles check bytes, SHA-256, structure, script syntax and declared gates. This original ChatDelivery path does not imply sandbox execution or deployment.
+5. The kernel seals evidence, ProofReceipt and MissionReceipt. The browser independently recomputes bundle, artifact and proof digests, then opens trace/replay in existing views.
+6. Downloads: artifact, full JSON bundle, evidence JSON, trace JSONL, ProofReceipt JSON and standalone Replay HTML. Offline Replay verifies integrity and displays recorded events; it does not rerun tools.
 
-- Istniejący serwerowy `NVIDIA_API_KEY`.
-- `OSA_NVIDIA_FREE_TIER_ACK=true` — wymagane potwierdzenie bezpłatnego dostępu; płatne użycie nie jest odblokowywane.
-- `OSA_DELIVERY_MODEL` — jawny model dla tego przepływu, domyślnie `openai/gpt-oss-20b`. To osobna konfiguracja generowania artefaktu, bez cichego fallbacku i bez zmiany modelu dotychczasowej rozmowy.
-- Status: GET `/chat/delivery/status`; wykonanie: POST `/chat/delivery` (w Vercel prefiks `/api`).
+## Configuration
 
-## Granice dowodu
+- Server-side NVIDIA_API_KEY.
+- OSA_NVIDIA_FREE_TIER_ACK=true: required acknowledgement of free access, not an assurance of billing status for an arbitrary account/model. Do not enable paid use without explicit approval.
+- OSA_DELIVERY_MODEL: explicit model for this path, historically defaulting to openai/gpt-oss-20b. Separate artifact-generation configuration, without silent fallback or changing the ordinary conversation model.
+- GET /chat/delivery/status and POST /chat/delivery; Vercel uses the /api prefix.
 
-Model może oddać wadliwy kod lub niepełny dokument. Pozytywna weryfikacja potwierdza integralność, przebieg i opisane kontrole, nie prawdziwość treści, bezpieczeństwo dowolnego kodu ani spełnienie każdego wymagania użytkownika. Podgląd HTML ma opaque iframe bez same-origin i CSP blokującą sieć.
+## Evidence boundaries
 
-Przepływ korzysta z istniejącego MissionStore. Cache ogrodzenia execution_id jest per instancja, bez gwarancji globalnego exactly-once. Identyczne ponowienie zakończonej operacji w tej samej instancji zwraca wcześniejszy bundle; konflikt treści, aktywne lub niepewne wykonanie nie jest automatycznie ponawiane. Po zerwaniu połączenia klient pokazuje brak potwierdzenia i zachowuje identyfikator w błędzie. Trwałym eksportem jest pobrany bundle; przeglądarka zachowuje wynik w historii lokalnej, o ile storage jest dostępny. Od integracji PR #24 przepływ może stosować serwerowe `remember=true → recall → NVIDIA → Runtime/Proof → VERIFIED_RUNTIME readback`, ale **tylko** jeżeli podłączona jest zweryfikowana prywatna NeurOSA. `memory_status=VERIFIED` wymaga prawdziwego receipt; `UNAVAILABLE` oznacza brak potwierdzenia zapisu, bez oszukiwania wyniku. Sam deploy `READY` i lokalne fixture nie potwierdzają trwałości NeurOSA, a zdalny sandbox nadal nie jest deklarowany.
+A model can produce defective code or an incomplete document. Positive verification establishes integrity, recorded execution and specified checks, not factual truth, arbitrary-code safety or satisfaction of every user requirement. HTML preview uses an opaque iframe without same-origin and a network-blocking CSP.
+
+The original path uses the existing MissionStore. Its execution_id fence cache is per instance, not globally exactly-once. Identical replay of a completed operation in the same instance returns the prior bundle; conflicting, active or uncertain execution is not automatically repeated. Disconnect is reported as unconfirmed and preserves the identifier in the error. The downloaded bundle is an enduring export; browser history persists only if local storage is available.
+
+The separate [Durable path](./DURABLE_REMOTE_BRIDGE.md) supports persisted jobs on its designated host. Do not infer cross-device persistence or universal exactly-once semantics.
+
+Since PR #24 the ChatDelivery path can use server-side remember=true → recall → model → Runtime/Proof → VERIFIED_RUNTIME readback only with verified private NeurOSA configured. memory_status=VERIFIED requires a real receipt; UNAVAILABLE means storage was not confirmed. READY deployment and local fixtures are not proof of durable production memory.
 
 ## NeurOSA × ChatDelivery (feature-gated)
 
-- Prywatna produkcja wymaga `OSA_NEUROSA_PRODUCTION_ENABLED=enabled`, `OSA_AUTH_MODE=session`, `OSA_NEUROSA_STORAGE_VERIFIED=true`, poprawnego GitHub OAuth allowlist, powiązanych serwerowych `organization_id` oraz `project_id` i jedynego zatwierdzonego hosta. **Nie włączać flag przed testem realnej trwałości i sesji.**
-- Prawidłowa ścieżka: walidacja tożsamości → opcjonalny zapis wiadomości → recall → rzeczywiste generowanie NVIDIA → kanoniczne evidence/ProofReceipt → potwierdzony zapis `VERIFIED_RUNTIME`. Każdy błąd jest jawnie raportowany.
-- `ChatDelivery` pamięta typ wykonywanej misji i dowód; historia przeglądarki nie jest zamiennikiem persystencji. W trybie anonimowym prywatna pamięć pozostaje odłączona.
-- [Brama migracji/odbioru](./NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md).
+The historical private-production acceptance gate requires OSA_NEUROSA_PRODUCTION_ENABLED=enabled, OSA_AUTH_MODE=session, OSA_NEUROSA_STORAGE_VERIFIED=true, configured GitHub OAuth allowlist, server-bound organization_id and project_id, and the approved host. Do not enable flags without verifying persistence and session scope.
 
-## Walidacja
+The intended path is identity validation, optional message storage, recall, actual model generation, canonical evidence/ProofReceipt and confirmed VERIFIED_RUNTIME write. Report errors explicitly. Browser history is not a replacement for server persistence, and anonymous users must not access private memory.
 
-`npm test` obejmuje rzeczywisty lokalny HTTP/SSE, obserwację postępu przed zakończeniem generowania, powiązania identyfikatorów, odmowy i ogrodzenie ponowień. Kontrolowany generator istnieje wyłącznie w testach, nie jest fallbackiem produkcyjnym.
+See the [historical migration/acceptance gate](./NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md). Production recall after restart is not established by the signed Durable chat milestone.
 
-`node scripts/test-chat-delivery-browser.cjs` sprawdza Android/desktop: prompt, postęp, runtime, sześć pobrań i hashe, funkcjonalny artefakt w izolowanym iframe, replay, offline HTML oraz przywrócenie po odświeżeniu. Domyślnie testuje transport kontrolowany i rzeczywisty runtime; osobny live test modelu wymaga wdrożenia z potwierdzoną bezpłatną konfiguracją. Nie należy mylić tych dwóch dowodów.
+## Validation
 
-## Eksport i niezależny audyt — stan 28.10.2026
+npm test covers local HTTP/SSE, progress before generation completes, identifier binding, denial and retry fencing. The controlled test generator is not a production fallback.
 
-Istniejące przyciski pobierają **sześć** plików jednego wykonania: artefakt, `*-bundle.json`, `*-evidence.json`, `*-trace.jsonl`, `*-proof.json` oraz `*-replay.html`. `bundle.schema = osa.chat_delivery.v1`; jego `record` jest rekordem misji. `trace.jsonl` jest zapisem elementów `bundle.record.timeline` (jeden JSON na linię). **Nie podawaj całego bundla** jako argumentu `scripts/verify-mission-record.cjs`; CLI oczekuje obiektu `osa.mission.v1`, tj. wyeksportowanego zapisu misji Studio lub `bundle.record`.
+`node scripts/test-chat-delivery-browser.cjs` covers Android/desktop: prompt, progress, runtime, six downloads and hashes, functional artifact in an isolated iframe, Replay, offline HTML and restoration after refresh. Controlled transport and real runtime are distinct from a live provider call, which needs independently confirmed zero-cost configuration.
 
-Klient weryfikuje `bundle_sha256`, powiązanie wykonania, Proof i hash bajtów artefaktu. Offline Replay weryfikuje integralność pakietu i odtwarza zdarzenia, lecz nie odtwarza rzeczywistych działań workerów. Operator zgłosił 47 pozycji w Replay; bez eksportu konkretnej misji jest to **obserwacja UI**, nie niezależnie policzone 47 wywołań narzędzi. Nie utożsamiać liczby pozycji timeline, `AGENT_STARTED` i operacji narzędzi.
+## Export and independent audit — historical 2026-10-28 contract
 
-Do samodzielnego, ograniczonego audytu przez Hermesa: [HERMES_AUDIT_QUICK_START.md](./HERMES_AUDIT_QUICK_START.md). Status produkcyjny pozostaje `BLOCKED` zgodnie z [SECURITY_VERDICT.md](./final-boss/SECURITY_VERDICT.md).
+Download the six files from one execution: artifact, *-bundle.json, *-evidence.json, *-trace.jsonl, *-proof.json and *-replay.html. The bundle schema is osa.chat_delivery.v1; bundle.record is the mission record. Trace JSONL contains record.timeline entries, one JSON object per line. scripts/verify-mission-record.cjs expects osa.mission.v1 (a Studio mission export or bundle.record), not the entire ChatDelivery bundle.
+
+The client checks bundle_sha256, execution binding, Proof and artifact-byte hash. Offline Replay checks integrity and replays events, not actual worker actions. A historical operator observation of 47 Replay entries is not 47 tool calls. Do not equate timeline entries, AGENT_STARTED and tool operations.
+
+For the bounded offline audit, see [Proof Export guide](./PROOF_EXPORTS_GUIDE.md) and [historical Hermes quickstart](./HERMES_AUDIT_QUICK_START.md). The earlier [security verdict](./final-boss/SECURITY_VERDICT.md) is a dated baseline, not a blanket claim about the later signed Devnet milestone. Independent security and general production acceptance remain open.
