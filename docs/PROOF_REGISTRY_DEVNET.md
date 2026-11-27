@@ -18,3 +18,11 @@ The existing worker enables its Registry pass when the operator configures `OSA_
 ## Evidence boundary
 
 A local run on Ollama `qwen2.5:3b` completed as `exec_0e786865-2b4b-4b5c-bd6e-b3d69e26bac6`. The isolated test identity's ActionReceipt signature, ProofReceipt integrity and both Merkle inclusions passed. Its status was `NOT_ANCHORED`. The production UI and Registry finalization require evidence from the same production execution before they can be called verified.
+
+## Local validation and Devnet estimate (2026-11-27)
+
+An independent SBF build produced 69,328 bytes, SHA-256 `1edefebf6323a6da3f707d68958311c03d6c7c8a78108539dbdca4984d5c3c32`. A local validator test initialized the program, registered a commitment, accepted an identical retry, rejected a conflicting root and an unauthorized signer, and read back the finalized account. This is local test evidence, not a Devnet deployment.
+
+A fixture test simulates a worker restart after storing the signed intent and before broadcast. With mocked RPC, the restarted worker sends the identical bytes and leaves the outcome UNKNOWN until a later finalized readback. Tests also exercise expiry, missing legacy bytes, unavailable RPC, concurrent writes and omission of transaction bytes from public status. These tests do not prove operation against Devnet or a production worker.
+
+For the 69,328-byte binary, current Devnet RPC returned 353,065,080 lamports for a 69,373-byte program-data account, 833,120 for the 36-byte program account, 817,880 for the 33-byte configuration, 1,143,000 for one 97-byte commitment, and 650,240 as the minimum balance of an empty fee-payer account. A local CLI deployment used 365,000 lamports in transaction fees; Devnet RPC returned 5,000 lamports for a one-signature message and 10,000 for two signatures. Using the same deployment transaction count plus one initialization and one commitment gives an estimated 356,889,320 lamports (0.35688932 test SOL), including fee-payer minimum balance. Actual Devnet cost and peak balance can vary with network fees, retries and deployment behavior; this calculation is not proof of a completed deployment.
