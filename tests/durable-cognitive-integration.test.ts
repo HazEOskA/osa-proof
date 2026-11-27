@@ -77,7 +77,9 @@ test("TEST: Durable chat seals the scoped result and rejects forged registry evi
   assert.deepEqual(await verifyRegistryCommitment(policy, trust.proof_batch, signature, forged), {status: "FAILED"});
   const pending = {status: "PENDING" as const, network: "devnet" as const, programId: policy.programId,
     merkleRoot: trust.proof_batch.merkle_root, transactionSignature: signature};
-  await store.updateRegistryAnchor(job, pending);
+  const attempts = await Promise.allSettled([store.updateRegistryAnchor(job, pending), store.updateRegistryAnchor(job, pending)]);
+  assert.equal(attempts.filter(result => result.status === "fulfilled").length, 1);
+  assert.equal(attempts.filter(result => result.status === "rejected").length, 1);
   await assert.rejects(store.updateRegistryAnchor(job, pending), /DURABLE_REGISTRY_STATE_CHANGED/);
   const reopened = new FileDurableJobStore(root);
   assert.deepEqual((await reopened.get(scope, body.execution_id))?.registry_anchor, pending);

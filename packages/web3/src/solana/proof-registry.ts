@@ -33,7 +33,7 @@ export function registryCommitInstruction(batch: ProofBatchV1): Buffer {
 }
 
 type RegistryPolicy = { programId: string; authority: string };
-type RegistryIntent = { transactionSignature: string; account: string; lastValidBlockHeight: string };
+type RegistryIntent = { transactionSignature: string; account: string; lastValidBlockHeight: string; wireTransactionBase64: string };
 type RecordIntent = (intent: RegistryIntent) => Promise<void>;
 
 async function registryClient(policy: RegistryPolicy, authorityKeyBytes: Uint8Array) {
@@ -103,9 +103,39 @@ async function sendRegistryInstruction(
   );
   const signed = await kit.signTransactionMessageWithSigners(message);
   const transactionSignature = String(kit.getSignatureFromTransaction(signed));
-  await recordIntent({ transactionSignature, account, lastValidBlockHeight: String(latest.lastValidBlockHeight) });
+  await recordIntent({ transactionSignature, account, lastValidBlockHeight: String(latest.lastValidBlockHeight), wireTransactionBase64: kit.getBase64EncodedWireTransaction(signed) });
   await kit.sendTransactionWithoutConfirmingFactory({ rpc })(signed, { commitment: "confirmed" });
   return transactionSignature;
+}
+
+/** Retry only the identical signed transaction while its blockhash is valid.
+ * Old records without stored bytes and expired or unavailable RPC stay UNKNOWN. */
+export async function rebroadcastRegistryIntent(
+  intent: {transactionSignature: string; lastValidBlockHeight?: string; wireTransactionBase64?: string},
+  fetchFn: typeof fetch = fetch,
+): Promise<void> {
+  try {
+    const wire = intent.wireTransactionBase64;
+    if (!wire || wire.length > 2000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(wire) ||
+        !intent.lastValidBlockHeight || !/^[0-9]{1,20}$/.test(intent.lastValidBlockHeight)) return;
+    const kit = await (new Function("moduleName", "return import(moduleName)") as (name: string) => Promise<any>)("@solana/kit");
+    const transaction = kit.getTransactionDecoder().decode(Buffer.from(wire, "base64"));
+    if (!kit.isFullySignedTransaction(transaction) || String(kit.getSignatureFromTransaction(transaction)) !== intent.transactionSignature) return;
+    async function rpc<T>(method: string, params: unknown[]): Promise<T> {
+      const response = await fetchFn(DEVNET, {method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({jsonrpc: "2.0", id: 1, method, params}), signal: AbortSignal.timeout(10_000), redirect: "error"});
+      if (!response.ok) throw Error("REGISTRY_RPC_UNAVAILABLE");
+      const body = await response.json() as {result?: T; error?: unknown};
+      if (body.error || body.result === undefined) throw Error("REGISTRY_RPC_ERROR");
+      return body.result;
+    }
+    if (await rpc<string>("getGenesisHash", []) !== DEVNET_GENESIS) return;
+    const height = await rpc<number>("getBlockHeight", [{commitment: "finalized"}]);
+    if (!Number.isSafeInteger(height) || height < 0 || BigInt(height) > BigInt(intent.lastValidBlockHeight)) return;
+    await rpc<string>("sendTransaction", [wire, {encoding: "base64", preflightCommitment: "confirmed"}]);
+  } catch {
+    // Failure is ambiguous: do not sign another transaction or report success.
+  }
 }
 
 type Transaction = {

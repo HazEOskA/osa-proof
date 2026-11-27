@@ -28,6 +28,7 @@ export type DurableRegistryAnchor = {
   transactionSignature?: string;
   account?: string;
   lastValidBlockHeight?: string;
+  wireTransactionBase64?: string; // Private broadcast material; never return via API.
   slot?: number;
 };
 export type DurableJob = {
@@ -290,12 +291,13 @@ export class FileDurableJobStore {
     }
     const deadline=job.lease?Date.parse(job.lease.expires_at):Date.parse(job.updated_at)+LEASE_MS;
     const interrupted=job.status==="RUNNING"&&(!Number.isFinite(deadline)||observedAt>=deadline);
+    const publicAnchor = job.registry_anchor ? (({wireTransactionBase64: _privateWire, ...visible}) => visible)(job.registry_anchor) : undefined;
     return {schema:job.schema,execution_id:job.input.execution_id,conversation_id:job.input.conversation_id,
       kind:job.input.kind,status:interrupted?"UNKNOWN":job.status,created_at:job.created_at,updated_at:job.updated_at,
       ...(job.lease?{lease:{generation:job.lease.generation,expires_at:job.lease.expires_at,
         worker_id:job.lease.worker_id??null}}:{}),
       ...(interrupted?{error_code:"DURABLE_WORKER_UNCONFIRMED"}:{}),
-      ...(job.status==="COMPLETED"?{result:job.result,...(job.registry_anchor?{registry_anchor:job.registry_anchor}:{})}:{}),
+      ...(job.status==="COMPLETED"?{result:job.result,...(publicAnchor?{registry_anchor:publicAnchor}:{})}:{}),
       ...(job.status==="FAILED"||job.status==="UNKNOWN"?{error_code:job.error_code}:{})};
   }
 }

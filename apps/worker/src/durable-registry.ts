@@ -3,7 +3,7 @@ import type { AgentIdentityV1, RunResult, TrustRunArtifacts } from "../../../pac
 import type { DurableJob, DurableRegistryAnchor, FileDurableJobStore } from "../../../packages/durable-execution/src";
 import { createProofBatchV1, digest, verifyProofReceipt } from "../../../packages/proof-core/src";
 import { verifyActionReceiptV1 } from "../../../packages/runtime/src/trust";
-import { submitRegistryCommitment, verifyRegistryCommitment } from "../../../packages/web3/src/solana/proof-registry";
+import { rebroadcastRegistryIntent, submitRegistryCommitment, verifyRegistryCommitment } from "../../../packages/web3/src/solana/proof-registry";
 
 type SignedAudit = { run: RunResult; signed_trust?: TrustRunArtifacts };
 
@@ -49,6 +49,7 @@ export async function runDurableRegistryPass(store: FileDurableJobStore, env: No
   if (prior) {
     if (!prior.transactionSignature || prior.programId !== programId || prior.merkleRoot !== state.merkleRoot) return;
     const readback = await verifyRegistryCommitment(policy, batch, prior.transactionSignature);
+    if (readback.status === "UNKNOWN") await rebroadcastRegistryIntent({...prior, transactionSignature: prior.transactionSignature});
     await store.updateRegistryAnchor(job, readback.status === "VERIFIED"
       ? {...prior, status: "VERIFIED", account: readback.account, slot: readback.slot}
       : {...prior, status: readback.status});
