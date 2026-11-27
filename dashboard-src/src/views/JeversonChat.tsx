@@ -568,7 +568,7 @@ export default function JeversonChat() {
               Transakcja · {m.registryAnchor.transactionSignature}
             </a>}
           </div>} {m.audit&&<button data-testid="osa-chat-audit-download" type="button" onClick={()=>downloadChatAudit(m.audit!)} className="mt-3 rounded border border-cyan/40 p-2 text-xs text-cyan">Pobierz bundle Brain + APR + treść</button>} {m.review&&<button type="button" onClick={()=>downloadChatReview(m.review!)} className="mt-3 rounded border border-warn/50 p-2 text-xs text-warn">Pobierz odrzuconą odpowiedź i dowody JSON</button>}
-              {m.anchorStatus&&<div role="status" className="mt-2 text-xs text-dim">Anchor: {m.anchorStatus}</div>}
+              {!m.audit?.signed_trust&&m.anchorStatus&&<div role="status" className="mt-2 text-xs text-dim">Anchor: {m.anchorStatus}</div>}
               {m.trace&&<UnifiedLiveProgress trace={m.trace}
                 active={busy&&activeExecution.current?.executionId===m.executionId}
                 onCancel={()=>cancel()}/>}
