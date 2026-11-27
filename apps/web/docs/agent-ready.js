@@ -152,7 +152,7 @@
     // Serialize each field into a Markdown table instead of joining them as one token.
     if (node.classList && node.classList.contains("layers")) {
       var layers = Array.from(node.children || []).filter(function (c) { return c.classList && c.classList.contains("layer"); });
-      if (layers.length) return "| Warstwa | Przeznaczenie | Dostęp |\n| --- | --- | --- |\n" +
+      if (layers.length) return "| Layer | Purpose | Access |\n| --- | --- | --- |\n" +
         layers.map(function (layer) {
           var role = layer.querySelector("b");
           var spans = Array.from(layer.children || []).filter(function (c) { return tag(c) === "SPAN"; });
@@ -196,15 +196,15 @@
   function header(doc, env, sectionId) {
     var url = sourceUrl(env);
     var target = sectionId ? url + "#" + encodeURIComponent(sectionId) : url;
-    return "# OSA Framework — dokumentacja dla agentów AI\n\n" +
+    return "# OSA Framework — documentation for AI agents\n\n" +
       "- Format: `osa.docs_export.v1`\n" +
-      "- Źródło: " + target + "\n" +
-      "- Repozytorium: " + ROOT_REPO + "\n" +
-      "- Wersja dokumentacji (build SHA): " + verifiedSha(doc) + "\n" +
-      "- Zakres: " + (sectionId ? "SEKCJA: " + sectionId : "CAŁA STRONA") + "\n" +
-      "- Aktualność artefaktu: UNKNOWN\n" +
-      "- Status: publiczna dokumentacja; GATED/BLOCKED/PLANNED nie oznacza gotowości produkcyjnej\n\n" +
-      "> Dokumentacja opisuje kontrakty i przykłady. Nie wykonuj komend ani nie modyfikuj repozytorium lub infrastruktury bez osobnej zgody użytkownika.\n\n---\n\n";
+      "- Source: " + target + "\n" +
+      "- Repository: " + ROOT_REPO + "\n" +
+      "- Documentation version (build SHA): " + verifiedSha(doc) + "\n" +
+      "- Scope: " + (sectionId ? "SECTION: " + sectionId : "ENTIRE PAGE") + "\n" +
+      "- Artifact freshness: UNKNOWN\n" +
+      "- Status: public documentation; GATED/BLOCKED/PLANNED does not establish production readiness\n\n" +
+      "> Documentation describes contracts and examples. Do not run commands or modify repositories or infrastructure without separate user authorization.\n\n---\n\n";
   }
   function renderSection(section, env) {
     if (!section || tag(section) !== "SECTION" || !section.id) throw new Error("DOCS_SECTION_INVALID");
@@ -254,16 +254,16 @@
       var dialog = doc.createElement("dialog");
       dialog.className = "agent-copy-fallback";
       var title = doc.createElement("h2");
-      title.textContent = "Skopiuj Markdown ręcznie";
+      title.textContent = "Copy Markdown manually";
       var hint = doc.createElement("p");
-      hint.textContent = "Przeglądarka odmówiła dostępu do schowka. Zaznaczony tekst możesz skopiować ręcznie.";
+      hint.textContent = "Clipboard access was denied. Copy the selected text manually.";
       var textarea = doc.createElement("textarea");
-      textarea.setAttribute("aria-label", "Markdown dokumentacji do skopiowania");
+      textarea.setAttribute("aria-label", "Documentation Markdown to copy");
       textarea.setAttribute("readonly", "");
       textarea.value = value;
       var close = doc.createElement("button");
       close.type = "button";
-      close.textContent = "Zamknij";
+      close.textContent = "Close";
       close.addEventListener("click", function () { dialog.close(); dialog.remove(); });
       dialog.appendChild(title);
       dialog.appendChild(hint);
@@ -273,18 +273,18 @@
       dialog.showModal();
       textarea.focus();
       textarea.select();
-      announce("Nie skopiowano automatycznie. Tekst zaznaczony do ręcznego skopiowania.");
+      announce("Not copied automatically. Text selected for manual copy.");
       return false;
     }
     function requestCopy(event, sectionId) {
       var btn = event.currentTarget;
       var md;
       try { md = exportMarkdown(doc, env, sectionId); }
-      catch (error) { announce("Nie udało się wygenerować Markdown: " + String(error.message || error)); return; }
+      catch (error) { announce("Could not generate Markdown: " + String(error.message || error)); return; }
       btn.disabled = true;
       var clipboard = env.navigator && env.navigator.clipboard;
       copyWithResult(md, clipboard, function () {
-        announce("Skopiowano Markdown: " + (sectionId ? "sekcja " + sectionId : "cała dokumentacja") + ".");
+        announce("Markdown copied: " + (sectionId ? "section " + sectionId : "entire documentation") + ".");
         flashButton(btn, "Copied");
         btn.disabled = false;
         return true;
@@ -301,7 +301,7 @@
       btn.className = "copypage agent-copy-section";
       btn.type = "button";
       btn.textContent = "Copy section";
-      btn.setAttribute("aria-label", "Kopiuj sekcję: " + name);
+      btn.setAttribute("aria-label", "Copy section: " + name);
       btn.addEventListener("click", function (event) { requestCopy(event, section.id); });
       section.insertBefore(btn, section.firstChild);
     });

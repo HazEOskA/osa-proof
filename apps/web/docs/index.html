@@ -222,7 +222,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
     <details open><summary>Reference<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#control">Control plane</a><a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
     <details><summary>Guides<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#guides">All guides</a><a href="#neurosa-runtime">NeurOSA memory · status</a><a href="#themes">Workspace themes</a><a href="#delivery-lab">Delivery Lab</a><a href="#durable-runtime">Trwaly runtime</a><a href="#community-forum">Debug forum · planned</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
+      <a href="#guides">All guides</a><a href="#neurosa-runtime">NeurOSA memory · status</a><a href="#themes">Workspace themes</a><a href="#delivery-lab">Delivery Lab</a><a href="#durable-runtime">Durable runtime</a><a href="#community-forum">Debug forum · planned</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
     <details><summary>Releases<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#intelligence">Intelligence · Datasets &amp; Evaluators</a><a href="#" data-nolink>Slice 2 · Proof integrity</a><a href="#" data-nolink>Slice 1 · Real execution</a></details>
   </aside>
@@ -234,7 +234,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
         <img class="banner" src="/docs/osa-frameworks-banner.webp" width="1600" height="543" alt="OSA Frameworks" fetchpriority="high" decoding="async">
         <div class="eyebrow">Proof-first · Documentation</div>
         <h1>OSA Framework <em>Docs.</em></h1>
-        <p>OSA Proof uruchamia misje agentów i zamyka wykonanie w Proof Receipt. Model formułuje twierdzenia, a verifier ocenia zapisane dowody; Attribution Gate v1 domyślnie weryfikuje obsługiwane fakty zewnętrzne.</p>
+        <p>OSA Proof is verifiable AI agent execution infrastructure. It binds missions, runtime evidence, deterministic ProofReceipt V2 verification, signed ActionReceipts and Merkle commitments. Two actual signed Jeverson jobs were independently verified against the OSA Registry on Solana Devnet on 2026-11-27. <a href="#durable-runtime">Inspect the execution evidence.</a></p>
         <div class="bigsearch" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <span class="nx">Search documentation</span><kbd>⌘ K</kbd>
@@ -254,9 +254,9 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
           <div class="grid">
             <a class="card" href="#quickstart"><span class="label k">5 minutes</span><h4>Quickstart</h4><p>Install, run the tests, start the API in fixture mode and seal your first receipt.</p></a>
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
-            <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, misje, wykonawcy, runtime-owned ToolCallRecord, Attribution Gate i Proof Receipt.</p></a>
+            <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, missions, executors, runtime-owned ToolCallRecord, Attribution Gate and ProofReceipt.</p></a>
             <a class="card" href="#neurosa-runtime"><span class="label k">Integration · gated</span><h4>NeurOSA memory</h4><p>Storage backup confirmed; authenticated live recall and restart acceptance are still BLOCKED. Evidence first.</p></a>
-             <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>91</span> par metod i ścieżek w rejestrze tej wersji kodu (m.in. Delivery Lab, NVIDIA, Web3 i runtime). Tabela jest generowana z manifestu uprawnień; nie potwierdza uruchomienia każdej integracji na produkcji.</p></a>
+             <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>91</span> method/path pairs in this source revision, including Delivery Lab, NVIDIA, Web3 and runtime. Generated from the permissions manifest; not evidence that every integration is live.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -290,7 +290,7 @@ node dist/apps/api/src/server.js</pre></div></div></li>
       <h3 class="h">0. Log in (DEV)</h3>
       <div class="code"><div class="bar"><span class="file">POST /auth/dev-login</span><button class="copy" type="button">Copy</button></div><pre>TOKEN=$(curl -s localhost:3000/auth/dev-login -H 'content-type: application/json' \
   -d '{"display_name":"Dev","email":"dev@example.com"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).session.token')</pre></div>
-      <p><strong>Zakres local-dev:</strong> <code>POST /auth/dev-login</code> przypisuje sesji <code>organization_id=org_dev_local</code>. Przykłady <code>POST /teams</code> i <code>POST /missions</code> muszą używać tego samego identyfikatora organizacji. Inna organizacja kończy się <code>403 TENANT_SCOPE_DENIED</code>. To tożsamość lokalna DEV, a nie produkcyjne uprawnienie operatora.</p>
+      <p><strong>Local-dev scope:</strong> <code>POST /auth/dev-login</code> assigns <code>organization_id=org_dev_local</code> to the session. The <code>POST /teams</code> and <code>POST /missions</code> examples must use that organization. A different organization returns <code>403 TENANT_SCOPE_DENIED</code>. This is a local DEV identity, not a production operator authorization.</p>
       <h3 class="h">1. Register the team</h3>
       <div class="code"><div class="bar"><span class="file">POST /teams</span><button class="copy" type="button">Copy</button></div><pre>curl -s localhost:3000/teams -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{
   "organization_id": "org_dev_local", "project_id": "project_dev", "team_id": "team_dev", "version": "1",
@@ -315,20 +315,20 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
 
     <section id="concepts" aria-labelledby="h-c">
       <h2 id="h-c">Core concepts</h2>
-      <p>Wszystkie wejścia korzystają z tego samego Team Graph. Runtime zapisuje zdarzenia i własne wywołania narzędzi; Attribution Gate v1 łączy rozpoznane twierdzenia z odpowiedziami, a verifier wylicza wynik. Brak rozpoznanego twierdzenia nie oznacza walidacji wszystkich faktów.</p>
+      <p>All input surfaces use the same Team Graph. The runtime records events and its own tool calls; Attribution Gate v1 links recognized claims to responses, and the verifier computes the result. The absence of a recognized claim does not establish the validity of all facts.</p>
       <div class="grid">
         <div class="card"><span class="label k">Canonical state</span><h4>Team Graph</h4><p>Agents, their executor refs and the edges between them. Validated before every run. Today: linear handoff.</p><div class="src">packages/team-graph</div></div>
         <div class="card"><span class="label k">Intent</span><h4>Mission</h4><p>An objective, an input and explicit acceptance requirements. A mission without requirements is rejected.</p><div class="src">packages/contracts</div></div>
         <div class="card"><span class="label k">Execution</span><h4>Runtime and executors</h4><p>Walks the graph and calls each executor through the ExecutorRegistry. Providers sit behind ModelProvider.</p><div class="src">packages/runtime · packages/adapters</div></div>
-        <div class="card"><span class="label k">Evidence</span><h4>Evidence records</h4><p>Bound to one execution. Core computes <code>evidence_sha256</code> and content digests; executor hashes are claims. Wywołania przez context.callTool() mają osobny rekord runtime, którego agent nie może zastąpić własnym evidence.</p><div class="src">packages/evidence</div></div>
-        <div class="card"><span class="label k">Decision</span><h4>Deterministic verifier</h4><p>Sprawdza binding, hashe i wymagania misji. Attribution Gate jest domyślnie aktywny; rozpoznane twierdzenia bez źródła albo z błędną wartością mogą zakończyć wykonanie FAILED.</p><div class="src">packages/proof-core</div></div>
-        <div class="card"><span class="label k">Output</span><h4>Proof receipt</h4><p>Zapieczętowany po werdykcie: <code>proof_id</code> wiąże wynik, dowody i output. Dla narzędzi obejmuje także tool_call_refs/tool_call_root; egress NOT_ENFORCED i signature UNAVAILABLE.</p><div class="src">packages/proof-core</div></div>
+        <div class="card"><span class="label k">Evidence</span><h4>Evidence records</h4><p>Bound to one execution. Core computes <code>evidence_sha256</code> and content digests; executor hashes are claims. Calls through context.callTool() create a separate runtime record that an agent cannot replace with its own evidence.</p><div class="src">packages/evidence</div></div>
+        <div class="card"><span class="label k">Decision</span><h4>Deterministic verifier</h4><p>Checks binding, digests and mission requirements. Attribution Gate is enabled by default; recognized unsupported or contradicted claims can cause FAILED in enforcement mode.</p><div class="src">packages/proof-core</div></div>
+        <div class="card"><span class="label k">Output</span><h4>Proof receipt</h4><p>Sealed after the verdict: <code>proof_id</code> binds the result, evidence and output. Tool records use tool_call_refs/tool_call_root; egress is NOT_ENFORCED and the V2 signature is UNAVAILABLE. Signed ActionReceipts are separate.</p><div class="src">packages/proof-core</div></div>
       </div>
     </section>
 
     <section id="pipeline" aria-labelledby="h-p">
       <h2 id="h-p">How a run is proven</h2>
-      <p>Sześć etapów: Team Graph, misja, runtime, evidence, verifier i receipt. Błędy runtime uniemożliwiają VERIFIED. W trybie egzekwowania Attribution Gate rozpoznane niepoparte twierdzenia mogą skutkować FAILED; ścieżka czatu używa REPORT_ONLY, w którym obserwacje pozostają w dowodzie, ale same nie blokują werdyktu. Nie jest to sieciowy sandbox ani kryptograficzny podpis źródła.</p>
+      <p>Six stages: Team Graph, mission, runtime, evidence, verifier and receipt. Runtime failures prevent VERIFIED. In enforcement mode, Attribution Gate may fail recognized unsupported claims; chat uses REPORT_ONLY, preserving observations without automatically rejecting the execution verdict. This integrity pipeline is not a network sandbox or an independent signature of origin.</p>
       <div class="pipe" role="list">
         <div class="stage" role="listitem"><span class="label n">01</span><b>Team Graph</b><span>validated</span></div>
         <div class="stage" role="listitem"><span class="label n">02</span><b>Mission</b><span>requirements set</span></div>
@@ -341,7 +341,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
 
     <section id="receipt" aria-labelledby="h-r">
       <h2 id="h-r">Proof receipt</h2>
-      <p>Historical sample from runtime commit <code>a321fd2</code>, dated <code>2026-09-28</code>, trimmed for length. It is <strong>not</strong> a freshly replayed proof against current HEAD. Przykład historyczny nie zawiera nowych pól Attribution Gate v1 (claim_attribution, tool_call_root); wynik VERIFIED dotyczy tylko zakresu zapisanych dowodów. <code>verifyProofReceipt</code> recomputes committed hashes (integrity within the trusted inputs), not an independent attestation of origin. Without signatures, trusted timestamps or an append-only external log, an actor able to rewrite the store could replace data and recompute matching hashes.</p>
+      <p>Historical sample from runtime commit <code>a321fd2</code>, dated <code>2026-09-28</code>, trimmed for length. It is <strong>not</strong> a freshly replayed proof against current HEAD. This historical example lacks newer Attribution Gate v1 fields (claim_attribution, tool_call_root); VERIFIED concerns only the scope of recorded evidence. <code>verifyProofReceipt</code> recomputes committed hashes (integrity within the trusted inputs), not an independent attestation of origin. For an unanchored, unsigned receipt without trusted timestamps or an external append-only log, an actor able to rewrite the store could replace data and recompute matching hashes.</p>
       <div class="code"><div class="bar"><span class="file">GET /runs/:id/proof</span><button class="copy" type="button">Copy</button></div><pre>{
   &quot;proof_id&quot;: &quot;proof_75811c7c721e14f4a0dddfee97259da39064852055b151b7dc0f88aead0ed04f&quot;,
   &quot;schema&quot;: &quot;osa.proof_receipt.v2&quot;,
@@ -433,7 +433,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
           <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>REGISTERED</td><td>Run a dataset against team versions and compare receipts. <a href="#control">Details</a></td></tr>
           <tr><td><code>knowledge</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>REGISTERED</td><td>Retrieval where every hit cites a content-addressed source. <a href="#knowledge">Details</a></td></tr>
           <tr><td><code>context-hub</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>NOT REGISTERED</td><td class="nx">Shared context for agents. Depends on memory (neurosa) and knowledge.</td></tr>
-          <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>NOT REGISTERED</td><td>Status modułu <strong>Intelligence</strong>: <code>SOON</code> (brak zarejestrowanej implementacji w rejestrze). Osobny adapter NeurOSA: <strong>CODE · GATED</strong>; <a href="#neurosa-runtime">uwierzytelnione live recall, trwałość i odczyt po restarcie są nadal BLOCKED / NOT VERIFIED</a>. Konfigurację konkretnego wdrożenia pokazuje <code>GET /memory/status</code>; nie utożsamiaj jej ze statusem modułu Intelligence.</td></tr>
+          <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>NOT REGISTERED</td><td>Intelligence module: <code>SOON</code> (not registered). The separate NeurOSA adapter is <strong>CODE · GATED</strong>; <a href="#neurosa-runtime">authenticated production recall and restart durability remain NOT VERIFIED</a>. <code>GET /memory/status</code> reports the specific deployment configuration, not the Intelligence module status.</td></tr>
         </tbody>
       </table></div>
     </section>
@@ -690,23 +690,30 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
         <div class="card planned"><span class="label k">Tools</span><h4 class="nx">Tools over MCP</h4><p>Tool calls with digested results and permissions.</p></div>
         <div class="card planned"><span class="label k">Control</span><h4 class="nx">Guardrails and budgets</h4><p>Tripwires that fail the run as a verifier observation.</p></div>
         <a class="card" href="#evaluators"><span class="label k">Quality</span><h4>Evals</h4><p>Datasets and deterministic evaluators are implemented; <code>GET /experiments/compare?a=&amp;b=</code> already compares experiment outcomes.</p></a>
-        <div class="card planned"><span class="label k">Ship · partial</span><h4>Deployments and hosted runtime</h4><p>Deployment records, promotion, rollback and policy-gated runs already have API routes. A durable, independent hosted execution runtime and cryptographically signed receipts are <strong>not</strong> established by these routes.</p></div>
+        <div class="card planned"><span class="label k">Ship · partial</span><h4>Deployments and hosted runtime</h4><p>Deployment records, promotion, rollback and policy-gated runs already have API routes. These routes alone do not establish durable execution or signing. See the separately integrated <a href="#durable-runtime">Durable worker and Devnet Registry</a>.</p></div>
       </div>
     </section>
 
     <section id="durable-runtime" aria-labelledby="h-durable-runtime">
-      <h2 id="h-durable-runtime">Trwa&#322;y runtime czatu</h2>
-      <p><strong>Stan 2026-11-27:</strong> istniej&#261; trwa&#322;y magazyn zada&#324;, niezale&#380;ny worker i produkcyjny gateway HTTPS. Potwierdzono HTTP 200 oraz HEALTHY na lokalnym adapterze i przez HTTPS. Test poprawionego gatewaya z rzeczywistym workerem Ollama: HTTP 200, przyj&#281;cie 202, COMPLETED i zweryfikowany ProofReceipt (lokalna sesja testowa, rzeczywiste HTTPS). Pe&#322;ny odbi&oacute;r z zalogowanej sesji produkcyjnej pozostaje do potwierdzenia.</p>
-      <p>Frontend Vercel przekazuje zadania do istniej&#261;cego hosta Windows. Cztery trasy Durable s&#261; uj&#281;te w rejestrze HTTP powy&#380;ej. Zadanie przyj&#281;te przez backend otrzymuje identyfikator <code>exec_...</code>; worker wykonuje je niezale&#380;nie od karty, a klient pobiera zapisany wynik i dowody. Obs&#322;ugiwane s&#261; zadania modelu i artefaktu; sandbox wymaga osobnego potwierdzenia konfiguracji. Nie jest to migracja na S22 ani zmiana NeurOSA.</p>
-      <p>Gateway sprawdza dok&#322;adn&#261; tras&#281; bez parametr&oacute;w zapytania, weryfikowanego w&#322;a&#347;ciciela/operatora i zakres organizacji, to&#380;samo&#347;ci i projektu. Parametry rewrite nie s&#261; przekazywane do adaptera. Brak gotowo&#347;ci nie mo&#380;e zosta&#263; zamaskowany jako sukces.</p>
-      <p>Odbi&oacute;r: zaloguj si&#281;, sprawd&#378; <code>GET /api/durable/status</code> (HTTP 200, <code>enabled=true</code>, <code>worker=HEALTHY</code>, <code>browser_independent=true</code>, <code>production_supported=true</code>), wy&#347;lij zadanie, zamknij kart&#281; po potwierdzeniu przyj&#281;cia, otw&oacute;rz czat ponownie i sprawd&#378; wynik oraz ProofReceipt. Gotowo&#347;&#263; nie zast&#281;puje dowodu wykonania.</p>
-      <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/DURABLE_REMOTE_BRIDGE.md">Konfiguracja serwerowa i granice autoryzacji</a>.</p>
-      <h3 class="h">Podpis i zakotwiczenie dowodu</h3>
-      <p>W podpisanym przebiegu status Registry zastępuje starszą etykietę offline. Interfejs prezentuje wynik odczytu RPC workera, a nie niezależną weryfikację kryptograficzną w przeglądarce. Stan <code>VERIFIED</code> nie potwierdza prawdziwości treści ani sprzętowego pochodzenia wykonania.</p>
-      <p>Worker Durable korzysta z lokalnego modelu Ollama na <code>127.0.0.1:11434</code>. Dla skonfigurowanej tożsamości i zakresu może zapisać atestację, delegację i podpisany Ed25519 <code>ActionReceipt</code> po akceptacji Supervisora. Merkle batch obejmuje ProofReceipt V2 i podpisany ActionReceipt. Możesz pobrać artefakty z audytu rozmowy i zweryfikować podpis względem publicznego klucza zatwierdzonej tożsamości.</p>
-      <p><strong>Zakres dowodu:</strong> podpisany jest <code>ActionReceipt</code>; samo pole podpisu ProofReceipt V2 pozostaje <code>UNAVAILABLE</code>. Przygotowanie batcha i lokalna weryfikacja podpisu nie dowodzą wdrożenia Registry ani zapisu w Devnet. Kod Registry i integracja workera wymagają osobnej konfiguracji. Jedna lokalna misja Ollamy została podpisana i zweryfikowana w Registry Devnet; używała testowej tożsamości. Zalogowany przebieg produkcyjny pozostaje niepotwierdzony.</p>
-      <p><code>NOT_ANCHORED</code> oznacza, że nie ma potwierdzonego zapisu w rejestrze. Historyczny Genesis Anchor w Solana Memo jest odrębnym dowodem. OSA Proof Registry przechowuje skrót batcha i Merkle root, bez treści rozmowy. Stan <code>VERIFIED</code> wymaga niezależnego odczytu sfinalizowanej transakcji i konta programu na Devnet. Samo utworzenie batcha nie potwierdza zakotwiczenia.</p>
-      <p>Worker zapisuje sygnaturę i podpisaną transakcję przed wysłaniem. Przy niepewnym wyniku może ponowić wysłanie dokładnie tych samych bajtów przed wygaśnięciem. Po wygaśnięciu lub dla starszego rekordu bez tych danych pozostaje <code>UNKNOWN</code>; nowa transakcja nie jest podpisywana automatycznie. Przy pozytywnym odczycie czat pokazuje adres programu, slot i link do eksploratora Devnet. Dostęp do wyniku zachowuje zakres organizacji, projektu i tożsamości zadania Durable.</p>
+      <h2 id="h-durable-runtime">Durable chat runtime</h2>
+      <p><strong>2026-11-27 — 2/2 signed chat executions verified on Solana Devnet.</strong> The persistent Jeverson worker ran Ollama qwen2.5:3b. A separate read-only invocation checked each stored result, its signature, pinned key, attestation, batch, both Merkle inclusions and execution binding, then queried finalized Registry state. Both passed. Formal production close/reopen acceptance remains open.</p>
+      <p>The Vercel frontend sends authorized jobs through the dedicated HTTPS bridge to the existing persistent Windows host. Accepted jobs receive an <code>exec_...</code> ID; the independent worker executes them and the client retrieves persisted results. Model and artifact jobs are supported; sandbox readiness requires separate checks. NeurOSA is a separate integration.</p>
+      <p>The gateway checks the exact route without query parameters, the verified owner/operator role and organization, identity and project scope. Rewrite parameters are not forwarded. Missing readiness must not be reported as successful acceptance.</p>
+      <p>Browser recovery acceptance: sign in, check <code>GET /api/durable/status</code> (HTTP 200, <code>enabled=true</code>, <code>worker=HEALTHY</code>, <code>browser_independent=true</code>, <code>production_supported=true</code>), submit a job, close the tab after acknowledgement, reopen the chat, and verify the same result and ProofReceipt. Readiness alone is not proof of execution.</p>
+      <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/DURABLE_REMOTE_BRIDGE.md">Server configuration and authorization boundary</a>.</p>
+      <h3 class="h">Signed receipts and finalized commitments</h3>
+      <p>For signed runs the Registry state replaces the legacy offline label. The dashboard displays worker RPC readback, not an independent cryptographic verification performed in the browser. VERIFIED does not establish semantic truth or hardware provenance.</p>
+      <p>The configured worker calls Ollama through loopback (<code>127.0.0.1:11434</code>) and can record a signed software runtime attestation, delegation and Ed25519 <code>ActionReceipt</code> after Supervisor release. The Merkle batch includes both ProofReceipt V2 and ActionReceipt digests. Audit artifacts can be checked against the independently authenticated public key.</p>
+      <p><strong>Evidence boundary:</strong> the separate ActionReceipt is signed; the original ProofReceipt V2 signature remains <code>UNAVAILABLE</code>. Attestation is software-declared, not TEE-backed. The local test bundle and the two later production-connected runs are distinct. No Mainnet deployment, independent security audit or enterprise GA is claimed.</p>
+      <p><code>NOT_ANCHORED</code> means there is no confirmed Registry write. The historical Genesis Anchor is a separate Solana Memo transaction. The dedicated Registry stores batch and Merkle digests, not conversation text. <code>VERIFIED</code> requires successful finalized transaction and account readback. Merely creating a batch does not establish anchoring.</p>
+      <p>The worker persists the signature and signed transaction before broadcast. It may retry only identical bytes before expiry. Expired or legacy incomplete records remain UNKNOWN; a replacement is not automatically signed. The chat displays the program, slot and Explorer link after readback. Job access remains scope-bound.</p>
+      <h3 class="h">Observed finalized Devnet transactions</h3>
+      <p>Program: <a href="https://explorer.solana.com/address/6QTgaWY6SyZsjCiuY9BGMn5H7PzoFghCocwkbKxxmG8p?cluster=devnet"><code>6QTgaWY6SyZsjCiuY9BGMn5H7PzoFghCocwkbKxxmG8p</code></a>. Public commitments are independently inspectable; the private production audit exports are not published.</p>
+      <div class="tbl"><table><thead><tr><th>Execution</th><th>Transaction</th><th>Finalized slot</th></tr></thead><tbody>
+        <tr><td><code>exec_467870c6-ee5d-4344-842d-003b063d65a1</code></td><td><a href="https://explorer.solana.com/tx/27ArGoAkr848ZfZM7qQvh7oev9cLtnNiZjQeyagzj89UG9iUNRJaiwbRPMdiSypCfkMW6jZzKZDctphd2KhUnn9s?cluster=devnet">Devnet proof 1</a></td><td>526953298</td></tr>
+        <tr><td><code>exec_1b59d635-77a2-4c24-9c04-74ac21920ebb</code></td><td><a href="https://explorer.solana.com/tx/2jfJLMfHDoVeP5eeKBCg2WLELeMfdvpj1Gm3M1b2bfpBk51DNEF3jn32E5GZGpCExDKFLDTJSKQ2hmuSd93QYNoS?cluster=devnet">Devnet proof 2</a></td><td>526956144</td></tr>
+      </tbody></table></div>
+      <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/STATUS_2026-11-27.md">Dated execution evidence and verification boundaries</a> · <a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/PROOF_REGISTRY_DEVNET.md">Registry protocol and public test verifier</a>.</p>
     </section>
 
     <section id="delivery-lab" aria-labelledby="h-delivery-lab">
@@ -722,32 +729,32 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
 
     <section id="neurosa-runtime" aria-labelledby="h-neurosa-runtime">
-      <p><strong>Historyczny stan odbioru z 2026-10-27.</strong> Późniejsze kontrolowane testy CI obejmują rzeczywiste lokalne repo:read i dwie dzierżawy Fleet w <code>hermes-fleet-p1.test.ts</code> oraz lokalny przepływ NeurOSA. Nie są dowodem działania zewnętrznego wyszukiwania Hermesa ani produkcyjnego recall po restarcie. Wynik wyszukiwania live pozostaje UNKNOWN bez osobnego dowodu. Zobacz <a href="https://github.com/HazEOskA/osa-proof/actions/runs/46022360128">Hermes P1 CI</a> i <a href="https://github.com/HazEOskA/osa-proof/actions/runs/46022359949">NeurOSA local CI</a>.</p>
+      <p><strong>Historical acceptance baseline: 2026-10-27.</strong> Later controlled CI covers local repo:read, two Fleet leases in <code>hermes-fleet-p1.test.ts</code> and local NeurOSA integration. It does not establish external live Hermes search or production recall after restart. See <a href="https://github.com/HazEOskA/osa-proof/actions/runs/46041989909">Hermes P1 CI</a> and <a href="https://github.com/HazEOskA/osa-proof/actions/runs/46041990254">NeurOSA local CI</a>.</p>
       <div class="eyebrow">Agentic OS · Memory · 2026-10-27</div>
       <h2 id="h-neurosa-runtime">NeurOSA × OSA Proof <span class="label" style="--c:var(--warn)">LIVE BLOCKED</span></h2>
-      <p>NeurOSA to pamięć serwerowa systemu OSA, nie historia przeglądarki ani kolejny control plane. Zaimplementowany przepływ w <code>ChatDelivery</code> jest chroniony: uwierzytelniony operator → opcjonalny zapis wiadomości → recall → NVIDIA → Runtime → Evidence i ProofReceipt → potwierdzony zapis wykonania w NeurOSA.</p>
+      <p>NeurOSA is the server-side memory plane, not browser history or a second control plane. The protected ChatDelivery path uses an authenticated operator, optional message storage, recall, NVIDIA, Runtime, Evidence and ProofReceipt, followed by a confirmed execution-memory write when available.</p>
       <div class="grid">
-        <div class="card"><span class="label k">CODE · PASS</span><h4>Scalone z main</h4><p>PR #21 i #24 scalone. GitHub Actions PR #24: 265 PASS, 0 FAIL, 3 SKIP; build TypeScript i dashboard PASS. Testy kontraktowe nie są testami LIVE.</p><div class="src">GitHub · main · 54ab16e</div></div>
-        <div class="card"><span class="label k">STORAGE · PARTIAL</span><h4>Backup na trwałym wolumenie</h4><p>Railway: wolumen 512 MB w <code>/persist</code>. Snapshot SQLite przeniesiony i zweryfikowany SHA-256; nie potwierdzono jeszcze używania tej bazy przez Brain API ani trwałości po restarcie.</p><div class="src">Railway · neurosa-memory-v1</div></div>
-        <div class="card"><span class="label k">AUTH · BLOCKED</span><h4>Prywatny operator GitHub</h4><p>Produkcja wymaga skonfigurowanego GitHub OAuth, allowlisty i serwerowego zakresu organizacja/projekt. Bez sesji żadnego dostępu do pamięci.</p><div class="src">OSA_AUTH_MODE=session · fail-closed</div></div>
-        <div class="card"><span class="label k">LIVE · NOT VERIFIED</span><h4>Golden Flow</h4><p>Nie ma jeszcze dowodu pełnego <code>login → remember → recall → model → proof → restart → recall</code>. Status READY deploymentu i 401 bez Bearer nie potwierdzają pamięci.</p><div class="src">CLAIM ≠ PROOF</div></div>
+        <div class="card"><span class="label k">CODE · PASS</span><h4>Merged into main</h4><p>PR #21 and #24 merged. Historical PR #24 CI: 265 PASS, 0 FAIL, 3 SKIP; TypeScript and dashboard builds passed. Contract tests are not production live tests.</p><div class="src">GitHub · main · 54ab16e</div></div>
+        <div class="card"><span class="label k">STORAGE · PARTIAL</span><h4>Persistent-volume backup</h4><p>Railway: 512 MB volume at <code>/persist</code>. SQLite snapshot copied and SHA-256 checked; active database use by Brain API and persistence after restart were not established.</p><div class="src">Railway · neurosa-memory-v1</div></div>
+        <div class="card"><span class="label k">AUTH · BLOCKED</span><h4>Private GitHub operator</h4><p>Production memory requires configured authentication, an allowlist and server-side organization/project scope. No memory access without a session.</p><div class="src">OSA_AUTH_MODE=session · fail-closed</div></div>
+        <div class="card"><span class="label k">LIVE · NOT VERIFIED</span><h4>Golden Flow</h4><p>No evidence yet for the complete <code>login → remember → recall → model → proof → restart → recall</code>. A READY deployment and unauthenticated 401 do not prove memory.</p><div class="src">CLAIM ≠ PROOF</div></div>
       </div>
-      <h3 class="h">Warunki uruchomienia pamięci na Production</h3>
+      <h3 class="h">Production memory acceptance requirements</h3>
       <ol>
-        <li>Sprawdzenie aktualnej kopii SQLite i uprawnień zapisu dla procesu <code>node</code>, a następnie kontrolowany cutover na plik w <code>/persist</code>.</li>
-        <li>Prawdziwy zapis i odczyt, kontrolowany restart Brain API, powtórny odczyt i integralność ledgeru.</li>
-        <li>Zweryfikowane logowanie GitHub OAuth, <code>organization_id</code>, <code>project_id</code> oraz odmowa dla anonimowych.</li>
-        <li>Dopiero po PASS: odblokowanie flagi produkcyjnej, jednorazowy golden-flow E2E i uruchomienie misji Hermesa.</li>
+        <li>Check the current SQLite backup and Node process write permissions, then perform a separately approved controlled cutover to <code>/persist</code>.</li>
+        <li>Verify actual write/read, controlled Brain API restart, repeated readback and ledger integrity.</li>
+        <li>Verify OAuth login, organization/project scope and anonymous-access denial.</li>
+        <li>Only after PASS: enable the approved production flag, run the memory Golden Flow and test a Hermes mission.</li>
       </ol>
-      <p>Granice bezpieczeństwa: <code>memory_status=VERIFIED</code> oznacza potwierdzony zapis wykonania; <code>UNAVAILABLE</code> oznacza niepotwierdzony zapis. Dane NeurOSA nie są poleceniami dla agenta. Nie uruchamiaj testów modeli, jeżeli bezpłatne wywołanie nie zostało potwierdzone.</p>
-      <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md" rel="noopener">Pełny runbook migracji i acceptance</a> · <a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/CHAT_ARTIFACT_FLOW.md" rel="noopener">Kontrakt ChatDelivery</a></p>
+      <p>Security boundary: <code>memory_status=VERIFIED</code> means a confirmed execution-memory write; <code>UNAVAILABLE</code> means no confirmed write. NeurOSA data is not an instruction to an agent. Do not run external model tests unless zero-cost access is confirmed.</p>
+      <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/NEUROSA_LIVE_ACCEPTANCE_2026-10-26.md" rel="noopener">Historical migration and acceptance runbook</a> · <a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/CHAT_ARTIFACT_FLOW.md" rel="noopener">ChatDelivery contract</a></p>
     </section>
 
 
 
     <section id="themes" aria-labelledby="h-themes">
       <h2 id="h-themes">Workspace themes</h2>
-      <p>The framework includes seven dark palettes (Proof, OSA · czerń i złoto, Vercel · czerń, Graphite, Midnight, Forest, Plum) and five light palettes (Porcelain, Sand, Sky, Mint, Rose). Use the theme selector in the header, mobile navigation or Settings. Themes also update the runtime world colors.</p>
+      <p>The framework includes seven dark palettes (Proof, OSA · black and gold, Vercel · black, Graphite, Midnight, Forest, Plum) and five light palettes (Porcelain, Sand, Sky, Mint, Rose). Use the theme selector in the header, mobile navigation or Settings. Themes also update the runtime world colors.</p>
       <p>Open <strong>Themes</strong> to preview palettes, export the selected palette or import a community JSON file. The format is <code>osa.theme.v1</code>: id, name, mode, optional author and a complete tokens object. Export a built-in palette as your starting template. Only six-digit hex colors are accepted; text contrast must reach 4.5:1. Files are limited to 24 KB and 20 community themes per browser. Importing the same ID updates that community theme.</p>
       <p>Selection and community palettes are stored in this browser. Removing an active community palette restores Proof. There is no hosted theme marketplace or cross-device sync.</p>
     </section>
@@ -783,7 +790,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
         <a href="#api">HTTP API</a>
         <a href="#guides">Guides</a>
         <a href="#delivery-lab">Delivery Lab</a>
-        <a href="#durable-runtime">Trwaly runtime</a>
+        <a href="#durable-runtime">Durable runtime</a>
         <a href="#neurosa-runtime">NeurOSA memory (gated)</a>
         <a href="#themes">Themes</a>
         <a href="#community-forum">Debug forum (planned)</a>

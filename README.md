@@ -1,167 +1,143 @@
 <div align="center">
 
-<img src="./apps/web/docs/osa-frameworks-banner.webp" alt="OSA Framework — oficjalny banner projektu" width="100%" />
+<img src="./apps/web/docs/osa-frameworks-banner.webp" alt="OSA Framework banner" width="100%" />
 
-<img src="./dashboard-src/public/favicon.svg" alt="OSA Proof — znak projektu" width="88" />
+<img src="./dashboard-src/public/favicon.svg" alt="OSA Proof mark" width="88" />
 
 # OSA PROOF
 
-### Agenci wykonują. Zdarzenia zostają. Dowody rozstrzygają.
+### Verifiable AI agent execution infrastructure
 
 **CLAIM ≠ PROOF**
 
-Framework do projektowania, wykonywania i audytowania systemów agentowych AI. Łączy **Team Graph → Mission Kernel → Runtime → Evidence → ProofReceipt → Replay**, aby oddzielać deklaracje modeli od weryfikowalnych zapisów wykonania.
+A proof-first framework that connects agent orchestration, execution evidence, deterministic verification, cryptographically signed action receipts and independently readable blockchain commitments.
 
-**`Proof-first` · `TypeScript` · `Node.js` · `Agentic Runtime` · `Evidence` · `Fail-closed`**
+**TypeScript · Node.js · Durable Runtime · Ed25519 · Merkle ProofBatch · Solana Devnet**
 
-[Panel OSA Proof](https://osa-proof-three.vercel.app/) · [Dokumentacja](./docs/README.md) · [Aktualny stan](./docs/STATUS_2026-11-18.md) · [Architektura](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md) · [GitHub Actions](https://github.com/HazEOskA/osa-proof/actions)
+[Live application](https://osa-proof-three.vercel.app/) · [Developer documentation](https://osa-proof-three.vercel.app/docs) · [Technical index](./docs/README.md) · [Execution evidence](./docs/STATUS_2026-11-27.md) · [CI](https://github.com/HazEOskA/osa-proof/actions) · [Portfolio](https://osatechgpt.dev)
 
 </div>
 
 > [!IMPORTANT]
-> **Stan udokumentowany: 18 listopada 2026 · `main` @ `8180e20d11bf0ecfa2f954baa9c393657394592b`.** Zintegrowano lokalny single-operator host (`osa dashboard`) z plikowym MissionStore i DurableJobStore, Docker preflight oraz CLI. Ścieżka generowania artefaktu, eksportów Evidence/ProofReceipt i weryfikacji integralności działa dla zaobserwowanych wykonań. **To nie oznacza potwierdzonego produkcyjnego E2E dwóch rzeczywistych workerów, trwałej historii cross-device, pełnego izolowanego sandboxa ani wydania GA.** Aktualny werdykt w [raporcie statusu](./docs/STATUS_2026-11-18.md).
+> **2026-11-27 — two actual signed agent chat executions verified end to end against the deployed OSA Proof Registry on Solana Devnet.** A separate verification invocation checked both stored jobs, signatures, execution binding, Merkle inclusions and finalized on-chain accounts. This is a demonstrated single-operator integration, not Mainnet, an independent security audit or enterprise GA.
 
-## Po co powstał OSA Proof?
+## Why OSA Proof?
 
-Sam komunikat „zadanie wykonane” od agenta nie wystarcza. OSA Proof oddziela cztery warstwy:
+An agent saying that a task is complete does not establish that it was performed. OSA Proof makes the evidence path explicit: what was requested, which execution produced a result, which recorded requirements passed, which key signed an action receipt and which commitment was finalized.
 
-| Warstwa | Odpowiedzialność | Co stanowi dowód? |
-| --- | --- | --- |
-| **Plan i uprawnienia** | Cel, Team Graph, wymogi i dopuszczalne executory | Jawne ID misji, wersja grafu i policy |
-| **Egzekucja** | Misja, działania agentów, zdarzenia i handoff | Zdarzenia runtime, powiązane operacje i Evidence |
-| **Proof** | Deterministyczna weryfikacja wymagań i integralności | `osa.proof_receipt.v2`, SHA-256, binding oraz werdykt |
-| **Odbiór** | Eksport, audyt, Replay i decyzja operatora | Pakiet możliwy do sprawdzenia niezależnie od UI |
+| Layer | Responsibility |
+| --- | --- |
+| Team Graph / Mission Kernel | Canonical team topology, mission lifecycle, scope and requirements |
+| Runtime / Durable worker | Execute configured agents and persist task state independently of the browser |
+| Evidence / APR verifier | Bind observations, tool records and output to a deterministic ProofReceipt V2 |
+| Agent Trust Fabric | Signed delegation, runtime attestation and causal Ed25519 ActionReceipts |
+| Merkle ProofBatch / Registry | Commit both receipt digests and read finalized state from Solana Devnet |
+| UI / Replay / exports | Inspect recorded execution, download proof materials and distinguish claims from evidence |
 
-**`VERIFIED` potwierdza zakres zdefiniowanych wymagań i spójność zapisów — nie zastępuje audytu bezpieczeństwa, oceny merytorycznej ani dowodu niezależnego pochodzenia wszystkich informacji.**
+## Demonstrated execution evidence
 
-## Co można sprawdzić już teraz?
+| Run | Execution | Public chain reference | Finalized slot |
+| --- | --- | --- | --- |
+| 1 | `exec_467870c6-ee5d-4344-842d-003b063d65a1` | [Finalized transaction](https://explorer.solana.com/tx/27ArGoAkr848ZfZM7qQvh7oev9cLtnNiZjQeyagzj89UG9iUNRJaiwbRPMdiSypCfkMW6jZzKZDctphd2KhUnn9s?cluster=devnet) | 526953298 |
+| 2 | `exec_1b59d635-77a2-4c24-9c04-74ac21920ebb` | [Finalized transaction](https://explorer.solana.com/tx/2jfJLMfHDoVeP5eeKBCg2WLELeMfdvpj1Gm3M1b2bfpBk51DNEF3jn32E5GZGpCExDKFLDTJSKQ2hmuSd93QYNoS?cluster=devnet) | 526956144 |
 
-| Funkcja | Stan na 18.11.2026 | Zakres |
-| --- | --- | --- |
-| **Lokalny host (`osa dashboard`)** | **IMPLEMENTED / LOOPBACK** | Single-operator, cookie gate, FileMissionStore + FileDurableJobStore, Docker preflight |
-| **Team Graph + Mission Kernel** | **LOCAL TESTED / PARTIAL** | Wersjonowany graf, liniowe handoff, kontrakt misji i CAS w lokalnym MissionStore |
-| **NVIDIA → artefakt HTML** | **OBSERVED / PROOF INTEGRITY PASS** | Zaobserwowany zapis generowania przez `openai/gpt-oss-20b`, zwrócony HTML, kontrola struktury i hashy |
-| **APR / Evidence / ProofReceipt v2** | **INTEGRITY PASS dla eksportu** | Weryfikacja lokalna wskazanego przez operatora bundle, ProofReceipt, Evidence, trace i pliku HTML |
-| **Replay offline** | **EXPORT AVAILABLE / CONSISTENT** | Odtwarza zapis zdarzeń, nie uruchamia modelu ani narzędzi ponownie |
-| **Live Trace / SSE** | **IMPLEMENTED; LIVE ACCEPTANCE PARTIAL** | Rozmowa/artefakt z identyfikatorem wykonania; część śladów to metadane obserwacji przeglądarki |
-| **NeurOSA** | **OBSERVED / DURABILITY UNKNOWN** | Dla badanego eksportu status pamięci `VERIFIED`; brak niezależnego restart-readback bieżącej usługi |
-| **Durable Execution** | **LOCAL CODE / PRODUCTION BLOCKED** | Plikowy store i osobny worker dla zatwierdzonego hosta; Vercel nie spełnia warunków trwałości |
-| **Dwa rzeczywiste workery + sandbox** | **NOT PROVEN** | W badanym eksporcie wykonawcy `demo.*`, `tool_calls = 0`; osobny E2E wymagany |
-| **Trwała historia Team Graph / misji / czatów** | **GAP (lokalna plikowa częściowo)** | Brak wspólnego trwaleńszego źródła prawdy poza lokalnymi plikami; naprawa w planie |
-| **Produkcyjne OAuth / pełne RBAC** | **ACCEPTANCE OPEN** | Zgłoszone `OAUTH_STATE_INVALID`; root cause nieustalony w tym audycie |
+[Registry program on Devnet](https://explorer.solana.com/address/6QTgaWY6SyZsjCiuY9BGMn5H7PzoFghCocwkbKxxmG8p?cluster=devnet) · [Verification results and boundaries](./docs/STATUS_2026-11-27.md) · [Registry protocol](./docs/PROOF_REGISTRY_DEVNET.md).
 
-Szczegóły i precyzyjne źródła: [Status](./docs/STATUS_2026-11-18.md) · [Luki historii](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md) · [Jak czytać dowody](./docs/PROOF_EXPORTS_GUIDE.md).
+The two runs used the persistent Jeverson worker and Ollama `qwen2.5:3b`. Proof integrity, Ed25519 signature, pinned public key, signed software attestation, recomputed batch, both inclusion proofs, input/output binding and finalized RPC readback passed for both. The public chain references expose commitments, not private conversation content.
 
-## Architektura
+## Architecture
 
 ```mermaid
 flowchart TD
-  UI["OSA Proof UI · Android / DeX / Desktop"] --> API["API · Auth · Scope · Policy"]
-  API --> TG["Team Graph"]
-  TG --> MK["Mission Kernel"]
-  MK --> RT["OSA Runtime / Executory"]
+  UI["Web UI / local CLI"] --> API["API · authentication · scope · policy"]
+  API --> TG["Team Graph / Mission Kernel"]
+  TG --> RT["Durable worker / Runtime"]
   RT --> EV["Events · Evidence · ToolCallRecord"]
-  EV --> PF["Proof Core / Verifier"]
-  PF --> RP["ProofReceipt v2 · Replay · Eksport"]
-  MK -. "opcjonalny kontekst / remember" .-> NM["NeurOSA · Memory Plane"]
-  API -. "docelowo: projekt, nie deployment" .-> DB[("Własny PostgreSQL · Storage Plane")]
-  CLI["osa dashboard (loopback)"] --> API
+  EV --> PF["APR / ProofReceipt V2"]
+  RT --> AT["Agent identity · delegation · attestation"]
+  AT --> AR["Ed25519 ActionReceipt"]
+  PF --> MB["Merkle ProofBatch"]
+  AR --> MB
+  MB --> SR["Solana Devnet Registry"]
+  SR --> V["Finalized RPC readback"]
+  V --> UI
+  PF --> RP["Replay / audit export"]
+  TG -. "separate integration" .-> NM["NeurOSA memory"]
 ```
 
-**Źródła prawdy są rozdzielone:** Mission Kernel i Runtime prowadzą wykonanie; Proof Core weryfikuje zapisy; NeurOSA odpowiada za pamięć, a projektowany Storage Plane ma przechowywać trwały stan strukturalny. Nie tworzymy drugiego silnika agentów ani kopii pamięci NeurOSA.
+The Vercel application routes authorized Durable requests to a dedicated HTTPS bridge on the persistent worker host; it does not execute durable jobs in a serverless function. The Registry stores commitments, not model inference or conversation text. The existing ProofReceipt V2 schema is unchanged; the signed ActionReceipt and Merkle batch extend it.
 
-```text
-osa-proof/
-├── bin/osa.cjs               # lokalny CLI (doctor / dashboard)
-├── api/                       # adapter Vercel
-├── apps/
-│   ├── api/src/               # HTTP, auth, NVIDIA, Mission API
-│   ├── worker/                # wykonawcy / durable runner
-│   └── web/                   # statyczne strony i assety
-├── dashboard-src/             # UI React / TypeScript
-├── packages/
-│   ├── contracts/             # interfejsy i typy
-│   ├── team-graph/            # graf agentów
-│   ├── runtime/               # Mission Kernel i stores
-│   ├── events/                # zdarzenia
-│   ├── evidence/              # Evidence
-│   ├── proof-core/            # canonical JSON / verifier
-│   └── brain/                 # planowanie i memory adapter
-├── scripts/                   # buildy i testy
-├── tests/                     # testy automatyczne
-└── docs/                      # dokumenty i historyczne dowody
-```
+## Get started locally
 
-## Szybki start — środowisko lokalne
-
-Wymagane: **Node.js 20+**, npm oraz środowisko z powłoką POSIX (Bash/WSL) albo PowerShell. `OSA_AUTH_MODE=open` jest **wyłącznie do izolowanego testu lokalnego** — nie podawaj go jako publicznego serwera z danymi prywatnymi.
+Requirements: Node.js 20+ and npm. The deterministic fixture mode requires no external model key.
 
 ```bash
+git clone https://github.com/HazEOskA/osa-proof.git
+cd osa-proof
 npm ci
 npm test
 node scripts/build-dashboard.cjs
-osa doctor          # preflight (build, Docker, brakujące pliki)
-osa dashboard       # loopback host + cookie gate + lokalne pliki
 ```
 
-`osa dashboard` startuje pod `http://127.0.0.1:3111` (domyślnie), otwiera przeglądarkę przez jednorazowy ticket, zapisuje misje i durable jobs lokalnie. Integracje zewnętrzne (NeurOSA remote, remote workers) są wyłączone w trybie P0.
-
-Alternatywnie (starsza ścieżka):
+Start the local CLI:
 
 ```bash
-OSA_EXECUTION_MODE=fixture OSA_AUTH_MODE=open npm start
+node bin/osa.cjs doctor
+node bin/osa.cjs dashboard
 ```
 
-API wystartuje domyślnie pod `http://localhost:3000`. Stan:
+The local dashboard binds to loopback (default port 3111); Docker preflight and optional integrations have their own readiness requirements.
+
+For a first API mission in a separate local environment, start the fixture server:
 
 ```bash
-curl http://localhost:3000/build/status
+OSA_EXECUTION_MODE=fixture PORT=3000 npm start
 ```
 
-`npm test` obejmuje lokalny build i zestaw testów. **Samo uruchomienie serwera nie wytwarza ProofReceipt.**
+Follow [Your first mission](https://osa-proof-three.vercel.app/docs#first-mission) to register a team, execute a mission and inspect its receipt. The fixture example demonstrates the protocol, not a real external model call. Do not expose open authentication mode to untrusted clients.
 
-## Proof i Replay — trzy różne typy materiałów
+To inspect the reproducible public Devnet test evidence after building:
 
-| Eksport | Zawartość | Czego **nie** dowodzi |
-| --- | --- | --- |
-| `osa.chat_delivery.v1` | Bundle z `record`, `run`, artefaktem, Evidence i Proof | Że wykonały go faktycznie niezależne workery, jeżeli użyto executorów `demo.*` |
-| `osa.mission.v1` | Zapis misji z Mission Kernel, jej stan i receipt | Że wszystkie zewnętrzne integracje/side effects zostały niezależnie poświadczone |
-| `osa.live_execution.v1` + `osa.live_metadata.v1` | Zdarzenia i metadane obserwowane w Live UI | Kryptograficznego APR ProofReceipt, jeśli takiego nie dołączono |
+```bash
+node scripts/verify-devnet-registry-evidence.cjs
+```
 
-**Wcześniejszy test (3 listopada):** w przekazanym prywatnie eksporcie ChatDelivery odnotowano **65 zdarzeń timeline, 47 zdarzeń Runtime, 13 Evidence, 27 verifier observations i 10 rozpoczętych ról**. Zewnętrznie sprawdzone hashe bundle, receipt, Evidence i artefaktu były zgodne; **`tool_calls = 0`**, więc nie jest to test rzeczywistych narzędzi dwóch workerów. Identyfikatory i zawartość prywatnego pakietu nie są publikowane w repo. [Przewodnik weryfikacji](./docs/PROOF_EXPORTS_GUIDE.md).
+This network-dependent verifier targets the published local test bundle, **not** the private production chat exports. See the [Durable Bridge](./docs/DURABLE_REMOTE_BRIDGE.md) for deployment boundaries and server-only configuration.
 
-## Znane ograniczenia i roadmapa
+## What is verified — and what is not
 
-**P0 — trwałość i odnajdywanie pracy:** Team Graph i Build workspace są zapisywane lokalnie albo w pamięci instancji API; Studio nie oferuje katalogu dawnych misji; historia czatów w IndexedDB nie jest sortowana po `updated`. Lokalny host używa plików, ale nie zamyka cross-device. Szczegóły: [Rejestr luk](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md).
-
-**P0 — własny storage, host jeszcze niewybrany:** provider-neutral adapter do **PostgreSQL** jest **propozycją architektoniczną**, nie utworzoną bazą ani planem deployu. Do czasu potwierdzenia hosta i osobnej zgody pozostaje `BLOCKED`. [Architektura Storage v1](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md).
-
-**P0/P1 — bezpieczeństwo i rzeczywiste E2E:** produkcyjny scope/RBAC, kontrola OAuth, trwały worker, kontrolowany egress, autentyczność źródła dowodów oraz end-to-end przez dwóch realnych workerów wymagają oddzielnych testów. `egress_status: NOT_ENFORCED`; `signature_status: UNAVAILABLE`.
-
-> [!CAUTION]
-> Status `VERIFIED` w lokalnym ProofReceipt **nie** jest podpisem kryptograficznym niezależnego źródła ani certyfikatem gotowości do produkcji. Nie umieszczaj sekretów ani danych klientów w środowisku z `OSA_AUTH_MODE=open`.
-
-## Dokumentacja i referencje
-
-| Kategoria | Dokument |
+| Capability | Evidence status |
 | --- | --- |
-| Indeks dokumentacji | [docs/README.md](./docs/README.md) |
-| Stan na 18.11.2026 | [STATUS_2026-11-18](./docs/STATUS_2026-11-18.md) |
-| Stan na 03.11.2026 (historyczny) | [STATUS_2026-11-03](./docs/STATUS_2026-11-03.md) |
-| Priorytetowe usterki | [HISTORY_AND_WORKSPACE_GAPS](./docs/HISTORY_AND_WORKSPACE_GAPS_2026-11-03.md) |
-| Trwały magazyn — projekt | [PERSISTENCE_ARCHITECTURE_V1](./docs/PERSISTENCE_ARCHITECTURE_V1_PROPOSAL.md) |
-| Eksporty i audyt | [PROOF_EXPORTS_GUIDE](./docs/PROOF_EXPORTS_GUIDE.md) |
-| Kontrakty | [Team Graph](./docs/TEAM_GRAPH_CONTRACT_V1.md) · [Mission Kernel](./docs/MISSION_KERNEL_V1.md) · [Proof Protocol v2](./docs/PROOF_PROTOCOL_V2.md) |
-| Bezpieczeństwo i provenance | [Attribution Gate](./docs/ATTRIBUTION_GATE_V1.md) · [Security Verdict](./docs/final-boss/SECURITY_VERDICT.md) |
-| Live i durable | [Live Trace](./docs/P0_UNIFIED_LIVE_TRACE_20261103.md) · [Durable Execution](./docs/P0_DURABLE_EXECUTION_20261103.md) |
-| Raporty historyczne | [31.10](./docs/OSA_PROOF_STATUS_2026-10-31.md) · [Preview 28.10](./docs/OSA_PROOF_PREVIEW_STATUS_2026-10-28.md) |
+| Signed production-connected chat execution and Devnet anchoring | **2/2 PASS**, 2026-11-27 |
+| Local Registry initialization, conflict rejection, idempotency and recovery | Local/fixture tests passed; simulated RPC recovery is not a real crash test |
+| Persistent worker and scoped HTTPS bridge | Observed operating on the designated single-operator host |
+| Browser-disconnect recovery | Controlled CI PASS; formal production close/reopen acceptance remains open |
+| Local Hermes two-worker read-only mission | Controlled CI evidence; external live search not established |
+| NeurOSA persistent production recall | Not verified after restart; local integration tests have a separate scope |
+| Mainnet, hardware attestation, independent security audit, high availability | Not established |
 
-## Status rozwoju i governance
+A valid signature binds a receipt to a key, not to an independently verified person's identity. A signed software attestation is not a TEE attestation. The ProofReceipt V2 signature field remains `UNAVAILABLE` and egress is not generally enforced. `VERIFIED` does not mean every model claim is true, the complete system is secure, or an external outcome occurred.
 
-Projekt jest rozwijany w trybie **proof-first, preview-first, fail-closed**. Zmiany kodu, migracje, commity, merge i produkcyjne wdrożenia wymagają osobnego zatwierdzenia zakresu. Wersja pakietu `0.1.0` jest oznaczeniem kodu, **nie deklaracją wydanej, w pełni zweryfikowanej usługi enterprise**. Wydanie GA jest `BLOCKED` do zamknięcia bramek.
+## Source layout and technical references
+
+| Area | Source / contract |
+| --- | --- |
+| Orchestration | [Team Graph](./docs/TEAM_GRAPH_CONTRACT_V1.md), [Mission Kernel](./docs/MISSION_KERNEL_V1.md), `packages/runtime` |
+| Verification | [Proof Protocol V2](./docs/PROOF_PROTOCOL_V2.md), `packages/proof-core` |
+| Identity and signing | [Agent Trust Fabric](./docs/AGENT_TRUST_FABRIC_V0_1.md), `packages/identity` |
+| Runtime and API | [Durable Bridge](./docs/DURABLE_REMOTE_BRIDGE.md), `apps/api`, `apps/worker`, [HTTP reference](https://osa-proof-three.vercel.app/docs#api) |
+| On-chain commitment | [Registry](./docs/PROOF_REGISTRY_DEVNET.md), `programs/proof-registry`, `packages/web3` |
+| Architecture | [Architecture Lock](./docs/ARCHITECTURE_LOCK_V1.md), [Backend foundation](./docs/BACKEND_ARCHITECTURE_LOCK_V1.md) |
+| Documentation | [Technical index](./docs/README.md), `apps/web/docs`, `docs/evidence` |
+
+## Integration opportunities
+
+OSA Proof is designed for teams exploring auditable agent execution, evidence-driven automation, agent identity and verifiable workflow commitments. A scoped pilot should establish the client's trust model, data retention and acceptance criteria before handling sensitive workloads or critical transactions. Integration and deployment readiness must be assessed for each environment.
+
+**Project maturity:** v0.1.0 development baseline; Devnet integration demonstrated. No claim of production-grade financial custody, certified compliance or enterprise GA.
 
 <div align="center">
 
-**OSA / AGENTS RUN. EVENTS STAY. PROOF DECIDES.**
+**AGENTS RUN. EVENTS STAY. PROOF DECIDES.**
 
 </div>

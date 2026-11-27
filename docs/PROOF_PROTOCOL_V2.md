@@ -7,7 +7,7 @@ V2 adds the smallest integrity primitive: execution binding, content-addressed e
 typed provenance and a sealed receipt. It does **not** add signatures, PKI, KMS, Merkle
 logs or attestation. Every digest is a plain SHA-256 that anyone can recompute, so V2
 detects inconsistent tampering and replay, not an attacker who rewrites everything.
-Anchoring `receipt_sha256` outside the process is future work.
+The original V2 receipt remains unsigned. The separate [Agent Trust Fabric](./AGENT_TRUST_FABRIC_V0_1.md) signs ActionReceipts and includes the V2 receipt digest in a Merkle ProofBatch. [Devnet Registry evidence](./STATUS_2026-11-27.md) demonstrates finalized external commitments without changing the V2 schema.
 
 ## Canonical form
 
@@ -66,9 +66,9 @@ The sealed body commits to: binding, verdict, requirement verdicts, runtime fail
 `evidence_refs` (id + digest per record), `evidence_root = digest(evidence_refs)`,
 `observation_refs`, `final_output_sha256`, `created_at` and verifier identity.
 
-**Rozszerzenie z 31.10.2026 — Attribution Gate v1:** bieżące receipt może dodatkowo zawierać `attribution_mode`, `claim_attribution`, `tool_call_refs`, `tool_call_root`, `egress_status: NOT_ENFORCED` i `signature_status: UNAVAILABLE`. `ToolCallRecord` powstaje po stronie runtime przy `context.callTool()`; `tool_call_root` wiąże skróty rekordów z konkretnym wykonaniem. Sprawdzanie twierdzeń jest `DEFAULT_ON`, ale stanowi ograniczoną heurystykę. [Pełny kontrakt](./ATTRIBUTION_GATE_V1.md).
+**2026-10-31 extension — Attribution Gate v1:** receipts may additionally include `attribution_mode`, `claim_attribution`, `tool_call_refs`, `tool_call_root`, `egress_status: NOT_ENFORCED` and `signature_status: UNAVAILABLE`. The runtime creates `ToolCallRecord` through `context.callTool()`; `tool_call_root` binds record digests to the execution. Claim checking is DEFAULT_ON but is a limited heuristic. The chat path uses REPORT_ONLY. [Full contract](./ATTRIBUTION_GATE_V1.md).
 
-`verifyProofReceipt({ receipt, evidence, observations, final_output, tool_calls })` sprawdza hashe, a przy obecności referencji narzędzi również spójność rekordów `ToolCallRecord` i korzenia wywołań. Nie poświadcza niezależnego, zewnętrznego pochodzenia danych.
+`verifyProofReceipt({ receipt, evidence, observations, final_output, tool_calls })` checks digests and, when tool references exist, the consistency of ToolCallRecord entries and the tool-call root. It does not independently attest external data provenance.
 
 ## Not covered by V2
 
@@ -76,6 +76,6 @@ The sealed body commits to: binding, verdict, requirement verdicts, runtime fail
   it does not judge artifact quality.
 - Runtime events are correlated by `execution_id` and carry `evidence_sha256`, but are not
   hash-chained.
-- Od 31.10.2026 obsługiwane twierdzenia zewnętrzne są modelowane jako `ClaimAttribution`, ale nie ma pełnej klasyfikacji wszystkich form wypowiedzi ani dynamicznego kodu.
-- Brak wymuszenia egress/sandboxa (`NOT_ENFORCED`) oraz kryptograficznych podpisów (`UNAVAILABLE`); hash integralności to nie atestacja źródła.
-- Deklaracja zakończonej integracji API wymagałaby osobnej atestacji wdrożenia i testu; pojedyncze HTTP 200 jej nie dostarcza.
+- Supported external claims are modeled as `ClaimAttribution`; classification is not exhaustive across arbitrary statements or dynamic code.
+- V2 itself does not enforce network egress or sandboxing (`NOT_ENFORCED`) and its own signature remains `UNAVAILABLE`. The signed ActionReceipt is a separate artifact. Hash integrity alone does not establish origin.
+- A claim that an API integration was completed requires separate deployment and execution evidence; HTTP 200 alone is insufficient.

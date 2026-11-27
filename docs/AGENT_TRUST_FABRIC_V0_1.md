@@ -1,6 +1,6 @@
 # OSA @ai Agent Trust Fabric v0.1
 
-Status: implementation slice on `feature/agent-trust-fabric-v0.1`.
+Status: implemented on main; the signed Durable chat and dedicated Devnet Registry integration was merged in PR #59 and verified for two actual jobs on 2026-11-27. See [execution evidence](./STATUS_2026-11-27.md).
 
 ## Goal
 
@@ -33,10 +33,7 @@ Extend OSA Proof v2 without changing `osa.proof_receipt.v2`:
 
 ## Deliberate boundaries
 
-This slice does **not**:
-
-- merge or deploy anything,
-- submit blockchain transactions,
+The Trust Fabric primitives alone do **not** submit blockchain transactions; the separately configured Durable Registry worker handles Devnet submission. The architecture does **not**:
 - replace MCP, A2A, OpenAPI or OAuth,
 - store chain-of-thought,
 - put prompts, secrets or raw customer payloads on-chain,
@@ -65,7 +62,7 @@ The receipt is signed with Ed25519 over canonical JSON already used by OSA Proof
 
 ## Blockchain boundary
 
-`ProofAnchorAdapter` is chain-neutral. A live adapter must be separately approved and must return a `CHAIN_CONFIRMED` receipt. No adapter in this slice submits a real transaction.
+`ProofAnchorAdapter` is chain-neutral. The generic adapter contract is separate from the deployed Durable Registry path. The latter persists signed transaction intent, submits to Solana Devnet and independently checks finalized transaction and account state; its job projection reports VERIFIED only on successful readback. See [Registry](./PROOF_REGISTRY_DEVNET.md). The original ProofReceipt V2 signature field remains UNAVAILABLE. Software attestation is not hardware-backed and public-key provenance must be established independently.
 
 ## Verification
 
