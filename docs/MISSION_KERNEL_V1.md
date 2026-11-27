@@ -1,5 +1,7 @@
 # Mission Kernel — S1
 
+This foundational contract describes the original S1 slice. Later Durable execution is documented separately in [Durable Bridge](./DURABLE_REMOTE_BRIDGE.md). The original S1 boundaries should not be read as the current status of every runtime component.
+
 Mission is the operation aggregate. TeamGraph remains the canonical team topology;
 the kernel snapshots its version at Mission creation and compiles its existing
 acyclic, linear handoff path into a TaskGraph. This is not a cognitive planner or
@@ -55,20 +57,19 @@ after restart GET /missions/:id/run reads durable results directly.
 
 FileMissionStore uses hashed filenames (mission IDs cannot traverse directories),
 private file permissions, integrity digests, compare-and-swap revisions,
-exclusive per-Mission lock files, file-level fsync and atomic rename. Na POSIX wykonywane jest również fsync katalogu; na Windows `directory.sync()` jest pomijane jako nieobsługiwane, ale `file.sync()` i atomowy rename pozostają. Nie deklaruje się na Windows równoważnej gwarancji trwałości wpisu katalogowego. Separate processes on
+exclusive per-Mission lock files, file-level fsync and atomic rename. POSIX also uses directory fsync. Windows skips unsupported `directory.sync()` but retains `file.sync()` and atomic rename; equivalent directory-entry durability is not claimed. Separate processes on
 the same local filesystem cannot both claim one revision. There is no distributed
 database guarantee. An abandoned lock or EXECUTING/VERIFYING snapshot is left
 for operator reconciliation after a crash; automatic re-execution would risk
 repeating external side effects. No lease/fencing recovery is claimed.
 
 Digests detect corruption, not an attacker who can rewrite and consistently
-reseal all stored records. External anchoring/signatures and independent live
-application verification are future proof-plane work. A fixture or provider
+reseal all stored records. The original S1 MissionStore is not itself a signed external ledger. Later [Trust Fabric](./AGENT_TRUST_FABRIC_V0_1.md) and [Registry](./PROOF_REGISTRY_DEVNET.md) add signed and anchored evidence on the configured Durable chat path, not universal attestation of all MissionStore records. A fixture or provider
 artifact receipt does not prove a build, test, deployment or live Azure service.
 
 ## Validation and rollout
 
-Run `npm test`. **Stan 31.10.2026, Windows / Node 24.17.0, SHA `fc4756f`: 308 testów / 305 PASS / 0 FAIL / 3 SKIP**; wynik operatora, nie CI. [Bilans](./OSA_PROOF_STATUS_2026-10-31.md). mission-kernel tests cover lifecycle, terminal failure,
+Run `npm test`. **Historical 2026-10-31, Windows / Node 24.17.0, SHA `fc4756f`: 308 tests / 305 PASS / 0 FAIL / 3 SKIP**; operator-reported, not CI. [Dated status](./OSA_PROOF_STATUS_2026-10-31.md). mission-kernel tests cover lifecycle, terminal failure,
 runtime exceptions, policy/task budgets, receipt tampering/resealing, foreign
 Mission/tenant reuse, cancellation, duplicate execution, filesystem restart,
 integrity, safe filenames and concurrent/stale writers. mission-api test covers

@@ -100,7 +100,7 @@ function fixture(withSha = false) {
 
 test("COPY-01: pełny Markdown — nagłówki, linki, listy, bash/json, tabela i oryginalne polskie znaki", () => {
   const out = api.exportMarkdown(fixture().doc, source);
-  assert.match(out, /# OSA Framework — dokumentacja dla agentów AI/);
+  assert.match(out, /# OSA Framework — documentation for AI agents/);
   assert.match(out, /## Quickstart/);
   assert.match(out, /\[HTTP API\]\(https:\/\/osa-proof-three\.vercel\.app\/docs#api\)/);
   assert.match(out, /```bash[\s\S]*git clone https:\/\/github\.com\/HazEOskA\/osa-proof\.git[\s\S]*cd osa-proof[\s\S]*npm ci[\s\S]*```/);
@@ -109,13 +109,13 @@ test("COPY-01: pełny Markdown — nagłówki, linki, listy, bash/json, tabela i
   assert.match(out, /\| POST \| \/missions \| session \|/);
   assert.match(out, /```json\n\{"message":"zażółć gęślą jaźń"\}\n```/);
   assert.doesNotMatch(out, /\nCopy page\n|\nCopy\n/);
-  assert.equal(out.includes("Wersja dokumentacji (build SHA): UNKNOWN"),true);
+  assert.equal(out.includes("Documentation version (build SHA): UNKNOWN"),true);
 });
 
 test("COPY-02/04: sekcja Quickstart bez HTTP API, z absolutnym odnośnikiem", () => {
   const out = api.exportMarkdown(fixture().doc, source, "quickstart");
-  assert.match(out, /SEKCJA: quickstart/);
-  assert.match(out, /Źródło: https:\/\/osa-proof-three\.vercel\.app\/docs#quickstart/);
+  assert.match(out, /SECTION: quickstart/);
+  assert.match(out, /Source: https:\/\/osa-proof-three\.vercel\.app\/docs#quickstart/);
   assert.match(out, /## Quickstart/);
   assert.match(out, /git clone/);
   assert.doesNotMatch(out, /\| Method \|/);
@@ -161,7 +161,7 @@ test("COPY-09: Copy page i dynamiczne Copy section z aria-label/role=status", as
   assert.equal(quick.children.filter(n=>n.classList.contains("agent-copy-section")).length,1);
   assert.equal(apiSection.children.filter(n=>n.classList.contains("agent-copy-section")).length,1);
   const copyQuick=quick.children.find(n=>n.classList.contains("agent-copy-section"));
-  assert.match(copyQuick.getAttribute("aria-label"),/Kopiuj sekcję: Quickstart/);
+  assert.match(copyQuick.getAttribute("aria-label"),/Copy section: Quickstart/);
   page.click();
   await Promise.resolve();
   assert.equal(calls.length,1);
@@ -202,7 +202,7 @@ test("COPY-07b: odmowa schowka udostępnia cały Markdown w dialogu, bez fałszy
   const area=dialog.querySelector("textarea");
   assert.ok(area.selected && area.focused);
   assert.match(area.value,/## HTTP API/);
-  assert.match(doc.getElementById("agent-copy-status").textContent,/Nie skopiowano automatycznie/);
+  assert.match(doc.getElementById("agent-copy-status").textContent,/Not copied automatically/);
 });
 
 test("COPY-01b: znaczniki statusu PLANNED pozostają dokumentacją, a nie poleceniem", () => {
@@ -283,7 +283,7 @@ test("COPY-12: rzeczywisty HTML Docs — 24 sekcje, 6 kroków pipeline i pełne 
   assert.match(pipeline,/- \*\*06 · Receipt\*\* — sealed/);
   assert.doesNotMatch(pipeline,/01\*\*Team Graph\*\*validated/);
   const layers=api.exportMarkdown(doc,source,"layers");
-  assert.match(layers,/\| Warstwa \| Przeznaczenie \| Dostęp \|/);
+  assert.match(layers,/\| Layer \| Purpose \| Access \|/);
   assert.match(layers,/\| School \| Academy \| Public \|/);
   assert.match(layers,/\| Dev \| Builder \/ Core \| DEV login \|/);
   assert.match(layers,/\| Bank \| Regulated \| Gated \|/);

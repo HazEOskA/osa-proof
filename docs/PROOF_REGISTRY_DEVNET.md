@@ -17,7 +17,7 @@ The existing worker enables its Registry pass when the operator configures `OSA_
 
 ## Evidence boundary
 
-A local run on Ollama `qwen2.5:3b` completed as `exec_0e786865-2b4b-4b5c-bd6e-b3d69e26bac6`. The isolated test identity's ActionReceipt signature, ProofReceipt integrity and both Merkle inclusions passed. Its status was `NOT_ANCHORED`. The production UI and Registry finalization require evidence from the same production execution before they can be called verified.
+A local run on Ollama `qwen2.5:3b` completed as `exec_0e786865-2b4b-4b5c-bd6e-b3d69e26bac6`. The isolated test identity's ActionReceipt signature, ProofReceipt integrity and both Merkle inclusions passed. Its status was `NOT_ANCHORED`. This is a historical unanchored test; later production-connected runs are documented below.
 
 ## Local validation and Devnet estimate (2026-11-27)
 
@@ -30,6 +30,17 @@ For the 69,328-byte binary, current Devnet RPC returned 353,065,080 lamports for
 
 Evidence pack: `docs/evidence/devnet-registry-e2e-20261127.json`. This is one real local Ollama execution with an ephemeral test identity, not an authenticated production chat execution. The Devnet Registry program `6QTgaWY6SyZsjCiuY9BGMn5H7PzoFghCocwkbKxxmG8p` was independently read as finalized and its program-data bytes matched the SBF build hash above. Initialization finalized at slot 526905546. Execution `exec_529c6b56-1853-4691-8b9b-4397fdef9bf3` produced a signed ActionReceipt and ProofReceipt V2, then registered their Merkle batch in a transaction finalized at slot 526906612. Independent RPC readback checked the transaction, signer, program owner, account contents and Merkle root. The worker's scoped status subsequently returned VERIFIED without exposing the signed transaction bytes.
 
-In an isolated checkout with dependencies and `dist` built from source, `node scripts/verify-devnet-registry-evidence.cjs` validates the signatures, hashes, Merkle inclusion and the finalized Devnet account. This is a network-dependent check; an unavailable RPC is a failed check, not proof that the record is absent. The build hash in this evidence covers only the compiled `durable-executor.js` module, saved byte-for-byte as `docs/evidence/devnet-durable-executor-20261127.js.txt`; the verifier also reports whether the local rebuild matches. Toolchain and line endings may change that comparison. The attestation and policy are self-declared, and the test identity is not a production identity. Production Golden Flow remains unverified.
+In an isolated checkout with dependencies and `dist` built from source, `node scripts/verify-devnet-registry-evidence.cjs` validates the signatures, hashes, Merkle inclusion and the finalized Devnet account. This is a network-dependent check; an unavailable RPC is a failed check, not proof that the record is absent. The build hash in this evidence covers only the compiled `durable-executor.js` module, saved byte-for-byte as `docs/evidence/devnet-durable-executor-20261127.js.txt`; the verifier also reports whether the local rebuild matches. Toolchain and line endings may change that comparison. The attestation and policy are self-declared, and the test identity is not a production identity. This local test does not establish production acceptance; later signed production-connected execution evidence is documented below.
 
 An earlier local test execution `exec_6954497f-a29a-4e38-ad8e-ac69c71e2280` also produced a finalized transaction, but its attestation used placeholder build and policy digests. It is not used as evidence of real build or policy provenance.
+
+## Production-connected signed chat — 2026-11-27
+
+Two actual completed Jeverson jobs from the persistent host were independently verified against the deployed program. Proof integrity, pinned-key Ed25519 signature, software attestation, batch recomputation, both Merkle inclusions, execution binding and finalized Devnet readback passed for both jobs.
+
+| Run | Execution | Public chain reference | Finalized slot |
+| --- | --- | --- | --- |
+| 1 | `exec_467870c6-ee5d-4344-842d-003b063d65a1` | [Finalized transaction](https://explorer.solana.com/tx/27ArGoAkr848ZfZM7qQvh7oev9cLtnNiZjQeyagzj89UG9iUNRJaiwbRPMdiSypCfkMW6jZzKZDctphd2KhUnn9s?cluster=devnet) | 526953298 |
+| 2 | `exec_1b59d635-77a2-4c24-9c04-74ac21920ebb` | [Finalized transaction](https://explorer.solana.com/tx/2jfJLMfHDoVeP5eeKBCg2WLELeMfdvpj1Gm3M1b2bfpBk51DNEF3jn32E5GZGpCExDKFLDTJSKQ2hmuSd93QYNoS?cluster=devnet) | 526956144 |
+
+See the [dated evidence report](./STATUS_2026-11-27.md) for roots, commitment accounts and verification boundaries. The raw production audit exports remain private; the public local test bundle above is a distinct reproducible artifact. Formal production browser close/reopen acceptance remains open. Mainnet and independent security audit are not established.
