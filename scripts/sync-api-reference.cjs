@@ -19,7 +19,7 @@ const desc = {
   "POST /durable/jobs/:id/cancel": "Cancel a queued job; a running job cannot be cancelled by this route.",
   "GET /chat/delivery/status": "Server-bound artifact generation availability and model; no provider call.",
   "POST /chat/delivery": "Stream agent lifecycle events, generate model artifact and deliver sealed bundle; session, free-tier and quota gates.",
-  "GET /auth/providers": "Login providers; only local-dev is enabled.",
+  "GET /auth/providers": "Login provider availability depends on server configuration; local-dev is disabled on Vercel.",
   "POST /auth/dev-login": "DEV identity and session token (201).",
   "GET /session": "The current session (401 without one).",
   "POST /session/logout": "Revoke the session token.",

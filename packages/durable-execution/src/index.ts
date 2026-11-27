@@ -20,6 +20,17 @@ export type DurableScope = {organization_id:string;identity_id:string;project_id
 // generic heartbeat. It identifies the process that actually claimed a job.
 const PROCESS_WORKER_ID=`worker_${randomUUID()}`;
 export type DurableLease = {token:string;generation:number;expires_at:string;worker_id?:string;protocol?:"transition-v1"};
+export type DurableRegistryAnchor = {
+  status: "PENDING" | "SUBMITTED" | "VERIFIED" | "FAILED" | "UNKNOWN";
+  network: "devnet";
+  programId: string;
+  merkleRoot: string;
+  transactionSignature?: string;
+  account?: string;
+  lastValidBlockHeight?: string;
+  wireTransactionBase64?: string; // Private broadcast material; never return via API.
+  slot?: number;
+};
 export type DurableJob = {
   schema:"osa.durable_job.v1";
   scope:DurableScope;
@@ -31,6 +42,7 @@ export type DurableJob = {
   started_at?:string;
   finished_at?:string;
   result?:unknown;
+  registry_anchor?:DurableRegistryAnchor;
   error_code?:string;
   // Optional for backwards-compatible reads of pre-fencing records. A legacy
   // RUNNING record cannot be adopted by a new worker without proof of outcome.
@@ -124,6 +136,17 @@ export class FileDurableJobStore {
   }
   async get(scope:DurableScope,executionId:string) {
     return this.read(this.filename(scope,executionId));
+  }
+  async updateRegistryAnchor(job: DurableJob, next: DurableRegistryAnchor): Promise<void> {
+    const file = this.filename(job.scope, job.input.execution_id);
+    await this.transition(file, async () => {
+      const current = await this.read(file);
+      if (!current || current.status !== "COMPLETED" || current.input_sha256 !== job.input_sha256 ||
+          hash(current.registry_anchor ?? null) !== hash(job.registry_anchor ?? null)) {
+        throw new DurableConflict("DURABLE_REGISTRY_STATE_CHANGED");
+      }
+      await this.write(file, {...current, registry_anchor: next, updated_at: new Date().toISOString()});
+    });
   }
   // Read-only discovery for API publication fencing; never accepts a model's
   // success claim as authority over the durable job result.
@@ -268,12 +291,13 @@ export class FileDurableJobStore {
     }
     const deadline=job.lease?Date.parse(job.lease.expires_at):Date.parse(job.updated_at)+LEASE_MS;
     const interrupted=job.status==="RUNNING"&&(!Number.isFinite(deadline)||observedAt>=deadline);
+    const publicAnchor = job.registry_anchor ? (({wireTransactionBase64: _privateWire, ...visible}) => visible)(job.registry_anchor) : undefined;
     return {schema:job.schema,execution_id:job.input.execution_id,conversation_id:job.input.conversation_id,
       kind:job.input.kind,status:interrupted?"UNKNOWN":job.status,created_at:job.created_at,updated_at:job.updated_at,
       ...(job.lease?{lease:{generation:job.lease.generation,expires_at:job.lease.expires_at,
         worker_id:job.lease.worker_id??null}}:{}),
       ...(interrupted?{error_code:"DURABLE_WORKER_UNCONFIRMED"}:{}),
-      ...(job.status==="COMPLETED"?{result:job.result}:{}),
+      ...(job.status==="COMPLETED"?{result:job.result,...(publicAnchor?{registry_anchor:publicAnchor}:{})}:{}),
       ...(job.status==="FAILED"||job.status==="UNKNOWN"?{error_code:job.error_code}:{})};
   }
 }

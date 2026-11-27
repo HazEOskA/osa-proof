@@ -5,6 +5,7 @@ import AccountControl from "./AccountControl";
 import ChatDeliveryResult from "./ChatDelivery";
 import UnifiedLiveProgress from "./UnifiedLiveProgress";
 import { appendLiveEvent, clientTraceEvent, newLiveTrace, streamLiveChat, downloadChatReview, downloadChatAudit, type ChatReview, type ChatAudit, type LiveTrace, type LiveTraceEvent } from "../lib/live-execution";
+import type { RegistryReadback } from "../lib/live-execution";
 import { streamDelivery, verifyDelivery, type DeliveryBundle } from "../lib/chat-delivery";
 import { loadChatHistory, saveChatHistory } from "../lib/chat-history";
 import { canon, sha256, verifyRun } from "../lib/verify";
@@ -18,13 +19,23 @@ import { selectExplicitToolCommand } from "../../../packages/contracts/src/expli
 // Native OSA surface. No iframe, no client secrets, no pretend model execution.
 type AgentId = "jeverson" | "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
 type ModelId = "auto" | "nvidia" | "openrouter";
-type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; trace?:LiveTrace; review?:ChatReview; audit?:ChatAudit; anchorStatus?:string; supervisor?:{decision:"RELEASED"|"REJECTED";content_verdict:"PASS"|"FAIL"|"UNKNOWN";repair_count:number;attempts:Array<{attempt:number;response_sha256:string}>}; contentAssurance?:{verdict:string;disclosure_pl:string}; memoryAssurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null}; jobKind?:"model"|"artifact"; artifactTarget?:"artifact"|"sandbox"; providerModel?:string; providerName?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
+type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; trace?:LiveTrace; review?:ChatReview; audit?:ChatAudit; anchorStatus?:string; registryAnchor?:RegistryReadback; supervisor?:{decision:"RELEASED"|"REJECTED";content_verdict:"PASS"|"FAIL"|"UNKNOWN";repair_count:number;attempts:Array<{attempt:number;response_sha256:string}>}; contentAssurance?:{verdict:string;disclosure_pl:string}; memoryAssurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null}; jobKind?:"model"|"artifact"; artifactTarget?:"artifact"|"sandbox"; providerModel?:string; providerName?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
 type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
 type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
 type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{resource:string;method:string;source:string;http_status:null;status:string}> };
 type StatusInfo = { mode?:string; auth_mode?:string; persistence?:string };
 type ModelStatus = { configured:boolean; provider:string; model:string };
-type DurableStatus = {execution_id:string;conversation_id:string;kind:"model"|"artifact";status:"QUEUED"|"RUNNING"|"COMPLETED"|"FAILED"|"UNKNOWN"|"CANCELLED";result?:unknown;error_code?:string};
+type DurableStatus = {execution_id:string;conversation_id:string;kind:"model"|"artifact";status:"QUEUED"|"RUNNING"|"COMPLETED"|"FAILED"|"UNKNOWN"|"CANCELLED";result?:unknown;error_code?:string;registry_anchor?:RegistryReadback};
+
+function registryFor(audit: ChatAudit | undefined, response: DurableStatus): RegistryReadback | undefined {
+  const anchor = response.registry_anchor;
+  if (response.status !== "COMPLETED" || !anchor || anchor.network !== "devnet" ||
+      anchor.merkleRoot !== audit?.signed_trust?.proof_batch.merkle_root ||
+      !["PENDING","SUBMITTED","VERIFIED","FAILED","UNKNOWN"].includes(anchor.status)) return;
+  const hasSignature = !!anchor.transactionSignature && /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(anchor.transactionSignature);
+  if (anchor.status === "VERIFIED" && (!hasSignature || !Number.isSafeInteger(anchor.slot) || anchor.slot! <= 0)) return;
+  return anchor;
+}
 type DurableChatAudit = ChatAudit & {run:Run; mission:Mission; team:TeamGraph; final_output:string; response_sha256:string; anchor_preparation?:{status:string}};
 type ModelAnswer = { text:string; model:string; provider?:string; provider_model?:string; provider_response_id:string|null; request_id:string; latency_ms:number; status:"PROVIDER_RESPONSE"|"SUPERVISOR_REJECTED"; execution_id:string; conversation_id:string; execution_verdict?:string; audit?:DurableChatAudit; memory_status?:"UNAVAILABLE"; memory?: {receipt:MemoryPointer; remembered?:MemoryPointer} };
 async function verifiedDurableAudit(audit:DurableChatAudit|undefined, executionId:string, conversationId:string):Promise<DurableChatAudit> {
@@ -197,11 +208,21 @@ export default function JeversonChat() {
             // Re-check the server before repairing that historical display.
             const staleCancellation=!!previousAnswer&&previousAnswer.text==="Misja została anulowana przed rozpoczęciem wykonania."&&
               !!msg.trace&&msg.trace.state!=="CANCELLED";
-            if(previousAnswer&&!staleCancellation)continue;
+            const checkAnchor = previousAnswer?.audit?.signed_trust &&
+              previousAnswer.registryAnchor?.status !== "VERIFIED" && previousAnswer.registryAnchor?.status !== "FAILED";
+            if(previousAnswer&&!staleCancellation&&!checkAnchor)continue;
             let result:DurableStatus;
             try{result=await api<DurableStatus>("/durable/jobs/"+msg.executionId);}
             catch{continue;} // unacknowledged request: never silently assume it ran
             if(!alive||result.conversation_id!==session.id||result.execution_id!==msg.executionId)continue;
+            if(previousAnswer && checkAnchor) {
+              const registryAnchor = registryFor(previousAnswer.audit, result);
+              if(registryAnchor && JSON.stringify(registryAnchor) !== JSON.stringify(previousAnswer.registryAnchor))
+                setSessions(prev=>prev.map(s=>s.id!==session.id?s:{
+                  ...s,messages:s.messages.map(m=>m.id===previousAnswer.id?{...m,registryAnchor}:m),
+                }));
+              continue;
+            }
             if(staleCancellation){
               if(result.status==="CANCELLED")setSessions(prev=>prev.map(s=>s.id!==session.id?s:{
                 ...s,messages:s.messages.map(m=>m.role==="user"&&m.executionId===msg.executionId&&m.trace&&m.trace.state!=="CANCELLED"?
@@ -239,6 +260,7 @@ export default function JeversonChat() {
                     throw Error("DURABLE_AUDIT_BINDING_INVALID");
                   answer=model.text;status="MODEL";extra={...extra,providerModel:model.provider_model||model.model,providerName:model.provider,
                     audit,supervisor:audit.supervisor,contentAssurance:audit.content_assurance,runId:run.run_id,
+                    registryAnchor:registryFor(audit,result),
                     anchorStatus:"BRAK POTWIERDZENIA ON-CHAIN"};
                 }catch { answer="Wynik modelu nie przeszedł kontroli powiązania i integralności ProofReceipt."; }
                 }
@@ -534,8 +556,19 @@ export default function JeversonChat() {
         </div></div>:
         <div aria-label="Wiadomości" className="osa-chat-messages min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6"><div className="mx-auto flex min-h-full max-w-[820px] flex-col">
           {!current.messages.length&&<div className="osa-chat-empty flex flex-1 flex-col items-center justify-center py-8 text-center"><div aria-hidden className="osa-chat-empty-icon osa-hermes-hero mb-7 flex h-[100px] w-[100px] items-center justify-center rounded-full border border-cyan/35 bg-cyan/10 text-5xl text-cyan">✦</div><h2 className="text-2xl font-semibold">Czym zajmiemy się dzisiaj?</h2><p className="mt-3 max-w-xl text-sm text-dim">{agent.name} · {agent.purpose}. Jedna rozmowa i dowody z prawdziwego Runtime.</p><div className="mt-6 flex flex-wrap justify-center gap-2">{["Pokaż status runtime","Oblicz SHA-256 tekstu: OSA Proof","Status workera"].map(t=><button key={t} onClick={()=>setDraft(t)} className="rounded-full border border-line bg-panel px-3 py-2 text-xs">{t}</button>)}</div></div>}
-          {current.messages.map(m=><article data-testid="osa-message" key={m.id} className={(m.role==="user"?"justify-end":"justify-start")+" osa-message-row mb-5 flex"}><div className="osa-message-block min-w-0 max-w-[min(92%,730px)]"><div className={(m.role==="user"?"osa-message-user bg-raise text-fg":"osa-message-assistant border border-line bg-panel")+" whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13px] leading-6"}><div className="mb-1 text-[10px] uppercase tracking-wide text-dim">{m.role==="user"?"Ty":m.status==="MODEL"?("ODPOWIEDŹ MODELU AI"+(m.providerModel?" · "+(m.providerName?m.providerName+" · ":"")+m.providerModel:"")):"Silnik OSA · "+statusText(m.status)}</div>{m.text}{m.jobKind&&!current.messages.some(x=>x.role==="assistant"&&x.executionId===m.executionId)&&<p role="status" className="mt-2 text-xs text-cyan">Misja {m.executionId} · status odczytywany z serwera. Możesz zamknąć kartę w trybie Durable.</p>}{m.memoryUnavailable&&<p role="status" className="mt-2 border-t border-warn/30 pt-2 text-xs text-warn">NeurOSA niedostępna. Odpowiedź modelu bez pamięci i bez dowodu NeurOSA.</p>}{m.remembered&&<p className="mt-2 text-xs text-cyan">Zapis Twojej wiadomości w NeurOSA został potwierdzony.</p>}{m.statementReceipt&&<MemoryStatementEvidence pointer={m.statementReceipt} statement={m.text}/>} {m.memory&&<MemoryEvidence pointer={m.memory} answer={m.text}/>} {m.delivery&&<ChatDeliveryResult bundle={m.delivery}/>} {m.role==="assistant"&&m.status==="MODEL"&&m.supervisor&&<div data-testid="osa-supervisor-release" role="status" className="mt-3 rounded-lg border border-cyan/40 bg-cyan/5 p-2 text-[11px] text-cyan"><strong>Supervisor: {m.supervisor.decision==="RELEASED"?"PRZEPŁYW ZATWIERDZONY":"ODRZUCONO"}</strong><div className="mt-1">Sprawdzenie jawnych równań: {m.supervisor.content_verdict==="PASS"?"ZGODNE":m.supervisor.content_verdict==="FAIL"?"NIEZGODNE":"BRAK WERYFIKACJI"} · Próby: {m.supervisor.attempts.length} · Korekty: {m.supervisor.repair_count}</div><div className="mt-1 text-dim">Ten status nie potwierdza prawdziwości całej odpowiedzi.</div></div>} {m.role==="assistant"&&m.status==="MODEL"&&<div data-testid="osa-content-assurance" role="status" className="mt-3 rounded-lg border border-warn/40 bg-warn/10 p-2 text-[11px] text-warn"><strong>Treść: {m.contentAssurance?.verdict==="SUPPORTED"?"WSKAZANE TWIERDZENIA WSPARTE DOWODAMI":m.contentAssurance?.verdict==="CONTRADICTED"?"WYKRYTO SPRZECZNOŚĆ W DOWODACH":"NIEZWERYFIKOWANA"}</strong><div className="mt-1">{m.contentAssurance?.disclosure_pl||"Brak potwierdzenia weryfikacji treści. Odpowiedź jest wynikiem modelu."}</div><div className="mt-1 text-dim">APR: {m.audit?.execution_verdict==="VERIFIED"?"WYKONANIE ZWERYFIKOWANE":"WYKONANIE NIEPOTWIERDZONE"} · NeurOSA: {m.memoryAssurance?.state==="CONTEXT_USED"?"KONTEKST UŻYTY":m.memoryAssurance?.state==="UNAVAILABLE"?"NIEDOSTĘPNA":m.memoryAssurance?.state==="NO_CONTEXT"?"BEZ KONTEKSTU":"NIEPODŁĄCZONA / NIEPOTWIERDZONA"}</div></div>} {Boolean(m.audit?.run)&&m.audit?.execution_verdict==="VERIFIED"&&m.status==="MODEL"&&<button data-testid="osa-open-durable-proof" type="button" onClick={()=>void openDurableProof(m,current.id)} className="mt-3 mr-2 rounded border border-cyan/40 p-2 text-xs text-cyan">Otwórz dowód</button>} {m.audit&&<button data-testid="osa-chat-audit-download" type="button" onClick={()=>downloadChatAudit(m.audit!)} className="mt-3 rounded border border-cyan/40 p-2 text-xs text-cyan">Pobierz bundle Brain + APR + treść</button>} {m.review&&<button type="button" onClick={()=>downloadChatReview(m.review!)} className="mt-3 rounded border border-warn/50 p-2 text-xs text-warn">Pobierz odrzuconą odpowiedź i dowody JSON</button>}
-              {m.anchorStatus&&<div role="status" className="mt-2 text-xs text-dim">Anchor: {m.anchorStatus}</div>}
+          {current.messages.map(m=><article data-testid="osa-message" key={m.id} className={(m.role==="user"?"justify-end":"justify-start")+" osa-message-row mb-5 flex"}><div className="osa-message-block min-w-0 max-w-[min(92%,730px)]"><div className={(m.role==="user"?"osa-message-user bg-raise text-fg":"osa-message-assistant border border-line bg-panel")+" whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13px] leading-6"}><div className="mb-1 text-[10px] uppercase tracking-wide text-dim">{m.role==="user"?"Ty":m.status==="MODEL"?("ODPOWIEDŹ MODELU AI"+(m.providerModel?" · "+(m.providerName?m.providerName+" · ":"")+m.providerModel:"")):"Silnik OSA · "+statusText(m.status)}</div>{m.text}{m.jobKind&&!current.messages.some(x=>x.role==="assistant"&&x.executionId===m.executionId)&&<p role="status" className="mt-2 text-xs text-cyan">Misja {m.executionId} · status odczytywany z serwera. Możesz zamknąć kartę w trybie Durable.</p>}{m.memoryUnavailable&&<p role="status" className="mt-2 border-t border-warn/30 pt-2 text-xs text-warn">NeurOSA niedostępna. Odpowiedź modelu bez pamięci i bez dowodu NeurOSA.</p>}{m.remembered&&<p className="mt-2 text-xs text-cyan">Zapis Twojej wiadomości w NeurOSA został potwierdzony.</p>}{m.statementReceipt&&<MemoryStatementEvidence pointer={m.statementReceipt} statement={m.text}/>} {m.memory&&<MemoryEvidence pointer={m.memory} answer={m.text}/>} {m.delivery&&<ChatDeliveryResult bundle={m.delivery}/>} {m.role==="assistant"&&m.status==="MODEL"&&m.supervisor&&<div data-testid="osa-supervisor-release" role="status" className="mt-3 rounded-lg border border-cyan/40 bg-cyan/5 p-2 text-[11px] text-cyan"><strong>Supervisor: {m.supervisor.decision==="RELEASED"?"PRZEPŁYW ZATWIERDZONY":"ODRZUCONO"}</strong><div className="mt-1">Sprawdzenie jawnych równań: {m.supervisor.content_verdict==="PASS"?"ZGODNE":m.supervisor.content_verdict==="FAIL"?"NIEZGODNE":"BRAK WERYFIKACJI"} · Próby: {m.supervisor.attempts.length} · Korekty: {m.supervisor.repair_count}</div><div className="mt-1 text-dim">Ten status nie potwierdza prawdziwości całej odpowiedzi.</div></div>} {m.role==="assistant"&&m.status==="MODEL"&&<div data-testid="osa-content-assurance" role="status" className="mt-3 rounded-lg border border-warn/40 bg-warn/10 p-2 text-[11px] text-warn"><strong>Treść: {m.contentAssurance?.verdict==="SUPPORTED"?"WSKAZANE TWIERDZENIA WSPARTE DOWODAMI":m.contentAssurance?.verdict==="CONTRADICTED"?"WYKRYTO SPRZECZNOŚĆ W DOWODACH":"NIEZWERYFIKOWANA"}</strong><div className="mt-1">{m.contentAssurance?.disclosure_pl||"Brak potwierdzenia weryfikacji treści. Odpowiedź jest wynikiem modelu."}</div><div className="mt-1 text-dim">APR: {m.audit?.execution_verdict==="VERIFIED"?"WYKONANIE ZWERYFIKOWANE":"WYKONANIE NIEPOTWIERDZONE"} · NeurOSA: {m.memoryAssurance?.state==="CONTEXT_USED"?"KONTEKST UŻYTY":m.memoryAssurance?.state==="UNAVAILABLE"?"NIEDOSTĘPNA":m.memoryAssurance?.state==="NO_CONTEXT"?"BEZ KONTEKSTU":"NIEPODŁĄCZONA / NIEPOTWIERDZONA"}</div></div>} {Boolean(m.audit?.run)&&m.audit?.execution_verdict==="VERIFIED"&&m.status==="MODEL"&&<button data-testid="osa-open-durable-proof" type="button" onClick={()=>void openDurableProof(m,current.id)} className="mt-3 mr-2 rounded border border-cyan/40 p-2 text-xs text-cyan">Otwórz dowód</button>} {m.audit?.signed_trust && <div data-testid="osa-signed-trust" className="mt-3 break-all rounded border border-line p-2 text-xs text-dim">
+            <p>Podpis Ed25519 workera · {m.audit.signed_trust.action_receipts[0]?.signature.key_id}</p>
+            <p>Skrót ProofReceipt · {m.audit.signed_trust.proof_batch.proof_receipt_sha256}</p>
+            <p>Merkle root · {m.audit.signed_trust.proof_batch.merkle_root}</p>
+            <p>Solana Devnet · {m.registryAnchor?.status ?? "NOT_ANCHORED"}</p>
+            {m.registryAnchor && <p>Program ID · {m.registryAnchor.programId}</p>}
+            {m.registryAnchor?.status === "VERIFIED" && <p>Finalizacja · FINALIZED · slot {m.registryAnchor.slot}</p>}
+            {m.registryAnchor?.transactionSignature && <a className="text-cyan underline" target="_blank" rel="noopener noreferrer"
+              href={`https://explorer.solana.com/tx/${encodeURIComponent(m.registryAnchor.transactionSignature)}?cluster=devnet`}>
+              Transakcja · {m.registryAnchor.transactionSignature}
+            </a>}
+          </div>} {m.audit&&<button data-testid="osa-chat-audit-download" type="button" onClick={()=>downloadChatAudit(m.audit!)} className="mt-3 rounded border border-cyan/40 p-2 text-xs text-cyan">Pobierz bundle Brain + APR + treść</button>} {m.review&&<button type="button" onClick={()=>downloadChatReview(m.review!)} className="mt-3 rounded border border-warn/50 p-2 text-xs text-warn">Pobierz odrzuconą odpowiedź i dowody JSON</button>}
+              {!m.audit?.signed_trust&&m.anchorStatus&&<div role="status" className="mt-2 text-xs text-dim">Anchor: {m.anchorStatus}</div>}
               {m.trace&&<UnifiedLiveProgress trace={m.trace}
                 active={busy&&activeExecution.current?.executionId===m.executionId}
                 onCancel={()=>cancel()}/>}

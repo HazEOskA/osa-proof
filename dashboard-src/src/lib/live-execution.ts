@@ -11,6 +11,14 @@ export type LiveTrace ={
   execution_id:string;conversation_id:string;mode:LiveMode;state:LiveState;
   events:LiveTraceEvent[];tasks?:{agent_id:string;state:string}[];
 };
+export type RegistryReadback = {
+  status: "PENDING" | "SUBMITTED" | "VERIFIED" | "FAILED" | "UNKNOWN";
+  network: "devnet";
+  programId: string;
+  merkleRoot: string;
+  transactionSignature?: string;
+  slot?: number;
+};
 export type ChatAudit = {
   schema:"osa.chat_audit.v1";
   execution_id:string;
@@ -19,6 +27,11 @@ export type ChatAudit = {
   supervisor?:{decision:"RELEASED"|"REJECTED";content_verdict:"PASS"|"FAIL"|"UNKNOWN";repair_count:number;attempts:Array<{attempt:number;response_sha256:string}>;reason_code:string};
   content_assurance:{verdict:"SUPPORTED"|"CONTRADICTED"|"UNKNOWN";disclosure_pl:string};
   memory_assurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null};
+  signed_trust?: {
+    proof_batch: { proof_receipt_sha256: string; merkle_root: string };
+    action_receipts: Array<{ receipt_digest: string; signature: { alg: "Ed25519"; key_id: string } }>;
+    anchor_status: "NOT_ANCHORED";
+  };
   [key:string]:unknown;
 };
 export type ChatReview = {

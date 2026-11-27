@@ -328,7 +328,7 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
 
     <section id="pipeline" aria-labelledby="h-p">
       <h2 id="h-p">How a run is proven</h2>
-      <p>Sześć etapów: Team Graph, misja, runtime, evidence, verifier i receipt. Błędy runtime i rozpoznane niepoparte twierdzenia uniemożliwiają VERIFIED. Nie jest to sieciowy sandbox ani kryptograficzny podpis źródła.</p>
+      <p>Sześć etapów: Team Graph, misja, runtime, evidence, verifier i receipt. Błędy runtime uniemożliwiają VERIFIED. W trybie egzekwowania Attribution Gate rozpoznane niepoparte twierdzenia mogą skutkować FAILED; ścieżka czatu używa REPORT_ONLY, w którym obserwacje pozostają w dowodzie, ale same nie blokują werdyktu. Nie jest to sieciowy sandbox ani kryptograficzny podpis źródła.</p>
       <div class="pipe" role="list">
         <div class="stage" role="listitem"><span class="label n">01</span><b>Team Graph</b><span>validated</span></div>
         <div class="stage" role="listitem"><span class="label n">02</span><b>Mission</b><span>requirements set</span></div>
@@ -421,18 +421,19 @@ curl -s localhost:3000/runs/$RUN/proof -H "authorization: Bearer $TOKEN"</pre></
         <li>Implemented, but a required proof is missing, failing or throwing: <b>PREVIEW</b>.</li>
         <li>Every required proof passes and every dependency is LIVE: <b>LIVE</b>.</li>
       </ol>
+      <p>Registration below describes the built-in registry in this code revision, not the live status of a deployment. Query <code>GET /intelligence</code> in the target environment for its computed report.</p>
       <div class="tbl"><table>
-        <thead><tr><th>Module</th><th>Status</th><th>What it does</th></tr></thead>
+        <thead><tr><th>Module</th><th>Default registration</th><th>What it does</th></tr></thead>
         <tbody>
-          <tr><td><code>models</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Configured models, read from the environment, validated fail-closed. <a href="#models">Details</a></td></tr>
-          <tr><td><code>llm-gateway</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Routes to Anthropic or OpenAI. Retries follow the official SDKs: 408, 409, 429, 5xx and timeouts, honouring <code>retry-after</code>. <a href="#llm-gateway">Details</a></td></tr>
-          <tr><td><code>model-mesh</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Ordered fallback across models after retries run out (<code>OSA_MODEL_FALLBACKS</code>). Every hop is evidence. <a href="#model-mesh">Details</a></td></tr>
-          <tr><td><code>datasets</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Versioned mission examples with sha256 digests. <a href="#datasets">Details</a></td></tr>
-          <tr><td><code>evaluators</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Deterministic scores and human labels bound to the receipt. <a href="#evaluators">Details</a></td></tr>
-          <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Run a dataset against team versions and compare receipts. <a href="#control">Details</a></td></tr>
-          <tr><td><code>knowledge</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>LIVE</td><td>Retrieval where every hit cites a content-addressed source. <a href="#knowledge">Details</a></td></tr>
-          <tr><td><code>context-hub</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td class="nx">Shared context for agents. Depends on memory (neurosa) and knowledge.</td></tr>
-          <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>SOON</td><td>Status modułu <strong>Intelligence</strong>: <code>SOON</code> (brak zarejestrowanej implementacji w rejestrze). Osobny adapter NeurOSA: <strong>CODE · GATED</strong>; <a href="#neurosa-runtime">uwierzytelnione live recall, trwałość i odczyt po restarcie są nadal BLOCKED / NOT VERIFIED</a>. Konfigurację konkretnego wdrożenia pokazuje <code>GET /memory/status</code>; nie utożsamiaj jej ze statusem modułu Intelligence.</td></tr>
+          <tr><td><code>models</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>REGISTERED</td><td>Configured models, read from the environment, validated fail-closed. <a href="#models">Details</a></td></tr>
+          <tr><td><code>llm-gateway</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>REGISTERED</td><td>Routes to Anthropic or OpenAI. Retries follow the official SDKs: 408, 409, 429, 5xx and timeouts, honouring <code>retry-after</code>. <a href="#llm-gateway">Details</a></td></tr>
+          <tr><td><code>model-mesh</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>REGISTERED</td><td>Ordered fallback across models after retries run out (<code>OSA_MODEL_FALLBACKS</code>). Every hop is evidence. <a href="#model-mesh">Details</a></td></tr>
+          <tr><td><code>datasets</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>REGISTERED</td><td>Versioned mission examples with sha256 digests. <a href="#datasets">Details</a></td></tr>
+          <tr><td><code>evaluators</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>REGISTERED</td><td>Deterministic scores and human labels bound to the receipt. <a href="#evaluators">Details</a></td></tr>
+          <tr><td><code>experiments</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>REGISTERED</td><td>Run a dataset against team versions and compare receipts. <a href="#control">Details</a></td></tr>
+          <tr><td><code>knowledge</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--ok);margin:0 6px 0 0"></span>REGISTERED</td><td>Retrieval where every hit cites a content-addressed source. <a href="#knowledge">Details</a></td></tr>
+          <tr><td><code>context-hub</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>NOT REGISTERED</td><td class="nx">Shared context for agents. Depends on memory (neurosa) and knowledge.</td></tr>
+          <tr><td><code>memory</code></td><td style="white-space:nowrap"><span class="dot" style="--c:var(--gated);margin:0 6px 0 0"></span>NOT REGISTERED</td><td>Status modułu <strong>Intelligence</strong>: <code>SOON</code> (brak zarejestrowanej implementacji w rejestrze). Osobny adapter NeurOSA: <strong>CODE · GATED</strong>; <a href="#neurosa-runtime">uwierzytelnione live recall, trwałość i odczyt po restarcie są nadal BLOCKED / NOT VERIFIED</a>. Konfigurację konkretnego wdrożenia pokazuje <code>GET /memory/status</code>; nie utożsamiaj jej ze statusem modułu Intelligence.</td></tr>
         </tbody>
       </table></div>
     </section>
@@ -556,7 +557,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
     <section id="config" aria-labelledby="h-cfg">
       <h2 id="h-cfg">Configuration</h2>
-      <p>Everything is read from the environment. Secrets never reach events, evidence, receipts, logs or error messages.</p>
+      <p>Configuration is read from the environment. Provider errors are redacted by the adapter; this does not establish that every log, event, evidence record or receipt is free of secrets.</p>
       <div class="tbl"><table>
         <thead><tr><th>Variable</th><th>Required</th><th>Default</th><th>Meaning</th></tr></thead>
         <tbody>
@@ -569,7 +570,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
           <tr><td><code>OSA_PROVIDER_MAX_TOKENS</code></td><td>No</td><td><code>16000</code></td><td>Output token cap per call.</td></tr>
           <tr><td><code>OSA_PROVIDER_MAX_RETRIES</code></td><td>No</td><td><code>2</code></td><td>Retries for connection errors, timeouts, 408, 409, 429 and 5xx (0 to 10).</td></tr>
           <tr><td><code>OSA_MODEL_FALLBACKS</code></td><td>No</td><td>none</td><td>Ordered <code>provider:model</code> fallbacks (max 4) tried after the primary fails; every hop is evidence.</td></tr>
-          <tr><td><code>OSA_PROVIDER_RETRY_BASE_MS</code></td><td>No</td><td><code>500</code></td><td>First backoff step; doubles per retry up to 8 s. <code>retry-after</code> wins.</td></tr>
+          <tr><td><code>OSA_PROVIDER_RETRY_BASE_MS</code></td><td>No</td><td><code>500</code></td><td>First backoff step; doubles per retry up to 8 s. A valid <code>retry-after</code> of at most 60 seconds takes precedence.</td></tr>
           <tr><td><code>OSA_AUTH_MODE</code></td><td>No</td><td><code>session</code></td><td><code>session</code> requires a DEV token on routes marked session below. <code>open</code> skips login with a shared identity (including where explicitly configured in Production). Other values refuse to start.</td></tr>
           <tr><td><code>PORT</code> · <code>HOST</code></td><td>No</td><td><code>3000</code> · <code>0.0.0.0</code></td><td>Where the API listens.</td></tr>
           <tr><td><code>OSA_LIVE_PROVIDER_TEST</code></td><td>No</td><td>off</td><td>Set to <code>1</code> to run the live provider test.</td></tr>
@@ -579,7 +580,8 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
     <section id="api" aria-labelledby="h-api">
       <h2 id="h-api">HTTP API</h2>
-      <p>This generated table lists <strong><span data-api-route-count>91</span> HTTP method/path combinations</strong> for the reviewed <code>main</code> router and delegated handlers. Routes appear without the prefix in the local Node server (<code>http://localhost:3000/teams</code>); Vercel rewrites <code>/api/teams</code> to the same handler (<code>apps/api/src/vercel.ts</code>). Do not add <code>/api</code> to local examples. Error status depends on the route: 400, 401, 403 (<code>POLICY_DENIED</code>), 404, 409, plus validation/provider failures such as 413, 422, 429 and 502. <strong>Auth column:</strong> <code>session</code> needs a Bearer DEV session only when <code>OSA_AUTH_MODE=session</code>; <code>public</code> has no blanket session check. <code>open</code> creates a shared identity and is not a multi-tenant authorization boundary. The dataset create/version/tag and evaluator register mutations are currently public in session mode; do not expose this runtime to untrusted writers without additional access controls. Private NeurOSA may impose stricter identity requirements. <strong>Storage:</strong> on this branch most route indexes are process-local; different serverless instances do not share them, and a restart can discard state. Some separate deployments use persistent storage: verify their status separately; do not infer persistence from this reference.</p>
+      <p>This generated table lists <strong><span data-api-route-count>91</span> HTTP method/path combinations</strong> from the <code>PERMISSIONS</code> manifest in this code revision; it is not a complete router inventory. Routes appear without the prefix in the local Node server (<code>http://localhost:3000/teams</code>); Vercel rewrites <code>/api/teams</code> to the same handler (<code>apps/api/src/vercel.ts</code>). Do not add <code>/api</code> to local examples. Error status depends on the route: 400, 401, 403 (<code>POLICY_DENIED</code>), 404, 409, plus validation/provider failures such as 413, 422, 429 and 502. <strong>Auth column:</strong> <code>session</code> needs a Bearer DEV session only when <code>OSA_AUTH_MODE=session</code>; <code>public</code> has no blanket session check. <code>open</code> creates a shared identity and is not a multi-tenant authorization boundary. The dataset create/version/tag and evaluator register mutations are currently public in session mode; do not expose this runtime to untrusted writers without additional access controls. Private NeurOSA may impose stricter identity requirements. <strong>Storage:</strong> on this branch most route indexes are process-local; different serverless instances do not share them, and a restart can discard state. Some separate deployments use persistent storage: verify their status separately; do not infer persistence from this reference.</p>
+      <p><strong>Additional Trust routes:</strong> when the private Preview operator is not active, the router also handles <code>GET /.well-known/ai-profile.json</code> (503 when the profile is not configured), <code>GET /trust/status</code> and <code>POST /trust/verify/action</code>. They are not included in the 91 manifest entries below. Action signature verification uses the identity supplied in the request; independently authenticate its public key before relying on the result.</p>
       <div class="tbl"><table>
         <thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Returns</th></tr></thead>
         <tbody>
@@ -590,7 +592,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
           <tr><td><span class="m">POST</span></td><td><code>/durable/jobs/:id/cancel</code></td><td><code>session</code></td><td>Cancel a queued job; a running job cannot be cancelled by this route.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/chat/delivery/status</code></td><td><code>session</code></td><td>Server-bound artifact generation availability and model; no provider call.</td></tr>
           <tr><td><span class="m">POST</span></td><td><code>/chat/delivery</code></td><td><code>session</code></td><td>Stream agent lifecycle events, generate model artifact and deliver sealed bundle; session, free-tier and quota gates.</td></tr>
-          <tr><td><span class="m">GET</span></td><td><code>/auth/providers</code></td><td><code>public</code></td><td>Login providers; only local-dev is enabled.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/auth/providers</code></td><td><code>public</code></td><td>Login provider availability depends on server configuration; local-dev is disabled on Vercel.</td></tr>
           <tr><td><span class="m">POST</span></td><td><code>/auth/dev-login</code></td><td><code>public</code></td><td>DEV identity and session token (201).</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/session</code></td><td><code>session</code></td><td>The current session (401 without one).</td></tr>
           <tr><td><span class="m">POST</span></td><td><code>/session/logout</code></td><td><code>session</code></td><td>Revoke the session token.</td></tr>
@@ -699,6 +701,12 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
       <p>Gateway sprawdza dok&#322;adn&#261; tras&#281; bez parametr&oacute;w zapytania, weryfikowanego w&#322;a&#347;ciciela/operatora i zakres organizacji, to&#380;samo&#347;ci i projektu. Parametry rewrite nie s&#261; przekazywane do adaptera. Brak gotowo&#347;ci nie mo&#380;e zosta&#263; zamaskowany jako sukces.</p>
       <p>Odbi&oacute;r: zaloguj si&#281;, sprawd&#378; <code>GET /api/durable/status</code> (HTTP 200, <code>enabled=true</code>, <code>worker=HEALTHY</code>, <code>browser_independent=true</code>, <code>production_supported=true</code>), wy&#347;lij zadanie, zamknij kart&#281; po potwierdzeniu przyj&#281;cia, otw&oacute;rz czat ponownie i sprawd&#378; wynik oraz ProofReceipt. Gotowo&#347;&#263; nie zast&#281;puje dowodu wykonania.</p>
       <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/DURABLE_REMOTE_BRIDGE.md">Konfiguracja serwerowa i granice autoryzacji</a>.</p>
+      <h3 class="h">Podpis i zakotwiczenie dowodu</h3>
+      <p>W podpisanym przebiegu status Registry zastępuje starszą etykietę offline. Interfejs prezentuje wynik odczytu RPC workera, a nie niezależną weryfikację kryptograficzną w przeglądarce. Stan <code>VERIFIED</code> nie potwierdza prawdziwości treści ani sprzętowego pochodzenia wykonania.</p>
+      <p>Worker Durable korzysta z lokalnego modelu Ollama na <code>127.0.0.1:11434</code>. Dla skonfigurowanej tożsamości i zakresu może zapisać atestację, delegację i podpisany Ed25519 <code>ActionReceipt</code> po akceptacji Supervisora. Merkle batch obejmuje ProofReceipt V2 i podpisany ActionReceipt. Możesz pobrać artefakty z audytu rozmowy i zweryfikować podpis względem publicznego klucza zatwierdzonej tożsamości.</p>
+      <p><strong>Zakres dowodu:</strong> podpisany jest <code>ActionReceipt</code>; samo pole podpisu ProofReceipt V2 pozostaje <code>UNAVAILABLE</code>. Przygotowanie batcha i lokalna weryfikacja podpisu nie dowodzą wdrożenia Registry ani zapisu w Devnet. Kod Registry i integracja workera wymagają osobnej konfiguracji. Jedna lokalna misja Ollamy została podpisana i zweryfikowana w Registry Devnet; używała testowej tożsamości. Zalogowany przebieg produkcyjny pozostaje niepotwierdzony.</p>
+      <p><code>NOT_ANCHORED</code> oznacza, że nie ma potwierdzonego zapisu w rejestrze. Historyczny Genesis Anchor w Solana Memo jest odrębnym dowodem. OSA Proof Registry przechowuje skrót batcha i Merkle root, bez treści rozmowy. Stan <code>VERIFIED</code> wymaga niezależnego odczytu sfinalizowanej transakcji i konta programu na Devnet. Samo utworzenie batcha nie potwierdza zakotwiczenia.</p>
+      <p>Worker zapisuje sygnaturę i podpisaną transakcję przed wysłaniem. Przy niepewnym wyniku może ponowić wysłanie dokładnie tych samych bajtów przed wygaśnięciem. Po wygaśnięciu lub dla starszego rekordu bez tych danych pozostaje <code>UNKNOWN</code>; nowa transakcja nie jest podpisywana automatycznie. Przy pozytywnym odczycie czat pokazuje adres programu, slot i link do eksploratora Devnet. Dostęp do wyniku zachowuje zakres organizacji, projektu i tożsamości zadania Durable.</p>
     </section>
 
     <section id="delivery-lab" aria-labelledby="h-delivery-lab">
@@ -714,6 +722,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
 
     <section id="neurosa-runtime" aria-labelledby="h-neurosa-runtime">
+      <p><strong>Historyczny stan odbioru z 2026-10-27.</strong> Późniejsze kontrolowane testy CI obejmują rzeczywiste lokalne repo:read i dwie dzierżawy Fleet w <code>hermes-fleet-p1.test.ts</code> oraz lokalny przepływ NeurOSA. Nie są dowodem działania zewnętrznego wyszukiwania Hermesa ani produkcyjnego recall po restarcie. Wynik wyszukiwania live pozostaje UNKNOWN bez osobnego dowodu. Zobacz <a href="https://github.com/HazEOskA/osa-proof/actions/runs/46022360128">Hermes P1 CI</a> i <a href="https://github.com/HazEOskA/osa-proof/actions/runs/46022359949">NeurOSA local CI</a>.</p>
       <div class="eyebrow">Agentic OS · Memory · 2026-10-27</div>
       <h2 id="h-neurosa-runtime">NeurOSA × OSA Proof <span class="label" style="--c:var(--warn)">LIVE BLOCKED</span></h2>
       <p>NeurOSA to pamięć serwerowa systemu OSA, nie historia przeglądarki ani kolejny control plane. Zaimplementowany przepływ w <code>ChatDelivery</code> jest chroniony: uwierzytelniony operator → opcjonalny zapis wiadomości → recall → NVIDIA → Runtime → Evidence i ProofReceipt → potwierdzony zapis wykonania w NeurOSA.</p>
@@ -738,7 +747,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
     <section id="themes" aria-labelledby="h-themes">
       <h2 id="h-themes">Workspace themes</h2>
-      <p>The framework includes five dark palettes (Proof, Graphite, Midnight, Forest, Plum) and five light palettes (Porcelain, Sand, Sky, Mint, Rose). Use the theme selector in the header, mobile navigation or Settings. Themes also update the runtime world colors.</p>
+      <p>The framework includes seven dark palettes (Proof, OSA · czerń i złoto, Vercel · czerń, Graphite, Midnight, Forest, Plum) and five light palettes (Porcelain, Sand, Sky, Mint, Rose). Use the theme selector in the header, mobile navigation or Settings. Themes also update the runtime world colors.</p>
       <p>Open <strong>Themes</strong> to preview palettes, export the selected palette or import a community JSON file. The format is <code>osa.theme.v1</code>: id, name, mode, optional author and a complete tokens object. Export a built-in palette as your starting template. Only six-digit hex colors are accepted; text contrast must reach 4.5:1. Files are limited to 24 KB and 20 community themes per browser. Importing the same ID updates that community theme.</p>
       <p>Selection and community palettes are stored in this browser. Removing an active community palette restores Proof. There is no hosted theme marketplace or cross-device sync.</p>
     </section>

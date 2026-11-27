@@ -108,7 +108,8 @@ test("Docs Quickstart — exact copied payloads: dev-login → team → mission 
     assert.equal(modules.find((item) => item.id === "memory")?.status, "SOON");
     const memoryRow = html.match(/<tr><td><code>memory<\/code><\/td>([\s\S]*?)<\/tr>/)?.[0];
     assert.ok(memoryRow, "Docs must include the memory Intelligence row");
-    assert.match(memoryRow, /SOON<\/td>/);
+    assert.match(memoryRow, /NOT REGISTERED<\/td>/);
+    assert.match(memoryRow, /<code>SOON<\/code>/);
     assert.match(memoryRow, /CODE · GATED/);
     assert.match(memoryRow, /\/memory\/status/);
   });
