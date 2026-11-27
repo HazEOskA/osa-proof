@@ -10,6 +10,10 @@ export interface DeliveryBundle {
   artifact:{name:string;media_type:string;content:string;sha256:string;bytes:number}|null;
   record:{timeline:DeliveryEvent[]};report:{ready_for_review:boolean;checks:{stage:string;status:string;detail:string;latency_ms:number}[]};
 }
+export type DeliveryBuildReceipt={schema:string;organization_id:string;project_id:string;mission_id:string;source_sha256:string;artifact_sha256:string;checks:{name:string;exit_code:number;command_sha256:string;output_sha256:string}[];created_at:string;receipt_sha256:string};
+export function deliveryBuildReceipt(bundle:DeliveryBundle):DeliveryBuildReceipt|undefined {
+  return (bundle.run.final_output as {build_receipt?:DeliveryBuildReceipt})?.build_receipt;
+}
 export async function verifyDelivery(bundle:DeliveryBundle) {
   if(bundle?.schema!=="osa.chat_delivery.v1" || bundle.execution_id!==bundle.run?.execution_id || bundle.run.proof.execution_id!==bundle.execution_id)throw Error("DELIVERY_BINDING_INVALID");
   const {bundle_sha256,...body}=bundle;
@@ -22,6 +26,14 @@ export async function verifyDelivery(bundle:DeliveryBundle) {
     if(!["index.html","document.md"].includes(a.name)||await sha256(a.content)!==a.sha256||new TextEncoder().encode(a.content).length!==a.bytes || canon(produced)!==canon(a) ||
        !bundle.run.evidence.some(e=>e.kind==="demo_artifact"&&e.content_sha256===a.sha256))throw Error("DELIVERY_ARTIFACT_INVALID");
     if(bundle.status!=="EXECUTED"||bundle.run.verdict!=="VERIFIED"||!bundle.report.ready_for_review)throw Error("DELIVERY_VERDICT_INVALID");
+    const target=(bundle.mission.input as {target?:string})?.target;
+    if(target==="sandbox"){
+      const r=deliveryBuildReceipt(bundle);
+      if(!r||r.schema!=="osa.build_receipt.v1"||r.source_sha256!==a.sha256||r.organization_id!==bundle.mission.organization_id||r.project_id!==bundle.mission.project_id||r.mission_id!==bundle.mission.mission_id||!Number.isFinite(Date.parse(r.created_at))||!Array.isArray(r.checks)||r.checks.length!==2||new Set(r.checks.map(c=>c.name)).size!==2||!r.checks.every(c=>["BUILD","TEST"].includes(c.name)&&c.exit_code===0&&/^[a-f0-9]{64}$/.test(c.command_sha256)&&/^[a-f0-9]{64}$/.test(c.output_sha256)))throw Error("DELIVERY_BUILD_RECEIPT_INVALID");
+      const {receipt_sha256,...body}=r;
+      const bytes=new TextEncoder().encode(a.content);let binary="";for(const b of bytes)binary+=String.fromCharCode(b);
+      if(await sha256(canon(body))!==receipt_sha256||await sha256(canon(btoa(binary)))!==r.artifact_sha256||!bundle.run.evidence.some(e=>e.kind==="build_receipt"&&canon(e.data.receipt)===canon(r)))throw Error("DELIVERY_BUILD_RECEIPT_INVALID");
+    }
   }
   return true;
 }

@@ -5,7 +5,7 @@ import AccountControl from "./AccountControl";
 import ChatDeliveryResult from "./ChatDelivery";
 import UnifiedLiveProgress from "./UnifiedLiveProgress";
 import { appendLiveEvent, clientTraceEvent, newLiveTrace, streamLiveChat, downloadChatReview, downloadChatAudit, type ChatReview, type ChatAudit, type LiveTrace, type LiveTraceEvent } from "../lib/live-execution";
-import { streamDelivery, type DeliveryBundle } from "../lib/chat-delivery";
+import { streamDelivery, verifyDelivery, type DeliveryBundle } from "../lib/chat-delivery";
 import { loadChatHistory, saveChatHistory } from "../lib/chat-history";
 import { canon, sha256, verifyRun } from "../lib/verify";
 import { statusText } from "../ui/primitives";
@@ -18,7 +18,7 @@ import { selectExplicitToolCommand } from "../../../packages/contracts/src/expli
 // Native OSA surface. No iframe, no client secrets, no pretend model execution.
 type AgentId = "jeverson" | "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
 type ModelId = "auto" | "nvidia" | "openrouter";
-type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; trace?:LiveTrace; review?:ChatReview; audit?:ChatAudit; anchorStatus?:string; supervisor?:{decision:"RELEASED"|"REJECTED";content_verdict:"PASS"|"FAIL"|"UNKNOWN";repair_count:number;attempts:Array<{attempt:number;response_sha256:string}>}; contentAssurance?:{verdict:string;disclosure_pl:string}; memoryAssurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null}; jobKind?:"model"|"artifact"; providerModel?:string; providerName?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
+type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; trace?:LiveTrace; review?:ChatReview; audit?:ChatAudit; anchorStatus?:string; supervisor?:{decision:"RELEASED"|"REJECTED";content_verdict:"PASS"|"FAIL"|"UNKNOWN";repair_count:number;attempts:Array<{attempt:number;response_sha256:string}>}; contentAssurance?:{verdict:string;disclosure_pl:string}; memoryAssurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null}; jobKind?:"model"|"artifact"; artifactTarget?:"artifact"|"sandbox"; providerModel?:string; providerName?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
 type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
 type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
 type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{resource:string;method:string;source:string;http_status:null;status:string}> };
@@ -104,6 +104,8 @@ export default function JeversonChat() {
   const [draft,setDraft] = useState("");
   const [artifactMode,setArtifactMode] = useState(false);
   const [artifactKind,setArtifactKind] = useState("webapp");
+  const [sandboxConfigured,setSandboxConfigured] = useState(false);
+  const [artifactTarget,setArtifactTarget] = useState<"artifact"|"sandbox">("sandbox");
   const [remember,setRemember] = useState(false);
   const memoryState = useMemoryStatus();
   const [search,setSearch] = useState("");
@@ -177,7 +179,7 @@ export default function JeversonChat() {
   useEffect(()=>{if(current.messages.length || busy)bottom.current?.scrollIntoView({block:"end"});},[current.id,current.messages.length,busy]);
   useEffect(()=>{
     let alive=true;
-    void api<{enabled:boolean}>("/durable/status").then(x=>{if(alive){setDurable(x.enabled);setDurableChecked(true);}})
+    void api<{enabled:boolean;sandbox_configured?:boolean}>("/durable/status").then(x=>{if(alive){setDurable(x.enabled);setSandboxConfigured(x.sandbox_configured===true);setDurableChecked(true);}})
       .catch(()=>{if(alive){setDurable(false);setDurableChecked(true);}});
     return()=>{alive=false;};
   },[]);
@@ -245,8 +247,8 @@ export default function JeversonChat() {
               const bundle=result.result as (DeliveryBundle&Bundle)|undefined;
               if(bundle&&bundle.execution_id===msg.executionId&&bundle.run){
                 try{
-                  const checks=await verifyRun(bundle.run);
-                  if(!checks.length||!checks.every(c=>c.ok))throw Error("DURABLE_PROOF_INVALID");
+                  await verifyDelivery(bundle);
+                  if(msg.artifactTarget&&((bundle.mission.input as {target?:string})?.target!==msg.artifactTarget))throw Error("DURABLE_TARGET_MISMATCH");
                   answer=bundle.artifact?"Artefakt gotowy. Odzyskano go po ponownym otwarciu aplikacji.":"Misja zakończona bez zatwierdzonego artefaktu.";
                   status=bundle.status==="EXECUTED"?"VERIFIED":"BLOCKED";
                   extra={...extra,delivery:bundle,runId:bundle.run.run_id};
@@ -340,12 +342,14 @@ export default function JeversonChat() {
     e?.preventDefault();const text=draft.trim();if(!cacheReady||!text||busy)return;
     const sessionId=current.id;setDraft("");setError("");
     const durableNow=durable&&!remember&&(artifactMode||!command(text));
+    const requestedTarget=artifactMode&&sandboxConfigured&&artifactTarget==="sandbox"?"sandbox":"artifact";
+    if(requestedTarget==="sandbox"&&!durableNow){setDraft(text);setError("Sandbox wymaga gotowego workera Durable. Nie uruchomiono zadania.");return;}
     const durableId=durableNow?"exec_"+id():undefined;
     const executionId=durableId??"exec_"+id();
     const mode=artifactMode?"artifact":command(text)?"tool":"conversation";
     addMessage(sessionId,"user",text,"USER",{executionId,
       trace:newLiveTrace(executionId,sessionId,mode),
-      ...(durableId?{jobKind:artifactMode?"artifact":"model"}:{})});
+      ...(durableId?{jobKind:artifactMode?"artifact":"model",...(artifactMode?{artifactTarget:requestedTarget}:{})}:{})});
     if(durableId){
       updateTrace(sessionId,executionId,clientTraceEvent(executionId,"request_sent","RUNNING",
         "Wysłano żądanie do trwałego magazynu; oczekiwanie na akceptację."));
@@ -353,7 +357,7 @@ export default function JeversonChat() {
       try{
         const accepted=await api<DurableStatus>("/durable/jobs",{
           execution_id:durableId,conversation_id:sessionId,prompt:text,kind:artifactMode?"artifact":"model",
-          ...(artifactMode?{artifact_kind:artifactKind}:{agent:current.agent,history:current.messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}))})
+          ...(artifactMode?{artifact_kind:artifactKind,artifact_target:requestedTarget}:{agent:current.agent,history:current.messages.slice(-8).map(m=>({role:m.role,content:m.text.slice(0,1800)}))})
         });
         if(accepted.execution_id!==executionId)throw Error("DURABLE_EXECUTION_BINDING_INVALID");
         updateTrace(sessionId,executionId,{
@@ -542,7 +546,7 @@ export default function JeversonChat() {
       {durable&&<p role="status" data-testid="osa-durable-ready" className="px-3 text-[11px] text-cyan">Durable Execution · przyjęte misje rozmowy i artefaktów są odzyskiwane po powrocie (bez zapisu NeurOSA).</p>}
       {storageProblem&&<p role="alert" className="px-3 text-[11px] text-warn">{historyState==="FALLBACK"?"IndexedDB niedostępne. Historia zapisana awaryjnie w localStorage; duże rozmowy mogą nie zmieścić się.":"ZAPIS HISTORII NIEUDANY — nie zamykaj karty, skopiuj ważne wiadomości."}</p>}
       <div className="osa-chat-compose shrink-0 px-3 py-3 sm:border-t sm:border-line sm:bg-ink sm:px-6"><form onSubmit={e=>void submit(e)} className="mx-auto max-w-[820px] rounded-2xl border border-line2 bg-panel p-3 focus-within:border-cyan/50">
-        <div className={"osa-compose-settings "+(mobileOptions?"is-open":"")}><div className="osa-compose-modes mb-2 flex flex-wrap items-center gap-2 text-xs"><button type="button" aria-pressed={!artifactMode} disabled={busy} onClick={()=>setArtifactMode(false)} className="rounded border border-line px-3 py-2">Rozmowa</button><button type="button" aria-pressed={artifactMode} disabled={busy} onClick={()=>setArtifactMode(true)} className="rounded border border-cyan/40 px-3 py-2 text-cyan">Utwórz artefakt</button>{artifactMode&&<label>Format <select aria-label="Format artefaktu" disabled={busy} value={artifactKind} onChange={e=>setArtifactKind(e.target.value)} className="rounded border border-line bg-panel p-1"><option value="webapp">Aplikacja HTML</option><option value="document">Dokument Markdown</option></select></label>}</div>
+        <div className={"osa-compose-settings "+(mobileOptions?"is-open":"")}><div className="osa-compose-modes mb-2 flex flex-wrap items-center gap-2 text-xs"><button type="button" aria-pressed={!artifactMode} disabled={busy} onClick={()=>setArtifactMode(false)} className="rounded border border-line px-3 py-2">Rozmowa</button><button type="button" aria-pressed={artifactMode} disabled={busy} onClick={()=>setArtifactMode(true)} className="rounded border border-cyan/40 px-3 py-2 text-cyan">Utwórz artefakt</button>{artifactMode&&<label>Format <select aria-label="Format artefaktu" disabled={busy} value={artifactKind} onChange={e=>setArtifactKind(e.target.value)} className="rounded border border-line bg-panel p-1"><option value="webapp">Aplikacja HTML</option><option value="document">Dokument Markdown</option></select></label>}{artifactMode&&sandboxConfigured&&<label>Wykonanie <select data-testid="osa-artifact-target" aria-label="Wykonanie artefaktu" disabled={busy} value={artifactTarget} onChange={e=>setArtifactTarget(e.target.value==="sandbox"?"sandbox":"artifact")} className="rounded border border-line bg-panel p-1"><option value="sandbox">Izolowany Docker: build i kontrola bajtów</option><option value="artifact">Tylko artefakt</option></select></label>}</div>
         {artifactMode&&<p className="osa-compose-hint mb-2 text-[10px] text-dim">Prompt → model → przebieg agentów → artefakt + bundle + evidence + replay. Bez automatycznego wdrożenia.</p>}
         <div className="osa-compose-memory mb-2 flex flex-wrap items-center gap-3 text-[11px] text-dim">{memoryState.error || <MemoryStatusLine status={memoryState.status}/>}<button type="button" className="underline" onClick={()=>{void memoryState.refresh();void api<ModelStatus>("/nvidia/status").then(setModelStatus).catch(()=>setModelStatus(null));}}>Odśwież stan</button><label className="flex items-center gap-1"><input type="checkbox" checked={remember} disabled={memoryState.status?.state!=="AVAILABLE"||busy} onChange={e=>setRemember(e.target.checked)}/>Zapamiętaj moją wiadomość</label></div>
         <div className="osa-chat-model-row flex flex-wrap items-center gap-2 border-t border-line pt-2"><label className="text-[10px] text-dim">Model <select aria-label="Wybierz model" value={current.model} onChange={e=>selectModel(e.target.value as ModelId)} className="rounded border border-line bg-panel p-1 text-[11px] text-fg"><option value="auto">Automatycznie</option><option value="nvidia">{modelStatus?.provider||"Dostawca serwerowy"}</option><option value="openrouter" disabled>OpenRouter · brak klucza</option></select></label><button type="button" onClick={()=>void trace()} disabled={busy} className="rounded border border-line p-2 text-[10px] text-cyan disabled:opacity-50">ŚLEDZENIE OSA</button><span className="ml-auto hidden text-[10px] text-dim sm:inline">BEZ PŁATNYCH WYWOŁAŃ</span></div></div>

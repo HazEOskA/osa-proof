@@ -9,8 +9,9 @@ import { prepareOfflineProofAnchor } from "../../../packages/web3/src/anchor";
 import { runCognitiveChat } from "../../api/src/chat-cognitive";
 import { assessChatContent } from "../../api/src/chat-assurance";
 import { nvidiaComplete, nvidiaStatus, fleetLimit } from "../../api/src/nvidia";
-import { FileDurableJobStore, type DurableJob } from "../../../packages/durable-execution/src";
+import { FileDurableJobStore, durableLocalSandboxConfigured, type DurableJob } from "../../../packages/durable-execution/src";
 import { FleetQueue } from "../../../packages/fleet/src";
+import { DockerWorkspaceProvider } from "../../../packages/workspace-runtime/src";
 
 export type DurableArtifactGenerator=(request:DemoRequest)=>Promise<{content:string;evidence:EvidenceInput[]}>;
 export class DurableWorkerBlocked extends Error {
@@ -23,6 +24,8 @@ export interface DurableWorkerOptions {
 }
 export async function executeDurableJob(job:DurableJob,root:string,options:DurableWorkerOptions={}) {
   const input=job.input;
+  const sandbox=input.kind==="artifact"&&input.artifact_target==="sandbox";
+  if(sandbox&&!durableLocalSandboxConfigured(options.env??process.env))throw new DurableWorkerBlocked("DURABLE_SANDBOX_NOT_CONFIGURED");
   // A provider-wide acknowledgement is not proof that the selected model and
   // account cannot incur charges. Until a model-specific cost contract exists,
   // block live calls. Injected functions are reserved for isolated test harnesses.
@@ -81,7 +84,7 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
   const kernel=new MissionKernel(new FileMissionStore(join(root,"missions")));
   const registry=new ExecutorRegistry();
   const team=demoTeam({organization_id:job.scope.organization_id,project_id:job.scope.project_id});
-  const mission=demoMission({objective:input.prompt,kind:input.artifact_kind!,mode:"connected",target:"artifact"},team,true);
+  const mission=demoMission({objective:input.prompt,kind:input.artifact_kind!,mode:"connected",target:sandbox?"sandbox":"artifact"},team,true);
   // Execution IDs are unique only within durable scope, not globally.
   // Existing records remain readable with their original mission IDs.
   mission.mission_id="delivery_"+digest([job.scope.organization_id,job.scope.project_id,job.scope.identity_id,input.execution_id]);
@@ -93,7 +96,7 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
       response_sha256:createHash("sha256").update(answer.text).digest("hex"),latency_ms:answer.latency_ms,
       execution_id:input.execution_id}}]};
   });
-  installDemoExecutors(registry,{executionMode:"provider",supervisorGate:true,artifactGenerator:async spec=>{
+  installDemoExecutors(registry,{executionMode:"provider",supervisorGate:true,...(sandbox?{workspace:new DockerWorkspaceProvider({network:"none"})}:{}),artifactGenerator:async spec=>{
     const result=await generate(spec);
     if(!result.content.trim()||Buffer.byteLength(result.content)>128*1024)throw Error("DURABLE_ARTIFACT_SIZE_INVALID");
     return {...result,evidence:[...result.evidence,...(job.lease?.worker_id?[{
@@ -114,7 +117,7 @@ export async function executeDurableJob(job:DurableJob,root:string,options:Durab
     status:report.ready_for_review?"EXECUTED":"FAILED",team,mission,run,record,report,
     artifact:report.ready_for_review?report.artifact:null,
     ...(anchor_preparation?{anchor_preparation}:{}),
-    verification_scope:"ARTIFACT_BYTES_STRUCTURE_AND_EXECUTION_EVIDENCE",
+    verification_scope:sandbox?"ARTIFACT_BYTES_STRUCTURE_SANDBOX_BUILD_AND_EXECUTION_EVIDENCE":"ARTIFACT_BYTES_STRUCTURE_AND_EXECUTION_EVIDENCE",
     limitations:["Server worker was independent of the browser connection.",
       "Durability requires a persistent shared filesystem and separately running worker.",
       "No remote deployment or NeurOSA memory write was claimed."]

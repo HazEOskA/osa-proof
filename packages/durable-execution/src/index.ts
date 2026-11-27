@@ -12,6 +12,7 @@ export type DurableInput = {
   agent?: string;
   history?: Array<{role:"user"|"assistant";content:string}>;
   artifact_kind?: "webapp" | "document";
+  artifact_target?: "artifact" | "sandbox";
   remember?: boolean;
 };
 export type DurableScope = {organization_id:string;identity_id:string;project_id:string};
@@ -46,7 +47,7 @@ const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("h
 export function validateDurableInput(raw:unknown):DurableInput {
   if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new DurableConflict("DURABLE_INVALID_INPUT");
   const p=raw as Partial<DurableInput>;
-  if(Object.keys(p).some(k=>!["execution_id","conversation_id","kind","prompt","agent","history","artifact_kind","remember"].includes(k)) ||
+  if(Object.keys(p).some(k=>!["execution_id","conversation_id","kind","prompt","agent","history","artifact_kind","artifact_target","remember"].includes(k)) ||
     typeof p.execution_id!=="string"||!ID.test(p.execution_id)||
     typeof p.conversation_id!=="string"||!CONVERSATION.test(p.conversation_id)||
     !["model","artifact"].includes(p.kind||"")||
@@ -55,11 +56,15 @@ export function validateDurableInput(raw:unknown):DurableInput {
     p.remember===true||
     (p.kind==="model"&&(!p.agent||!AGENTS.has(p.agent)))||
     (p.kind==="artifact"&&!["webapp","document"].includes(p.artifact_kind||""))||
+    (p.artifact_target!==undefined&&(p.kind!=="artifact"||!["artifact","sandbox"].includes(p.artifact_target)))||
     (p.history!==undefined&&(!Array.isArray(p.history)||p.history.length>8||
       p.history.some(m=>!m||!["user","assistant"].includes(m.role)||typeof m.content!=="string"||m.content.length>1800))))
     throw new DurableConflict(p.remember===true?"DURABLE_MEMORY_NOT_SUPPORTED":"DURABLE_INVALID_INPUT");
   return {execution_id:p.execution_id,conversation_id:p.conversation_id,kind:p.kind!,prompt:p.prompt.trim(),
-    ...(p.agent?{agent:p.agent}:{}),...(p.history?{history:p.history}:{}),...(p.artifact_kind?{artifact_kind:p.artifact_kind}:{})};
+    ...(p.agent?{agent:p.agent}:{}),...(p.history?{history:p.history}:{}),...(p.artifact_kind?{artifact_kind:p.artifact_kind}:{}),...(p.artifact_target?{artifact_target:p.artifact_target}:{})};
+}
+export function durableLocalSandboxConfigured(env:NodeJS.ProcessEnv):boolean {
+  return env.VERCEL!=="1" && env.OSA_LOCAL_MODEL_PROVIDER==="ollama" && env.OSA_ZERO_COST_ONLY==="true" && /^http:\/\/127\.0\.0\.1:11434\/v1\/?$/.test(env.OSA_MODEL_BASE_URL?.trim()||"");
 }
 function validateScope(s:DurableScope) {
   if(!s||Object.values(s).some(v=>typeof v!=="string"||!v||v.length>200||! /^[a-zA-Z0-9_.:@-]+$/.test(v)))
