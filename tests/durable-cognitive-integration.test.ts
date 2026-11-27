@@ -6,6 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { nvidiaComplete } from "../apps/api/src/nvidia";
 import { executeDurableJob, runDurableWorkerOnce } from "../apps/worker/src/durable-executor";
+import { runDurableRegistryPass } from "../apps/worker/src/durable-registry";
 import { FileDurableJobStore } from "../packages/durable-execution/src";
 import { FleetQueue } from "../packages/fleet/src";
 import { verifyProofReceipt } from "../packages/proof-core/src";
@@ -85,6 +86,32 @@ test("TEST: Durable chat seals the scoped result and rejects forged registry evi
   assert.deepEqual((await reopened.get(scope, body.execution_id))?.registry_anchor, pending);
   assert.equal((await reopened.get({...scope, organization_id: "org_other"}, body.execution_id))?.registry_anchor, undefined);
 
+  // Simulate a worker restart after intent persistence but before broadcast.
+  // The existing record must be reconciled and sent with the same signature.
+  const k = await (new Function("return import('@solana/kit')") as () => Promise<any>)();
+  const payer = await k.generateKeyPairSigner();
+  const message = k.pipe(k.createTransactionMessage({version:"legacy"}),
+    (tx:any) => k.setTransactionMessageFeePayerSigner(payer,tx),
+    (tx:any) => k.setTransactionMessageLifetimeUsingBlockhash({blockhash:k.blockhash("11111111111111111111111111111111"),lastValidBlockHeight:100n},tx),
+    (tx:any) => k.appendTransactionMessageInstructions([{programAddress:k.address("11111111111111111111111111111111"),accounts:[],data:new Uint8Array([1])}],tx));
+  const signed = await k.signTransactionMessageWithSigners(message);
+  const wire = String(k.getBase64EncodedWireTransaction(signed));
+  const prior = (await reopened.get(scope, body.execution_id))!;
+  await reopened.updateRegistryAnchor(prior, {...pending, transactionSignature:String(k.getSignatureFromTransaction(signed)),lastValidBlockHeight:"100",wireTransactionBase64:wire});
+  const calls: Array<{method:string;params:unknown[]}> = [];
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = (async (_url, init) => {
+      const req=JSON.parse(String(init?.body)); calls.push(req);
+      const reply=req.method === "getGenesisHash" ? "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG" : req.method === "getBlockHeight" ? 99 : req.method === "sendTransaction" ? "accepted" : null;
+      return Response.json({jsonrpc:"2.0",id:1,result:reply});
+    }) as typeof fetch;
+    await runDurableRegistryPass(new FileDurableJobStore(root), {OSA_DURABLE_DEVNET_PROGRAM_ID:policy.programId,OSA_DURABLE_DEVNET_AUTHORITY:policy.authority,OSA_DURABLE_DEVNET_KEY_FILE:"unused",OSA_DURABLE_CHAT_TRUST:credentials(60_000)});
+  } finally { globalThis.fetch = originalFetch; }
+  const broadcasts=calls.filter(call => call.method === "sendTransaction");
+  assert.equal(broadcasts.length,1);
+  assert.equal(broadcasts[0].params[0],wire);
+  assert.equal((await reopened.get(scope, body.execution_id))?.registry_anchor?.status,"UNKNOWN");
   const expired = input();
   await store.submit(scope, expired);
   await runDurableWorkerOnce(store, {model, env: {OSA_DURABLE_CHAT_TRUST: credentials(-1_000)}});
