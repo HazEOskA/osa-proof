@@ -250,6 +250,10 @@ export interface PermissionRow { permission: string; method: string; path: strin
 // "public" means no blanket login in session mode; a configured private NeurOSA adapter may impose further gates.
 // Route inventory is scoped to main's router and its NVIDIA/Web3 delegated handlers, not deployed release aliases.
 export const PERMISSIONS: ReadonlyArray<PermissionRow> = [
+  { permission: "http.get.durable.status", method: "GET", path: "/durable/status", enforced: "session" },
+  { permission: "http.post.durable.jobs", method: "POST", path: "/durable/jobs", enforced: "session" },
+  { permission: "http.get.durable.job", method: "GET", path: "/durable/jobs/:id", enforced: "session" },
+  { permission: "http.post.durable.cancel", method: "POST", path: "/durable/jobs/:id/cancel", enforced: "session" },
   { permission: "http.get.chat.delivery.status", method: "GET", path: "/chat/delivery/status", enforced: "session" },
   { permission: "http.post.chat.delivery", method: "POST", path: "/chat/delivery", enforced: "session" },
   { permission: "http.get.auth.providers", method: "GET", path: "/auth/providers", enforced: "public" },

@@ -13,6 +13,10 @@ const original = fs.readFileSync(htmlPath,"utf8");
 const input = original.replace(/\r\n/g,"\n");
 const lineEnding = original.includes("\r\n") ? "\r\n" : "\n";
 const desc = {
+  "GET /durable/status": "Live worker readiness and persistence; production requires verified owner/operator and exact scope.",
+  "POST /durable/jobs": "Submit a durable job (202) or read an idempotent replay (200); scoped session and same-origin write.",
+  "GET /durable/jobs/:id": "Read a scoped job and its persisted result/evidence.",
+  "POST /durable/jobs/:id/cancel": "Cancel a queued job; a running job cannot be cancelled by this route.",
   "GET /chat/delivery/status": "Server-bound artifact generation availability and model; no provider call.",
   "POST /chat/delivery": "Stream agent lifecycle events, generate model artifact and deliver sealed bundle; session, free-tier and quota gates.",
   "GET /auth/providers": "Login providers; only local-dev is enabled.",

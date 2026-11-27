@@ -9,6 +9,7 @@ import test from "node:test";
 import { FileDurableJobStore } from "../packages/durable-execution/src";
 import { runDurableWorkerOnce } from "../apps/worker/src/durable-executor";
 import { handleDurableRequest } from "../apps/api/src/durable";
+import { vercelApiPath } from "../apps/api/src/vercel";
 import type { SessionRecord } from "../packages/contracts/src";
 import { createDurableBridge } from "../apps/worker/src/durable-bridge";
 import { durableScopeDigest, forwardDurable, remoteDurableConfig } from "../apps/api/src/durable-remote";
@@ -25,7 +26,7 @@ test("durable bridge: scoped authenticated admission, independent completion, re
   const bridge=createDurableBridge(env);
   const bridgeUrl=await listen(bridge);
   // Only test transport is rewritten to loopback; production config requires HTTPS.
-  const proxy=createServer((req,res)=>{void forwardDurable(req,res,scope,cfg,(url,init)=>fetch(String(url).replace(cfg.url,bridgeUrl),init));});
+  const proxy=createServer((req,res)=>{req.url=vercelApiPath(req.url);void forwardDurable(req,res,scope,cfg,(url,init)=>{assert.equal(new URL(String(url)).search,"");return fetch(String(url).replace(cfg.url,bridgeUrl),init);});});
   const proxyUrl=await listen(proxy);
   try{
     assert.equal((await fetch(bridgeUrl+"/durable/status")).status,401);
@@ -34,17 +35,24 @@ test("durable bridge: scoped authenticated admission, independent completion, re
     assert.equal((await fetch(bridgeUrl+"/memory/status",{headers:auth})).status,404);
     assert.equal((await (await fetch(proxyUrl+"/durable/status")).json()).enabled,false);
     await store.workerHeartbeat();
-    const status=await (await fetch(proxyUrl+"/durable/status")).json();
+    const status=await (await fetch(proxyUrl+"/api/osa?__osa_path=durable/status&path=durable%2Fstatus")).json();
     assert.equal(status.enabled,true);assert.equal(status.production_supported,true);
     const body={execution_id:"exec_"+randomUUID(),conversation_id:randomUUID(),kind:"model",prompt:"Test",agent:"jeverson",history:[]};
     const request={method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)};
-    assert.equal((await fetch(proxyUrl+"/durable/jobs",request)).status,202);
+    assert.equal((await fetch(proxyUrl+"/api/osa?__osa_path=durable/jobs&path=durable%2Fjobs",request)).status,202);
     assert.equal((await fetch(proxyUrl+"/durable/jobs",request)).status,200);
     let calls=0;
     const model=(async()=>{calls++;return {text:"TEST_BRIDGE",status:"PROVIDER_RESPONSE",model:"fixture",provider_response_id:"f",request_id:"r",request_sha256:"d",latency_ms:1,finish_reason:"stop",provider:"NVIDIA"};}) as never;
     assert.equal(await runDurableWorkerOnce(new FileDurableJobStore(root),{model}),1);
-    const response=await fetch(proxyUrl+"/durable/jobs/"+body.execution_id);
+    const response=await fetch(proxyUrl+"/api/osa?__osa_path=durable/jobs/"+body.execution_id+"&path=ignored");
     assert.equal(response.status,200);const result=await response.json();assert.equal(result.status,"COMPLETED");assert.equal(result.result.text,"TEST_BRIDGE");assert.equal(calls,1);
+    const queued={...body,execution_id:"exec_"+randomUUID()};
+    assert.equal((await fetch(proxyUrl+"/api/durable/jobs?ignored=1",{...request,body:JSON.stringify(queued)})).status,202);
+    const cancelled=await fetch(proxyUrl+"/api/osa?__osa_path=durable/jobs/"+queued.execution_id+"/cancel&path=ignored",{method:"POST"});
+    assert.equal(cancelled.status,200);
+    assert.equal((await cancelled.json()).status,"CANCELLED");
+    assert.equal((await fetch(proxyUrl+"/api/durable/unknown?route=/durable/status")).status,404);
+    assert.equal((await fetch(proxyUrl+"/api/durable/jobs/not-an-id?ignored=1")).status,404);
     const denied=createServer((req,res)=>{void forwardDurable(req,res,{...scope,identity_id:"idn_other"},cfg,()=>{throw Error("MUST_NOT_FORWARD");});});
     const deniedUrl=await listen(denied);try{assert.equal((await fetch(deniedUrl+"/durable/status")).status,403);}finally{await close(denied);}
   }finally{await close(proxy);await close(bridge);await rm(root,{recursive:true,force:true});}

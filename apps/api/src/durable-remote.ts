@@ -28,7 +28,9 @@ export function durableRoute(method:string|undefined,path:string):boolean{
 function send(res:ServerResponse,status:number,body:unknown){res.writeHead(status,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"});res.end(JSON.stringify(body));}
 export async function forwardDurable(req:IncomingMessage,res:ServerResponse,scope:DurableScope,config:DurableRemoteConfig,fetcher:typeof fetch=fetch):Promise<void>{
   if(!sameDurableScope(scope,config.scope))return send(res,403,{code:"DURABLE_REMOTE_SCOPE_DENIED"});
-  const path=req.url||"";
+  // Durable routes have no query parameters. Vercel may preserve rewrite metadata.
+  // Match the exact raw path, without decoding, traversal normalization or forwarding query data.
+  const path=(req.url||"").split("?",1)[0];
   if(!durableRoute(req.method,path))return send(res,404,{code:"DURABLE_ROUTE_NOT_FOUND"});
   const chunks:Buffer[]=[];let size=0;
   if(req.method==="POST")for await(const chunk of req){size+=Buffer.byteLength(chunk);if(size>24000)return send(res,413,{code:"DURABLE_INPUT_TOO_LARGE"});chunks.push(Buffer.from(chunk));}

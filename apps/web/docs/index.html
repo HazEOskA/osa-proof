@@ -222,7 +222,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
     <details open><summary>Reference<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#control">Control plane</a><a href="#config">Configuration</a><a href="#api">HTTP API</a><a href="#" class="nx" data-nolink>TypeScript SDK</a><a href="#" class="nx" data-nolink>CLI</a></details>
     <details><summary>Guides<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
-      <a href="#guides">All guides</a><a href="#neurosa-runtime">NeurOSA memory · status</a><a href="#themes">Workspace themes</a><a href="#delivery-lab">Delivery Lab</a><a href="#community-forum">Debug forum · planned</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
+      <a href="#guides">All guides</a><a href="#neurosa-runtime">NeurOSA memory · status</a><a href="#themes">Workspace themes</a><a href="#delivery-lab">Delivery Lab</a><a href="#durable-runtime">Trwaly runtime</a><a href="#community-forum">Debug forum · planned</a><a href="#" class="nx" data-nolink>Conditional edges</a><a href="#" class="nx" data-nolink>Checkpoints</a><a href="#" class="nx" data-nolink>Tools over MCP</a><a href="#" class="nx" data-nolink>Guardrails</a><a href="#evaluators">Evals</a><a href="#" class="nx" data-nolink>Deploy</a></details>
     <details><summary>Releases<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></summary>
       <a href="#intelligence">Intelligence · Datasets &amp; Evaluators</a><a href="#" data-nolink>Slice 2 · Proof integrity</a><a href="#" data-nolink>Slice 1 · Real execution</a></details>
   </aside>
@@ -256,7 +256,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);display
             <a class="card" href="#first-mission"><span class="label k">Hands-on</span><h4>Your first mission</h4><p>Register a team, submit a mission, run it and read the proof.</p></a>
             <a class="card" href="#concepts"><span class="label k">Concepts</span><h4>Core concepts</h4><p>Team Graph, misje, wykonawcy, runtime-owned ToolCallRecord, Attribution Gate i Proof Receipt.</p></a>
             <a class="card" href="#neurosa-runtime"><span class="label k">Integration · gated</span><h4>NeurOSA memory</h4><p>Storage backup confirmed; authenticated live recall and restart acceptance are still BLOCKED. Evidence first.</p></a>
-             <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>87</span> par metod i ścieżek w rejestrze tej wersji kodu (m.in. Delivery Lab, NVIDIA, Web3 i runtime). Tabela jest generowana z manifestu uprawnień; nie potwierdza uruchomienia każdej integracji na produkcji.</p></a>
+             <a class="card" href="#api"><span class="label k">Reference</span><h4>HTTP API</h4><p><span data-api-route-count>91</span> par metod i ścieżek w rejestrze tej wersji kodu (m.in. Delivery Lab, NVIDIA, Web3 i runtime). Tabela jest generowana z manifestu uprawnień; nie potwierdza uruchomienia każdej integracji na produkcji.</p></a>
           </div>
           <h2 id="h-start" style="position:absolute;left:-9999px">Start</h2>
         </section>
@@ -579,11 +579,15 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
 
     <section id="api" aria-labelledby="h-api">
       <h2 id="h-api">HTTP API</h2>
-      <p>This generated table lists <strong><span data-api-route-count>87</span> HTTP method/path combinations</strong> for the reviewed <code>main</code> router and delegated handlers. Routes appear without the prefix in the local Node server (<code>http://localhost:3000/teams</code>); Vercel rewrites <code>/api/teams</code> to the same handler (<code>apps/api/src/vercel.ts</code>). Do not add <code>/api</code> to local examples. Error status depends on the route: 400, 401, 403 (<code>POLICY_DENIED</code>), 404, 409, plus validation/provider failures such as 413, 422, 429 and 502. <strong>Auth column:</strong> <code>session</code> needs a Bearer DEV session only when <code>OSA_AUTH_MODE=session</code>; <code>public</code> has no blanket session check. <code>open</code> creates a shared identity and is not a multi-tenant authorization boundary. The dataset create/version/tag and evaluator register mutations are currently public in session mode; do not expose this runtime to untrusted writers without additional access controls. Private NeurOSA may impose stricter identity requirements. <strong>Storage:</strong> on this branch most route indexes are process-local; different serverless instances do not share them, and a restart can discard state. Some separate deployments use persistent storage: verify their status separately; do not infer persistence from this reference.</p>
+      <p>This generated table lists <strong><span data-api-route-count>91</span> HTTP method/path combinations</strong> for the reviewed <code>main</code> router and delegated handlers. Routes appear without the prefix in the local Node server (<code>http://localhost:3000/teams</code>); Vercel rewrites <code>/api/teams</code> to the same handler (<code>apps/api/src/vercel.ts</code>). Do not add <code>/api</code> to local examples. Error status depends on the route: 400, 401, 403 (<code>POLICY_DENIED</code>), 404, 409, plus validation/provider failures such as 413, 422, 429 and 502. <strong>Auth column:</strong> <code>session</code> needs a Bearer DEV session only when <code>OSA_AUTH_MODE=session</code>; <code>public</code> has no blanket session check. <code>open</code> creates a shared identity and is not a multi-tenant authorization boundary. The dataset create/version/tag and evaluator register mutations are currently public in session mode; do not expose this runtime to untrusted writers without additional access controls. Private NeurOSA may impose stricter identity requirements. <strong>Storage:</strong> on this branch most route indexes are process-local; different serverless instances do not share them, and a restart can discard state. Some separate deployments use persistent storage: verify their status separately; do not infer persistence from this reference.</p>
       <div class="tbl"><table>
         <thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Returns</th></tr></thead>
         <tbody>
           <!-- AUTO-GENERATED API ROUTES: run npm run docs:sync; do not hand-edit rows -->
+          <tr><td><span class="m">GET</span></td><td><code>/durable/status</code></td><td><code>session</code></td><td>Live worker readiness and persistence; production requires verified owner/operator and exact scope.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/durable/jobs</code></td><td><code>session</code></td><td>Submit a durable job (202) or read an idempotent replay (200); scoped session and same-origin write.</td></tr>
+          <tr><td><span class="m">GET</span></td><td><code>/durable/jobs/:id</code></td><td><code>session</code></td><td>Read a scoped job and its persisted result/evidence.</td></tr>
+          <tr><td><span class="m">POST</span></td><td><code>/durable/jobs/:id/cancel</code></td><td><code>session</code></td><td>Cancel a queued job; a running job cannot be cancelled by this route.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/chat/delivery/status</code></td><td><code>session</code></td><td>Server-bound artifact generation availability and model; no provider call.</td></tr>
           <tr><td><span class="m">POST</span></td><td><code>/chat/delivery</code></td><td><code>session</code></td><td>Stream agent lifecycle events, generate model artifact and deliver sealed bundle; session, free-tier and quota gates.</td></tr>
           <tr><td><span class="m">GET</span></td><td><code>/auth/providers</code></td><td><code>public</code></td><td>Login providers; only local-dev is enabled.</td></tr>
@@ -688,6 +692,15 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
       </div>
     </section>
 
+    <section id="durable-runtime" aria-labelledby="h-durable-runtime">
+      <h2 id="h-durable-runtime">Trwa&#322;y runtime czatu</h2>
+      <p><strong>Stan 2026-11-27:</strong> istniej&#261; trwa&#322;y magazyn zada&#324;, niezale&#380;ny worker i produkcyjny gateway HTTPS. Potwierdzono HTTP 200 oraz HEALTHY na lokalnym adapterze i przez HTTPS. Test poprawionego gatewaya z rzeczywistym workerem Ollama: HTTP 200, przyj&#281;cie 202, COMPLETED i zweryfikowany ProofReceipt (lokalna sesja testowa, rzeczywiste HTTPS). Pe&#322;ny odbi&oacute;r z zalogowanej sesji produkcyjnej pozostaje do potwierdzenia.</p>
+      <p>Frontend Vercel przekazuje zadania do istniej&#261;cego hosta Windows. Cztery trasy Durable s&#261; uj&#281;te w rejestrze HTTP powy&#380;ej. Zadanie przyj&#281;te przez backend otrzymuje identyfikator <code>exec_...</code>; worker wykonuje je niezale&#380;nie od karty, a klient pobiera zapisany wynik i dowody. Obs&#322;ugiwane s&#261; zadania modelu i artefaktu; sandbox wymaga osobnego potwierdzenia konfiguracji. Nie jest to migracja na S22 ani zmiana NeurOSA.</p>
+      <p>Gateway sprawdza dok&#322;adn&#261; tras&#281; bez parametr&oacute;w zapytania, weryfikowanego w&#322;a&#347;ciciela/operatora i zakres organizacji, to&#380;samo&#347;ci i projektu. Parametry rewrite nie s&#261; przekazywane do adaptera. Brak gotowo&#347;ci nie mo&#380;e zosta&#263; zamaskowany jako sukces.</p>
+      <p>Odbi&oacute;r: zaloguj si&#281;, sprawd&#378; <code>GET /api/durable/status</code> (HTTP 200, <code>enabled=true</code>, <code>worker=HEALTHY</code>, <code>browser_independent=true</code>, <code>production_supported=true</code>), wy&#347;lij zadanie, zamknij kart&#281; po potwierdzeniu przyj&#281;cia, otw&oacute;rz czat ponownie i sprawd&#378; wynik oraz ProofReceipt. Gotowo&#347;&#263; nie zast&#281;puje dowodu wykonania.</p>
+      <p><a href="https://github.com/HazEOskA/osa-proof/blob/main/docs/DURABLE_REMOTE_BRIDGE.md">Konfiguracja serwerowa i granice autoryzacji</a>.</p>
+    </section>
+
     <section id="delivery-lab" aria-labelledby="h-delivery-lab">
       <h2 id="h-delivery-lab">Delivery Lab · one demonstration team</h2>
       <p><strong>Verified scope: structural output and recorded checks, not semantic correctness of arbitrary objectives.</strong> Open Delivery Lab in the framework navigation. One versioned TeamGraph routes an objective through ten sequential roles: intake, planner, producer, inspector, policy gate, sandbox builder, test verifier, delivery gate, coverage reviewer and evidence reporter. It uses the existing MissionKernel, configured NeurOSA planner, runtime, event timeline and proof receipts.</p>
@@ -761,6 +774,7 @@ curl -s localhost:3000/knowledge/docs/search -H 'content-type: application/json'
         <a href="#api">HTTP API</a>
         <a href="#guides">Guides</a>
         <a href="#delivery-lab">Delivery Lab</a>
+        <a href="#durable-runtime">Trwaly runtime</a>
         <a href="#neurosa-runtime">NeurOSA memory (gated)</a>
         <a href="#themes">Themes</a>
         <a href="#community-forum">Debug forum (planned)</a>

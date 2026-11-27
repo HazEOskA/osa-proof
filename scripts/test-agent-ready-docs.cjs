@@ -274,9 +274,10 @@ function realPortal() {
   return actualDocsDocument(html);
 }
 
-test("COPY-12: rzeczywisty HTML Docs — 23 sekcje, 6 kroków pipeline i pełne statusy kart", () => {
+test("COPY-12: rzeczywisty HTML Docs — 24 sekcje, 6 kroków pipeline i pełne statusy kart", () => {
   const doc=realPortal();
-  assert.equal(api.sectionsInPage(doc).length,23);
+  assert.equal(api.sectionsInPage(doc).length,24);
+  assert.ok(api.sectionsInPage(doc).some(section=>section.id==="durable-runtime"));
   const pipeline=api.exportMarkdown(doc,source,"pipeline");
   assert.match(pipeline,/- \*\*01 · Team Graph\*\* — validated/);
   assert.match(pipeline,/- \*\*06 · Receipt\*\* — sealed/);
@@ -305,15 +306,20 @@ test("COPY-13: rzeczywisty HTML Docs — curl/TOKEN/RUN to bash, ProofReceipt to
   assert.match(mesh,/```bash\nOSA_EXECUTION_MODE=provider/);
 });
 
-test("COPY-14: rzeczywisty HTML Docs — karty startu, 87 rekordów API i zakres sekcji", () => {
+test("COPY-14: rzeczywisty HTML Docs — karty startu, aktualny rejestr API i zakres sekcji", () => {
   const doc=realPortal();
   const start=api.exportMarkdown(doc,source,"start");
   assert.match(start,/#### \[Quickstart\]\(https:\/\/osa-proof-three\.vercel\.app\/docs#quickstart\)/);
   assert.match(start,/Status: 5 minutes/);
   const table=doc.getElementById("api").querySelector("table");
   assert.ok(table,"Realny portal musi zawierać tabelę HTTP API");
-  assert.equal(table.querySelectorAll("tr").length,88,"87 tras + nagłówek");
+  const manifest = require("node:fs").readFileSync(require("node:path").join(__dirname,"../packages/control/src/index.ts"),"utf8");
+  const count = [...manifest.matchAll(/\{\s*permission:\s*"[^"]+",\s*method:\s*"[^"]+",\s*path:\s*"[^"]+",\s*enforced:\s*"(session|public)"\s*\}/g)].length;
+  assert.ok(count >= 91);
+  assert.equal(table.querySelectorAll("tr").length,count+1,"API manifest + header");
   const apiMd=api.exportMarkdown(doc,source,"api");
+  assert.match(apiMd,/GET.*durable\/status/);
+  assert.match(apiMd,/POST.*durable\/jobs/);
   assert.match(apiMd,/\| GET \| `\/build\/status` \| `public` \|/);
   assert.doesNotMatch(apiMd,/Team Graph\*\* — validated/);
   const whole=api.exportMarkdown(doc,source);
