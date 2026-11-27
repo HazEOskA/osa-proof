@@ -1,0 +1,535 @@
+{
+  "schema": "osa.devnet_registry_e2e_evidence.v1",
+  "classification": "REAL_LOCAL_EXECUTION_DEVNET_NOT_PRODUCTION",
+  "limitations": [
+    "Ephemeral local test identity and controller, not a production user.",
+    "Build digest covers the compiled durable-executor.js module only; the attestation is self-reported, not hardware or remotely attested.",
+    "Policy descriptor is self-declared and is not independent evidence of enforcement.",
+    "This execution was not started from the production frontend."
+  ],
+  "sourceCommit": "a4ac5de2238f56491b8ee8b9dea4ed7c9c8ad25d",
+  "network": "solana-devnet",
+  "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "program": {
+    "id": "6QTgaWY6SyZsjCiuY9BGMn5H7PzoFghCocwkbKxxmG8p",
+    "dataAccount": "DGaT6KWFgg2NooQZQGWAu7gpjd9pHwM4p2Sos6KxHzSz",
+    "buildSha256": "1edefebf6323a6da3f707d68958311c03d6c7c8a78108539dbdca4984d5c3c32",
+    "deploymentSignature": "5E9UJUWmxmasr2Lm4cvrhMEKzGx5BUYvB5NaupWpgeEauAcMieiVvhpL9CZm4xVBCdg6nmgwmdjJBCfi7ArvohcS",
+    "deploymentSlot": 526905284,
+    "initSignature": "5uR2ssiELEeT9Jw48oSjNds6AwnYgj6azT8w1uSh9XZZHm3C54FwrhGLKJTY53bNUWfDANdwSfKiGynuuUxoz2TN",
+    "initSlot": 526905546,
+    "config": "FFsnJ49ivH8kpFYE36ojqDGZ5RX13ezZMXzfF7N5Edk9"
+  },
+  "anchor": {
+    "authority": "3Eqirpfrf2Ayit5XX1HE7sN6GuyCmHXBnED6BUJYooxc",
+    "account": "3ZCNrvtd967LtE297Fcy9f5PadaTVEwcJCR4ixMbenXa",
+    "signature": "T3PU5TrvrfyAMLD8DKojrMb5ARm4rVbZfAjrwt2r7K34pz3rR45yXURqtH34wSfGq6VENpQYAgLV6YcdWBAUSAn",
+    "slot": 526906612,
+    "status": "VERIFIED"
+  },
+  "scope": {
+    "organization_id": "org_devnet_e2e",
+    "project_id": "osa_proof_registry",
+    "identity_id": "operator_devnet_e2e"
+  },
+  "input": {
+    "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3",
+    "conversation_id": "ab582c81-ed58-42c5-a233-97d5fcafebfb",
+    "kind": "model",
+    "prompt": "Odpowiedz jednym równaniem: 2+2=?",
+    "agent": "jeverson"
+  },
+  "executionId": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3",
+  "missionId": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+  "runId": "run_aeaaa6df16e9969d6ca1597c",
+  "identity": {
+    "schema": "osa.agent_identity.v1",
+    "ai_id": "@ai:osa.test/jeverson",
+    "agent_id": "jeverson",
+    "key_id": "ed25519:ec0f8936b3814973fdabf001b2659781",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAPBbVmxS713vauKStRD4yWUukL/cxwpUMWvYwG2tVi3M=\n-----END PUBLIC KEY-----\n",
+    "controller": "@ai:osa.test",
+    "status": "ACTIVE",
+    "created_at": "2026-11-27T15:03:44.077Z"
+  },
+  "controllerPublicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAkTiIhTWjQlXaH1fj1xBb2a3emqaKzp2n2a7hkLtfFIM=\n-----END PUBLIC KEY-----\n",
+  "delegation": {
+    "schema": "osa.delegation.v1",
+    "principal": "@ai:osa.test",
+    "agent_ai_id": "@ai:osa.test/jeverson",
+    "scopes": [
+      "durable:chat"
+    ],
+    "denied_scopes": [],
+    "policy_digest": "db3a735757488621f4e2426963584639724a78f965b2cb3d4df01fa6433031a5",
+    "valid_from": "2026-11-27T15:02:44.084Z",
+    "valid_until": "2026-11-27T16:03:44.084Z",
+    "max_cost": 0,
+    "delegation_digest": "7d3e3a89de95577f25287ee8fdec88165e67bd42f069d8395246bbc54c892a7c",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "ed25519:080dcabe37fdee97a211358d74ea7df3",
+      "value": "ygeUlGbLwxvquf8FJH8QE177Vnk1CPTU3HTO4rOgArh7mcoMzWSLZa9hamSn9AEN7a1nq6ujP6685TXgwMwWBA"
+    }
+  },
+  "attestation": {
+    "schema": "osa.runtime_attestation.v1",
+    "agent_ai_id": "@ai:osa.test/jeverson",
+    "runtime_id": "worker_029b8926-d52e-493c-8fae-f7d382efd1b4",
+    "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3",
+    "build_digest": "a2a54025d8f881569ccf537c801ef664715d9ee89380ab3a7572b1fe080576ab",
+    "policy_digest": "db3a735757488621f4e2426963584639724a78f965b2cb3d4df01fa6433031a5",
+    "delegation_digest": "7d3e3a89de95577f25287ee8fdec88165e67bd42f069d8395246bbc54c892a7c",
+    "started_at": "2026-11-27T15:03:44.099Z",
+    "attestation_digest": "c5f30c6e2fcaef3bd4ef04aa284beed5a7c42f460e3f5f04bb20b5fe3f156730",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "ed25519:ec0f8936b3814973fdabf001b2659781",
+      "value": "asvs86gl71R3IhrzbREb_GtGp0tpF-xhQCYs9Etxk7pSVX9yWqmNIQymOBOn7yOa4aIkA-fKHUp0RmwNcIvrAg"
+    }
+  },
+  "actionReceipt": {
+    "schema": "osa.action_receipt.v1",
+    "agent_ai_id": "@ai:osa.test/jeverson",
+    "runtime_id": "worker_029b8926-d52e-493c-8fae-f7d382efd1b4",
+    "run_id": "run_aeaaa6df16e9969d6ca1597c",
+    "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3",
+    "operation_id": "durable:chat",
+    "authority_digest": "7d3e3a89de95577f25287ee8fdec88165e67bd42f069d8395246bbc54c892a7c",
+    "policy_digest": "db3a735757488621f4e2426963584639724a78f965b2cb3d4df01fa6433031a5",
+    "input_digest": "42676fed883b129f3b93b9c5fab637326150f72adfbb3d1139f8a8c8820f3b76",
+    "request_digest": "e6bb826ee67d4eba744804e103e698a8c7cc97a045a7053c6e2356f50574af0e",
+    "result_digest": "6678689f7d7df594dc3c6084d4bff5741d016c6fa1e430b5958cb44f464c3c31",
+    "evidence_refs": [
+      {
+        "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:1",
+        "evidence_sha256": "870b4411347a72a33d706b49d56035bad646e147dbfedc3897d404fd328b5ab3"
+      },
+      {
+        "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:2",
+        "evidence_sha256": "753a3b091f61c631a7aa330daf1011e9028d35ed790b89b39f6941f57f83c5b4"
+      }
+    ],
+    "timestamp": "2026-11-27T15:03:46.012Z",
+    "receipt_digest": "d5d903fc8c9b4e2ac9f75439e2e66a79b14d5984c19447acf7bc012c76184cb9",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "ed25519:ec0f8936b3814973fdabf001b2659781",
+      "value": "kdoAFd3KDhIq5vagUwLSnsw7ZdH8_IqnSI2uwZ6bAAEIP8uAyVFI93zUOQg1k3nVH1r8-3cwFs7RioyknUUJAg"
+    }
+  },
+  "proofReceipt": {
+    "schema": "osa.proof_receipt.v2",
+    "run_id": "run_aeaaa6df16e9969d6ca1597c",
+    "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3",
+    "organization_id": "org_devnet_e2e",
+    "project_id": "osa_proof_registry",
+    "team_id": "osa.chat.cognitive.v1",
+    "team_version": "2",
+    "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+    "binding": {
+      "organization_id": "org_devnet_e2e",
+      "project_id": "osa_proof_registry",
+      "team_id": "osa.chat.cognitive.v1",
+      "team_version": "2",
+      "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+      "run_id": "run_aeaaa6df16e9969d6ca1597c",
+      "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3"
+    },
+    "verdict": "VERIFIED",
+    "requirement_verdicts": [
+      {
+        "requirement_id": "provider_response_complete",
+        "verdict": "VERIFIED",
+        "evidence_ids": [
+          "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:1"
+        ],
+        "reason": "evidence satisfied the explicit acceptance requirement"
+      },
+      {
+        "requirement_id": "supervisor_release",
+        "verdict": "VERIFIED",
+        "evidence_ids": [
+          "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:2"
+        ],
+        "reason": "evidence satisfied the explicit acceptance requirement"
+      }
+    ],
+    "attribution_mode": "DEFAULT_ON",
+    "claim_enforcement": "REPORT_ONLY",
+    "claim_attribution": [],
+    "tool_call_refs": [],
+    "tool_call_root": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "egress_status": "NOT_ENFORCED",
+    "signature_status": "UNAVAILABLE",
+    "evidence_ids": [
+      "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:1",
+      "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:2"
+    ],
+    "evidence_refs": [
+      {
+        "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:1",
+        "evidence_sha256": "870b4411347a72a33d706b49d56035bad646e147dbfedc3897d404fd328b5ab3"
+      },
+      {
+        "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:2",
+        "evidence_sha256": "753a3b091f61c631a7aa330daf1011e9028d35ed790b89b39f6941f57f83c5b4"
+      }
+    ],
+    "evidence_root": "6ac280c130754b063aad0746e4e3d10594cb1ac5d5e8199a9bc8acdb91ad1176",
+    "observation_refs": [
+      {
+        "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:1",
+        "observation_sha256": "4ec440fc6843e57e9044c9236592844a27f06a67fb173ee45600cec2d4b09cd7"
+      },
+      {
+        "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:2",
+        "observation_sha256": "2a25c2704f8bdfcbef71e0421b103c4d9194d07f71bad71fd47704c53186047b"
+      },
+      {
+        "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:3",
+        "observation_sha256": "a8be7488887dd78bb7dacff24e3c2afe345af4b5d667e625a4de01e8fbf804f3"
+      },
+      {
+        "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:4",
+        "observation_sha256": "c18b3335bf9e80aec6d6582de5f99bebddaa6effd77d17cd748ad30d4bb30380"
+      },
+      {
+        "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:5",
+        "observation_sha256": "f1ee31a5c1e6b58a54b7c5506f05175eb27a8f68b80e457505eaf36a4e74918d"
+      },
+      {
+        "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:6",
+        "observation_sha256": "9d5da92b40773c0a55bb6dacc907f47d9c0d1f63dffd1cc178c54edd92649589"
+      }
+    ],
+    "final_output_sha256": "a8ea844e1b8eec9bf1697a3afcfbb8eab5ca54d055965c5208020b7fb74d4ad8",
+    "created_at": "2026-11-27T15:03:45.977Z",
+    "verifier": {
+      "name": "osa-proof-deterministic",
+      "version": "2"
+    },
+    "proof_id": "proof_7c340aeb72fa13246751fb43066ddee4ad534357523954bcc631ef04783b6970",
+    "receipt_sha256": "7c340aeb72fa13246751fb43066ddee4ad534357523954bcc631ef04783b6970"
+  },
+  "proofBatch": {
+    "schema": "osa.proof_batch.v1",
+    "proof_receipt_sha256": "7c340aeb72fa13246751fb43066ddee4ad534357523954bcc631ef04783b6970",
+    "receipt_digests": [
+      "d5d903fc8c9b4e2ac9f75439e2e66a79b14d5984c19447acf7bc012c76184cb9"
+    ],
+    "leaf_digests": [
+      "7c340aeb72fa13246751fb43066ddee4ad534357523954bcc631ef04783b6970",
+      "d5d903fc8c9b4e2ac9f75439e2e66a79b14d5984c19447acf7bc012c76184cb9"
+    ],
+    "merkle_root": "a3fc41f12bad09435898769aba31cd4667a85d42444323391800bfbec0cfbd5e",
+    "created_at": "2026-11-27T15:03:46.012Z",
+    "batch_id": "batch_5a5b661a170fc709d5e71274655b4614e55996dac1e4b876f64d0df154994b99"
+  },
+  "inclusion": [
+    {
+      "schema": "osa.merkle_proof.v1",
+      "leaf_index": 0,
+      "leaf_digest": "7c340aeb72fa13246751fb43066ddee4ad534357523954bcc631ef04783b6970",
+      "steps": [
+        {
+          "side": "RIGHT",
+          "hash": "6dadc4627be885a6ff9704b3499916a256759476f7687605dcac24c5b0c6b48e"
+        }
+      ],
+      "merkle_root": "a3fc41f12bad09435898769aba31cd4667a85d42444323391800bfbec0cfbd5e"
+    },
+    {
+      "schema": "osa.merkle_proof.v1",
+      "leaf_index": 1,
+      "leaf_digest": "d5d903fc8c9b4e2ac9f75439e2e66a79b14d5984c19447acf7bc012c76184cb9",
+      "steps": [
+        {
+          "side": "LEFT",
+          "hash": "91791a08631e721ed8a81f35670b1fec49d2b4cf4ee9abdba962cd83db053ad2"
+        }
+      ],
+      "merkle_root": "a3fc41f12bad09435898769aba31cd4667a85d42444323391800bfbec0cfbd5e"
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:1",
+      "run_id": "run_aeaaa6df16e9969d6ca1597c",
+      "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3",
+      "sequence": 1,
+      "organization_id": "org_devnet_e2e",
+      "project_id": "osa_proof_registry",
+      "team_id": "osa.chat.cognitive.v1",
+      "team_version": "2",
+      "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+      "agent_id": "nvidia",
+      "provenance": "EXECUTOR_EVIDENCE",
+      "binding": {
+        "organization_id": "org_devnet_e2e",
+        "project_id": "osa_proof_registry",
+        "team_id": "osa.chat.cognitive.v1",
+        "team_version": "2",
+        "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+        "run_id": "run_aeaaa6df16e9969d6ca1597c",
+        "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3"
+      },
+      "producer": {
+        "type": "executor",
+        "agent_id": "nvidia",
+        "executor_ref": "osa.chat.nvidia.v1",
+        "operation_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:op:1:nvidia"
+      },
+      "kind": "chat_provider_response",
+      "data": {
+        "complete": true,
+        "model": "qwen2.5:3b",
+        "requested_model": "qwen2.5:3b",
+        "provider_response_id": "chatcmpl-57",
+        "request_sha256": "38c0414380e9427f871a47b8d0bf561190a6aebcb84a63d7853125e687adaf19",
+        "response_sha256": "ccb87154d21d3d96a3835bcdba1aa5f3481a06d34a84f437a7ba312bef8c8b43",
+        "worker_id": "worker_029b8926-d52e-493c-8fae-f7d382efd1b4",
+        "lease_generation": 1
+      },
+      "content_sha256": "ccb87154d21d3d96a3835bcdba1aa5f3481a06d34a84f437a7ba312bef8c8b43",
+      "content_bytes": 5,
+      "evidence_sha256": "870b4411347a72a33d706b49d56035bad646e147dbfedc3897d404fd328b5ab3"
+    },
+    {
+      "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:2",
+      "run_id": "run_aeaaa6df16e9969d6ca1597c",
+      "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3",
+      "sequence": 2,
+      "organization_id": "org_devnet_e2e",
+      "project_id": "osa_proof_registry",
+      "team_id": "osa.chat.cognitive.v1",
+      "team_version": "2",
+      "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+      "agent_id": "supervisor",
+      "provenance": "EXECUTOR_EVIDENCE",
+      "binding": {
+        "organization_id": "org_devnet_e2e",
+        "project_id": "osa_proof_registry",
+        "team_id": "osa.chat.cognitive.v1",
+        "team_version": "2",
+        "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+        "run_id": "run_aeaaa6df16e9969d6ca1597c",
+        "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3"
+      },
+      "producer": {
+        "type": "executor",
+        "agent_id": "supervisor",
+        "executor_ref": "osa.chat.supervisor.v1",
+        "operation_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:op:2:supervisor"
+      },
+      "kind": "chat_supervisor_release",
+      "data": {
+        "publishable": true,
+        "decision": "RELEASED",
+        "content_verdict": "PASS",
+        "reason_code": "CHECKED",
+        "repair_count": 0,
+        "final_response_sha256": "ccb87154d21d3d96a3835bcdba1aa5f3481a06d34a84f437a7ba312bef8c8b43",
+        "attempts": [
+          {
+            "attempt": 1,
+            "response_sha256": "ccb87154d21d3d96a3835bcdba1aa5f3481a06d34a84f437a7ba312bef8c8b43",
+            "provider_response_id": "chatcmpl-57",
+            "review": {
+              "schema": "osa.chat_supervisor_review.v1",
+              "response_sha256": "ccb87154d21d3d96a3835bcdba1aa5f3481a06d34a84f437a7ba312bef8c8b43",
+              "verdict": "PASS",
+              "scope": "EXPLICIT_ARITHMETIC_EQUALITIES_ONLY",
+              "checks": [
+                {
+                  "expression_sha256": "ccb87154d21d3d96a3835bcdba1aa5f3481a06d34a84f437a7ba312bef8c8b43",
+                  "expression": "2+2=4",
+                  "verdict": "PASS",
+                  "expected": "4",
+                  "observed": "4",
+                  "reason": "ARITHMETIC_MATCH"
+                }
+              ],
+              "limitations": [
+                "Tylko jawne równania arytmetyczne; brak kontroli niejawnych rachunków, prawa i faktów.",
+                "PASS dotyczy wyłącznie wymienionych równań, nie całej wypowiedzi.",
+                "Brak sprawdzalnego dowodu oznacza UNKNOWN, nie potwierdzenie treści."
+              ]
+            }
+          }
+        ]
+      },
+      "content_sha256": "6b24610d81decba8ff6d50427d33e4ac95a65d9d40b874f1d3fcd270255b1edd",
+      "content_bytes": 1098,
+      "evidence_sha256": "753a3b091f61c631a7aa330daf1011e9028d35ed790b89b39f6941f57f83c5b4"
+    }
+  ],
+  "observations": [
+    {
+      "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:1",
+      "sequence": 1,
+      "provenance": "VERIFIER_OBSERVATION",
+      "binding": {
+        "organization_id": "org_devnet_e2e",
+        "project_id": "osa_proof_registry",
+        "team_id": "osa.chat.cognitive.v1",
+        "team_version": "2",
+        "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+        "run_id": "run_aeaaa6df16e9969d6ca1597c",
+        "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3"
+      },
+      "producer": {
+        "type": "verifier",
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:1",
+      "check": "binding",
+      "ok": true,
+      "reason": "evidence bound to this execution",
+      "observation_sha256": "4ec440fc6843e57e9044c9236592844a27f06a67fb173ee45600cec2d4b09cd7"
+    },
+    {
+      "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:2",
+      "sequence": 2,
+      "provenance": "VERIFIER_OBSERVATION",
+      "binding": {
+        "organization_id": "org_devnet_e2e",
+        "project_id": "osa_proof_registry",
+        "team_id": "osa.chat.cognitive.v1",
+        "team_version": "2",
+        "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+        "run_id": "run_aeaaa6df16e9969d6ca1597c",
+        "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3"
+      },
+      "producer": {
+        "type": "verifier",
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:1",
+      "check": "evidence_digest",
+      "ok": true,
+      "expected": "870b4411347a72a33d706b49d56035bad646e147dbfedc3897d404fd328b5ab3",
+      "observed": "870b4411347a72a33d706b49d56035bad646e147dbfedc3897d404fd328b5ab3",
+      "reason": "evidence digest recomputed",
+      "observation_sha256": "2a25c2704f8bdfcbef71e0421b103c4d9194d07f71bad71fd47704c53186047b"
+    },
+    {
+      "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:3",
+      "sequence": 3,
+      "provenance": "VERIFIER_OBSERVATION",
+      "binding": {
+        "organization_id": "org_devnet_e2e",
+        "project_id": "osa_proof_registry",
+        "team_id": "osa.chat.cognitive.v1",
+        "team_version": "2",
+        "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+        "run_id": "run_aeaaa6df16e9969d6ca1597c",
+        "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3"
+      },
+      "producer": {
+        "type": "verifier",
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:1",
+      "check": "content_digest",
+      "ok": true,
+      "observed": "ccb87154d21d3d96a3835bcdba1aa5f3481a06d34a84f437a7ba312bef8c8b43",
+      "reason": "claimed content digest matches core-computed digest",
+      "observation_sha256": "a8be7488887dd78bb7dacff24e3c2afe345af4b5d667e625a4de01e8fbf804f3"
+    },
+    {
+      "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:4",
+      "sequence": 4,
+      "provenance": "VERIFIER_OBSERVATION",
+      "binding": {
+        "organization_id": "org_devnet_e2e",
+        "project_id": "osa_proof_registry",
+        "team_id": "osa.chat.cognitive.v1",
+        "team_version": "2",
+        "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+        "run_id": "run_aeaaa6df16e9969d6ca1597c",
+        "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3"
+      },
+      "producer": {
+        "type": "verifier",
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:2",
+      "check": "binding",
+      "ok": true,
+      "reason": "evidence bound to this execution",
+      "observation_sha256": "c18b3335bf9e80aec6d6582de5f99bebddaa6effd77d17cd748ad30d4bb30380"
+    },
+    {
+      "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:5",
+      "sequence": 5,
+      "provenance": "VERIFIER_OBSERVATION",
+      "binding": {
+        "organization_id": "org_devnet_e2e",
+        "project_id": "osa_proof_registry",
+        "team_id": "osa.chat.cognitive.v1",
+        "team_version": "2",
+        "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+        "run_id": "run_aeaaa6df16e9969d6ca1597c",
+        "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3"
+      },
+      "producer": {
+        "type": "verifier",
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:2",
+      "check": "evidence_digest",
+      "ok": true,
+      "expected": "753a3b091f61c631a7aa330daf1011e9028d35ed790b89b39f6941f57f83c5b4",
+      "observed": "753a3b091f61c631a7aa330daf1011e9028d35ed790b89b39f6941f57f83c5b4",
+      "reason": "evidence digest recomputed",
+      "observation_sha256": "f1ee31a5c1e6b58a54b7c5506f05175eb27a8f68b80e457505eaf36a4e74918d"
+    },
+    {
+      "observation_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:observation:6",
+      "sequence": 6,
+      "provenance": "VERIFIER_OBSERVATION",
+      "binding": {
+        "organization_id": "org_devnet_e2e",
+        "project_id": "osa_proof_registry",
+        "team_id": "osa.chat.cognitive.v1",
+        "team_version": "2",
+        "mission_id": "chat_b07a6b001ffd2c8ceab98cfcea213d145e9aadf4aefe297cfdb116f2fa2736cd",
+        "run_id": "run_aeaaa6df16e9969d6ca1597c",
+        "execution_id": "exec_529c6b56-1853-4691-8b9b-4397fdef9bf3"
+      },
+      "producer": {
+        "type": "verifier",
+        "name": "osa-proof-deterministic",
+        "version": "2"
+      },
+      "evidence_id": "run_aeaaa6df16e9969d6ca1597c:exec_529c6b56-1853-4691-8b9b-4397fdef9bf3:evidence:2",
+      "check": "content_digest",
+      "ok": true,
+      "observed": "6b24610d81decba8ff6d50427d33e4ac95a65d9d40b874f1d3fcd270255b1edd",
+      "reason": "claimed content digest matches core-computed digest",
+      "observation_sha256": "9d5da92b40773c0a55bb6dacc907f47d9c0d1f63dffd1cc178c54edd92649589"
+    }
+  ],
+  "toolCalls": [],
+  "finalOutput": "2+2=4",
+  "policy": {
+    "schema": "osa.devnet_local_test_policy.v1",
+    "provider": "ollama",
+    "model": "qwen2.5:3b",
+    "max_cost": 0,
+    "scope": "durable:chat",
+    "network": "devnet"
+  },
+  "build": {
+    "artifact": "apps/worker/src/durable-executor.js",
+    "sha256": "a2a54025d8f881569ccf537c801ef664715d9ee89380ab3a7572b1fe080576ab",
+    "source_commit": "a4ac5de2238f56491b8ee8b9dea4ed7c9c8ad25d",
+    "note": "hash of executed compiled worker module; not a hash of the entire runtime"
+  }
+}

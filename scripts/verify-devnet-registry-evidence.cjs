@@ -1,0 +1,27 @@
+const {readFile}=require('node:fs/promises');
+const {createHash}=require('node:crypto');
+const assert=require('node:assert/strict');
+const {verifyProofReceipt,verifyMerkleProofV1,createProofBatchV1,digest}=require('../dist/packages/proof-core/src');
+const {verifyDelegationV1,verifyRuntimeAttestationV1,verifyActionReceiptV1,scopeAllowed}=require('../dist/packages/runtime/src/trust');
+const {verifyRegistryCommitment}=require('../dist/packages/web3/src/solana/proof-registry');
+(async()=>{
+ const p=JSON.parse(await readFile('docs/evidence/devnet-registry-e2e-20261127.json','utf8'));
+ const worker=await readFile('dist/apps/worker/src/durable-executor.js');
+ const recordedWorker=await readFile('docs/evidence/devnet-durable-executor-20261127.js.txt');
+ const hash=x=>createHash('sha256').update(x).digest('hex');
+ assert.equal(p.classification,'REAL_LOCAL_EXECUTION_DEVNET_NOT_PRODUCTION');
+ assert.equal(p.executionId,p.proofReceipt.execution_id);assert.equal(p.executionId,p.attestation.execution_id);assert.equal(p.executionId,p.actionReceipt.execution_id);
+ assert.equal(p.identity.controller,p.delegation.principal);assert.equal(p.identity.ai_id,p.delegation.agent_ai_id);
+ assert.ok(verifyDelegationV1(p.delegation,p.controllerPublicKeyPem,new Date(p.attestation.started_at)).ok);
+ assert.ok(scopeAllowed(p.delegation,'durable:chat'));assert.ok(verifyRuntimeAttestationV1(p.attestation,p.identity).ok);assert.ok(verifyActionReceiptV1(p.actionReceipt,p.identity).ok);
+ assert.equal(p.attestation.delegation_digest,p.delegation.delegation_digest);assert.equal(p.actionReceipt.authority_digest,p.delegation.delegation_digest);
+ assert.equal(p.attestation.policy_digest,hash(JSON.stringify(p.policy)));assert.equal(p.actionReceipt.policy_digest,p.attestation.policy_digest);
+ assert.equal(p.attestation.build_digest,hash(recordedWorker));assert.equal(p.actionReceipt.input_digest,digest(p.input));
+ assert.equal(p.actionReceipt.result_digest,digest({output:p.finalOutput,proof_receipt_sha256:p.proofReceipt.receipt_sha256}));
+ assert.ok(verifyProofReceipt({receipt:p.proofReceipt,evidence:p.evidence,observations:p.observations,final_output:p.finalOutput,tool_calls:p.toolCalls}).ok);
+ assert.deepEqual(createProofBatchV1(p.proofReceipt,[p.actionReceipt],p.proofBatch.created_at),p.proofBatch);
+ assert.equal(p.inclusion.length,2);assert.ok(p.inclusion.every(verifyMerkleProofV1));
+ const chain=await verifyRegistryCommitment({programId:p.program.id,authority:p.anchor.authority},p.proofBatch,p.anchor.signature);
+ assert.equal(chain.status,'VERIFIED');assert.equal(chain.account,p.anchor.account);assert.equal(chain.slot,p.anchor.slot);
+ console.log(JSON.stringify({status:'VERIFIED',scope:'REAL_LOCAL_EXECUTION_DEVNET_NOT_PRODUCTION',executionId:p.executionId,slot:chain.slot,signature:chain.transactionSignature,localBuildMatches:hash(worker)===p.attestation.build_digest}));
+})().catch(e=>{console.error('VERIFICATION_FAILED:',e.message);process.exitCode=1});
