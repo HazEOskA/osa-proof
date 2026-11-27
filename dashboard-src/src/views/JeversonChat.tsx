@@ -5,6 +5,7 @@ import AccountControl from "./AccountControl";
 import ChatDeliveryResult from "./ChatDelivery";
 import UnifiedLiveProgress from "./UnifiedLiveProgress";
 import { appendLiveEvent, clientTraceEvent, newLiveTrace, streamLiveChat, downloadChatReview, downloadChatAudit, type ChatReview, type ChatAudit, type LiveTrace, type LiveTraceEvent } from "../lib/live-execution";
+import type { RegistryReadback } from "../lib/live-execution";
 import { streamDelivery, verifyDelivery, type DeliveryBundle } from "../lib/chat-delivery";
 import { loadChatHistory, saveChatHistory } from "../lib/chat-history";
 import { canon, sha256, verifyRun } from "../lib/verify";
@@ -18,13 +19,23 @@ import { selectExplicitToolCommand } from "../../../packages/contracts/src/expli
 // Native OSA surface. No iframe, no client secrets, no pretend model execution.
 type AgentId = "jeverson" | "leader" | "coding" | "commerce" | "hermes" | "security" | "research" | "runtime";
 type ModelId = "auto" | "nvidia" | "openrouter";
-type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; trace?:LiveTrace; review?:ChatReview; audit?:ChatAudit; anchorStatus?:string; supervisor?:{decision:"RELEASED"|"REJECTED";content_verdict:"PASS"|"FAIL"|"UNKNOWN";repair_count:number;attempts:Array<{attempt:number;response_sha256:string}>}; contentAssurance?:{verdict:string;disclosure_pl:string}; memoryAssurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null}; jobKind?:"model"|"artifact"; artifactTarget?:"artifact"|"sandbox"; providerModel?:string; providerName?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
+type Msg = { id:string; role:"user"|"assistant"; text:string; at:string; status:"USER"|"VERIFIED"|"BLOCKED"|"MODEL"; trace?:LiveTrace; review?:ChatReview; audit?:ChatAudit; anchorStatus?:string; registryAnchor?:RegistryReadback; supervisor?:{decision:"RELEASED"|"REJECTED";content_verdict:"PASS"|"FAIL"|"UNKNOWN";repair_count:number;attempts:Array<{attempt:number;response_sha256:string}>}; contentAssurance?:{verdict:string;disclosure_pl:string}; memoryAssurance?:{state:string;context_sha256:string|null;evidence_receipt_sha256:string|null}; jobKind?:"model"|"artifact"; artifactTarget?:"artifact"|"sandbox"; providerModel?:string; providerName?:string; executionId?:string; runId?:string; memory?:MemoryPointer; remembered?:boolean; statementReceipt?:MemoryPointer; memoryUnavailable?:boolean; delivery?:DeliveryBundle };
 type Session = { id:string; title:string; agent:AgentId; model:ModelId; updated:string; messages:Msg[] };
 type Bundle = { status:string; execution_id:string; team:TeamGraph; mission:Mission; run:Run };
 type Trace = Bundle & { task_status:string; proof_verdict:string; steps:Array<{resource:string;method:string;source:string;http_status:null;status:string}> };
 type StatusInfo = { mode?:string; auth_mode?:string; persistence?:string };
 type ModelStatus = { configured:boolean; provider:string; model:string };
-type DurableStatus = {execution_id:string;conversation_id:string;kind:"model"|"artifact";status:"QUEUED"|"RUNNING"|"COMPLETED"|"FAILED"|"UNKNOWN"|"CANCELLED";result?:unknown;error_code?:string};
+type DurableStatus = {execution_id:string;conversation_id:string;kind:"model"|"artifact";status:"QUEUED"|"RUNNING"|"COMPLETED"|"FAILED"|"UNKNOWN"|"CANCELLED";result?:unknown;error_code?:string;registry_anchor?:RegistryReadback};
+
+function registryFor(audit: ChatAudit | undefined, response: DurableStatus): RegistryReadback | undefined {
+  const anchor = response.registry_anchor;
+  if (response.status !== "COMPLETED" || !anchor || anchor.network !== "devnet" ||
+      anchor.merkleRoot !== audit?.signed_trust?.proof_batch.merkle_root ||
+      !["PENDING","SUBMITTED","VERIFIED","FAILED","UNKNOWN"].includes(anchor.status)) return;
+  const hasSignature = !!anchor.transactionSignature && /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(anchor.transactionSignature);
+  if (anchor.status === "VERIFIED" && (!hasSignature || !Number.isSafeInteger(anchor.slot) || anchor.slot! <= 0)) return;
+  return anchor;
+}
 type DurableChatAudit = ChatAudit & {run:Run; mission:Mission; team:TeamGraph; final_output:string; response_sha256:string; anchor_preparation?:{status:string}};
 type ModelAnswer = { text:string; model:string; provider?:string; provider_model?:string; provider_response_id:string|null; request_id:string; latency_ms:number; status:"PROVIDER_RESPONSE"|"SUPERVISOR_REJECTED"; execution_id:string; conversation_id:string; execution_verdict?:string; audit?:DurableChatAudit; memory_status?:"UNAVAILABLE"; memory?: {receipt:MemoryPointer; remembered?:MemoryPointer} };
 async function verifiedDurableAudit(audit:DurableChatAudit|undefined, executionId:string, conversationId:string):Promise<DurableChatAudit> {
@@ -197,11 +208,21 @@ export default function JeversonChat() {
             // Re-check the server before repairing that historical display.
             const staleCancellation=!!previousAnswer&&previousAnswer.text==="Misja została anulowana przed rozpoczęciem wykonania."&&
               !!msg.trace&&msg.trace.state!=="CANCELLED";
-            if(previousAnswer&&!staleCancellation)continue;
+            const checkAnchor = previousAnswer?.audit?.signed_trust &&
+              previousAnswer.registryAnchor?.status !== "VERIFIED" && previousAnswer.registryAnchor?.status !== "FAILED";
+            if(previousAnswer&&!staleCancellation&&!checkAnchor)continue;
             let result:DurableStatus;
             try{result=await api<DurableStatus>("/durable/jobs/"+msg.executionId);}
             catch{continue;} // unacknowledged request: never silently assume it ran
             if(!alive||result.conversation_id!==session.id||result.execution_id!==msg.executionId)continue;
+            if(previousAnswer && checkAnchor) {
+              const registryAnchor = registryFor(previousAnswer.audit, result);
+              if(registryAnchor && JSON.stringify(registryAnchor) !== JSON.stringify(previousAnswer.registryAnchor))
+                setSessions(prev=>prev.map(s=>s.id!==session.id?s:{
+                  ...s,messages:s.messages.map(m=>m.id===previousAnswer.id?{...m,registryAnchor}:m),
+                }));
+              continue;
+            }
             if(staleCancellation){
               if(result.status==="CANCELLED")setSessions(prev=>prev.map(s=>s.id!==session.id?s:{
                 ...s,messages:s.messages.map(m=>m.role==="user"&&m.executionId===msg.executionId&&m.trace&&m.trace.state!=="CANCELLED"?
@@ -239,6 +260,7 @@ export default function JeversonChat() {
                     throw Error("DURABLE_AUDIT_BINDING_INVALID");
                   answer=model.text;status="MODEL";extra={...extra,providerModel:model.provider_model||model.model,providerName:model.provider,
                     audit,supervisor:audit.supervisor,contentAssurance:audit.content_assurance,runId:run.run_id,
+                    registryAnchor:registryFor(audit,result),
                     anchorStatus:"BRAK POTWIERDZENIA ON-CHAIN"};
                 }catch { answer="Wynik modelu nie przeszedł kontroli powiązania i integralności ProofReceipt."; }
                 }
@@ -538,7 +560,13 @@ export default function JeversonChat() {
             <p>Podpis Ed25519 workera · {m.audit.signed_trust.action_receipts[0]?.signature.key_id}</p>
             <p>Skrót ProofReceipt · {m.audit.signed_trust.proof_batch.proof_receipt_sha256}</p>
             <p>Merkle root · {m.audit.signed_trust.proof_batch.merkle_root}</p>
-            <p>Solana Devnet · NOT_ANCHORED</p>
+            <p>Solana Devnet · {m.registryAnchor?.status ?? "NOT_ANCHORED"}</p>
+            {m.registryAnchor && <p>Program ID · {m.registryAnchor.programId}</p>}
+            {m.registryAnchor?.status === "VERIFIED" && <p>Finalizacja · FINALIZED · slot {m.registryAnchor.slot}</p>}
+            {m.registryAnchor?.transactionSignature && <a className="text-cyan underline" target="_blank" rel="noopener noreferrer"
+              href={`https://explorer.solana.com/tx/${encodeURIComponent(m.registryAnchor.transactionSignature)}?cluster=devnet`}>
+              Transakcja · {m.registryAnchor.transactionSignature}
+            </a>}
           </div>} {m.audit&&<button data-testid="osa-chat-audit-download" type="button" onClick={()=>downloadChatAudit(m.audit!)} className="mt-3 rounded border border-cyan/40 p-2 text-xs text-cyan">Pobierz bundle Brain + APR + treść</button>} {m.review&&<button type="button" onClick={()=>downloadChatReview(m.review!)} className="mt-3 rounded border border-warn/50 p-2 text-xs text-warn">Pobierz odrzuconą odpowiedź i dowody JSON</button>}
               {m.anchorStatus&&<div role="status" className="mt-2 text-xs text-dim">Anchor: {m.anchorStatus}</div>}
               {m.trace&&<UnifiedLiveProgress trace={m.trace}

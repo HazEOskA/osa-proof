@@ -2,7 +2,9 @@
   "name": "osa-proof",
   "version": "0.1.0",
   "private": true,
-  "bin": { "osa": "bin/osa.cjs" },
+  "bin": {
+    "osa": "bin/osa.cjs"
+  },
   "description": "Proof-first backend for verifiable agentic systems.",
   "engines": {
     "node": ">=20"
@@ -26,5 +28,8 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@solana/kit": "8.5.0"
   }
 }

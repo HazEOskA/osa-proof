@@ -11,6 +11,14 @@ export type LiveTrace ={
   execution_id:string;conversation_id:string;mode:LiveMode;state:LiveState;
   events:LiveTraceEvent[];tasks?:{agent_id:string;state:string}[];
 };
+export type RegistryReadback = {
+  status: "PENDING" | "SUBMITTED" | "VERIFIED" | "FAILED" | "UNKNOWN";
+  network: "devnet";
+  programId: string;
+  merkleRoot: string;
+  transactionSignature?: string;
+  slot?: number;
+};
 export type ChatAudit = {
   schema:"osa.chat_audit.v1";
   execution_id:string;

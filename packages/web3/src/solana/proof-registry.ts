@@ -33,16 +33,10 @@ export function registryCommitInstruction(batch: ProofBatchV1): Buffer {
 }
 
 type RegistryPolicy = { programId: string; authority: string };
+type RegistryIntent = { transactionSignature: string; account: string; lastValidBlockHeight: string };
+type RecordIntent = (intent: RegistryIntent) => Promise<void>;
 
-/** Each caller must persist the signature before broadcasting. Recovery reads
- * that signature first and never resubmits an ambiguous transaction. */
-export async function submitRegistryCommitment(
-  policy: RegistryPolicy,
-  batch: ProofBatchV1,
-  authorityKeyBytes: Uint8Array,
-  recordIntent: (intent: { transactionSignature: string; account: string; lastValidBlockHeight: string }) => Promise<void>,
-): Promise<string> {
-  const data = registryCommitInstruction(batch);
+async function registryClient(policy: RegistryPolicy, authorityKeyBytes: Uint8Array) {
   // Same optional Solana Kit runtime as the Genesis adapter.
   const kit = await (new Function("moduleName", "return import(moduleName)") as
     (name: string) => Promise<any>)("@solana/kit");
@@ -53,16 +47,53 @@ export async function submitRegistryCommitment(
   if (await rpc.getGenesisHash().send() !== DEVNET_GENESIS) throw Error("REGISTRY_CLUSTER_MISMATCH");
   const encoder = new TextEncoder();
   const [config] = await kit.getProgramDerivedAddress({ programAddress, seeds: [encoder.encode("registry-v1")] });
+  const system = { address: kit.address("11111111111111111111111111111111"), role: kit.AccountRole.READONLY };
+  const payer = { address: authority.address, role: kit.AccountRole.WRITABLE_SIGNER, signer: authority };
+  return { kit, rpc, authority, programAddress, encoder, config, system, payer };
+}
+
+/** Each caller must persist the signature before broadcasting. Recovery reads
+ * that signature first and never resubmits an ambiguous transaction. */
+export async function submitRegistryCommitment(
+  policy: RegistryPolicy,
+  batch: ProofBatchV1,
+  authorityKeyBytes: Uint8Array,
+  recordIntent: RecordIntent,
+): Promise<string> {
+  const data = registryCommitInstruction(batch);
+  const client = await registryClient(policy, authorityKeyBytes);
+  const { kit, programAddress, encoder, config, payer, system } = client;
   const [account] = await kit.getProgramDerivedAddress({ programAddress, seeds: [encoder.encode("proof-v1"), data.subarray(1, 33)] });
-  const instruction = {
-    programAddress, data: new Uint8Array(data),
-    accounts: [
-      { address: authority.address, role: kit.AccountRole.WRITABLE_SIGNER, signer: authority },
-      { address: config, role: kit.AccountRole.READONLY },
-      { address: account, role: kit.AccountRole.WRITABLE },
-      { address: kit.address("11111111111111111111111111111111"), role: kit.AccountRole.READONLY },
-    ],
-  };
+  return sendRegistryInstruction(client, account, new Uint8Array(data), [
+    payer, { address: config, role: kit.AccountRole.READONLY }, { address: account, role: kit.AccountRole.WRITABLE }, system,
+  ], recordIntent);
+}
+
+export async function initializeRegistry(
+  policy: RegistryPolicy,
+  authorityKeyBytes: Uint8Array,
+  deploymentKeyBytes: Uint8Array,
+  recordIntent: RecordIntent,
+): Promise<string> {
+  const client = await registryClient(policy, authorityKeyBytes);
+  const { kit, programAddress, config, payer, system } = client;
+  const deploymentSigner = await kit.createKeyPairSignerFromBytes(deploymentKeyBytes);
+  if (deploymentSigner.address !== programAddress) throw Error("REGISTRY_DEPLOYMENT_KEY_MISMATCH");
+  return sendRegistryInstruction(client, config, Uint8Array.of(0), [
+    payer, { address: config, role: kit.AccountRole.WRITABLE },
+    { address: programAddress, role: kit.AccountRole.READONLY_SIGNER, signer: deploymentSigner }, system,
+  ], recordIntent);
+}
+
+async function sendRegistryInstruction(
+  client: Awaited<ReturnType<typeof registryClient>>,
+  account: string,
+  data: Uint8Array,
+  accounts: unknown[],
+  recordIntent: RecordIntent,
+): Promise<string> {
+  const { kit, rpc, authority, programAddress } = client;
+  const instruction = { programAddress, data, accounts };
   const { value: latest } = await rpc.getLatestBlockhash({ commitment: "finalized" }).send();
   const message = kit.pipe(
     kit.createTransactionMessage({ version: "legacy" }),
